@@ -1,0 +1,55 @@
+<meta charset="utf-8">
+<title>JAGERLARAMAIS</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+:root{
+  --ground:#0E1614; --ground-2:#141F1C; --line:#2A3B37;
+  --ink:#E4EDE9; --ink-2:#9FB3AD; --ink-3:#6C817C; --brass:#C99A46;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
+  --carto:"Copperplate","Optima",Georgia,serif;
+  --body:"Iowan Old Style",Palatino,Georgia,serif;
+}
+@media (prefers-color-scheme:light){
+  :root{--ground:#EDEBE2;--ground-2:#E4E2D7;--line:#BFBCAB;
+        --ink:#1B2320;--ink-2:#4E5B56;--ink-3:#7A857F;--brass:#8A6420}
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:var(--ground);color:var(--ink);
+  font-family:var(--body);display:flex;align-items:center;justify-content:center;padding:32px 20px}
+main{width:100%;max-width:520px}
+.et{font-family:var(--carto);font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--brass)}
+h1{font-family:var(--display);font-weight:700;text-transform:uppercase;
+  font-size:clamp(44px,13vw,76px);line-height:.9;margin:10px 0 14px;letter-spacing:-.01em}
+p{color:var(--ink-2);font-size:16px;line-height:1.6;margin:0 0 8px}
+.aviso{color:var(--ink-3);font-size:13.5px;line-height:1.55;margin:18px 0 30px;
+  border-left:2px solid var(--line);padding-left:14px}
+a.bt{display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);
+  background:var(--ground-2);border-radius:12px;padding:15px 18px;margin-bottom:10px}
+a.bt:hover{border-color:var(--brass)}
+a.bt .n{font-family:var(--display);font-size:19px;text-transform:uppercase;line-height:1}
+a.bt .d{font-size:13px;color:var(--ink-2);margin-top:4px;font-family:var(--body)}
+a.bt.forte{background:var(--brass);border-color:var(--brass);color:#12100A}
+a.bt.forte .d{color:#3A3113}
+footer{margin-top:26px;font-family:var(--carto);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
+footer a{color:var(--ink-3)}
+</style>
+
+<main>
+  <span class="et">Um MOBA de mesa para dois</span>
+  <h1>Jager<br>laramais</h1>
+  <p>Cada um comanda <b>cinco heróis</b> — um por rota. Um dado move o time inteiro.
+  Três dados de ação para cinco heróis: quem fica sem ordem, farma.</p>
+
+  <div class="aviso">Os dois jogam no <b>mesmo aparelho</b>, passando a vez —
+  como jogo de tabuleiro. Abrir em dois celulares dá duas partidas separadas.</div>
+
+  <a class="bt forte" href="jogo/"><div class="n">Jogar</div>
+    <div class="d">Comece pelo tutorial — 9 passos, ensina jogando</div></a>
+  <a class="bt" href="guia/"><div class="n">O manual</div>
+    <div class="d">Regras, rotas, heróis, itens, mapa e glossário</div></a>
+  <a class="bt" href="cartas/"><div class="n">As cartas</div>
+    <div class="d">Os 20 heróis, quatro por rota</div></a>
+
+  <footer>Vilker · Vinicius · Matheus —
+    <a href="https://github.com/vilkers/jagerlaramais">código no GitHub</a></footer>
+</main>
