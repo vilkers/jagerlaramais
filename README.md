@@ -66,7 +66,9 @@ Detalhe do que mudou: `docs/patch-notes.md`. Retrato do presente: `docs/ESTADO.m
 ## Estrutura do repositório
 
 ```
-jogo/index.html      O jogo. Arquivo único, abre com duplo clique.
+jogo/index.html      A estrutura da tela. Abre com duplo clique.
+jogo/estilo.css      Toda a aparência — mexer aqui não quebra regra.
+jogo/jogo.js         Motor de regras e interface.
 guia/index.html      Manual navegável (regras, heróis, itens, mapa, glossário).
 cartas/index.html    Visualizador das 20 cartas de herói.
 data/catalogo.js     FONTE ÚNICA de conteúdo: heróis, itens, deck, classes.
@@ -91,7 +93,7 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 | `docs/03-jogabilidade.md` | Os conflitos de interface que travavam o jogador, e as correções |
 | `docs/04-draft-e-deck.md` | Draft, Deck de Comando e as cartas |
 | `docs/herois-aposentados.md` | Os 25 heróis que saíram na v0.4, prontos para voltar |
-| `docs/ECOSSISTEMA.md` | **Como três pessoas mexem no mesmo jogo** sem se atropelar |
+| `docs/ECOSSISTEMA.md` | **Como três pessoas (e duas IAs) mexem no mesmo jogo** sem se atropelar |
 | `docs/ACESSO.md` | Para mandar para quem está entrando agora |
 | `docs/COMO-CONTINUAR.md` | Como usar o Claude neste projeto |
 

@@ -28,21 +28,36 @@ As 20 cartas de herói: **https://vilkers.github.io/jagerlaramais/cartas/**
 em **Fork**, no canto superior direito. Isso cria uma cópia inteira do jogo na sua conta.
 Ela é sua: mexa à vontade, não quebra nada do oficial.
 
-**c)** Traga para o computador:
+**c)** Agora escolha um dos dois caminhos:
+
+### Caminho A — sem instalar nada (recomendado para começar)
+
+Na página do **seu** fork, aperte a tecla **`.`** (ponto). O GitHub abre um VS Code inteiro dentro
+do navegador, com todos os arquivos do jogo. Você edita, e no painel da esquerda (o ícone de galhos)
+escreve o que mudou e clica em **Commit & Push**. Pronto — não instalou nada.
+
+Para **ver a sua versão rodando**, ligue o Pages no seu fork:
+`Settings → Pages → Source: Deploy from a branch → Branch: main → / (root) → Save`.
+Em dois minutos o seu jogo fica em `https://<SEU-USUARIO>.github.io/jagerlaramais/`.
+
+### Caminho B — no seu computador
 
 ```bash
 git clone https://github.com/<SEU-USUARIO>/jagerlaramais.git
 cd jagerlaramais
 ```
 
-**d)** Abra `jogo/index.html` com duplo clique. Pronto — não tem instalação, não tem servidor,
-não tem npm. É HTML, CSS e JavaScript puro.
+Abra `jogo/index.html` com duplo clique. Não tem instalação, não tem servidor, não tem npm.
+É HTML, CSS e JavaScript puro. (Precisa do Git instalado: [git-scm.com](https://git-scm.com/downloads).)
 
 ---
 
-## 3 · Mexer com o Claude
+## 3 · Mexer com IA
 
-O projeto foi feito para ser continuado dentro do **Claude Code**.
+O projeto foi feito para ser continuado com ajuda de IA — Claude Code, ChatGPT, o que você preferir.
+Os arquivos são separados justamente para isso (ver `docs/ECOSSISTEMA.md`, seção "duas IAs ao mesmo tempo").
+
+### No Claude Code
 
 **a)** Abra a pasta `jagerlaramais` no Claude Code (terminal, app ou claude.ai/code).
 
@@ -64,6 +79,21 @@ com as regras do projeto e os agentes especializados.
 @ux-game joga o tutorial no celular e me diz onde eu travaria
 @card-smith escreve 3 heróis novos de suporte, com arquétipo diferente dos 4 que já existem
 ```
+
+### No ChatGPT (ou qualquer IA que não enxerga o repositório)
+
+Ela não lê os seus arquivos sozinha. Cole **um arquivo por conversa** e diga o que ele é:
+
+| Quer mexer em | Cole |
+|---|---|
+| Aparência do jogo | `jogo/estilo.css` |
+| Regras, motor, interface | `jogo/jogo.js` |
+| Herói, item, carta | `data/catalogo.js` |
+| Manual | `guia/index.html` |
+
+Comece a conversa com: *"Isto é o CSS de um jogo de tabuleiro em HTML/CSS/JS puro, sem framework,
+sem npm e sem CDN — tem que continuar abrindo com duplo clique. Não mude nenhum nome de classe."*
+Depois cole o arquivo inteiro de volta no GitHub e faça commit.
 
 ---
 

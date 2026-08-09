@@ -79,10 +79,9 @@ Estão no `CLAUDE.md` da raiz, que o Claude lê automaticamente:
 Um arquivo, três camadas, nesta ordem:
 
 ```
-jogo/index.html
-├── <style>          CSS mobile-first, tokens em :root
-├── <body>           HUD · mapa (SVG) · painel de comando · bottom sheet
-└── <script>
+jogo/index.html      HUD · mapa (SVG) · painel de comando · bottom sheet
+jogo/estilo.css      CSS mobile-first, tokens em :root
+jogo/jogo.js
     ├── CATÁLOGO     lê data/catalogo.js — este arquivo não guarda conteúdo
     ├── GEOMETRIA    grid hexagonal, rotas, torres
     ├── ESTADO       novo(), o objeto J com a partida inteira
@@ -93,6 +92,8 @@ jogo/index.html
 ```
 
 **A separação que importa:** o *motor de regras* (catálogo → ações) é estável e não deve mudar quando você mexe na aparência. A *camada de UI* (`pinta`, `desenhaMapa`, telas) já foi reescrita duas vezes sem quebrar o motor. Mantenha assim.
+
+Na v0.4.1 o arquivo único virou três, para que visual e motor possam ser mexidos em paralelo — por duas pessoas ou por duas IAs. Ver `docs/ECOSSISTEMA.md`.
 
 ### Duas armadilhas que já custaram tempo
 

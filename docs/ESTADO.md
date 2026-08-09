@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.4 · **Atualizado em:** 2026-08-08
+**Versão:** v0.4.1 · **Atualizado em:** 2026-08-08
 
 ---
 
@@ -25,6 +25,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | ~15 rodadas |
 | Peso da pasta `arte/` | ~9 MB |
+| Publicado em | vilkers.github.io/jagerlaramais |
 
 ## O que funciona
 
@@ -48,7 +49,9 @@ guia navegável · visualizador de cartas.
 
 ```
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
-jogo/index.html      O jogo. Motor + UI, arquivo único.
+jogo/index.html      Só a estrutura da tela. 63 linhas.
+jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
+jogo/jogo.js         Motor de regras + interface.
 guia/index.html      Manual navegável. Lê do catálogo.
 cartas/index.html    Visualizador das 20 cartas. Lê do catálogo.
 arte/imagens.js      Índice de caminhos das imagens (ARTE, ARTE_CARTA, ARTE_MAPA, ARTE_MONSTRO)

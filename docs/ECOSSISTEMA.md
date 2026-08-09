@@ -73,16 +73,21 @@ Isso evita 90% dos conflitos.
 **1. Conteúdo só em `data/catalogo.js`.** Herói, item e carta vivem lá. Nunca escreva carta direto
 no HTML — foi exatamente esse erro que criou três catálogos divergentes até a v0.3.
 
-**2. Uma pessoa por área, quando der.** Duas pessoas editando `jogo/index.html` no mesmo dia é
-conflito garantido, porque é um arquivo único e grande.
+**2. Uma pessoa por arquivo, no mesmo dia.** O jogo foi separado em três arquivos exatamente para
+isso: dá para mexer no visual e no motor ao mesmo tempo, sem se atropelar.
 
-| Área | Arquivo |
-|---|---|
-| Conteúdo (heróis, itens, cartas) | `data/catalogo.js` |
-| Regras e motor | `jogo/index.html`, bloco `<script>` |
-| Aparência do jogo | `jogo/index.html`, bloco `<style>` |
-| Manual | `guia/index.html` |
-| Cartas impressas | `cartas/index.html` |
+| Área | Arquivo | Quem mexe aqui pode quebrar regra? |
+|---|---|---|
+| Conteúdo (heróis, itens, cartas) | `data/catalogo.js` | sim — número é regra |
+| Regras, motor e interface | `jogo/jogo.js` | sim |
+| Aparência do jogo | `jogo/estilo.css` | **não** — mexa à vontade |
+| Estrutura da tela | `jogo/index.html` | só se apagar um `id` |
+| Manual | `guia/index.html` | não |
+| Cartas | `cartas/index.html` | não |
+
+> `jogo/estilo.css` é a área segura. Quem quiser reformar fonte, cor, sombra, animação e layout
+> não precisa entender nada de regra — só **não renomear classe nem `id`**, porque o JavaScript
+> procura por eles.
 
 **3. Mudou número? Vira patch note.** `docs/patch-notes.md`, entrada nova no topo, dizendo
 **de quanto para quanto**. Sem isso ninguém sabe por que o Vharn está diferente.
@@ -117,6 +122,44 @@ Cada um pode fazer o mesmo no próprio fork e ter o próprio endereço para test
 
 > 📌 **Pages exige repositório público** em conta gratuita. Se vocês preferirem manter privado,
 > o jogo continua funcionando por duplo clique depois do `git clone` — só não tem endereço.
+
+---
+
+## Duas IAs ao mesmo tempo (Claude e ChatGPT)
+
+Funciona bem, e por um motivo simples: **o conflito nunca é entre as IAs, é entre dois arquivos
+editados ao mesmo tempo.** Quem arbitra é o Git, não o assistente.
+
+### A divisão que faz isso funcionar
+
+| | Claude Code | ChatGPT (ou outra IA sem acesso ao repositório) |
+|---|---|---|
+| **Boa em** | ler o repositório inteiro, rodar o jogo, testar por script, mexer em várias telas de uma vez | reformar um arquivo fechado: CSS, layout, tipografia, texto de carta |
+| **Dê a ela** | `jogo/jogo.js` · `data/catalogo.js` · regra, balanceamento, bug | `jogo/estilo.css` · `guia/index.html` · `cartas/index.html` |
+| **Por quê** | precisa ver o efeito da regra no jogo todo | é upgrade visual, não depende de entender a regra |
+
+### O protocolo, em quatro passos
+
+1. **`git pull` antes de começar.** Sempre. É o que evita quase todo conflito.
+2. **Uma frente por vez em cada arquivo.** Visual no `estilo.css`, regra no `jogo.js`. Nunca os dois
+   no mesmo arquivo no mesmo dia.
+3. **Commit pequeno e frequente**, com uma frase dizendo o que mudou.
+4. **Terminou uma frente?** Escreva no `docs/patch-notes.md` e atualize `docs/ESTADO.md`.
+   É isso que faz a *outra* IA (e a outra pessoa) entender o que aconteceu sem você explicar de novo.
+
+### Como abrir a conversa no ChatGPT
+
+Ela não enxerga o repositório. Cole **um arquivo por conversa** e ancore as regras logo na primeira
+mensagem, senão ela vai sugerir Tailwind, React e três bibliotecas de CDN:
+
+> Isto é o CSS de um jogo de tabuleiro em HTML/CSS/JS puro. Restrições que **não** mudam:
+> sem framework, sem npm, sem CDN, sem build — o jogo abre com duplo clique num arquivo local.
+> Mobile-first, `100dvh`, alvo de toque mínimo 44px. Paleta: verde-petróleo escuro com um único
+> acento de latão. **Não renomeie nenhuma classe nem `id`** — o JavaScript procura por eles.
+> Quero um upgrade de tipografia, hierarquia e animação. Me devolva o arquivo inteiro.
+
+E o mesmo, de volta: quando o CSS voltar reformado, cole no GitHub, faça commit, e peça ao Claude
+*"o CSS foi reformado por fora — abre o jogo e me diz se quebrou alguma tela"*.
 
 ---
 
