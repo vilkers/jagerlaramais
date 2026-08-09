@@ -1,0 +1,129 @@
+<title>JAGERLARAMAIS — as cartas</title>
+<style>
+:root{
+  --ground:#0E1614; --ground-2:#141F1C; --ground-3:#1B2926;
+  --line:#2A3B37; --line-soft:#213230;
+  --ink:#E9F1ED; --ink-2:#9FB3AD; --ink-3:#6C817C;
+  --brass:#C99A46; --brass-dim:#8A6A2F; --brass-glow:rgba(201,154,70,.14);
+  --topo:#7E9E6F; --selva:#4F8F86; --meio:#6486B4; --adc:#9585BC; --sup:#B4899C;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
+  --carto:"Copperplate","Optima","Palatino Linotype",Georgia,serif;
+  --body:"Iowan Old Style","Palatino",Georgia,serif;
+  --ui:"Avenir Next","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media print{
+  :root{--ground:#fff;--ground-2:#fff;--ink:#000}
+  .topo,.filtros,.nota{display:none!important}
+  .grade{gap:4mm}
+  .carta{break-inside:avoid;page-break-inside:avoid}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
+.topo{padding:34px 30px 22px;border-bottom:1px solid var(--line);background:var(--ground-2)}
+.topo .et{font-family:var(--carto);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--brass)}
+.topo h1{font-family:var(--display);font-size:clamp(34px,6vw,58px);text-transform:uppercase;margin:8px 0 10px;line-height:.95;letter-spacing:-.01em}
+.topo p{margin:0;color:var(--ink-2);max-width:62ch;font-family:var(--body);font-size:15.5px;line-height:1.6}
+.filtros{display:flex;gap:7px;flex-wrap:wrap;padding:18px 30px 0}
+.filtros button{font-family:var(--ui);font-size:12.5px;background:var(--ground-3);border:1px solid var(--line);color:var(--ink-2);padding:8px 14px;border-radius:3px;cursor:pointer}
+.filtros button:hover{border-color:var(--brass);color:var(--brass)}
+.filtros button.on{border-color:var(--brass);color:var(--brass);background:var(--brass-glow)}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(318px,1fr));gap:22px;padding:22px 30px 70px}
+
+.carta{
+  background:var(--ground-2);border:1px solid var(--line);border-radius:9px;overflow:hidden;
+  display:flex;flex-direction:column;position:relative;box-shadow:0 3px 20px rgba(0,0,0,.4);
+}
+.carta::before{content:"";position:absolute;inset:0;border-radius:9px;border:1px solid var(--cor);opacity:.4;pointer-events:none;z-index:3}
+.art{position:relative;aspect-ratio:2/3;overflow:hidden;background:#0a100e}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+.art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,20,.72) 0%,rgba(14,22,20,0) 26%,rgba(14,22,20,0) 46%,rgba(14,22,20,.96) 88%)}
+.cab{position:absolute;top:0;left:0;right:0;padding:13px 15px 0;z-index:2}
+.faixa{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rota-tag{font-family:var(--carto);font-size:8.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--cor);
+  border:1px solid var(--cor);padding:3px 8px;border-radius:2px;background:rgba(10,16,14,.6)}
+.classe{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);text-transform:lowercase}
+.nome-box{position:absolute;left:15px;right:15px;bottom:85px;z-index:2}
+.nome{font-family:var(--display);font-size:31px;text-transform:uppercase;line-height:.94;letter-spacing:-.005em;
+  text-shadow:0 2px 14px rgba(0,0,0,.9)}
+.epi{font-family:var(--body);font-style:italic;font-size:13.5px;color:var(--brass);margin-top:2px;text-shadow:0 1px 8px rgba(0,0,0,.9)}
+.stats{position:absolute;left:15px;right:15px;bottom:13px;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:rgba(42,59,55,.8);border:1px solid rgba(42,59,55,.9);border-radius:3px;overflow:hidden}
+.stats div{background:rgba(10,16,14,.86);padding:6px 3px;text-align:center}
+.stats .k{font-family:var(--carto);font-size:7px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.stats .v{font-family:var(--mono);font-size:15px;color:var(--ink);line-height:1.15}
+.habs{padding:13px 15px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
+.hab{display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px;align-items:start}
+.f{font-family:var(--mono);font-size:10.5px;color:var(--brass);border:1px solid var(--brass-dim);
+  border-radius:2px;text-align:center;padding:3px 0;line-height:1.25}
+.hab.ult .f{background:var(--brass-glow);border-color:var(--brass)}
+.hn{font-family:var(--ui);font-size:13px;font-weight:600;display:block;margin-bottom:1px}
+.hab.ult .hn::before{content:"ULT · ";font-family:var(--carto);font-size:8.5px;letter-spacing:.13em;color:var(--brass)}
+.hd{font-family:var(--ui);font-size:12px;color:var(--ink-2);line-height:1.45}
+.hd b{color:var(--brass);font-weight:600}
+.rodape{padding:8px 15px 10px;border-top:1px solid var(--line-soft);display:flex;justify-content:space-between;gap:8px}
+.rodape span{font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+.pass{font-family:var(--ui);font-size:11.5px;color:var(--ink-2);border-top:1px solid var(--line-soft);padding:9px 15px;line-height:1.4}
+.pass b{color:var(--brass)}
+.nota{margin:0 30px 30px;border-left:2px solid var(--brass);padding:12px 0 12px 18px;color:var(--ink-2);
+  font-family:var(--body);font-size:15px;line-height:1.6;max-width:66ch}
+.nota b{color:var(--brass)}
+</style>
+
+<div class="topo">
+  <span class="et">Jagerlaramais · baralho de heróis v0.4</span>
+  <h1>As vinte cartas</h1>
+  <p>Quatro por rota, quatro arquétipos diferentes — o suficiente para o draft ter escolha sem virar catálogo. A <b>Força</b> ao lado de cada habilidade é o valor mínimo do dado de ação para usá-la. Ultimates pedem 5 ou 6, e dado alto é raro: é isso que as torna decisivas.</p>
+</div>
+
+<div class="filtros" id="filtros"></div>
+<div class="grade" id="grade"></div>
+
+<div class="nota">
+  <b>Como ler a carta.</b> Vida, Poder e Armadura resolvem o combate: <b>dano = Força + Poder − Armadura do alvo</b>, com mínimo de 1. Alcance é a distância em casas que a habilidade atinge — 1 é corpo a corpo. O movimento não sai daqui: ele vem do <b>Dado Mestre</b>, que é um só para os cinco heróis do time.
+</div>
+
+<script src="../data/catalogo.js"></script>
+<script src="../arte/imagens.js"></script>
+<script>
+const POS={topo:{n:"Topo",c:"var(--topo)"},selva:{n:"Selva",c:"var(--selva)"},
+  meio:{n:"Meio",c:"var(--meio)"},adc:{n:"Atirador",c:"var(--adc)"},sup:{n:"Suporte",c:"var(--sup)"}};
+
+/* Os 20 heróis vêm de data/catalogo.js. Até a v0.3 esta página tinha a própria
+   lista, com textos que já divergiam do motor. */
+const CARTAS = Object.entries(HEROIS).map(([id,h])=>({
+  id, n:h.n, e:h.ep, pos:h.pos, cls:(h.cls||"").toLowerCase(), ref:h.ref,
+  st:[h.vida,h.poder,h.arm,h.alc], agil:h.agil,
+  h:h.habs.map(hb=>[`${hb.f}+`, hb.n, textoHab(hb), hb.f>=5?1:0]),
+  pas:h.patamar ? TEXTO_PATAMAR : null
+}));
+
+const st=["Vida","Poder","Armad","Alcance"];
+document.getElementById("grade").innerHTML=CARTAS.map(c=>{
+  const p=POS[c.pos];
+  return `<article class="carta" style="--cor:${p.c}" data-p="${c.pos}">
+    <div class="art">
+      <img src="${ARTE[c.id]}" alt="${c.n}, ${c.e}">
+      <div class="cab"><div class="faixa">
+        <span class="rota-tag">${p.n}</span><span class="classe">${c.cls}${c.agil?" · ágil":""}</span>
+      </div></div>
+      <div class="nome-box"><div class="nome">${c.n}</div><div class="epi">${c.e}</div></div>
+      <div class="stats">${c.st.map((v,i)=>`<div><div class="k">${st[i]}</div><div class="v">${v}</div></div>`).join("")}</div>
+    </div>
+    <div class="habs">${c.h.map(([f,n,d,u])=>`<div class="hab${u?" ult":""}">
+      <span class="f">Força<br>${f}</span><div><span class="hn">${n}</span><span class="hd">${d}</span></div></div>`).join("")}</div>
+    ${c.pas?`<div class="pass">${c.pas}</div>`:""}
+    <div class="rodape"><span>ref. de kit: ${c.ref}</span><span>v0.4</span></div>
+  </article>`;
+}).join("");
+
+const fs=[["todos","Todos"],...Object.entries(POS).map(([k,v])=>[k,v.n])];
+document.getElementById("filtros").innerHTML=fs.map(([k,n],i)=>
+  `<button data-f="${k}" class="${i?"":"on"}">${n}</button>`).join("");
+document.getElementById("filtros").onclick=e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  document.querySelectorAll("#filtros button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".carta").forEach(c=>{
+    c.style.display=(b.dataset.f==="todos"||c.dataset.p===b.dataset.f)?"":"none";});
+};
+</script>

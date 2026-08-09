@@ -1,0 +1,904 @@
+<title>JAGERLARAMAIS — manual de campo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --ground:#0E1614;        /* verde-petróleo profundo: feltro de mesa, selva noturna */
+  --ground-2:#141F1C;
+  --ground-3:#1B2926;
+  --line:#2A3B37;
+  --line-soft:#213230;
+  --ink:#E4EDE9;
+  --ink-2:#9FB3AD;
+  --ink-3:#6C817C;
+
+  --brass:#C99A46;         /* único acento saturado: ouro, latão, objetivo */
+  --brass-dim:#8A6A2F;
+  --brass-glow:rgba(201,154,70,.14);
+
+  --azul:#5B93B8;          /* semântica de time — não é acento */
+  --carmim:#B75C52;
+
+  --terreno-rota:#41564D;
+  --terreno-selva:#141E1A;
+  --terreno-rio:#1E3B44;
+  --estrada:#6E8A7C;
+
+  --rota-topo:#6E8F6A;
+  --rota-selva:#4F7F7A;
+  --rota-meio:#5D7EA8;
+  --rota-atirador:#8A7CAE;
+  --rota-suporte:#A87F92;
+
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
+  --carto:"Copperplate","Optima","Palatino Linotype",Georgia,serif;
+  --body:"Iowan Old Style","Palatino",Palatino Linotype,Georgia,serif;
+  --ui:"Avenir Next","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+  --rail:264px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
+    --line:#BFBCAB; --line-soft:#CFCCBD;
+    --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
+    --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
+    --azul:#3B6C90; --carmim:#8F3E36;
+    --terreno-rota:#DCD5BB; --terreno-selva:#A9B49C; --terreno-rio:#A9C6CF; --estrada:#8E8A6A;
+  }
+}
+:root[data-theme="light"]{
+  --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
+  --line:#BFBCAB; --line-soft:#CFCCBD;
+  --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
+  --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
+  --azul:#3B6C90; --carmim:#8F3E36;
+  --terreno-rota:#DCD5BB; --terreno-selva:#A9B49C; --terreno-rio:#A9C6CF; --estrada:#8E8A6A;
+}
+:root[data-theme="dark"]{
+  --ground:#0E1614; --ground-2:#141F1C; --ground-3:#1B2926;
+  --line:#2A3B37; --line-soft:#213230;
+  --ink:#E4EDE9; --ink-2:#9FB3AD; --ink-3:#6C817C;
+  --brass:#C99A46; --brass-dim:#8A6A2F; --brass-glow:rgba(201,154,70,.14);
+  --azul:#5B93B8; --carmim:#B75C52;
+  --terreno-rota:#41564D; --terreno-selva:#141E1A; --terreno-rio:#1E3B44; --estrada:#6E8A7C;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--body); font-size:16px; line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ============ ESTRUTURA ============ */
+.wrap{display:grid; grid-template-columns:var(--rail) minmax(0,1fr);}
+
+.rail{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  border-right:1px solid var(--line); background:var(--ground-2);
+  padding:28px 22px; display:flex; flex-direction:column; gap:26px;
+}
+.brand{display:flex; flex-direction:column; gap:4px}
+.brand .mark{
+  font-family:var(--carto); font-size:11px; letter-spacing:.24em;
+  text-transform:uppercase; color:var(--brass);
+}
+.brand h1{
+  font-family:var(--display); font-weight:700; font-size:30px; line-height:.98;
+  margin:0; letter-spacing:-.01em; text-transform:uppercase;
+}
+.brand .ver{font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+
+nav{display:flex; flex-direction:column; gap:1px}
+nav a{
+  font-family:var(--ui); font-size:13.5px; color:var(--ink-2);
+  text-decoration:none; padding:7px 10px; border-radius:3px;
+  display:flex; align-items:baseline; gap:10px; transition:background .15s,color .15s;
+}
+nav a .n{font-family:var(--mono); font-size:10px; color:var(--ink-3); min-width:16px}
+nav a:hover{background:var(--ground-3); color:var(--ink)}
+nav a.on{background:var(--brass-glow); color:var(--brass)}
+nav a.on .n{color:var(--brass-dim)}
+nav a:focus-visible{outline:2px solid var(--brass); outline-offset:1px}
+
+.rail footer{margin-top:auto; font-family:var(--mono); font-size:10.5px; color:var(--ink-3); line-height:1.7}
+
+main{padding:0 0 120px; min-width:0}
+section{padding:76px 56px 0; max-width:1080px; scroll-margin-top:20px}
+
+.eyebrow{
+  font-family:var(--carto); font-size:10.5px; letter-spacing:.26em;
+  text-transform:uppercase; color:var(--brass); margin:0 0 14px;
+  display:flex; align-items:center; gap:12px;
+}
+.eyebrow::after{content:""; flex:1; height:1px; background:var(--line)}
+
+h2{
+  font-family:var(--display); font-weight:700; text-transform:uppercase;
+  font-size:clamp(30px,4.4vw,46px); line-height:.96; letter-spacing:-.015em;
+  margin:0 0 18px; text-wrap:balance;
+}
+h3{
+  font-family:var(--display); font-weight:700; text-transform:uppercase;
+  font-size:19px; letter-spacing:.02em; margin:0 0 8px;
+}
+p{margin:0 0 16px; max-width:64ch}
+.lede{font-size:19px; line-height:1.6; color:var(--ink-2); max-width:60ch}
+strong{color:var(--ink); font-weight:600}
+em{color:var(--brass); font-style:italic}
+code{font-family:var(--mono); font-size:.86em; background:var(--ground-3); padding:1.5px 5px; border-radius:3px; color:var(--brass)}
+
+/* ============ HERO ============ */
+.hero{padding-top:64px}
+.hero h2{font-size:clamp(40px,6.6vw,74px)}
+.pitch{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:1px; background:var(--line); border:1px solid var(--line); margin:36px 0 0;
+}
+.pitch div{background:var(--ground); padding:18px 20px}
+.pitch dt{font-family:var(--carto); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3); margin-bottom:6px}
+.pitch dd{margin:0; font-family:var(--display); font-size:26px; text-transform:uppercase; line-height:1}
+.pitch dd small{font-family:var(--ui); font-size:12px; text-transform:none; color:var(--ink-2); display:block; margin-top:5px; letter-spacing:0}
+
+/* ============ ROTAS ============ */
+.rotas{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:32px}
+.rota{background:var(--ground); padding:24px 26px; display:grid; grid-template-columns:132px minmax(0,1fr) 156px; gap:26px; align-items:start}
+.rota .id{display:flex; flex-direction:column; gap:5px}
+.rota .id .nome{font-family:var(--display); font-size:20px; text-transform:uppercase; line-height:1; color:var(--cor)}
+.rota .id .alcunha{font-family:var(--carto); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3)}
+.rota .txt p{margin:0 0 10px; font-size:15px; max-width:none}
+.rota .txt p:last-child{margin:0}
+.rota .meta{display:flex; flex-direction:column; gap:9px}
+.rota .meta .lbl{font-family:var(--carto); font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
+.rota .meta .val{font-family:var(--ui); font-size:13px; color:var(--ink-2); line-height:1.4}
+.atencao{display:flex; gap:3px; align-items:center; margin-top:2px}
+.atencao i{width:16px; height:3px; background:var(--line); border-radius:1px}
+.atencao i.f{background:var(--cor)}
+
+/* ============ TURNO ============ */
+.turno{counter-reset:t; display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:28px}
+.passo{background:var(--ground); padding:18px 24px; display:grid; grid-template-columns:36px minmax(0,1fr) 92px; gap:20px; align-items:baseline}
+.passo::before{
+  counter-increment:t; content:counter(t,decimal-leading-zero);
+  font-family:var(--mono); font-size:12px; color:var(--brass-dim);
+}
+.passo h4{font-family:var(--display); font-size:17px; text-transform:uppercase; margin:0 0 4px}
+.passo p{margin:0; font-size:14.5px; color:var(--ink-2); max-width:none}
+.passo .dur{font-family:var(--mono); font-size:11px; color:var(--ink-3); text-align:right}
+.passo.chave{background:var(--ground-2)}
+.passo.chave h4{color:var(--brass)}
+
+/* ============ TABELA ============ */
+.tblwrap{overflow-x:auto; border:1px solid var(--line); margin:24px 0}
+table{border-collapse:collapse; width:100%; font-family:var(--ui); font-size:13.5px; min-width:480px}
+th,td{text-align:left; padding:11px 16px; border-bottom:1px solid var(--line-soft)}
+th{font-family:var(--carto); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); background:var(--ground-2)}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+td .req{font-family:var(--mono); font-size:12px; color:var(--brass)}
+
+/* ============ MAPA ============ */
+.mapa-arte{margin:26px 0 0; border:1px solid var(--line); background:var(--ground-2); padding:14px}
+.mapa-arte img{width:100%; height:auto; display:block; border:1px solid var(--line-soft)}
+.mapa-arte figcaption{margin-top:12px; font-size:13px; line-height:1.55; color:var(--ink-2); max-width:62ch}
+.mapa-shell{display:grid; grid-template-columns:minmax(0,1fr) 232px; gap:26px; margin-top:28px; align-items:start}
+.mapa-box{border:1px solid var(--line); background:var(--ground-2); padding:14px; position:relative}
+#svg-mapa{width:100%; height:auto; display:block; touch-action:manipulation}
+#svg-mapa .hx{stroke:var(--line-soft); stroke-width:.9; cursor:pointer}
+#svg-mapa .hx.selva{fill:var(--terreno-selva)}
+#svg-mapa .hx.rota{fill:var(--terreno-rota)}
+#svg-mapa .hx.rio{fill:var(--terreno-rio)}
+#svg-mapa .hx.base-A{fill:var(--azul); fill-opacity:.34}
+#svg-mapa .hx.base-B{fill:var(--carmim); fill-opacity:.34}
+#svg-mapa .hx:hover{stroke:var(--brass); stroke-width:1.8}
+#svg-mapa .hx.alvo{stroke:var(--brass); stroke-width:1.8; stroke-dasharray:3 2}
+#svg-mapa .estrada{fill:none; stroke:var(--estrada); stroke-width:5; stroke-opacity:.5; stroke-linecap:round; stroke-linejoin:round; pointer-events:none}
+#svg-mapa .rotulo rect{fill:var(--ground-2); stroke:var(--line); stroke-width:.7}
+#svg-mapa .rotulo text{font-family:var(--carto); font-size:6.2px; letter-spacing:.2em; fill:var(--ink-2); text-anchor:middle; text-transform:uppercase}
+#svg-mapa .torre{fill:none; stroke-width:1.6}
+#svg-mapa .torre.A{stroke:var(--azul)} #svg-mapa .torre.B{stroke:var(--carmim)}
+#svg-mapa .obj{fill:var(--brass); fill-opacity:.16; stroke:var(--brass); stroke-width:1.1}
+#svg-mapa .objtxt{font-family:var(--mono); font-size:6.4px; fill:var(--brass); text-anchor:middle; pointer-events:none}
+#svg-mapa .camp{fill:none; stroke:var(--ink-3); stroke-width:1; stroke-dasharray:2 1.6}
+#svg-mapa .peca{cursor:grab}
+#svg-mapa .peca circle{stroke-width:1.4}
+#svg-mapa .peca.A circle{fill:var(--azul); stroke:var(--ground)}
+#svg-mapa .peca.B circle{fill:var(--carmim); stroke:var(--ground)}
+#svg-mapa .peca text{font-family:var(--display); font-size:8px; font-weight:700; fill:var(--ground); text-anchor:middle; pointer-events:none}
+#svg-mapa .peca.sel circle{stroke:var(--brass); stroke-width:2.4}
+#svg-mapa .zonatxt{font-family:var(--carto); font-size:5.6px; letter-spacing:.22em; fill:var(--ink-3); text-anchor:middle; pointer-events:none; text-transform:uppercase}
+
+.legenda{display:flex; flex-direction:column; gap:16px}
+.legenda .bloco{border:1px solid var(--line); padding:14px 16px; background:var(--ground-2)}
+.legenda h4{font-family:var(--carto); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3); margin:0 0 10px}
+.legenda ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px}
+.legenda li{display:flex; align-items:center; gap:9px; font-family:var(--ui); font-size:12.5px; color:var(--ink-2)}
+.legenda .sw{width:14px; height:14px; border:1px solid var(--line); flex:none}
+.dica{font-family:var(--ui); font-size:12.5px; color:var(--ink-2); line-height:1.55}
+.dica b{color:var(--brass); font-weight:600}
+
+button{
+  font-family:var(--ui); font-size:12.5px; color:var(--ink);
+  background:var(--ground-3); border:1px solid var(--line);
+  padding:9px 14px; border-radius:3px; cursor:pointer; transition:border-color .15s,color .15s;
+}
+button:hover{border-color:var(--brass); color:var(--brass)}
+button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
+
+/* ============ DADOS ============ */
+.dado-lab{border:1px solid var(--line); background:var(--ground-2); padding:24px; margin-top:28px}
+.dados-linha{display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:22px}
+.dado{
+  width:60px; height:60px; border:1.5px solid var(--line); border-radius:8px;
+  background:var(--ground); display:grid; place-items:center;
+  font-family:var(--display); font-size:30px; color:var(--ink);
+  transition:transform .28s cubic-bezier(.2,.9,.3,1.3), border-color .2s;
+}
+.dado.usado{opacity:.28}
+.dado.seis{border-color:var(--brass); color:var(--brass); box-shadow:0 0 0 3px var(--brass-glow)}
+@media (prefers-reduced-motion:no-preference){ .dado.rola{transform:rotate(-18deg) scale(1.12)} }
+.aloc{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line)}
+.aloc .slot{background:var(--ground); padding:14px 16px}
+.aloc .slot .quem{font-family:var(--display); font-size:15px; text-transform:uppercase; margin-bottom:2px}
+.aloc .slot .rot{font-family:var(--carto); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); margin-bottom:9px}
+.aloc .slot .op{font-family:var(--ui); font-size:12.5px; display:flex; justify-content:space-between; gap:10px; padding:3.5px 0; color:var(--ink-3)}
+.aloc .slot .op.ok{color:var(--ink)}
+.aloc .slot .op .r{font-family:var(--mono); font-size:11.5px; color:var(--ink-3)}
+.aloc .slot .op.ok .r{color:var(--brass)}
+
+/* ============ CARTAS ============ */
+.filtros{display:flex; gap:7px; flex-wrap:wrap; margin:24px 0 22px}
+.filtros button.on{border-color:var(--brass); color:var(--brass); background:var(--brass-glow)}
+.grade{display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:16px}
+.carta{
+  border:1px solid var(--line); background:var(--ground-2);
+  display:flex; flex-direction:column; border-top:3px solid var(--cor);
+}
+.carta .retrato{width:100%; aspect-ratio:4/5; max-height:230px; object-fit:cover; object-position:50% 14%;
+  display:block; border-bottom:1px solid var(--line-soft); filter:brightness(1.15)}
+.carta .topo{padding:15px 17px 12px; border-bottom:1px solid var(--line-soft)}
+.carta .nome{font-family:var(--display); font-size:20px; text-transform:uppercase; line-height:1; margin-bottom:3px}
+.carta .epi{font-family:var(--body); font-style:italic; font-size:13px; color:var(--ink-3)}
+.carta .tags{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap}
+.tag{font-family:var(--carto); font-size:8.5px; letter-spacing:.15em; text-transform:uppercase; padding:3px 7px; border:1px solid var(--line); color:var(--ink-2)}
+.tag.rota{border-color:var(--cor); color:var(--cor)}
+.stats{display:grid; grid-template-columns:repeat(4,1fr); background:var(--line); gap:1px; border-bottom:1px solid var(--line)}
+.stats div{background:var(--ground-2); padding:9px 6px; text-align:center}
+.stats .k{font-family:var(--carto); font-size:8px; letter-spacing:.13em; color:var(--ink-3); text-transform:uppercase}
+.stats .v{font-family:var(--mono); font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums}
+.habs{padding:12px 17px 15px; display:flex; flex-direction:column; gap:10px; flex:1}
+.hab{display:grid; grid-template-columns:60px minmax(0,1fr); gap:11px; align-items:start}
+.hab .req{
+  font-family:var(--mono); font-size:10.5px; color:var(--brass);
+  border:1px solid var(--brass-dim); padding:2.5px 0; text-align:center; border-radius:2px;
+}
+.hab.ult .req{background:var(--brass-glow)}
+.hab .hn{font-family:var(--ui); font-size:13px; font-weight:600; color:var(--ink); display:block; margin-bottom:1px}
+.hab.ult .hn::before{content:"ULT · "; color:var(--brass); font-family:var(--carto); font-size:9px; letter-spacing:.12em}
+.hab .hd{font-family:var(--ui); font-size:12.5px; color:var(--ink-2); line-height:1.45}
+.hab .hd b{color:var(--brass); font-weight:600}
+.carta .ref{
+  padding:9px 17px; border-top:1px solid var(--line-soft);
+  font-family:var(--mono); font-size:10px; color:var(--ink-3);
+}
+
+/* ============ GLOSSÁRIO ============ */
+.gloss{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); margin-top:26px}
+.gloss div{background:var(--ground); padding:15px 18px}
+.gloss dt{font-family:var(--display); font-size:15px; text-transform:uppercase; color:var(--brass); margin-bottom:4px}
+.gloss dd{margin:0; font-family:var(--ui); font-size:13px; color:var(--ink-2); line-height:1.5}
+
+.nota{border-left:2px solid var(--brass); padding:12px 0 12px 18px; margin:26px 0; color:var(--ink-2); font-size:15px}
+.nota b{color:var(--brass)}
+
+/* ============ RESPONSIVO ============ */
+@media (max-width:1080px){
+  .mapa-shell{grid-template-columns:1fr}
+  .rota{grid-template-columns:1fr; gap:14px}
+  .rota .meta{flex-direction:row; gap:24px; flex-wrap:wrap}
+}
+@media (max-width:820px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static; height:auto; border-right:none; border-bottom:1px solid var(--line)}
+  nav{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+  section{padding:52px 22px 0}
+  .passo{grid-template-columns:28px minmax(0,1fr); }
+  .passo .dur{display:none}
+}
+</style>
+
+<div class="wrap">
+<aside class="rail">
+  <div class="brand">
+    <span class="mark">Manual de Campo</span>
+    <h1>Jager<br>laramais</h1>
+    <span class="ver">v0.4 · protótipo</span>
+  </div>
+  <nav id="nav">
+    <a href="#visao"><span class="n">01</span>O jogo</a>
+    <a href="#rotas"><span class="n">02</span>As cinco rotas</a>
+    <a href="#turno"><span class="n">03</span>A rodada</a>
+    <a href="#dados"><span class="n">04</span>Dados · laboratório</a>
+    <a href="#mapa"><span class="n">05</span>Mapa</a>
+    <a href="#herois"><span class="n">06</span>Heróis</a>
+    <a href="#itens"><span class="n">07</span>Itens</a>
+    <a href="#monstros"><span class="n">08</span>Monstros</a>
+    <a href="#gloss"><span class="n">09</span>Glossário</a>
+  </nav>
+  <a href="../jogo/index.html" style="display:block;text-align:center;padding:13px;border-radius:9px;
+     background:var(--brass);color:var(--ground);font-family:var(--display);font-size:16px;
+     text-transform:uppercase;letter-spacing:.04em;text-decoration:none">▶ Jogar agora</a>
+  <footer>
+    Vilker · Vinicius · Matheus<br>
+    conteúdo aberto a mudança
+  </footer>
+</aside>
+
+<main>
+
+<section id="visao" class="hero">
+  <p class="eyebrow">Um MOBA de mesa para dois</p>
+  <h2>Você não é o campeão.<br>Você é o técnico.</h2>
+  <p class="lede">Cada jogador drafta cinco heróis — um por rota — e comanda o time inteiro. Mapa completo: três rotas, selva, rio, objetivos épicos. Duas pessoas na mesa.</p>
+  <dl class="pitch">
+    <div><dt>Jogadores</dt><dd>1v1<small>cada um comanda 5 heróis</small></dd></div>
+    <div><dt>Duração</dt><dd>45<small>minutos, ~10 rodadas</small></dd></div>
+    <div><dt>Por rodada</dt><dd>3d6<small>três ordens, cinco heróis</small></dd></div>
+    <div><dt>Vitória</dt><dd>Nexus<small>empurrar rota é o caminho</small></dd></div>
+  </dl>
+  <div class="nota">
+    <b>A decisão central de cada rodada:</b> você rola três dados e tem cinco heróis. Nunca dá para comandar todo mundo. Quem fica sem ordem farma sozinho, com renda reduzida. É a tradução exata de olhar o minimapa e escolher onde intervir.
+  </div>
+</section>
+
+<section id="rotas">
+  <p class="eyebrow">02 — O motor do design</p>
+  <h2>Cada rota é um jogo diferente</h2>
+  <p class="lede">Não são cinco personagens com números diferentes. São cinco subsistemas com fantasias, mecânicas e custos de atenção distintos — que conversam entre si.</p>
+  <div class="rotas" id="lista-rotas"></div>
+  <div class="nota">
+    <b>O grafo fecha:</b> a Ward do Suporte revela a carta da Selva. A presença do Suporte alimenta o Atirador. O Meio reforça qualquer rota. O Topo aparece do nada. Nenhuma rota é ilha — exceto o Topo, que é ilha de propósito, e essa é a piada.
+  </div>
+</section>
+
+<section id="turno">
+  <p class="eyebrow">03 — Loop</p>
+  <h2>A rodada</h2>
+  <p class="lede">Seis passos. Cerca de quatro minutos com dois jogadores. Dez rodadas fecham a partida.</p>
+  <div class="turno" id="lista-turno"></div>
+</section>
+
+<section id="dados">
+  <p class="eyebrow">04 — Laboratório</p>
+  <h2>Um dado move o time.<br>Três dados agem.</h2>
+  <p class="lede">Você rola quatro dados por rodada, e eles fazem coisas diferentes. O <strong>Dado Mestre</strong> é o total de casas que os seus <em>cinco</em> heróis andam juntos. Os <strong>três Dados de Ação</strong> viram a Força da habilidade de quem receber cada um.</p>
+
+  <div class="nota">
+    <b>Aproximar o assassino custa o recuo do atirador.</b> O movimento é um orçamento comum: nunca dá para colocar todo mundo onde você queria. E como só três dos cinco recebem ação, os outros dois <b>farmam 3 de ouro</b> — agir custa dinheiro.
+  </div>
+
+  <div class="dado-lab">
+    <div class="dados-linha">
+      <div class="dado" id="d0">–</div>
+      <div class="dado" id="d1">–</div>
+      <div class="dado" id="d2">–</div>
+      <button id="rolar">Rolar 3 dados de ação</button>
+      <span class="dica" id="leitura">Role para ver quais habilidades abrem com esses valores.</span>
+    </div>
+    <div class="aloc" id="aloc"></div>
+  </div>
+
+  <h3 style="margin-top:44px">A Força mínima é a personalidade da classe</h3>
+  <p>O quanto uma habilidade exige de Força <em>é</em> o arquétipo. Não precisa de regra extra para isso.</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Classe</th><th>Requisito</th><th>Como se sente na mão</th></tr></thead>
+      <tbody id="tclasses"></tbody>
+    </table>
+  </div>
+
+  <h3 style="margin-top:36px">Válvulas contra a má sorte</h3>
+  <p>Dado sem escape vira frustração. Todas as válvulas passam pela selva ou pela loja — o que faz o jungler importar de verdade: <strong>ele controla quem tem mais controle sobre a própria sorte</strong>.</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Fonte</th><th>Efeito</th></tr></thead>
+      <tbody>
+        <tr><td>Sentinela Azul <span style="color:var(--ink-3)">· selva</span></td><td>Re-rolar 1 dado por rodada, durante 3 rodadas</td></tr>
+        <tr><td>Fera Escarlate <span style="color:var(--ink-3)">· selva</span></td><td>+1 de dano em toda alocação, durante 3 rodadas</td></tr>
+        <tr><td>Ampulheta Rachada <span style="color:var(--ink-3)">· item</span></td><td>Re-rolar 1 dado por rodada</td></tr>
+        <tr><td>Itens de assinatura</td><td>Alargam a janela de uma habilidade — <code>4–6</code> vira <code>2–6</code></td></tr>
+        <tr><td>Nível 5</td><td>Ganha o quarto dado</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="mapa">
+  <p class="eyebrow">05 — Tabuleiro</p>
+  <h2>O mapa</h2>
+  <p class="lede">Três rotas, selva nos dois quadrantes, rio na diagonal. O Meio é mais curto de propósito — é por isso que ele chega primeiro em qualquer lugar.</p>
+
+  <figure class="mapa-arte">
+    <img src="../arte/mapa/mapa.jpg" alt="Mapa ilustrado do Jagerlaramais">
+    <figcaption>O mapa como ele é na ficção: as duas bases nas pontas da diagonal, três estradas
+      ligando-as, selva fechada entre elas, rio cortando o meio. O covil do Dragão fica no quadrante
+      de cima; a cova do Barão, no de baixo. O tabuleiro hexagonal abaixo é a versão jogável disso.</figcaption>
+  </figure>
+
+  <div class="mapa-shell">
+    <div class="mapa-box">
+      <svg id="svg-mapa" viewBox="0 0 300 286" role="img" aria-label="Mapa hexagonal do jogo com três rotas, selva e rio"></svg>
+    </div>
+    <div class="legenda">
+      <div class="bloco">
+        <h4>Terreno</h4>
+        <ul>
+          <li><span class="sw" style="background:var(--terreno-rota)"></span>Rota</li>
+          <li><span class="sw" style="background:var(--terreno-selva)"></span>Selva</li>
+          <li><span class="sw" style="background:var(--terreno-rio)"></span>Rio</li>
+          <li><span class="sw" style="background:var(--azul);opacity:.5"></span>Base azul</li>
+          <li><span class="sw" style="background:var(--carmim);opacity:.5"></span>Base carmim</li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <h4>Comprimento das rotas</h4>
+        <ul id="lenrotas"></ul>
+      </div>
+      <div class="bloco">
+        <p class="dica"><b>Clique numa peça</b> para selecionar e depois <b>numa casa</b> para mover. As casas válidas ficam tracejadas.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button id="reset">Repor peças</button>
+          <button id="tema">Tema</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="herois">
+  <p class="eyebrow">06 — Draft</p>
+  <h2>Heróis</h2>
+  <p class="lede">Dez no protótipo — dois por rota, o mínimo para o draft existir. A meta pede vinte. Nomes e história são autorais; a referência de kit é interna e explícita.</p>
+  <div class="filtros" id="filtros"></div>
+  <div class="grade" id="grade-herois"></div>
+</section>
+
+<section id="itens">
+  <p class="eyebrow">07 — Loja</p>
+  <h2>Itens</h2>
+  <p class="lede">Camada única, sem árvore de componentes — jogo leve não aguenta. Três slots por herói. Os itens de resposta não são opcionais: sem eles todo mundo compra a mesma build e o meta morre no terceiro jogo.</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Item</th><th>Ouro</th><th>Efeito</th><th>Tipo</th></tr></thead>
+      <tbody id="titens"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="monstros">
+  <p class="eyebrow">08 — Neutros</p>
+  <h2>Monstros e objetivos</h2>
+  <p class="lede">Os épicos não são buff — são relógio. Eles colocam na mesa a hora em que alguém vai ter que brigar. Sem isso, dois jogadores cautelosos jogam para sempre.</p>
+  <div class="tblwrap">
+    <table>
+      <thead><tr><th>Monstro</th><th>Surge</th><th>Recompensa</th></tr></thead>
+      <tbody id="tmonstros"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="gloss">
+  <p class="eyebrow">09 — Léxico</p>
+  <h2>Glossário</h2>
+  <p class="lede">Termo definido não muda de nome. Sinônimo inventado no meio da partida é o começo de uma discussão de regra.</p>
+  <dl class="gloss" id="lista-gloss"></dl>
+</section>
+
+</main>
+</div>
+
+<script src="../data/catalogo.js"></script>
+<script src="../arte/imagens.js"></script>
+<script>
+/* ==================== CONTEÚDO DO JOGO ==================== */
+const ROTAS = {
+  topo:     {nome:"Topo",     alcunha:"A Ilha",         cor:"var(--rota-topo)",     atencao:1},
+  selva:    {nome:"Selva",    alcunha:"A Sombra",       cor:"var(--rota-selva)",    atencao:2},
+  meio:     {nome:"Meio",     alcunha:"O Relógio",      cor:"var(--rota-meio)",     atencao:3},
+  atirador: {nome:"Atirador", alcunha:"O Investimento", cor:"var(--rota-atirador)", atencao:2},
+  suporte:  {nome:"Suporte",  alcunha:"A Memória",      cor:"var(--rota-suporte)",  atencao:2}
+};
+
+const DESC_ROTAS = {
+  topo:[
+    "Fica sozinho na rota de cima, longe de tudo. No fim de cada rodada, se o seu Topo estiver mais avançado que o inimigo, você ganha <b>1 Placa</b>.",
+    "<b>Placa é moeda de dado.</b> Uma ajusta um dado em <b>±1</b> — vira o 5 em 6 e destrava uma ultimate. Duas <b>re-rolam</b> um dado. É a única fonte de controle sobre a sorte que você mesmo constrói: <em>ganhar de lado no topo é o que faz o seu meio ter a ultimate na hora certa</em>."
+  ],
+  selva:[
+    "O único herói cuja ação é programada em segredo. Você põe a carta virada em uma de quatro zonas — cima, meio, baixo ou selva — e ela vira no fim do turno do oponente.",
+    "Selva rende ouro e buff. Rota vira <b>gank</b>. E o blefe é real: virar carta no topo e o oponente jogar defensivo lá enquanto era só farm já ganhou a rota de baixo de graça."
+  ],
+  meio:[
+    "A rota mais curta. Quem empurra a onda primeiro fica livre — no jargão do jogo, <b>prioridade de mid</b>, e é o que decide quem leva cada objetivo do mapa.",
+    "Dominar a rota dá <b>Prioridade</b>, e gastar 1 Prioridade <b>rola um dado de ação a mais</b>, na hora que você quiser dentro do turno. Dá para segurar até ver que os três vieram ruins — e aí puxar mais um. Ele não é o mais forte: é o que <em>te dá mais opções</em>."
+  ],
+  atirador:[
+    "O único que escala de verdade: acumula ouro e sobe <b>patamares de poder</b>. No terceiro, é a maior fonte de dano do time. Frágil — pego sozinho, morre.",
+    "Enquanto o Suporte estiver vivo e na mesma rota, ganha escudo e dano. Isso instala o relógio da partida: um time joga para fechar antes de ele ficar online, o outro para segurar até lá."
+  ],
+  suporte:[
+    "Recupera do cemitério — reduz o timer de respawn de um aliado ou traz de volta uma Carta de Ação da pilha de descarte.",
+    "Coloca <b>Wards</b>: ward ativa revela a carta da Selva inimiga antes da hora. Gera pouco ouro próprio e não liga. Seu poder é medido inteiramente pelo que os outros conseguem fazer."
+  ]
+};
+
+/* Os heróis e as classes vêm de data/catalogo.js — este arquivo não guarda conteúdo.
+   Até a v0.3 o guia tinha uma segunda lista, com números de outra versão. */
+const ROTA_DE = {topo:"topo", selva:"selva", meio:"meio", adc:"atirador", sup:"suporte"};
+
+const FICHAS = Object.entries(HEROIS).map(([id,h])=>({
+  id, n:h.n, e:h.ep, rota:ROTA_DE[h.pos], cls:h.cls, ref:h.ref,
+  st:{vida:h.vida, poder:h.poder, arm:h.arm, alc:h.alc},
+  agil:!!h.agil,
+  h:h.habs.map(hb=>[`Força ${hb.f}+`, hb.n, textoHab(hb), hb.f>=5]),
+  pas:h.patamar ? TEXTO_PATAMAR : null
+}));
+
+const ITENS = [
+  ["Lâmina do Eclipse",6,"+2 de poder físico","dano"],
+  ["Cetro Cinéreo",6,"+2 de poder mágico; dano em área leva +1","dano"],
+  ["Coração de Basalto",5,"+3 de vida","defesa"],
+  ["Égide do Juramento",5,"+2 de armadura","defesa"],
+  ["Manto de Cinzas",5,"+2 contra dano mágico","defesa"],
+  ["Passos do Vento",4,"+1 casa de passo","mobilidade"],
+  ["Ampulheta Rachada",6,"Re-rolar 1 dado por rodada","dado"],
+  ["Garra do Faminto",7,"Cura 2 sempre que causar dano","sustento"],
+  ["Coroa do Comando",5,"Aliados adjacentes levam +1 de dano nas ordens","suporte"],
+  ["Selo da Ruína",5,"Quem você atinge não cura por 1 rodada","resposta"],
+  ["Cota do Espinho",6,"Devolve 2 de dano a quem atacar de perto","resposta"],
+  ["Véu Prismático",7,"Bloqueia a próxima Ultimate que atingir este herói","resposta"]
+];
+
+const MONSTROS = [
+  ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
+  ["Fera Escarlate","acampamento · renasce a cada 3 rodadas","Buff: +1 de dano em toda alocação, durante 3 rodadas"],
+  ["Ninhada de Pedra","acampamento · renasce a cada 2 rodadas","3 de ouro"],
+  ["Ancião de Musgo","acampamento · renasce a cada 2 rodadas","Cura 3 e limpa efeitos"],
+  ["Arauto do Vale","épico · rodada 4, uma única vez","Invoca um aríete que empurra uma rota inteira até a próxima torre"],
+  ["Dragão","épico · rodada 5, renasce a cada 3","Buff acumulativo de time. O quarto Dragão concede a Alma"],
+  ["Devorador Antigo","épico · rodada 8","Todos os seus creeps viram super-creeps por 2 rodadas. O ponto sem volta"]
+];
+
+const TURNO = [
+  ["Manutenção","Ondas de creeps avançam em todas as rotas. Ouro passivo entra. Timers de respawn e objetivos descem 1.","~30s",0],
+  ["Comando Oculto","Os dois jogadores põem a carta da Selva virada para baixo, ao mesmo tempo, em uma das quatro zonas.","~20s",1],
+  ["Ordens","Role 3d6. Cada dado é uma Ordem alocada num herói que aceite aquele valor. Quem não recebe Ordem farma com renda reduzida.","o grosso",1],
+  ["Revelação","As cartas de Selva viram. Emboscadas resolvem antes do combate da rota.","~10s",0],
+  ["Combate","Resolve rota por rota, de cima para baixo. Dano = dado + bônus + poder − armadura. Sem rolagem extra.","~60s",0],
+  ["Loja","Heróis mortos ou na base compram itens com o ouro acumulado.","~20s",0]
+];
+
+const GLOSS = [
+  ["Ordem","Um dado alocado num herói. Você tem três por rodada e cinco heróis."],
+  ["Placa","Ficha que o Topo ganha ao dominar a rota. 1 ajusta um dado em ±1; 2 re-rolam um dado."],
+  ["Prioridade","Ficha que o Meio ganha ao dominar a rota. Gasta 1 para rolar um dado de ação a mais."],
+  ["Dado Mestre","O dado de movimento. Seu valor é o total de casas que os cinco heróis andam juntos na rodada."],
+  ["Força","O valor do dado de ação alocado num herói. Toda habilidade exige uma Força mínima."],
+  ["Gank","Quando a carta da Selva revela numa rota em vez da selva. Entra no combate com bônus de emboscada."],
+  ["Ward","Ficha de visão do Suporte. Revela a carta da Selva inimiga antes dela virar."],
+  ["Patamar","Degrau de poder do Atirador, comprado com ouro acumulado. Três no total."],
+  ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
+  ["Crítico","Efeito extra na carta, ativado por um 6 natural no dado alocado."],
+  ["Super-creep","Creep reforçado, gerado por inibidor caído ou pelo Devorador Antigo."],
+  ["Alma","Bônus permanente de time, concedido pelo quarto Dragão da partida."]
+];
+
+/* ==================== MAPA ==================== */
+const COLS=7, LINS=7, R=19;
+const BASE_A=[[0,6],[1,6]], BASE_B=[[6,0],[6,1]];
+const LANE_TOPO=[[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0]];
+let LANE_MEIO=[]; // traçada por geometria mais abaixo — a reta entre as duas bases
+const LANE_BOT =[[2,6],[3,6],[4,6],[5,6],[6,6],[6,5],[6,4],[6,3],[6,2]];
+const RIO=[[1,1],[2,2],[2,3],[3,4],[3,5],[4,6]];
+const CAMPOS=[[1,2],[2,4],[4,2],[5,4]];
+const OBJETIVOS=[[1,1,"BARÃO"],[3,5,"DRAGÃO"]];
+
+const chave=(c,r)=>c+","+r;
+
+function centro(c,r){
+  const w=Math.sqrt(3)*R;
+  return [26 + w*(c + 0.5*(r&1)) + w/2, 26 + R*1.5*r + R];
+}
+function pontos(c,r){
+  const [x,y]=centro(c,r); let p=[];
+  for(let i=0;i<6;i++){ const a=Math.PI/180*(60*i-90); p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1)); }
+  return p.join(" ");
+}
+function dist(c1,r1,c2,r2){
+  const ax=c1-(r1-(r1&1))/2, az=r1, ay=-ax-az;
+  const bx=c2-(r2-(r2&1))/2, bz=r2, by=-bx-bz;
+  return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(az-bz));
+}
+function vizinhos(c,r){
+  const d = (r&1) ? [[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]]
+                  : [[-1,0],[1,0],[-1,-1],[0,-1],[-1,1],[0,1]];
+  return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<COLS&&b>=0&&b<LINS);
+}
+
+/* O Meio é a reta entre as duas bases: em cada linha, a casa mais próxima dela.
+   Traçar por geometria em vez de na mão é o que impede o ziguezague. */
+LANE_MEIO=(()=>{
+  const ocupado=new Set([...BASE_A,...BASE_B,...LANE_TOPO,...LANE_BOT].map(([c,r])=>chave(c,r)));
+  const [x1,y1]=centro(...BASE_A[1]), [x2,y2]=centro(...BASE_B[1]);
+  const L=Math.hypot(y2-y1,x2-x1);
+  const cam=[];
+  for(let r=LINS-2;r>=1;r--){
+    let melhor=null,d0=1e9;
+    for(let c=0;c<COLS;c++){
+      if(ocupado.has(chave(c,r))) continue;
+      const [x,y]=centro(c,r);
+      const d=Math.abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/L;
+      if(d<d0){d0=d;melhor=[c,r];}
+    }
+    if(!melhor) continue;
+    const ant=cam.at(-1)||BASE_A[1];
+    if(dist(...ant,...melhor)>1){                       // fecha o buraco por vizinho comum
+      const ponte=vizinhos(...ant).find(v=>
+        dist(...v,...melhor)===1 && !ocupado.has(chave(...v)) && !cam.some(k=>k[0]===v[0]&&k[1]===v[1]));
+      if(ponte) cam.push(ponte);
+    }
+    cam.push(melhor);
+  }
+  return cam;
+})();
+
+/* torres derivadas da própria rota. Índices contados das pontas, nunca por fração —
+   com rota curta a fração arredonda duas torres para o mesmo hex. */
+const TORRES=[LANE_TOPO,LANE_MEIO,LANE_BOT].flatMap(l=>{
+  const n=l.length, meio=Math.floor(n/2);
+  return [[...l[1],"A"],[...l[meio-1],"A"],[...l[n-meio],"B"],[...l[n-2],"B"]];
+});
+
+const LANE_SET=new Map();
+LANE_TOPO.forEach(([c,r])=>LANE_SET.set(chave(c,r),"topo"));
+LANE_MEIO.forEach(([c,r])=>LANE_SET.set(chave(c,r),"meio"));
+LANE_BOT .forEach(([c,r])=>LANE_SET.set(chave(c,r),"bot"));
+const RIO_SET=new Set(RIO.map(([c,r])=>chave(c,r)));
+const BASE_SET=new Map();
+BASE_A.forEach(([c,r])=>BASE_SET.set(chave(c,r),"A"));
+BASE_B.forEach(([c,r])=>BASE_SET.set(chave(c,r),"B"));
+
+const PECAS=[
+  {id:"A-topo",t:"A",rot:"topo",ini:LANE_TOPO[1],lbl:"T"},
+  {id:"A-selva",t:"A",rot:"selva",ini:[1,4],lbl:"S"},
+  {id:"A-meio",t:"A",rot:"meio",ini:LANE_MEIO[1],lbl:"M"},
+  {id:"A-adc",t:"A",rot:"atirador",ini:LANE_BOT[1],lbl:"A"},
+  {id:"A-sup",t:"A",rot:"suporte",ini:LANE_BOT[2],lbl:"U"},
+  {id:"B-topo",t:"B",rot:"topo",ini:LANE_TOPO.at(-2),lbl:"T"},
+  {id:"B-selva",t:"B",rot:"selva",ini:[4,1],lbl:"S"},
+  {id:"B-meio",t:"B",rot:"meio",ini:LANE_MEIO.at(-2),lbl:"M"},
+  {id:"B-adc",t:"B",rot:"atirador",ini:LANE_BOT.at(-2),lbl:"A"},
+  {id:"B-sup",t:"B",rot:"suporte",ini:LANE_BOT.at(-3),lbl:"U"}
+];
+let pos={}, sel=null;
+const svg=document.getElementById("svg-mapa");
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e;};
+
+function repor(){ PECAS.forEach(p=>pos[p.id]=[...p.ini]); sel=null; desenha(); }
+
+function desenha(){
+  svg.textContent="";
+  const gHex=el("g"), gMarc=el("g"), gPec=el("g");
+  let gEst;
+
+  for(let r=0;r<LINS;r++) for(let c=0;c<COLS;c++){
+    const k=chave(c,r);
+    let cls="hx ";
+    if(BASE_SET.has(k)) cls+="base-"+BASE_SET.get(k);
+    else if(LANE_SET.has(k)) cls+="rota";
+    else if(RIO_SET.has(k)) cls+="rio";
+    else cls+="selva";
+    const h=el("polygon",{points:pontos(c,r),class:cls,"data-c":c,"data-r":r});
+    if(sel && podeMover(c,r)) h.classList.add("alvo");
+    h.addEventListener("click",()=>clicaHex(c,r));
+    gHex.appendChild(h);
+  }
+
+  /* estradas: ligam base → rota → base, tornando os três caminhos legíveis de longe */
+  gEst=el("g");
+  [[BASE_A[0],LANE_TOPO,BASE_B[0]],[BASE_A[1],LANE_MEIO,BASE_B[1]],[BASE_A[1],LANE_BOT,BASE_B[1]]]
+    .forEach(([ini,lane,fim])=>{
+      const pts=[ini,...lane,fim].map(([c,r])=>centro(c,r).map(n=>n.toFixed(1)).join(",")).join(" ");
+      gEst.appendChild(el("polyline",{points:pts,class:"estrada"}));
+    });
+
+  TORRES.forEach(([c,r,t])=>{
+    const [x,y]=centro(c,r);
+    gMarc.appendChild(el("rect",{x:x-5.5,y:y-5.5,width:11,height:11,class:"torre "+t,transform:`rotate(45 ${x} ${y})`}));
+  });
+  CAMPOS.forEach(([c,r])=>{
+    const [x,y]=centro(c,r);
+    gMarc.appendChild(el("circle",{cx:x,cy:y,r:6,class:"camp"}));
+  });
+  OBJETIVOS.forEach(([c,r,nome])=>{
+    const [x,y]=centro(c,r);
+    gMarc.appendChild(el("circle",{cx:x,cy:y,r:11.5,class:"obj"}));
+    const t=el("text",{x:x,y:y+2.4,class:"objtxt"}); t.textContent=nome; gMarc.appendChild(t);
+  });
+
+  /* rótulos fora do grid, na margem — dentro do mapa eles competem com o terreno */
+  const rot=(txt,x,y)=>{
+    const g=el("g",{class:"rotulo"});
+    const w=txt.length*5.2+13;
+    g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:1.5}));
+    const t=el("text",{x:x,y:y+2.2}); t.textContent=txt; g.appendChild(t);
+    gMarc.appendChild(g);
+  };
+  rot("TOPO",  centro(...LANE_TOPO[6])[0], 11);
+  rot("BAIXO", centro(...LANE_BOT[2])[0],  275);
+  rot("MEIO",  ...centro(3,2));
+
+  PECAS.forEach(p=>{
+    const [c,r]=pos[p.id]; const [x,y]=centro(c,r);
+    const g=el("g",{class:"peca "+p.t+(sel===p.id?" sel":""),tabindex:"0",role:"button"});
+    g.setAttribute("aria-label",p.t+" "+ROTAS[p.rot].nome);
+    g.appendChild(el("circle",{cx:x,cy:y,r:8.4}));
+    const t=el("text",{x:x,y:y+3}); t.textContent=p.lbl; g.appendChild(t);
+    const pega=e=>{e.stopPropagation(); sel = (sel===p.id? null : p.id); desenha();};
+    g.addEventListener("click",pega);
+    g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pega(e);}});
+    gPec.appendChild(g);
+  });
+
+  svg.append(gHex,gEst,gMarc,gPec);
+}
+
+function podeMover(c,r){
+  if(!sel) return false;
+  const [pc,pr]=pos[sel];
+  const p=PECAS.find(x=>x.id===sel);
+  const passo = (p.rot==="selva"||p.rot==="meio") ? 3 : 2;
+  return dist(pc,pr,c,r)<=passo && !(pc===c&&pr===r);
+}
+function clicaHex(c,r){
+  if(sel && podeMover(c,r)){ pos[sel]=[c,r]; sel=null; }
+  else sel=null;
+  desenha();
+}
+
+/* ==================== RENDER ==================== */
+const q=s=>document.querySelector(s);
+
+q("#lista-rotas").innerHTML = Object.entries(ROTAS).map(([k,v])=>{
+  const barras=[1,2,3].map(i=>`<i class="${i<=v.atencao?'f':''}"></i>`).join("");
+  const lbl=["","Baixo","Médio","Alto"][v.atencao];
+  return `<article class="rota" style="--cor:${v.cor}">
+    <div class="id"><span class="nome">${v.nome}</span><span class="alcunha">${v.alcunha}</span></div>
+    <div class="txt">${DESC_ROTAS[k].map(p=>`<p>${p}</p>`).join("")}</div>
+    <div class="meta">
+      <div><div class="lbl">Custo de atenção</div><div class="atencao">${barras}</div><div class="val" style="font-size:12px">${lbl}</div></div>
+      <div><div class="lbl">Heróis no pool</div><div class="val">${FICHAS.filter(h=>h.rota===k).map(h=>h.n).join(" · ")}</div></div>
+    </div>
+  </article>`;
+}).join("");
+
+q("#lista-turno").innerHTML = TURNO.map(([n,d,dur,ch])=>
+  `<div class="passo${ch?" chave":""}"><div><h4>${n}</h4><p>${d}</p></div><span class="dur">${dur}</span></div>`
+).join("");
+
+q("#tclasses").innerHTML = CLASSES.map(([c,r,s])=>
+  `<tr><td><strong>${c}</strong></td><td><span class="req">${r}</span></td><td>${s}</td></tr>`).join("");
+
+q("#titens").innerHTML = ITENS.map(([n,o,ef,t])=>
+  `<tr><td><strong>${n}</strong></td><td class="num">${o}</td><td>${ef}</td>
+   <td><span class="tag"${t==="resposta"?' style="border-color:var(--brass);color:var(--brass)"':""}>${t}</span></td></tr>`).join("");
+
+q("#tmonstros").innerHTML = MONSTROS.map(([n,s,rec])=>
+  `<tr><td><strong>${n}</strong></td><td style="color:var(--ink-3)">${s}</td><td>${rec}</td></tr>`).join("");
+
+q("#lista-gloss").innerHTML = GLOSS.map(([t,d])=>`<div><dt>${t}</dt><dd>${d}</dd></div>`).join("");
+
+q("#lenrotas").innerHTML = [["Meio",LANE_MEIO.length],["Baixo",LANE_BOT.length],["Topo",LANE_TOPO.length]]
+  .map(([n,l])=>`<li><span style="font-family:var(--mono);color:var(--brass);min-width:20px">${l}</span>${n} — ${l} casas</li>`).join("");
+
+function cartaHTML(h){
+  const v=ROTAS[h.rota];
+  return `<article class="carta" style="--cor:${v.cor}" data-rota="${h.rota}">
+    ${ARTE[h.id]?`<img class="retrato" src="${ARTE[h.id]}" alt="${h.n}">`:""}
+    <div class="topo">
+      <div class="nome">${h.n}</div><div class="epi">${h.e}</div>
+      <div class="tags"><span class="tag rota">${v.nome}</span><span class="tag">${h.cls}</span>
+        ${h.agil?'<span class="tag">Ágil</span>':""}</div>
+    </div>
+    <div class="stats">
+      <div><div class="k">Vida</div><div class="v">${h.st.vida}</div></div>
+      <div><div class="k">Poder</div><div class="v">${h.st.poder}</div></div>
+      <div><div class="k">Arm</div><div class="v">${h.st.arm}</div></div>
+      <div><div class="k">Alcance</div><div class="v">${h.st.alc}</div></div>
+    </div>
+    <div class="habs">
+      ${h.h.map(([req,nome,txt,ult])=>`<div class="hab${ult?" ult":""}">
+        <span class="req">${req}</span>
+        <div><span class="hn">${nome}</span><span class="hd">${txt}</span></div></div>`).join("")}
+      ${h.pas?`<div class="hab"><span class="req">passiva</span><div><span class="hn">Escalada</span><span class="hd">${h.pas}</span></div></div>`:""}
+    </div>
+    <div class="ref">ref. de kit: ${h.ref}</div>
+  </article>`;
+}
+q("#grade-herois").innerHTML = FICHAS.map(cartaHTML).join("");
+
+const filtros=[["todos","Todos"],...Object.entries(ROTAS).map(([k,v])=>[k,v.nome])];
+q("#filtros").innerHTML = filtros.map(([k,n],i)=>`<button data-f="${k}" class="${i===0?'on':''}">${n}</button>`).join("");
+q("#filtros").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  q("#filtros").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  const f=b.dataset.f;
+  document.querySelectorAll("#grade-herois .carta").forEach(c=>{
+    c.style.display = (f==="todos"||c.dataset.rota===f) ? "" : "none";
+  });
+});
+
+/* ==================== LABORATÓRIO DE DADOS ==================== */
+/* espelha o catálogo de jogo/index.html — Força mínima de cada habilidade */
+const REGRAS=[
+  {rota:"topo",     quem:"Vharn",   ops:[["Golpe de Escudo",1],["Provocar",3],["Muralha",6]]},
+  {rota:"selva",    quem:"Nyx",     ops:[["Bote",1],["Sombra",3],["Caçada",5]]},
+  {rota:"meio",     quem:"Solenne", ops:[["Feixe",1],["Prisma",4],["Julgamento",6]]},
+  {rota:"atirador", quem:"Vesper",  ops:[["Tiro",1],["Recarregar",2],["Chuva de Ferro",5]]},
+  {rota:"suporte",  quem:"Mirrha",  ops:[["Sopro",1],["Doar Dado",1],["Eco",4]]}
+];
+let dados=[];
+function rolar(){
+  dados=[0,1,2].map(()=>1+Math.floor(Math.random()*6));
+  dados.forEach((v,i)=>{
+    const e=q("#d"+i);
+    e.textContent=v;
+    e.classList.toggle("seis",v===6);
+    e.classList.add("rola");
+    setTimeout(()=>e.classList.remove("rola"),300);
+  });
+  const seis=dados.filter(d=>d===6).length;
+  const alto=Math.max(...dados);
+  let msg=`Maior dado <b>${alto}</b>`;
+  if(seis) msg+=` · ${seis===1?"um 6":seis+" seis"}, <b>Crítico</b> disponível`;
+  else if(alto>=5) msg+=" · dá para uma <b>ultimate</b> de Força 5";
+  else msg+=" · nenhuma ultimate abre — <b>gaste uma placa</b> ou farme";
+  msg+=".";
+  q("#leitura").innerHTML=msg;
+  pinta();
+}
+function pinta(){
+  q("#aloc").innerHTML = REGRAS.map(r=>{
+    const v=ROTAS[r.rota];
+    const ops=r.ops.map(([n,fmin])=>{
+      const quais = dados.filter(d=>d>=fmin);
+      const ok = quais.length>0;
+      return `<div class="op${ok?" ok":""}"><span>${n}</span>
+        <span class="r">${ok?quais.join(" "):"Força "+fmin+(fmin===6?"":"+")}</span></div>`;
+    }).join("");
+    return `<div class="slot"><div class="quem" style="color:${v.cor}">${r.quem}</div><div class="rot">${v.nome}</div>${ops}</div>`;
+  }).join("");
+}
+q("#rolar").addEventListener("click",rolar);
+pinta();
+
+/* ==================== NAV + TEMA ==================== */
+const links=[...document.querySelectorAll("#nav a")];
+const obs=new IntersectionObserver(es=>{
+  es.forEach(e=>{ if(e.isIntersecting) links.forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+e.target.id)); });
+},{rootMargin:"-15% 0px -70% 0px"});
+document.querySelectorAll("main section").forEach(s=>obs.observe(s));
+
+q("#reset").addEventListener("click",repor);
+q("#tema").addEventListener("click",()=>{
+  const atual=document.documentElement.getAttribute("data-theme")
+    || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme", atual==="dark"?"light":"dark");
+});
+
+repor();
+</script>

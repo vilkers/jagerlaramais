@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+
+# arte pesada não entra: use sips/Pillow para gerar a versão web antes de commitar
+*.psd
+*.tiff
+arte/**/*.png
