@@ -5,8 +5,8 @@ import "@fontsource-variable/spline-sans-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Jagerlaramais — Visual Lab",
-  description: "Laboratório de direção visual para o universo de Jagerlaramais.",
+  title: "Jagerlaramais — Visual Guide",
+  description: "Guia vivo de universo, personagens, cartas, miniaturas e direção visual de Jagerlaramais.",
   other: { "codex-preview": "development" },
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
