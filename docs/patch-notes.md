@@ -55,7 +55,6 @@ Medido, 2500 partidas por caso:
 
 | | 9×9 (antes) | 10×10 | **11×11** |
 |---|---|---|---|
-| Selva | 16 | 28 | **38** |
 | Quem começa | 57,1% | **59,7%** | **55,0%** |
 | Dragões por partida | 0,76 | **0,21** | 0,55 |
 | Mediana | 15 rodadas | 16 | **18** |
@@ -65,7 +64,25 @@ disputado — 0,21 Dragão por partida, contra 0,55 em 11×11. A casa do poço �
 deduzida quando `N` muda, e em 10 a dedução cai num lugar ruim.
 
 **11×11 derruba a vantagem de quem começa de 57,1% para 55,0%**, que era a
-regressão aberta desde a v0.6. Custa **3 rodadas a mais** de partida.
+regressão aberta desde a v0.6.
+
+### O número final, no n que o projeto exige
+
+Confirmado em **n=20000**, já com a rota do meio consertada:
+
+| Build | Quem começa | Mediana |
+|---|---|---|
+| v0.5.8 (base da leva) | 53,5% (z=9,8) | 15 rodadas |
+| v0.6.1 (9×9) | 57,1% (z=20,1) | 15 |
+| **v0.6.2 (11×11)** | **55,5% (z=15,41)** | **19** |
+
+O tabuleiro maior **devolveu 1,6 ponto** dos 3,6 que a leva tinha custado. Ainda
+sobram **+2,0 pontos** sobre a v0.5.8, e o z=15,41 diz que não é ruído — o freio
+continua sendo o comeback, que não existe.
+
+**A partida alongou 4 rodadas**, de 15 para 19 de mediana. É o preço do mapa
+maior, e é mais do que as 3 estimadas em n=2500. Quatro rodadas a mais numa
+partida de mesa não é detalhe: **precisa de playtest para dizer se cansa.**
 
 ### O que a rota do meio escondia
 
