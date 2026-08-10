@@ -90,6 +90,10 @@ button:disabled{cursor:not-allowed}
 @keyframes mira{0%,100%{r:12.6;stroke-opacity:.9}50%{r:14.4;stroke-opacity:.35}}
 #mapa .peca.alvo circle.mira{fill:none;stroke:var(--dano);stroke-width:1.8;
   stroke-dasharray:3 2.4;animation:mira .85s ease-in-out infinite}
+/* torre sob mira usa o mesmo vocabulário visual do herói sob mira */
+#mapa circle.mira-torre{fill:none;stroke:var(--dano);stroke-width:1.8;
+  stroke-dasharray:3 2.4;animation:mira .85s ease-in-out infinite;pointer-events:none}
+#mapa .torre.alvo{cursor:pointer;stroke-width:2.6;fill-opacity:.9}
 #mapa .peca image{pointer-events:none;filter:brightness(1.5) contrast(1.12) saturate(1.1)}
 #mapa .barravida rect{stroke:none}
 #mapa .selo{fill:var(--brass);stroke:var(--ground);stroke-width:.8;pointer-events:none}

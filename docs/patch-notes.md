@@ -16,6 +16,68 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.1 — a torre virou alvo, e sete habilidades voltaram a funcionar · 2026-08-09
+
+### O que mudou
+
+**Herói agora derruba torre.** Era o gesto central de MOBA que não existia: as torres estavam no
+motor desde a v0.1, mas a lista de alvos só era preenchida com heróis, então o jogador empurrava
+onda e esperava. Agora:
+
+- Torre vira alvo de qualquer habilidade de dano contra inimigo — mira vermelha, um toque.
+- **Só se a sua Frente de Onda já estiver encostada nela.** Sem isso um assassino sozinho derrubaria
+  a base pelas costas. Quem derruba torre é a onda; o herói acelera.
+- Golpe de herói tira **1 fixo** — a Força não entra. Torre não tem armadura, escudo nem status.
+- **Uma torre aceita um golpe de herói por rodada.** Zera no fim da rodada.
+- A torre **revida 2** em quem encostou. O revide **nunca mata**: para no último ponto de vida.
+  É pedágio, não morte sem autor — `mata()` precisa de alguém para creditar o ouro.
+- O golpe que derruba a torre não leva revide.
+
+**Vida da torre: de 2 para 3.** Com o herói somando dano, 2 fazia a torre evaporar. Simulei partidas
+por configuração com jogador aleatório: com **2** a mediana era **10 rodadas**, com **4** passava de
+**18**, com **3** deu **13** — perto do alvo de ~15, e ainda sobra espaço para o herói cortar o
+cerco pela metade.
+
+### Bugs corrigidos
+
+**`desloca()` estava com a direção invertida e ignorava a distância.** Puxar afastava e empurrar
+aproximava, e todo deslocamento era de 1 casa independente do valor da habilidade — o Gancho do
+Torvald (`puxar:3`) arrastava 1 casa, para o lado errado. Sete habilidades voltaram a funcionar:
+Provocar, Puxada, Investida, Gancho, Investir, Puxada Funda e Empurrão.
+
+**Item de alcance não valia para habilidade.** A mira usava `h.alc` cru em vez de `alcTotal(h)`.
+O Cetro Cinéreo diz "+1 de Alcance", a carta do herói mostrava 4, e o motor mirava com 3.
+
+**Gank ignorava os itens do Caçador.** O dano usava `cac.poder` em vez de `poderTotal(cac)` — os
+itens e a aura ficavam de fora justo na jogada principal da selva.
+
+**"Nova partida" não reiniciava o baralho.** A tela de fim chamava `novo()`, que reseta o tabuleiro
+mas não o Deck de Comando: a partida seguinte começava com as mãos e o cemitério da anterior.
+Agora chama `partida()`.
+
+**Carta "avance a Frente de Onda" empurrava sem limite.** Não passava por trava nenhuma, e a frente
+podia sair da rota. Agora usa a mesma regra do fim de rodada — torre viva trava o avanço.
+
+### Faxina
+
+Quatro funções tinham duas definições no mesmo arquivo, com a segunda sobrescrevendo a primeira em
+silêncio: `calcula`, `perguntaCaca`, `abreLoja` e a órfã `alocaDado`. Quem editasse a cópia de cima
+não veria efeito nenhum — o mesmo tipo de armadilha que os três catálogos de herói já criaram uma
+vez. **78 linhas mortas a menos.**
+
+### O que isso quebra
+
+Quem tinha decorado que Provocar afastava vai levar um susto: agora puxa, que é o que a carta sempre
+disse. Nenhum número de herói ou item mudou.
+
+### Ressalva honesta
+
+A calibragem da torre veio de jogador **aleatório**, que quase nunca usa o golpe em torre — mede o
+ritmo só-onda. Amostra pequena e muitas partidas nem fecharam dentro do orçamento de tempo. Serve
+para escolher entre 2, 3 e 4; **não** substitui playtest humano.
+
+---
+
 ## v0.4 — corte de pool, arte completa e fonte única · 2026-08-08
 
 ### O que mudou

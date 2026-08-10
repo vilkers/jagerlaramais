@@ -95,16 +95,30 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
   return[{rota:nome,i:1,t:0},{rota:nome,i:Math.max(2,Math.round(n*.28)),t:0},
          {rota:nome,i:Math.min(n-3,Math.round(n*.72)),t:1},{rota:nome,i:n-2,t:1}];
 });
-const VIDA_TORRE=2, VIDA_NEXUS=3;
+/* Torre passou de 2 para 3 de vida em v0.5.1, quando o herói virou fonte de dano nela.
+   Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
+   O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
+const VIDA_TORRE=3, VIDA_NEXUS=3;
+const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
+const REVIDE_TORRE=2;      /* e a torre cobra o pedágio de quem encostou */
 const centroRota=nome=>{                       /* meio do vão neutro */
   const ts=TORRES_DEF.filter(t=>t.rota===nome);
   const a=Math.max(...ts.filter(t=>t.t===0).map(t=>t.i));
   const b=Math.min(...ts.filter(t=>t.t===1).map(t=>t.i));
   return Math.round((a+b)/2);
 };
+/* torre viva trava o avanço da onda — e a frente nunca sai da rota.
+   Vale para o empurrão natural do fim de rodada e para quem empurra por carta. */
+function limitaFrente(nome,f){
+  const l=ROTAS[nome];
+  const t0=J.torres.filter(x=>x.rota===nome&&x.t===0&&x.vida>0).map(x=>x.i);
+  const t1=J.torres.filter(x=>x.rota===nome&&x.t===1&&x.vida>0).map(x=>x.i);
+  return Math.max(t0.length?Math.max(...t0):0,
+         Math.min(t1.length?Math.min(...t1):l.length-1, f));
+}
 
 /* ---------- ESTADO ---------- */
-let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],mover=[],lojaHeroi=null;
+let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],mover=[],lojaHeroi=null;
 
 function novo(){
   J={
@@ -120,7 +134,7 @@ function novo(){
     })),
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
-    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE})),
+    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
     nexus:[VIDA_NEXUS,VIDA_NEXUS], log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -159,27 +173,7 @@ function faseOculta(){
     fecha(); J.fase="jogando"; J.vez=J.primeiro; iniciaTurno();
   }));
 }
-function perguntaCaca(t,depois){
-  const cac=J.times[t].herois.find(h=>h.pos_==="x")||J.times[t].herois[1];
-  abre(`
-    <span class="et">Comando oculto · em segredo</span>
-    <h2 class="t${t}">${NOMES[t]}</h2>
-    <p>Para onde vai <b style="color:var(--brass)">${cac.n}</b>, seu Caçador?<br>
-    A escolha fica virada para baixo e só é revelada no fim do turno do adversário.</p>
-    <div class="zonas">
-      <button class="zona" data-z="selva"><span class="zn">Selva</span><span class="zd">+3 de ouro, seguro</span></button>
-      <button class="zona" data-z="topo"><span class="zn">Topo</span><span class="zd">gank · +2 de Força</span></button>
-      <button class="zona" data-z="meio"><span class="zn">Meio</span><span class="zd">gank · +2 de Força</span></button>
-      <button class="zona" data-z="baixo"><span class="zn">Baixo</span><span class="zd">gank · +2 de Força</span></button>
-    </div>`);
-  document.querySelectorAll(".zona").forEach(b=>b.onclick=()=>{
-    J.times[t].caca=b.dataset.z; J.times[t].cacaRevelada=null;
-    if(t===0) abre(`<span class="et">Passe o aparelho</span><h2 class="t1">${NOMES[1]}</h2>
-        <p>A escolha do ${NOMES[0]} está virada para baixo. Sua vez de esconder o Caçador.</p>
-        <button class="grande" id="ok">Estou pronto</button>`,()=>depois());
-    else depois();
-  });
-}
+/* perguntaCaca mora na seção FLUXO, lá embaixo — é a versão que roda. */
 
 /* ---------- TURNO ---------- */
 function iniciaTurno(){
@@ -213,7 +207,9 @@ function revelaCaca(t){
     }
     reg("b",`GANK — ${cac.n} aparece no ${z}`);
     const presa=vizinhos(...cac.pos).map(p=>em(...p)).find(h=>h&&h.t!==t&&!h.intoc);
-    if(presa){ aplicaDano(cac,presa,3+cac.poder+cac.extraPoder+2); }
+    /* 3 de base + o bônus de gank (+2). O Poder tem que passar por poderTotal,
+       senão os itens do Caçador não contam justo na jogada principal dele. */
+    if(presa){ aplicaDano(cac,presa,3+poderTotal(cac)+2); }
     else reg("b","…e não achou ninguém");
   }
   pinta();
@@ -226,10 +222,7 @@ function fimDaRodada(){
     const n1=vivos(1).filter(h=>LANE.get(k(...h.pos))===nome).length;
     let f=J.frentes[nome];
     if(n0>n1) f++; else if(n1>n0) f--; else return;
-    const t0=J.torres.filter(x=>x.rota===nome&&x.t===0&&x.vida>0).map(x=>x.i);
-    const t1=J.torres.filter(x=>x.rota===nome&&x.t===1&&x.vida>0).map(x=>x.i);
-    J.frentes[nome]=Math.max(t0.length?Math.max(...t0):0,
-                    Math.min(t1.length?Math.min(...t1):l.length-1, f));
+    J.frentes[nome]=limitaFrente(nome,f);
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{     // cerco: só as torres do lado pressionado
     const f=J.frentes[nome];
@@ -271,6 +264,7 @@ function fimDaRodada(){
     h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0; h.esc=0; h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
   });
   desempilha();
+  J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
   if(J.fim!==null){ pinta(); return telaFim(); }
   J.rodada++; reg("r",`— rodada ${J.rodada} —`);
@@ -278,39 +272,7 @@ function fimDaRodada(){
 }
 
 /* ---------- AÇÕES ---------- */
-function alocaDado(h){
-  if(h.t!==J.vez||h.morto||dadoSel===null)return;
-  if(J.dados[dadoSel].usado)return;
-  const d=J.dados[dadoSel];
-  d.usado=1; h.agiu=1;
-  ativo={h,forca:d.v,seis:d.v===6};
-  dadoSel=null; habSel=null; selHeroi=h;
-  reg(J.vez?"c":"a",`${h.n} recebe ordem — Força ${d.v}`);
-  calcula(); pinta();
-}
-/* o herói que anda é o selecionado; o movimento sai do dado master, comum ao time */
-function calcula(){
-  mover=[]; alvos=[];
-  const m=selHeroi;
-  if(m&&!m.morto&&m.t===J.vez&&!m.preso&&J.mov.rest>0){
-    const teto=J.mov.rest+(ehAgil(m)?1:0);
-    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(em(c,r))continue;
-      const d=dist(...m.pos,c,r);
-      if(d>0&&d<=teto) mover.push([c,r]);
-    }
-  }
-  if(ativo&&habSel!==null){
-    const h=ativo.h, hb=h.habs[habSel], alc=h.alc+(hb.ef.alcExtra||0);
-    alvos=todos().filter(o=>{
-      if(o.morto)return false;
-      if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
-      if(hb.alvo==="al"&&(o.t!==h.t||o===h))return false;
-      if(hb.alvo==="eu")return o===h;
-      return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
-    });
-  }
-}
+/* calcula() mora na seção ESTADO DE INTERAÇÃO — é a versão baseada em `modo`. */
 function moveAte(c,r){
   const h=selHeroi; if(!h)return;
   const d=dist(...h.pos,c,r), custo=Math.max(0,d-(ehAgil(h)?1:0));
@@ -360,8 +322,8 @@ function usaHab(alvo){
   if(ef.prendeVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
     .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});
   if(ef.prende&&alvo){ alvo.preso=2; reg("b",`${alvo.n} está preso`); }
-  if(ef.puxar&&alvo&&!alvo.morto) desloca(alvo,h.pos,-1);
-  if(ef.empurrar&&alvo&&!alvo.morto) desloca(alvo,h.pos,1);
+  if(ef.puxar&&alvo&&!alvo.morto) desloca(alvo,h.pos,-1,ef.puxar);
+  if(ef.empurrar&&alvo&&!alvo.morto) desloca(alvo,h.pos,1,ef.empurrar);
   if(critico) reg("b","CRÍTICO — dado 6 natural");
 
   ativo=null; habSel=null; calcula(); pinta();
@@ -371,13 +333,19 @@ function dupla(h){                                   /* atirador perto do suport
   const sup=J.times[h.t].herois.find(x=>CATALOGO[x.id].pos==="sup");
   return sup&&!sup.morto&&dist(...h.pos,...sup.pos)<=2?2:0;
 }
-function desloca(alvo,de,dir){
-  const atual=dist(...alvo.pos,...de);
-  const cand=vizinhos(...alvo.pos).filter(p=>!em(...p))
-    .sort((a,b)=>(dir*dist(...a,...de))-(dir*dist(...b,...de)));
-  const alvoP=cand[0];
-  if(alvoP&&dir*dist(...alvoP,...de)>dir*atual===false) alvo.pos=alvoP;
-  else if(alvoP) alvo.pos=alvoP;
+/* arrasta o alvo até n casas: dir -1 puxa para perto de `de`, dir +1 empurra para longe.
+   Anda uma casa por vez e só aceita passo que melhore a distância — se travar, para onde está. */
+function desloca(alvo,de,dir,n=1){
+  for(let p=0;p<n;p++){
+    const atual=dist(...alvo.pos,...de);
+    const passo=vizinhos(...alvo.pos)
+      .filter(v=>!em(...v))
+      .map(v=>[v,dist(...v,...de)])
+      .filter(([,d])=>dir<0 ? d<atual : d>atual)
+      .sort((a,b)=>dir<0 ? a[1]-b[1] : b[1]-a[1])[0];
+    if(!passo)break;
+    alvo.pos=passo[0];
+  }
 }
 function aplicaDano(quem,alvo,bruto,txt,ehUlt){
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
@@ -423,47 +391,7 @@ function rerola(){
 }
 
 
-/* ---------- TELA DA LOJA ---------- */
-function abreLoja(){
-  const t=J.vez, tm=J.times[t];
-  const naLoja=tm.herois.filter(h=>!h.morto&&naBase(h));
-  if(!naLoja.length){
-    abre(`<span class="et">Loja fechada</span><h2 class="t${t}">Ninguém na base</h2>
-      <p>Só compra quem está <b>na própria base</b> ou morto. Gaste movimento para voltar —
-      é o custo real de fazer compras no meio da partida.</p>
-      <button class="grande" id="ok">Entendi</button>`,()=>{fecha();pinta();});
-    return;
-  }
-  let quem=lojaHeroi&&naLoja.includes(lojaHeroi)?lojaHeroi:naLoja[0];
-  lojaHeroi=quem;
-  const linha=naLoja.map(h=>`<button class="abaH${h===quem?" on":""}" data-h="${h.id}">
-      <img src="${RETRATO(h.id)}" alt=""><span>${h.n}</span><i>${h.ouro} ◈</i></button>`).join("");
-  const cards=ITENS.map(it=>{
-    const preco=Math.max(0,it.o-descontos[t]);
-    const tem=quem.itens.includes(it.id), cheio=quem.itens.length>=(quem.slots||3), pode=quem.ouro>=preco&&!tem&&!cheio;
-    return `<button class="itC${pode?"":" off"}${tem?" tem":""}" data-i="${it.id}" ${pode?"":"disabled"}>
-      <img src="${ARTE_ITEM[it.id]}" alt="${it.n}">
-      <span class="iN">${it.n}</span><span class="iD">${it.d}</span>
-      <span class="iO">${tem?"comprado":cheio?(quem.slots||3)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
-  }).join("");
-  abre(`<span class="et">Loja da base · rodada ${J.rodada}</span>
-    <h2 class="t${t}">${NOMES[t]}</h2>
-    <p>Cada herói carrega até <b>3 itens</b>. O ouro é individual — quem farmou, compra.</p>
-    <div class="abas">${linha}</div>
-    <div class="prat">${cards}</div>
-    <button class="grande" id="ok">Fechar loja</button>`,()=>{fecha();pinta();});
-  document.querySelectorAll(".abaH").forEach(b=>b.onclick=()=>{
-    lojaHeroi=tm.herois.find(h=>h.id===b.dataset.h); abreLoja(); });
-  document.querySelectorAll(".itC").forEach(b=>b.onclick=()=>{
-    const it=ITEM[b.dataset.i];
-    const preco=Math.max(0,it.o-descontos[t]);
-    if(quem.ouro<preco||quem.itens.includes(it.id)||quem.itens.length>=(quem.slots||3))return;
-    quem.ouro-=preco; quem.itens.push(it.id);
-    if(descontos[t]){ descontos[t]=0; }
-    if(it.ef.vida){ quem.vidaMax+=it.ef.vida; quem.vida+=it.ef.vida; }
-    reg(t?"c":"a",`${quem.n} compra ${it.n} (−${preco} de ouro)`);
-    abreLoja(); });
-}
+/* abreLoja mora na seção FICHAS / LOJA / LOG — é a versão em sheet, que roda. */
 
 /* ══════════════════ BASE VISUAL ══════════════════ */
 const NS="http://www.w3.org/2000/svg";
@@ -622,7 +550,7 @@ function limpaModo(){ modo=null; habAtual=null; confirmar=null; ativo=null; habS
 function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
-  mover=[]; alvos=[];
+  mover=[]; alvos=[]; alvosTorre=[];
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+(ehAgil(selHeroi)?1:0);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
@@ -632,7 +560,7 @@ function calcula(){
     }
   }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
-    const h=selHeroi, hb=h.habs[habAtual], alc=h.alc+(hb.ef.alcExtra||0);
+    const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
     alvos=todos().filter(o=>{
       if(o.morto)return false;
       if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
@@ -640,7 +568,19 @@ function calcula(){
       if(hb.alvo==="eu")return o===h;
       return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
     });
+    alvosTorre=torresAoAlcance(h,hb,alc);
   }
+}
+/* Uma torre só é alvo se a SUA onda já está encostada nela. Sem isso, um assassino
+   sozinho derrubaria a base pelas costas — no MOBA quem derruba torre é a onda, o
+   herói só acelera. Uma torre aguenta um golpe de herói por rodada. */
+function torresAoAlcance(h,hb,alc){
+  if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
+  return J.torres.filter(tr=>{
+    if(tr.t===h.t||tr.vida<=0||tr.batida) return false;
+    if(J.frentes[tr.rota]!==tr.i) return false;
+    return hb.ef.semAlcance||dist(...h.pos,...ROTAS[tr.rota][tr.i])<=alc;
+  });
 }
 
 /* dado que será gasto: o escolhido à mão, senão o menor que atende */
@@ -678,7 +618,7 @@ function iniciaHab(i){
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
-  if(!alvos.length){
+  if(!alvos.length&&!alvosTorre.length){
     limpaModo(); pinta();
     return toast(hb.alvo==="al"?"nenhum aliado no alcance":"ninguém no alcance","morte");
   }
@@ -699,6 +639,33 @@ function confirmaHab(alvo){
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
+/* o golpe na torre não passa por usaHab: torre não tem armadura, escudo nem status.
+   Dano fixo, um por rodada, e o revide é o preço de encostar. */
+function atacaTorre(tr){
+  if(!selHeroi||habAtual===null)return;
+  const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
+  if(di===null)return;
+  J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
+
+  tr.vida-=DANO_TORRE; tr.batida=1;
+  reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} `+
+      `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
+  fx(ROTAS[tr.rota][tr.i],"-"+DANO_TORRE,"dano");
+
+  if(tr.vida<=0){
+    reg("b",`TORRE CAIU — ${tr.rota}, lado ${NOMES[tr.t]}`);
+    toast("TORRE CAIU","gank"); vibra([40,60,40]);
+  }else{
+    /* o revide nunca mata: a torre é pedágio, não morte sem autor —
+       senão `mata()` ficaria sem quem creditar o ouro */
+    const levou=Math.min(REVIDE_TORRE,h.vida-1);
+    if(levou>0){ h.vida-=levou; reg("b",`a torre revida — ${levou} em ${h.n}`);
+      fx(h.pos,-levou,"dano"); tremer(h); }
+  }
+  modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
+  calcula(); pinta();
+}
+
 const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
@@ -731,10 +698,15 @@ function desenhaMapa(){
     .forEach(([a,l,b])=>gE.appendChild(el("polyline",
       {points:[a,...l,b].map(p=>centro(...p).map(n=>n.toFixed(1)).join(",")).join(" "),class:"estrada"})));
 
+  const torreS=new Set(alvosTorre);
   J.torres.forEach(t=>{
     const[x,y]=centro(...ROTAS[t.rota][t.i]);
-    gM.appendChild(el("rect",{x:x-6,y:y-6,width:12,height:12,transform:`rotate(45 ${x} ${y})`,
-      class:"torre t"+t.t+(t.vida<=0?" caiu":"")}));
+    const mirando=torreS.has(t);
+    if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira-torre"}));
+    const rc=el("rect",{x:x-6,y:y-6,width:12,height:12,transform:`rotate(45 ${x} ${y})`,
+      class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
+    if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
+    gM.appendChild(rc);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
@@ -871,7 +843,9 @@ function abreLog(){
 }
 function abreLoja(){
   const t=J.vez, tm=J.times[t];
-  const naLoja=tm.herois.filter(h=>!h.morto&&naBase(h));
+  /* morto está na base esperando respawn — é a janela de compra clássica de MOBA.
+     A regra sempre disse "na base ou morto"; o filtro é que excluía o morto. */
+  const naLoja=tm.herois.filter(h=>h.morto||naBase(h));
   if(!naLoja.length){
     abreSheet("Loja fechada",
       `<p style="color:var(--ink-2);font-size:14px;line-height:1.55;margin:0">
@@ -935,6 +909,8 @@ function abreManual(){
       <p><b>Suporte</b> — escuda, doa o próprio dado, e a <b>Ward</b> revela o Caçador inimigo antes da hora.</p></section>
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
+      <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada.</p>
+      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>No aparelho</h4>
       <p>Toque num herói seu → abre o <b>comando</b> dele. De lá você escolhe <b>mover</b> ou uma <b>habilidade</b>.</p>
@@ -1077,7 +1053,7 @@ function pinta(){
   G("btPlaca").disabled = tm.placas<1||!dLivre;
   G("btRerol").disabled = tm.placas<2||!dLivre;
   G("btConv").disabled = !dLivre;
-  G("btLoja").classList.toggle("destaque",tm.herois.some(h=>!h.morto&&naBase(h)));
+  G("btLoja").classList.toggle("destaque",tm.herois.some(h=>h.morto||naBase(h)));
   G("btLoja").disabled=J.fase!=="jogando";
   G("btTime").innerHTML="Time"+(tm.prio?` <span class="bad">⚡${tm.prio}</span>`:"");
   const nMao=maos[J.vez].length, jogaveis=maos[J.vez].filter(podeJogar).length;
@@ -1139,7 +1115,7 @@ fimDaRodada=function(){ limpaBuffs(); _fimDaRodada(); };
 function telaFim(){
   abre(`<span class="et">Fim de partida</span><h2 class="t${J.fim}">${NOMES[J.fim]} venceu</h2>
     <p>Nexus ${NOMES[1-J.fim]} destruído na rodada ${J.rodada}.</p>
-    <button class="grande" id="ok">Nova partida</button>`,()=>{fecha();novo();pinta();});
+    <button class="grande" id="ok">Nova partida</button>`,()=>{fecha();partida(false);});
   vibra([60,80,60,80,120]);
 }
 function usaPrioridade(){
@@ -1277,9 +1253,10 @@ function jogaCarta(id){
     msg+=z?` → Caçador inimigo vai ao ${z.toUpperCase()}`:" → ward posta"; }
   if(ef.revelarCaca){ const z=J.times[1-t].caca;
     J.times[1-t].cacaRevelada=z; msg+=z?` → Caçador inimigo no ${z.toUpperCase()}`:" → nada escondido"; }
-  if(ef.empurrarOnda){ const r=ROTA_ORDEM.find(x=>ROTAS[x]);
+  if(ef.empurrarOnda){
     const rota=["topo","meio","baixo"][Math.floor(Math.random()*3)];
-    J.frentes[rota]+= t===0?1:-1; msg+=` → onda do ${rota} avança`; }
+    J.frentes[rota]=limitaFrente(rota, J.frentes[rota]+(t===0?1:-1));
+    msg+=` → onda do ${rota} avança`; }
   if(ef.itemGratis){
     const opc=ITENS.filter(i=>i.o<=ef.itemGratis&&!h.itens.includes(i.id));
     if(opc.length&&h.itens.length<(h.slots||3)){
