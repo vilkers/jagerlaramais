@@ -1,8 +1,14 @@
-# LORE — proposta de identidade
+# LORE — rascunho descartável, NÃO é canon
 
-> **Proposta.** Não altera `data/catalogo.js`. Nenhum número, nenhuma mecânica, nenhum kit mudou.
-> Só identidade: mundo, facção, contradição, história, fala e leitura visual.
-> Se for aprovado, vira patch note e entra no catálogo depois.
+> ⚠️ **Isto não é a direção criativa do jogo.** A criação de universo, personagens, visual e lore
+> acontece em **`visual-lab/`**, na trilha do Vilker com o ChatGPT, e é lá que mora o canon.
+>
+> Este arquivo é um rascunho gerado em 2026-08-09 pela trilha de **mecânica**, antes de essa
+> divisão estar clara. Ficou no repositório como alternativa arquivada — nada aqui foi aprovado.
+> **Não use como base.** Se ajudar como referência de método (contradição por personagem,
+> facção como unidade visual), sirva-se; se atrapalhar, apague o arquivo.
+>
+> Não altera `data/catalogo.js`. Nenhum número, nenhuma mecânica, nenhum kit mudou.
 
 **Regra que guiou tudo:** a contradição do herói tem que ser a **primeira coisa que se vê** no retrato,
 e tem que ser a **mesma coisa** que a mecânica dele já faz. Se a contradição precisa ser explicada, ela não serve.

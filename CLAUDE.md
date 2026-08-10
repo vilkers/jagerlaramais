@@ -19,9 +19,23 @@ arte/       assets gerados
   `jogo/`, `guia/` e `cartas/` leem daí. Nunca escreva carta direto no HTML — já criou três catálogos divergentes uma vez.
 - **`poderTotal`/`armTotal`/`ehAgil` são `const`** — reatribuir mata o script inteiro sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
 - **Guia web é vanilla** — sem framework, sem npm, sem CDN. Abre com duplo clique.
+  **Exceção declarada:** `visual-lab/` é a área de criação (universo, personagens, visual, lore),
+  tocada pelo Vilker com o ChatGPT, e tem stack própria (Next/React/Vite). Não é o guia, não segue
+  esta regra e **não deve ser apagada** por causa dela. O que nasce lá só entra no jogo depois de
+  o guide estar fechado, e entra em cima da base mecânica — nunca por cima dela.
 - **Nomes e lore são autorais.** Referência mecânica ao LoL é interna e explícita nos docs; nunca no produto.
 - **Glossário é lei.** Termo definido não muda de nome. Ver `docs/glossario.md`.
 - **Toda mudança de número vira patch note** em `docs/patch-notes.md`.
+
+## Quem mexe em quê
+
+| Trilha | Onde | Quem |
+|---|---|---|
+| **Mecânica** — motor, regras, balanceamento, bugs | `jogo/` `data/` `sim/` `docs/` | Claude Code |
+| **Criação** — universo, personagens, visual, lore, carta | `visual-lab/` | Vilker + ChatGPT |
+
+As duas rodam em paralelo e não se cruzam. `docs/lore.md` é rascunho arquivado da trilha de
+mecânica e **não é canon** — o canon criativo mora em `visual-lab/`.
 
 ## Agentes do projeto
 
