@@ -89,6 +89,30 @@ Status: direção visual e kit-base aprovados.
 - Master limpo do corpo: Magnific `O6Nh38tynm`.
 - O teste Seedance Mini `jUSpalFLD0` não deve ser usado: deformou rosto e expressão.
 
+### Registro de assets para recuperação na nuvem
+
+Use os IDs abaixo para recuperar os arquivos originais diretamente no Magnific e organizá-los no GitHub. Não regenerar do zero quando houver um master existente.
+
+- Render original aprovado: `1lsPghSr4r`.
+- Character sheet renderizado: `Ifa5PnHtvE`.
+- Master limpo do corpo: `O6Nh38tynm`.
+- Product sheet de O Corretivo, primeira versão: `4R3f2Jm9Aa`.
+- Product sheet de O Corretivo, segunda versão: `4R3fnnb9Aa`.
+- Prova neutra personagem + arma: `eI8wQ8odqL`.
+- Estudo de miniatura: `vQuxuyna47`.
+- Key art ambientada aprovada: `p8oUb7nehw`.
+- Estudo ambientado anterior: `1ls4sxnr4r`.
+- Teste de vídeo rejeitado, apenas para diagnóstico: `jUSpalFLD0`.
+
+Estrutura recomendada no repositório:
+
+- `visual-lab/creative-assets/characters/<slug>/01-concept/`
+- `visual-lab/creative-assets/characters/<slug>/02-render/`
+- `visual-lab/creative-assets/characters/<slug>/03-character-sheet/`
+- `visual-lab/creative-assets/characters/<slug>/04-miniature/`
+- `visual-lab/creative-assets/characters/<slug>/05-key-art/`
+- `visual-lab/creative-assets/characters/<slug>/06-video/`
+
 ### Nova direção do vídeo
 
 - Não precisa fechar em loop.
