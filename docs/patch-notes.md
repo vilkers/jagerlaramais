@@ -16,6 +16,62 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.6 — o dedo não mira no desenho · 2026-08-10
+
+### O que mudou
+
+Auditoria de toque em quatro tamanhos de celular, com o navegador de verdade medindo cada
+alvo. A referência é **44px** (Apple HIG; Material pede 48dp). **Antes, os 27 alvos da tela
+estavam todos abaixo disso** — o menor tinha 22,5px, e a peça do herói, que é o gesto mais
+repetido do jogo, tinha 25px no iPhone 12 e **12,4px** num aparelho de 568 de altura.
+
+**O alvo da peça passou a valer o hexágono inteiro.** Um círculo invisível de raio 15,5 leva
+o toque até a borda do hexágono sem mudar uma linha do desenho. 15,5 é o teto: os centros
+vizinhos ficam a `sqrt(3)·R ≈ 32,9`, então raio 16,45 já roubaria o toque do vizinho.
+Vale para herói, para torre sob mira e para o poço.
+
+| Alvo | 390×844 | 360×800 | 375×667 | 320×568 |
+|---|---|---|---|---|
+| peça do herói | 25,1 → **40,4** | 21,9 → **35,3** | 14,6 → **32,7** | 12,4 → **27,9** |
+| poço / torre sob mira | 22,1 → **40,2** | 19,3 → 36 | 12,9 → 33 | 10,9 → 28 |
+
+**Os botões subiram para 44px** (40 em tela de até 760 de altura, senão o painel não cabe):
+ícones do HUD e o ✕ do comando de 32, o ✕ do bottom sheet de 30, a barra de ações de 39,
+as linhas de comando de 42, o dado de 42.
+
+**Os três mini-botões do dado eram o pior alvo da tela**, 65×22,5, empilhados. Viraram uma
+linha de três com altura de alvo de verdade — e **somem quando nenhum dos três serve**, o que
+devolve ~45px ao mapa e tira três botões apagados da frente do jogador.
+
+**Dois estouros reais, corrigidos.** O painel empurrava a tela para fora nos quatro tamanhos
+(no iPhone SE sobravam 14px). Agora a lista de comando é a única coisa que rola por dentro, e
+é ela que cede altura ao mapa — dados e ações ficam sempre à vista. E com Prioridade e
+Retomada juntas dá para ter **seis dados** na linha, que estourava a largura em todos os
+aparelhos: em vez de encolher o dado, a linha rola de lado nesse caso raro.
+
+### O que era falso positivo
+
+O medidor acusava corte vertical nos quatro tamanhos mesmo quando a soma batia exata. Era o
+**bottom sheet estacionado fora da tela** com `translateY(101%)`: ele conta no `scrollHeight`
+e não é corte, porque `body` é `overflow:hidden`. As pílulas do HUD e as torres fora de mira
+também apareciam como "alvo pequeno" — não são tocáveis, são leitura. O medidor foi corrigido
+para olhar a soma hud + palco + painel contra a janela, e só o que tem `onclick`.
+
+### O limite que não dá para consertar com CSS
+
+Num aparelho de 568 de altura, um tabuleiro 8×8 em 266px de palco dá hexágono de ~28px.
+Chegar a 44 exigiria menos hexágonos ou mapa com deslocar-e-ampliar. **27,9px já é 2,2× o que
+era**, e nesse tamanho a lista de comando mostra uma linha por vez e rola — a última desbota
+para indicar que há mais. É o preço, e está escolhido de propósito: o mapa é o gesto principal.
+
+### O que isso quebra
+
+`jogo/index.html` mudou de estrutura em dois pontos: `#extraBts` saiu de dentro de `#dados` e
+virou linha própria, e `#dadosAcao` perdeu o `style` inline para a regra ir ao CSS.
+Nenhuma regra de jogo foi tocada — `sim/bateria.js` dá os mesmos números.
+
+---
+
 ## v0.5.5 — o poço, a Retomada, e a descoberta de que a bateria é cega · 2026-08-10
 
 ### O que mudou

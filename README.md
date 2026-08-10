@@ -108,7 +108,9 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 **3. Quem começa ganha 53,5%** (n=20000). Sem épico e sem Retomada são 50,5%, então parte da diferença é o custo que a simulação vê sem o prêmio que ela não vê — mas sobra um resto real de acesso desigual ao poço, 48% contra 52% de encontros.
 
-**4. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
+**4. Aparelho pequeno aperta o tabuleiro.** Abaixo de 640px de altura o 8×8 dá hexágono de ~28px, contra os 44 de referência de toque. Todo o resto da tela está em 40–44px desde a v0.5.6; o mapa é o único que não alcança, e não é conserto de CSS.
+
+**5. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
 
 ---
 

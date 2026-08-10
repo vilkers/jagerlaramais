@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.5.5 · **Atualizado em:** 2026-08-10
+**Versão:** v0.5.6 · **Atualizado em:** 2026-08-10
 
 ---
 
@@ -28,6 +28,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Tamanho do tabuleiro | **8×8**, rota de 12 hexágonos — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | ~15 rodadas (mediana medida: 15) |
+| Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
 
@@ -37,7 +38,7 @@ Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de a�
 Caçador com comando oculto · Placas do Topo · Prioridade do Meio · loja e itens ·
 **poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
-guia navegável · visualizador de cartas.
+guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela**.
 
 ## O que precisa de playtest humano, não de simulação
 
@@ -71,7 +72,7 @@ sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
-jogo/index.html      Só a estrutura da tela. 63 linhas.
+jogo/index.html      Só a estrutura da tela. 64 linhas.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
 jogo/jogo.js         Motor de regras + interface.
 guia/index.html      Manual navegável. Lê do catálogo.
@@ -83,7 +84,7 @@ arte/mapa/mapa.jpg   O mapa ilustrado
 docs/                Regras, design e decisões. Leia na ordem numerada.
 ```
 
-## Duas armadilhas que já custaram tempo
+## Cinco armadilhas que já custaram tempo
 
 **1. `poderTotal`, `armTotal` e `ehAgil` são `const`.** Reatribuir lança `TypeError` e **mata o
 script inteiro dali para baixo, sem erro visível no console** — o sintoma é uma função que "não
@@ -99,6 +100,10 @@ desencontro compensa outra assimetria do sistema. Está anotado no código; não
 
 **4. Medição de assimetria quer n=20000.** A n=5000 a banda de ruído é ±1,4 ponto a 2σ, e foi ela
 que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
+
+**5. O tabuleiro 8×8 não cabe direito abaixo de 640px de altura.** Dá hexágono de ~28px, contra
+os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-
+ampliar. Nesse tamanho a lista de comando mostra uma linha por vez e rola. Ver v0.5.6.
 
 ## Como testar rápido
 

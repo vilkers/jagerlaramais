@@ -884,6 +884,19 @@ moveAte=function(c,r){
 };
 
 /* ══════════════════ MAPA ══════════════════ */
+/* O dedo não mira no desenho, mira no hexágono. A peça do herói é desenhada com raio
+   9,6 e a torre é um quadrado de 12 — no aparelho isso vira alvo de 25px e de 22px,
+   contra os 44px de referência (e de 12px num celular de 667 de altura, medido).
+   Este círculo invisível leva o alvo até a borda do hexágono sem mudar nada do desenho.
+   15,5 é o teto: os centros vizinhos ficam a sqrt(3)*R ≈ 32,9 um do outro, então
+   raio 16,45 já encostaria no vizinho e roubaria o toque dele. */
+const R_TOQUE=15.5;
+const alvoDeToque=(g,x,y,aoTocar)=>{
+  const c=el("circle",{cx:x,cy:y,r:R_TOQUE,class:"toque"});
+  if(aoTocar) c.onclick=aoTocar;
+  g.appendChild(c);
+  return c;
+};
 function desenhaMapa(){
   svg.textContent="";
   const gH=el("g"),gE=el("g"),gM=el("g"),gP=el("g");
@@ -916,6 +929,7 @@ function desenhaMapa(){
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
     if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);});
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
@@ -947,7 +961,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando) g.onclick=()=>{vibra(10);atacaEpico(ep);};
+    if(mirando){ g.onclick=()=>{vibra(10);atacaEpico(ep);}; alvoDeToque(g,x,y); }
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -970,6 +984,7 @@ function desenhaMapa(){
     const g=el("g",{class:"peca t"+h.t+(ehSel?" sel":"")+(ehAlvo?" alvo":"")+(foco?" foco":""),
       tabindex:"0",role:"button","data-peca":h.t+"-"+h.id});
     g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida`);
+    alvoDeToque(g,x,y);                       // primeiro filho: o alvo vale o hexágono
     if(ehAlvo) g.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira"}));
     g.appendChild(el("circle",{cx:x,cy:y,r:9.6,class:"fundo"}));
     const cid="cl-"+h.t+h.id;
@@ -1302,6 +1317,9 @@ function pinta(){
   G("btPlaca").disabled = tm.placas<1||!dLivre;
   G("btRerol").disabled = tm.placas<2||!dLivre;
   G("btConv").disabled = !dLivre;
+  /* linha inteira some quando nenhum dos três serve — devolve altura ao mapa */
+  G("extraBts").classList.toggle("ocioso",
+    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled);
   G("btLoja").classList.toggle("destaque",tm.herois.some(h=>h.morto||naBase(h)));
   G("btLoja").disabled=J.fase!=="jogando";
   G("btTime").innerHTML="Time"+(tm.prio?` <span class="bad">⚡${tm.prio}</span>`:"");
@@ -1311,6 +1329,9 @@ function pinta(){
   G("btCartas").disabled=J.fase!=="jogando";
   G("btFim").disabled = J.fase!=="jogando";
 
+  /* só desbota se realmente sobrar conteúdo para rolar */
+  const cmdEl=G("comando");
+  cmdEl.classList.toggle("rolando",cmdEl.scrollHeight>cmdEl.clientHeight+1);
   if(sheetAberto==="Time") abreTime();
   desenhaMapa();
   aplicaFoco();

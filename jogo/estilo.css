@@ -16,7 +16,19 @@
   --ui:-apple-system,"Avenir Next","Helvetica Neue",system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,monospace;
   --safe:env(safe-area-inset-bottom,0px);
+  /* Alvo mínimo de toque. 44px é a referência (Apple HIG; Material pede 48dp).
+     Medido antes: os ícones do HUD tinham 32, o ✕ do sheet 30 e os mini-botões
+     do dado 22,5 — metade do necessário. Em tela baixa cai para 40, porque
+     manter 44 em tudo empurrava o painel para fora da janela. */
+  --toque:44px;
+  /* Teto da lista de comando. Ela é a única coisa do painel que pode rolar por
+     dentro, então é ela que cede altura para o mapa em tela baixa — medido: sem
+     esse teto o palco caía para 102px num 320x568 e a peça virava alvo de 10px. */
+  --cmd-max:266px;
 }
+@media (max-height:760px){ :root{ --toque:40px; --cmd-max:150px; } }
+@media (max-height:640px){ :root{ --cmd-max:96px; } }
+@media (max-width:360px){ .dado{width:38px;height:38px;font-size:19px} }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overscroll-behavior:none}
 body{
@@ -37,7 +49,7 @@ button:disabled{cursor:not-allowed}
 .marca b{color:var(--brass);font-weight:700}
 .rodada{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3);
   border:1px solid var(--line);padding:3px 8px;border-radius:20px}
-.icobt{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);
+.icobt{width:var(--toque);height:var(--toque);display:grid;place-items:center;border:1px solid var(--line);
   border-radius:9px;font-size:15px;color:var(--ink-2);background:var(--ground-2)}
 .icobt:active{background:var(--ground-3)}
 
@@ -56,7 +68,7 @@ button:disabled{cursor:not-allowed}
 .pill span.pulsa{animation:bater .5s ease}
 
 /* ══════════ PALCO / MAPA ══════════ */
-#palco{flex:1;position:relative;min-height:34vh;display:flex;align-items:center;justify-content:center;padding:4px 6px}
+#palco{flex:1 1 auto;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
 #mapa{width:100%;height:100%;display:block}
 #mapa .hx{stroke:var(--line-soft);stroke-width:.9}
 #mapa .hx.selva{fill:var(--selva)}
@@ -92,6 +104,8 @@ button:disabled{cursor:not-allowed}
 #mapa .rotulo text{font-family:var(--carto);font-size:5.4px;letter-spacing:.18em;
   fill:var(--ink-3);text-anchor:middle;pointer-events:none}
 
+/* alvo de toque invisível — `transparent` recebe evento, `none` não receberia */
+#mapa .toque{fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
 #mapa .peca{cursor:pointer}
 #mapa .peca circle.anel{stroke-width:1.6;fill:none}
 #mapa .peca.t0 circle.anel{stroke:var(--azul-2)} #mapa .peca.t1 circle.anel{stroke:var(--carmim-2)}
@@ -137,9 +151,19 @@ button:disabled{cursor:not-allowed}
 @keyframes tout{to{opacity:0;transform:translateY(-10px)}}
 
 /* ══════════ PAINEL ══════════ */
-#painel{flex:none;padding:7px 10px calc(7px + var(--safe));display:flex;flex-direction:column;gap:6px;
-  border-top:1px solid var(--line);background:var(--ground-2);max-height:56vh;overflow-y:auto}
-#comando{flex:none}
+/* Medido em quatro tamanhos: hud + palco + painel estourava a janela nos QUATRO,
+   e no iPhone SE sobrava 14px para fora. O painel deixa de crescer sem limite —
+   quem rola por dentro é a lista de comando, e dados e ações ficam sempre à vista. */
+#painel{flex:none;min-height:0;padding:7px 10px calc(7px + var(--safe));
+  display:flex;flex-direction:column;gap:6px;
+  border-top:1px solid var(--line);background:var(--ground-2)}
+#comando{flex:none;min-height:0;max-height:var(--cmd-max);
+  overflow-y:auto;overscroll-behavior:contain;
+  /* quando sobra conteúdo, a última linha desbota em vez de ser cortada em seco —
+     linha cortada pela metade lê como bug; desbotada lê como "tem mais abaixo" */
+  -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 18px),transparent);
+          mask-image:linear-gradient(180deg,#000 calc(100% - 18px),transparent)}
+#comando:not(.rolando){-webkit-mask-image:none;mask-image:none}
 
 #ativo{display:flex;align-items:center;gap:9px;min-height:38px;padding:6px 9px;border-radius:11px;
   background:var(--ground-3);border:1px solid var(--line)}
@@ -168,7 +192,13 @@ button:disabled{cursor:not-allowed}
 .hb:active:not(:disabled){transform:scale(.96)}
 
 #dados{display:flex;align-items:center;gap:7px}
-.dado{width:42px;height:42px;flex:none;border-radius:12px;border:1.5px solid var(--line);
+/* Com Prioridade e Retomada juntas dá para ter SEIS dados na linha, e medido eles
+   estouravam a largura em todos os aparelhos. Em vez de encolher o dado (que é o
+   alvo de toque principal do painel), a linha rola de lado nesse caso raro. */
+#dadosAcao{display:flex;gap:7px;flex:1;min-width:0;overflow-x:auto;
+  scrollbar-width:none;-ms-overflow-style:none;padding:2px 0}
+#dadosAcao::-webkit-scrollbar{display:none}
+.dado{width:var(--toque);height:var(--toque);flex:none;border-radius:12px;border:1.5px solid var(--line);
   background:var(--ground-3);display:grid;place-items:center;
   font-family:var(--display);font-size:22px;color:var(--ink);position:relative;
   transition:transform .12s,border-color .15s,background .15s}
@@ -189,14 +219,21 @@ button:disabled{cursor:not-allowed}
 .rotlbl{font-family:var(--carto);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--ink-3);writing-mode:vertical-rl;transform:rotate(180deg);text-align:center}
 .divisor{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
-#extraBts{margin-left:auto;display:flex;flex-direction:column;gap:4px}
-.mini-bt{font-size:10.5px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;
-  color:var(--ink-2);background:var(--ground-3);white-space:nowrap;line-height:1}
+/* Eram três botões empilhados de 22,5px de altura — o menor alvo da tela inteira.
+   Viraram uma linha própria, com altura de alvo de verdade e a largura dividida. */
+#extraBts{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+/* Os três só servem com um dado selecionado. Sumindo quando nenhum serve, o mapa
+   ganha ~45px de volta e o painel para de mostrar três botões apagados. */
+#extraBts.ocioso{display:none}
+.mini-bt{font-size:11px;padding:4px 6px;border:1px solid var(--line);border-radius:9px;
+  min-height:var(--toque);color:var(--ink-2);background:var(--ground-3);
+  white-space:nowrap;line-height:1;display:flex;align-items:center;justify-content:center}
 .mini-bt:disabled{opacity:.28}
 .mini-bt:not(:disabled){border-color:var(--brass-dim);color:var(--brass)}
 
 #acoes{display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:5px}
-.abt{border:1px solid var(--line);background:var(--ground-3);border-radius:11px;padding:10px 6px;
+.abt{border:1px solid var(--line);background:var(--ground-3);border-radius:11px;padding:6px;
+  min-height:var(--toque);
   font-family:var(--display);font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-2);
   display:flex;align-items:center;justify-content:center;gap:5px;transition:transform .1s}
 .abt:active{transform:scale(.96)}
@@ -217,7 +254,7 @@ button:disabled{cursor:not-allowed}
 #veu.on{opacity:1;pointer-events:auto}
 .sh-cab{flex:none;padding:12px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
 .sh-cab h3{margin:0;font-family:var(--display);font-size:19px;text-transform:uppercase}
-.sh-cab .fechar{margin-left:auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);
+.sh-cab .fechar{margin-left:auto;width:var(--toque);height:var(--toque);border-radius:50%;border:1px solid var(--line);
   display:grid;place-items:center;color:var(--ink-2);font-size:16px}
 .sh-corpo{overflow-y:auto;padding:12px 14px 18px;-webkit-overflow-scrolling:touch}
 
@@ -302,11 +339,12 @@ button:disabled{cursor:not-allowed}
 .cmd-cab .st{display:flex;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
 .cmd-cab .st b{color:var(--ink-2);font-weight:400}
 .cmd-cab .dir{margin-left:auto;display:flex;gap:6px}
-.cmd-x{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);
+.cmd-x{width:var(--toque);height:var(--toque);border-radius:9px;border:1px solid var(--line);
   display:grid;place-items:center;color:var(--ink-2);font-size:15px;background:var(--ground-3)}
 .cmd-x.carta{color:var(--brass);border-color:var(--brass-dim);font-size:13px}
 
-.opc{display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;border-radius:10px;
+.opc{display:flex;align-items:center;gap:9px;width:100%;padding:6px 10px;border-radius:10px;
+  min-height:var(--toque);
   border:1px solid var(--line);background:var(--ground-3);text-align:left;
   transition:transform .1s,border-color .15s,background .15s}
 .opc:active:not(:disabled){transform:scale(.98)}
