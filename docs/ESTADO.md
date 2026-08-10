@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.5.6 · **Atualizado em:** 2026-08-10
+**Versão:** v0.5.7 · **Atualizado em:** 2026-08-10
 
 ---
 
@@ -51,6 +51,12 @@ Prioridade, Placas, itens e cartas. Na medição do poço, o time que levava 62%
 a bateria via o dado gasto e o revide, não via o Poder ganho. Detalhes na v0.5.5 dos patch notes.
 
 **Então o próximo passo do épico e da Retomada é sentar os três e jogar**, não rodar mais partida.
+A loja entra na mesma lista: a correção da v0.5.7 barateou voltar para comprar, e o agente não faz
+compras, então só playtest diz se o peso ficou certo.
+
+**Revisão externa do Vinicius e do Matheus:** análise item a item em `docs/REVISAO-EXTERNA.md`.
+As correções entraram na v0.5.7; as propostas de tabuleiro e regra estão avaliadas lá, com o que
+colide com medição já registrada.
 
 ## O que NÃO existe
 
@@ -77,7 +83,9 @@ jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra reg
 jogo/jogo.js         Motor de regras + interface.
 guia/index.html      Manual navegável. Lê do catálogo.
 cartas/index.html    Visualizador das 20 cartas. Lê do catálogo.
-arte/imagens.js      Índice de caminhos das imagens (ARTE, ARTE_CARTA, ARTE_MAPA, ARTE_MONSTRO)
+arte/imagens.js      Índices de arte (ARTE, ARTE_CARTA, ARTE_ITEM, ARTE_MAPA, ARTE_MONSTRO).
+                     ARTE_ITEM só cobre 12 dos 22 itens — o resto cai no selo de itemProv().
+                     Use RETRATO_ITEM(id) e RETRATO(id), nunca o índice direto.
 arte/herois/web/     Retratos usados em tela · arte/herois/ guarda o original
 arte/cartas/         As 22 artes do Deck de Comando
 arte/mapa/mapa.jpg   O mapa ilustrado

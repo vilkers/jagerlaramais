@@ -231,7 +231,12 @@ button:disabled{cursor:not-allowed}
 .mini-bt:disabled{opacity:.28}
 .mini-bt:not(:disabled){border-color:var(--brass-dim);color:var(--brass)}
 
-#acoes{display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:5px}
+/* A barra fica ACIMA do véu (19) e da gaveta (20). O código sempre foi escrito para
+   alternar de gaveta com um toque — `sheetAberto==="Time"?fechaSheet():abreTime()` —
+   mas o escurecimento cobria a barra e os três botões ficavam mortos com qualquer
+   gaveta aberta. Medido: elementFromPoint no botão TIME devolvia a gaveta. */
+#acoes{display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:5px;
+  position:relative;z-index:21;background:var(--ground-2)}
 .abt{border:1px solid var(--line);background:var(--ground-3);border-radius:11px;padding:6px;
   min-height:var(--toque);
   font-family:var(--display);font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-2);
@@ -256,7 +261,10 @@ button:disabled{cursor:not-allowed}
 .sh-cab h3{margin:0;font-family:var(--display);font-size:19px;text-transform:uppercase}
 .sh-cab .fechar{margin-left:auto;width:var(--toque);height:var(--toque);border-radius:50%;border:1px solid var(--line);
   display:grid;place-items:center;color:var(--ink-2);font-size:16px}
-.sh-corpo{overflow-y:auto;padding:12px 14px 18px;-webkit-overflow-scrolling:touch}
+/* a barra de ações agora flutua por cima da gaveta (z-index 21), então o corpo
+   reserva a altura dela — senão o último item da lista fica escondido atrás */
+.sh-corpo{overflow-y:auto;padding:12px 14px calc(var(--toque) + 22px);
+  -webkit-overflow-scrolling:touch}
 
 /* fichas de herói no sheet */
 .fichas{display:flex;flex-direction:column;gap:8px}

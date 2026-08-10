@@ -36,7 +36,12 @@ const ITENS=[
 ];
 if(typeof ITENS_NOVOS!=="undefined") ITENS.push(...ITENS_NOVOS);
 const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
-const naBase=h=>BASE[h.t].some(([c,r])=>c===h.pos[0]&&r===h.pos[1]);
+/* Vale a base E o entorno imediato, não o hexágono exato. A base tem dois hexágonos
+   e o time tem cinco heróis: `desempilha()` empurra três deles para as casas vizinhas
+   já na largada, e com a checagem exata NENHUM dos cinco contava como estando na base
+   — medido, a loja abria dizendo "Loja fechada" na rodada 1 de toda partida.
+   Efeito colateral assumido: voltar para comprar ficou mais barato. */
+const naBase=h=>BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
   return J.times[h.t].herois.some(o=>o!==h&&!o.morto&&(o.itens||[]).some(i=>ITEM[i].ef.aura)
@@ -1039,7 +1044,7 @@ function abreCarta(h){
           <span class="f">Força ${hb.f}${hb.f===6?"":"+"}</span></div>`).join("")}
       </div>
       ${h.itens.length?`<div class="itens-g">${h.itens.map(i=>
-        `<figure><img src="${ARTE_ITEM[i]}" alt=""><figcaption>${ITEM[i].n}</figcaption></figure>`).join("")}</div>`:""}
+        `<figure><img src="${RETRATO_ITEM(i)}" alt=""><figcaption>${ITEM[i].n}</figcaption></figure>`).join("")}</div>`:""}
       <div class="rodape">${ehAgil(h)?"ágil · 1ª casa grátis · ":""}${CATALOGO[h.id].patamar?"escala por ouro · ":""}ouro ${h.ouro}</div>
     </div>`);
 }
@@ -1067,7 +1072,7 @@ function fichaHTML(h,meu){
         <span>⚔ <b>${poderTotal(h)}</b></span><span>⛨ <b>${armTotal(h)}</b></span>
         <span>◈ <b>${h.ouro}</b></span></div>
       ${h.itens.length?`<div class="itens">${h.itens.map(i=>
-        `<img src="${ARTE_ITEM[i]}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
+        `<img src="${RETRATO_ITEM(i)}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
       ${selos?`<div class="itens">${selos}</div>`:""}
     </div></div>`;
 }
@@ -1113,7 +1118,7 @@ function abreLoja(){
     const preco=Math.max(0,it.o-descontos[t]);
     const tem=quem.itens.includes(it.id), cheio=quem.itens.length>=(quem.slots||3), pode=quem.ouro>=preco&&!tem&&!cheio;
     return `<button class="itC${pode?"":" off"}${tem?" tem":""}" data-i="${it.id}" ${pode?"":"disabled"}>
-      <img src="${ARTE_ITEM[it.id]}" alt=""><span class="iN">${it.n}</span>
+      <img src="${RETRATO_ITEM(it.id)}" alt=""><span class="iN">${it.n}</span>
       <span class="iD">${it.d}</span>
       <span class="iO">${tem?"comprado":cheio?(quem.slots||3)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
   }).join("");
@@ -1448,6 +1453,19 @@ function retratoProv(id){
   return "data:image/svg+xml;utf8,"+encodeURIComponent(svg);
 }
 const RETRATO=id=>ARTE[id]||retratoProv(id);
+/* Item sem arte vira selo de latão com a inicial. Sem isso, os 10 itens de
+   ITENS_NOVOS entrariam na loja com `src="undefined"` e ícone quebrado. */
+function itemProv(id){
+  const n=(ITEM[id]||{n:"?"}).n;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#18251F"/>
+    <circle cx="50" cy="50" r="31" fill="none" stroke="#8A6A2F" stroke-width="4"/>
+    <text x="50" y="64" font-family="Copperplate,Georgia,serif" font-size="38"
+      fill="#D4A24C" text-anchor="middle">${n[0]}</text></svg>`;
+  return "data:image/svg+xml;utf8,"+encodeURIComponent(svg);
+}
+const ARTE_I = typeof ARTE_ITEM!=="undefined" ? ARTE_ITEM : {};
+const RETRATO_ITEM=id=>ARTE_I[id]||itemProv(id);
 /* mesma rede de segurança para os monstros do poço */
 const ARTE_M = typeof ARTE_MONSTRO!=="undefined" ? ARTE_MONSTRO : {};
 const RETRATO_EPICO=id=>ARTE_M[id]||("data:image/svg+xml;utf8,"+encodeURIComponent(

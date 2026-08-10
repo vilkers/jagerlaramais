@@ -16,6 +16,55 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.7 — a loja abre · 2026-08-10
+
+### O que mudou
+
+Vieram de fora, na revisão do Vinicius e do Matheus (documento escrito contra a v0.4.1).
+São as três correções da seção 1 que ainda valiam contra o código de hoje. **Nenhuma muda regra.**
+
+**`ARTE_ITEM` nunca existiu.** `jogo/jogo.js` pedia esse índice em três lugares e
+`arte/imagens.js` só definia `ARTE`, `ARTE_CARTA`, `ARTE_MAPA` e `ARTE_MONSTRO`. No instante em
+que a loja montava os cards, o JavaScript parava com `ARTE_ITEM is not defined` e a gaveta abria
+vazia. As imagens estavam lá o tempo todo, em `arte/itens/web/` — faltava o índice.
+Só **12 dos 22** itens têm arte, então os 10 de `ITENS_NOVOS` caem num selo de latão com a
+inicial, desenhado por `itemProv()`. Quem lê usa `RETRATO_ITEM(id)`, nunca o índice direto.
+
+**Ninguém era reconhecido na base.** `naBase` comparava o hexágono exato, e a base tem dois
+hexágonos para cinco heróis: `desempilha()` empurra três deles para as casas vizinhas já na
+largada. Medido — na rodada 1 de toda partida, **zero dos cinco** contavam como estando na base,
+e a loja abria dizendo "Loja fechada". Agora vale a base e o entorno imediato (`dist<=1`), o que
+dá **3 dos 5** na largada.
+
+**A barra de ações ficava morta com qualquer gaveta aberta.** O véu (z-index 19) e a gaveta (20)
+cobriam a barra, que não tinha camada. `elementFromPoint` no botão TIME devolvia a gaveta. O
+código sempre foi escrito para alternar de gaveta com um toque — `sheetAberto==="Time" ?
+fechaSheet() : abreTime()` — e essa intenção estava anulada. A barra foi para z-index 21, com
+fundo próprio (invisível quando não há gaveta) e o corpo da gaveta reservando a altura dela.
+
+### O que veio no documento e NÃO entrou
+
+Duas correções da mesma seção **já estavam feitas** e o documento não sabia:
+
+- **Herói morto não comprava** — corrigido na v0.5.1. O filtro é `h.morto||naBase(h)` desde então.
+- **Botões saindo da tela** — corrigido na v0.5.6, com o teto e a rolagem da lista de comando.
+
+E uma da seção 5: **Doar Dado deixando agir duas vezes** — o filtro `hb.ef.doar&&o.agiu` já
+existe. Doar hoje é a suporte gastando a ação dela para dar ação a um aliado que ainda não agiu.
+
+As seções 2, 3 e 4 do documento (tabuleiro 9×9, rotas largas, santuário, cerco por herói, limite
+de rodadas, painel de cerco, ficha por toque longo) **não entraram nesta versão** — mudam regra
+ou conflitam com medição registrada. A análise item a item está em `docs/REVISAO-EXTERNA.md`.
+
+### O que isso quebra
+
+O equilíbrio da loja mudou de fato, e para mais fácil: voltar para comprar custa menos movimento
+do que custava, porque não é mais preciso pisar na casa exata. Somado à compra durante o respawn
+(que já valia desde a v0.5.1), a loja pesa menos na decisão. **A bateria não mede isso** — o
+agente não faz compras — então é item de playtest.
+
+---
+
 ## v0.5.6 — o dedo não mira no desenho · 2026-08-10
 
 ### O que mudou
