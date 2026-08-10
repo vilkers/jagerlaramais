@@ -16,6 +16,38 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.2 — um dado de ação por herói · 2026-08-09
+
+### O que mudou
+
+**Um herói recebe no máximo um dado de ação por rodada.** Dava para empilhar os três dados no mesmo
+herói e atacar três vezes seguidas — o Matheus e o Vinicius acharam roubado em playtest, e estavam
+certos: **o manual do próprio jogo já prometia isso** desde a v0.2. "Você tem 3 dados de ação e 5
+heróis. Nunca dá para todos... quem não recebe dado farma 3." A economia inteira depende de dois
+heróis ficarem de fora todo turno. O motor marcava `h.agiu=1` e nunca usava para bloquear.
+
+Consequências que já estavam escritas nas cartas e agora valem:
+
+- A carta **Segunda Chance** (`reativar`, limpa o `agiu`) não fazia nada, porque não havia limite
+  para contornar. Agora é a única forma de um herói agir duas vezes na mesma rodada.
+- **Doar Dado** parou de aceitar aliado que já agiu — antes era jogar o dado no lixo.
+- Movimento continua livre: sai do Dado Mestre, que é do time. Só a ação é limitada.
+
+**Ritmo:** 140 partidas simuladas, 69 concluídas, **mediana de 16 rodadas** (era ~15 documentado).
+Dentro da faixa.
+
+### Sobre a vantagem de quem começa
+
+O Matheus levantou que quem joga primeiro leva vantagem. Medi: **36 vitórias do primeiro contra 33
+do segundo em 69 partidas — 52,2%, z = 0,36.** Não há vantagem estrutural de ordem.
+
+Mas o mecanismo que ele descreveu existe e é aritmético: `L_TOPO` tem **10 hexágonos**, o Dado Mestre
+chega a **6** e o Corvo tem alcance **4**. **6 + 4 = 10 = a rota inteira.** Dá para sair da base e
+acertar alguém do outro lado no primeiro turno. Não é a ordem de jogo — é o alcance máximo cobrindo
+o mapa todo. Fica para a v0.5.3, junto com o tamanho do mapa.
+
+---
+
 ## v0.5.1 — a torre virou alvo, e sete habilidades voltaram a funcionar · 2026-08-09
 
 ### O que mudou
@@ -57,6 +89,12 @@ Agora chama `partida()`.
 
 **Carta "avance a Frente de Onda" empurrava sem limite.** Não passava por trava nenhuma, e a frente
 podia sair da rota. Agora usa a mesma regra do fim de rodada — torre viva trava o avanço.
+
+**A loja estava fechada a partida inteira.** O filtro era `!h.morto && naBase(h)`, mas a regra
+escrita na própria tela sempre disse "na própria base **ou morto**" — o herói morto, que é justamente
+quem deveria comprar enquanto espera o respawn, estava **excluído**. E como desde a v0.1 todo mundo
+começa na entrada da rota e não na base, ninguém nunca cumpria a condição. Agora é
+`h.morto || naBase(h)`. Reportado pelo Matheus em playtest.
 
 ### Faxina
 

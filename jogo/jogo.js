@@ -565,6 +565,7 @@ function calcula(){
       if(o.morto)return false;
       if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
       if(hb.alvo==="al"&&(o.t!==h.t||o===h))return false;
+      if(hb.ef.doar&&o.agiu)return false;      // doar dado para quem já agiu era jogar fora
       if(hb.alvo==="eu")return o===h;
       return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
     });
@@ -612,6 +613,10 @@ function iniciaMover(){
 }
 function iniciaHab(i){
   if(!selHeroi)return;
+  /* um dado de ação por herói por rodada. É o que o manual sempre prometeu:
+     3 dados para 5 heróis, e quem fica de fora farma 3. Sem esta trava dava
+     para empilhar os 3 dados no mesmo herói e atacar três vezes. */
+  if(selHeroi.agiu) return toast("já agiu nesta rodada","morte");
   const hb=selHeroi.habs[i];
   const d=dadoPara(hb);
   if(d===null) return toast("nenhum dado chega a Força "+hb.f,"morte");
@@ -1032,13 +1037,13 @@ function pinta(){
         <span class="mark">${J.mov.rest}</span>
       </button>
       ${h.habs.map((hb,i)=>{
-        const di=dadoPara(hb), pode=di!==null;
+        const di=dadoPara(hb), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
         return `<button class="opc${emMira?" on":""}${pode?" pode":""}" id="hab${i}" ${pode?"":"disabled"}>
           <span class="ico">${svgIco(iconeDe(hb))}</span>
           <span class="txt"><span class="t1">${hb.n}${confirmar===i?" — confirmar":""}</span>
-            <span class="t2">${descreve(h,hb,pode?J.dados[di].v:null)}</span></span>
-          <span class="mark${pode?"":" trava"}">${pode?J.dados[di].v:"F"+hb.f}</span>
+            <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
+          <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:"F"+hb.f}</span>
         </button>`;
       }).join("")}`;
     G("cmdX").onclick=cancela;
