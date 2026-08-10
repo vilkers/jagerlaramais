@@ -38,13 +38,19 @@ Dentro da faixa.
 
 ### Sobre a vantagem de quem começa
 
-O Matheus levantou que quem joga primeiro leva vantagem. Medi: **36 vitórias do primeiro contra 33
-do segundo em 69 partidas — 52,2%, z = 0,36.** Não há vantagem estrutural de ordem.
+O Matheus levantou que quem joga primeiro leva vantagem. **Ele está certo, e é grande:
+58,3% de vitórias para quem começa — 1748 contra 1252 em 3000 partidas, z = 9,06.**
 
-Mas o mecanismo que ele descreveu existe e é aritmético: `L_TOPO` tem **10 hexágonos**, o Dado Mestre
-chega a **6** e o Corvo tem alcance **4**. **6 + 4 = 10 = a rota inteira.** Dá para sair da base e
-acertar alguém do outro lado no primeiro turno. Não é a ordem de jogo — é o alcance máximo cobrindo
-o mapa todo. Fica para a v0.5.3, junto com o tamanho do mapa.
+Registro o erro porque ele quase virou decisão: minha primeira medição deu 52,2% em 69 partidas
+(z = 0,36) e eu escrevi aqui que não havia vantagem estrutural. Amostra pequena demais para enxergar
+um efeito desse tamanho. Foi a chegada do simulador headless — 3000 partidas em 5 segundos, contra
+69 em 20 no navegador — que mostrou o número real.
+
+O mecanismo é aritmético: `L_TOPO` tem **10 hexágonos**, o Dado Mestre chega a **6** e o Corvo tem
+alcance **4**. **6 + 4 = 10 = a rota inteira.** Dá para sair da base e acertar alguém do outro lado
+antes de o adversário jogar. Quem começa usa isso primeiro.
+
+Fica para a v0.5.3, junto com o tamanho do mapa — e **antes** de qualquer mudança de dado.
 
 ---
 
