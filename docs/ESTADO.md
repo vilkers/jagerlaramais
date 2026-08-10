@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.5.7 · **Atualizado em:** 2026-08-10
+**Versão:** v0.5.8 · **Atualizado em:** 2026-08-10
 
 ---
 
@@ -38,7 +38,8 @@ Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de a�
 Caçador com comando oculto · Placas do Topo · Prioridade do Meio · loja e itens ·
 **poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
-guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela**.
+guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·
+**arrastar o herói para andar** · **segurar a habilidade abre a ficha dela** · **placar no fim**.
 
 ## O que precisa de playtest humano, não de simulação
 
@@ -92,7 +93,7 @@ arte/mapa/mapa.jpg   O mapa ilustrado
 docs/                Regras, design e decisões. Leia na ordem numerada.
 ```
 
-## Cinco armadilhas que já custaram tempo
+## Seis armadilhas que já custaram tempo
 
 **1. `poderTotal`, `armTotal` e `ehAgil` são `const`.** Reatribuir lança `TypeError` e **mata o
 script inteiro dali para baixo, sem erro visível no console** — o sintoma é uma função que "não
@@ -108,6 +109,10 @@ desencontro compensa outra assimetria do sistema. Está anotado no código; não
 
 **4. Medição de assimetria quer n=20000.** A n=5000 a banda de ruído é ±1,4 ponto a 2σ, e foi ela
 que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
+
+**6. Gesto no mapa não pode chamar `pinta()`.** Selecionar herói faz o painel crescer, o palco
+encolher e o mapa se redimensionar — com o dedo encostado. Medido: a casa sob o dedo pulava de
+`[0,5]` para `[0,7]`. Realce durante gesto se faz direto no DOM; repinta só no fim. Ver v0.5.8.
 
 **5. O tabuleiro 8×8 não cabe direito abaixo de 640px de altura.** Dá hexágono de ~28px, contra
 os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-

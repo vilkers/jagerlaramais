@@ -224,7 +224,7 @@ function novo(){
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
-    nexus:[VIDA_NEXUS,VIDA_NEXUS], log:[]
+    nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
   const DE_ROTA={topo:"topo",meio:"meio",adc:"baixo",sup:"baixo"};
@@ -374,7 +374,7 @@ function fimDaRodada(){
     if(J.torres.some(x=>x.rota===nome&&x.t===lado&&x.vida>0)) return;
     J.nexus[lado]--;
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
-    if(J.nexus[lado]<=0) J.fim=1-lado;
+    if(J.nexus[lado]<=0){ J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído.`; }
   });
   [0,1].forEach(t=>{                              // a Fúria expira e devolve o Poder
     const tm=J.times[t];
@@ -761,7 +761,7 @@ function dadoPara(hb){
 }
 
 function escolheHeroi(h){
-  if(J.fase!=="jogando")return;
+  if(cliqueBloqueado||J.fase!=="jogando")return;
   if(modo==="mirar"&&alvos.includes(h)) return confirmaHab(h);
   if(h.t!==J.vez||h.morto){ // inspeciona o adversário sem mudar de estado
     abreCarta(h); return;
@@ -879,6 +879,104 @@ function levaEpico(ep,t){
   toast(EPICO[ep.id].n.toUpperCase()+" É DO "+NOMES[t],"gank"); vibra([40,60,40,60,80]);
 }
 
+/* ══════════════════ ARRASTAR PARA MOVER ══════════════════ */
+/* Pegar o herói, arrastar e soltar na casa. O caminho antigo continua inteiro —
+   tocar, abrir o comando, tocar MOVER, tocar a casa: o arrasto só nasce depois que
+   o dedo anda LIMIAR px, e antes disso tudo é toque normal.
+
+   Os eventos ficam no <svg>, não na peça. `pinta()` reconstrói o mapa inteiro toda
+   vez, e um handler preso à peça morreria junto com ela no meio do arrasto —
+   inclusive o `setPointerCapture`, que é o que garante receber o `pointerup` mesmo
+   se o dedo sair de cima do elemento. */
+const LIMIAR_ARRASTO=7;
+let arr=null, cliqueBloqueado=false;
+
+function paraSVG(ev){
+  const ctm=svg.getScreenCTM(); if(!ctm) return null;
+  const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY;
+  const q=p.matrixTransform(ctm.inverse());
+  return [q.x,q.y];
+}
+/* casa sob o dedo: a mais próxima em coordenada de mapa, com folga de um raio.
+   Folga generosa é de propósito — dedo não é cursor. */
+function hexSob(ev){
+  const p=paraSVG(ev); if(!p) return null;
+  let melhor=null,d0=Infinity;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    const[x,y]=centro(c,r), d=(x-p[0])**2+(y-p[1])**2;
+    if(d<d0){ d0=d; melhor=[c,r]; }
+  }
+  return d0<=(R*1.1)**2 ? melhor : null;
+}
+const podeArrastar=h=>h&&!h.morto&&h.t===J.vez&&J.fase==="jogando"
+  &&!h.preso&&J.mov.rest>0&&!sheetAberto;
+
+function heroiDaPeca(no){
+  const d=no&&no.getAttribute("data-peca"); if(!d) return null;
+  const i=d.indexOf("-");
+  return J.times[+d.slice(0,i)].herois.find(x=>x.id===d.slice(i+1));
+}
+function marcaArrasto(ev,destino){
+  svg.querySelectorAll(".hx.sob").forEach(e=>e.classList.remove("sob"));
+  if(destino){
+    const e=svg.querySelector(`[data-hex="${k(...destino)}"]`);
+    if(e) e.classList.add("sob");
+  }
+  const g=svg.querySelector(`[data-peca="${arr.h.t}-${arr.h.id}"]`);
+  const p=paraSVG(ev); if(!g||!p) return;
+  const[x,y]=centro(...arr.h.pos);
+  g.setAttribute("transform",`translate(${(p[0]-x).toFixed(1)} ${(p[1]-y).toFixed(1)})`);
+  g.classList.add("arrastada");
+}
+svg.addEventListener("pointerdown",ev=>{
+  const alvo=ev.target.closest?ev.target.closest(".peca"):null;
+  const h=heroiDaPeca(alvo);
+  if(!podeArrastar(h))return;
+  arr={h,x0:ev.clientX,y0:ev.clientY,pid:ev.pointerId,ativo:false,destino:null};
+});
+svg.addEventListener("pointermove",ev=>{
+  if(!arr||ev.pointerId!==arr.pid)return;
+  if(!arr.ativo){
+    if(Math.hypot(ev.clientX-arr.x0,ev.clientY-arr.y0)<LIMIAR_ARRASTO)return;
+    arr.ativo=true;
+    try{ svg.setPointerCapture(arr.pid); }catch(e){}
+    /* NÃO chamar pinta() aqui. Selecionar o herói faz o painel de comando crescer,
+       o palco encolher e o mapa inteiro se redimensionar — no meio do gesto, com o
+       dedo encostado. Medido: a casa sob o dedo mudava de [0,5] para [0,7] só por
+       causa disso. O alcance é calculado sem tocar na tela e as casas são realçadas
+       na marra, direto nos polígonos que já estão no DOM. */
+    const selAntes=selHeroi, modoAntes=modo;
+    selHeroi=arr.h; modo="mover"; calcula();
+    arr.alcance=mover.slice();
+    selHeroi=selAntes; modo=modoAntes; calcula();
+    const s=new Set(arr.alcance.map(p=>k(...p)));
+    svg.querySelectorAll(".hx").forEach(e=>
+      e.classList.toggle("mover",s.has(e.getAttribute("data-hex"))));
+    svg.classList.add("arrastando"); vibra(8);
+  }
+  ev.preventDefault();
+  const alvo=hexSob(ev);
+  arr.destino = alvo&&arr.alcance.some(([c,r])=>c===alvo[0]&&r===alvo[1]) ? alvo : null;
+  marcaArrasto(ev,arr.destino);
+});
+function soltaArrasto(ev){
+  if(!arr||ev.pointerId!==arr.pid)return;
+  const a=arr; arr=null;
+  try{ svg.releasePointerCapture(a.pid); }catch(e){}
+  svg.classList.remove("arrastando");
+  svg.querySelectorAll(".hx.sob").forEach(e=>e.classList.remove("sob"));
+  if(!a.ativo)return;                       /* foi toque simples: deixa o clique seguir */
+  /* o navegador ainda dispara um `click` depois do arrasto; sem esta trava ele
+     abriria o comando do herói ou moveria de novo por cima do que acabou de sair */
+  cliqueBloqueado=true; setTimeout(()=>{cliqueBloqueado=false;},350);
+  /* só agora o herói é selecionado de fato: é o `pinta()` do fim que abre o painel,
+     e aí a mudança de layout já não atrapalha gesto nenhum */
+  if(a.destino){ limpaModo(); selHeroi=a.h; moveAte(...a.destino); }
+  else pinta();
+}
+svg.addEventListener("pointerup",soltaArrasto);
+svg.addEventListener("pointercancel",soltaArrasto);
+
 const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
@@ -917,8 +1015,8 @@ function desenhaMapa(){
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
-    const hx=el("polygon",{points:p.join(" "),class:cls});
-    if(moverS.has(k(c,r))) hx.onclick=()=>{vibra(9);moveAte(c,r);};
+    const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
+    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
   [[BASE[0][0],L_TOPO,BASE[1][0]],[BASE[0][1],L_MEIO,BASE[1][1]],[BASE[0][1],L_BOT,BASE[1][1]]]
@@ -1179,7 +1277,9 @@ function abreManual(){
       <p>Se a sua conta passar a do adversário em <b>2</b>, você rola <b>+1 dado de ação</b>. Em <b>4</b>, também ganha <b>+1 no Dado Mestre</b>.</p>
       <p>É automático e <b>some sozinho</b> quando a diferença fecha. Estar atrás não devolve a partida — devolve <b>ação</b> para brigar por ela.</p></section>
     <section><h4>No aparelho</h4>
-      <p>Toque num herói seu → abre o <b>comando</b> dele. De lá você escolhe <b>mover</b> ou uma <b>habilidade</b>.</p>
+      <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
+      <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
+      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: Força mínima, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
       <p>O dado é escolhido sozinho: o menor que dá conta. Quer gastar um específico? Toque nele antes.</p>
       <p>O <b>✕</b> cancela sempre. Toque num herói inimigo para ver a carta dele.</p></section>
   </div>`);
@@ -1303,7 +1403,7 @@ function pinta(){
       ${h.habs.map((hb,i)=>{
         const di=dadoPara(hb), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
-        return `<button class="opc${emMira?" on":""}${pode?" pode":""}" id="hab${i}" ${pode?"":"disabled"}>
+        return `<button class="opc${emMira?" on":""}${pode?" pode":" naoPode"}" id="hab${i}">
           <span class="ico">${svgIco(iconeDe(hb))}</span>
           <span class="txt"><span class="t1">${hb.n}${confirmar===i?" — confirmar":""}</span>
             <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
@@ -1313,7 +1413,11 @@ function pinta(){
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
     G("cmdMover").onclick=iniciaMover;
-    h.habs.forEach((_,i)=>{ const b=G("hab"+i); if(b) b.onclick=()=>iniciaHab(i); });
+    h.habs.forEach((_,i)=>{
+      const b=G("hab"+i); if(!b)return;
+      b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
+      toqueLongo(b,()=>fichaHab(h,i));      // segurar explica, mesmo apagada
+    });
   }else{
     cmd.innerHTML=`<div class="vaziomsg">${texto()}</div>`;
   }
@@ -1387,12 +1491,76 @@ iniciaTurno=function(){
 /* buffs do deck duram até o fim da rodada */
 const _fimDaRodada=fimDaRodada;
 fimDaRodada=function(){ limpaBuffs(); _fimDaRodada(); };
+/* A tela existia e só dizia quem venceu. Agora mostra o placar dos dois lados e o
+   motivo — que hoje é sempre o Nexus, mas `J.motivoFim` já está plumbado para o dia
+   em que o limite de rodadas entrar (ver docs/REVISAO-EXTERNA.md, item 3.3). */
 function telaFim(){
-  abre(`<span class="et">Fim de partida</span><h2 class="t${J.fim}">${NOMES[J.fim]} venceu</h2>
-    <p>Nexus ${NOMES[1-J.fim]} destruído na rodada ${J.rodada}.</p>
+  const v=J.fim, p=1-v;
+  const linha=(rot,a,b)=>`<tr><th>${rot}</th>
+    <td class="${a>=b?"mais":""}">${a}</td><td class="${b>=a?"mais":""}">${b}</td></tr>`;
+  abre(`<span class="et">Fim de partida · rodada ${J.rodada}</span>
+    <h2 class="t${v}">${NOMES[v]} venceu</h2>
+    <p>${J.motivoFim||`Nexus ${NOMES[p]} destruído.`}</p>
+    <table class="placar">
+      <thead><tr><th></th><th class="t${v}">${NOMES[v]}</th><th class="t${p}">${NOMES[p]}</th></tr></thead>
+      <tbody>
+        ${linha("Nexus",Math.max(0,J.nexus[v]),Math.max(0,J.nexus[p]))}
+        ${linha("Torres derrubadas",torresDerrubadas(v),torresDerrubadas(p))}
+        ${linha("Ouro acumulado",ouroDoTime(v),ouroDoTime(p))}
+      </tbody>
+    </table>
     <button class="grande" id="ok">Nova partida</button>`,()=>{fecha();partida(false);});
   vibra([60,80,60,80,120]);
 }
+/* ══════════════════ FICHA DA HABILIDADE ══════════════════ */
+/* Meio segundo de toque abre a regra por extenso e o resultado estimado PARA CADA
+   DADO QUE ESTÁ NA MESA nesta rodada — que é a pergunta real do jogador ("com o 4
+   que eu tenho, isso mata?"). Vale também para habilidade sem dado disponível: é
+   justamente quando mais se quer saber o que ela faria. */
+function toqueLongo(elem,aoSegurar){
+  let t=null,x0=0,y0=0;
+  const cancela=()=>{ if(t){clearTimeout(t);t=null;} };
+  elem.addEventListener("pointerdown",e=>{
+    x0=e.clientX; y0=e.clientY;
+    t=setTimeout(()=>{ t=null; cliqueBloqueado=true;
+      setTimeout(()=>{cliqueBloqueado=false;},350);
+      vibra(18); aoSegurar(); },460);
+  });
+  elem.addEventListener("pointermove",e=>{
+    if(t&&Math.hypot(e.clientX-x0,e.clientY-y0)>10) cancela();
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>elem.addEventListener(ev,cancela));
+}
+function fichaHab(h,i){
+  const hb=h.habs[i];
+  const ALVO={in:"um inimigo",al:"um aliado",eu:"você mesmo"};
+  const alc=alcTotal(h)+(hb.ef.alcExtra||0);
+  const alcTxt=hb.alvo==="eu"?"—":hb.ef.semAlcance?"o mapa inteiro":`${alc} ${alc===1?"casa":"casas"}`;
+  const dados=J.dados.map(d=>{
+    const gasto=d.usado, serve=!gasto&&d.v>=hb.f;
+    return `<div class="fdl${serve?" ok":""}">
+      <span class="fdd">${d.v}</span>
+      <span class="fdt">${gasto?"já gasto nesta rodada"
+        :serve?descreve(h,hb,d.v):`não chega à Força ${hb.f}`}</span></div>`;
+  }).join("");
+  abreSheet(hb.n,`
+    <div class="fh-top">
+      <span class="fh-et">${h.n} · ${POS[CATALOGO[h.id].pos].n}</span>
+      <div class="fh-grade">
+        <div><div class="k">Força mínima</div><div class="v">${hb.f}</div></div>
+        <div><div class="k">Alvo</div><div class="v">${ALVO[hb.alvo]||hb.alvo}</div></div>
+        <div><div class="k">Alcance</div><div class="v">${alcTxt}</div></div>
+      </div>
+    </div>
+    <p class="fh-regra">${typeof textoHab==="function"?textoHab(hb):descreve(h,hb,null)}</p>
+    <div class="fh-sub">Com os dados desta rodada</div>
+    ${dados}
+    ${h.agiu?'<p class="fh-nota">Este herói já agiu nesta rodada.</p>':""}`);
+}
+
+/* ══════════════════ FIM DE PARTIDA ══════════════════ */
+const ouroDoTime=t=>J.times[t].herois.reduce((a,h)=>a+h.ouro,0);
+const torresDerrubadas=t=>J.torres.filter(x=>x.t===1-t&&x.vida<=0).length;
 function usaPrioridade(){
   const tm=J.times[J.vez];
   if(!tm.prio||J.fase!=="jogando")return;

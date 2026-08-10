@@ -32,9 +32,9 @@ olhando. `docs/ESTADO.md` diz qual é a de hoje na primeira linha.
 | 3.1 | Santuário na base | 🟡 vale decidir |
 | 3.2 | Cerco por herói | ⚠️ **já existe, diferente** |
 | 3.3 | Limite de 15 rodadas | ❌ **o número está errado** |
-| 3.4 | Tela de campeão com placar | ✅ barato e bom |
+| 3.4 | Tela de campeão com placar | ✅ **entrou na v0.5.8** |
 | 4.1 | Painel de cerco em texto | 🟡 bom, mas custa altura |
-| 4.2 | Toque longo explica a habilidade | ✅ **melhor item do documento** |
+| 4.2 | Toque longo explica a habilidade | ✅ **entrou na v0.5.8** |
 | 5.1 | Doar Dado deixa agir duas vezes | ⚪ já corrigido |
 
 ---
@@ -184,8 +184,9 @@ agora: comprar ficou mais barato. **A bateria não mede isso**, porque o agente 
 ## O que eu faria, na ordem
 
 1. ✅ **Correções da seção 1** — feito, v0.5.7.
-2. **Toque longo na habilidade** (4.2) e **tela de campeão com placar** (3.4) — baratos, sem
-   conflito, melhoram muito a clareza.
+2. ✅ **Toque longo na habilidade** (4.2) e **tela de campeão com placar** (3.4) — feito, v0.5.8,
+   junto com **arrastar para andar**, que não estava no documento e resolve a mesma queixa de
+   usabilidade por outro caminho.
 3. **Playtest** com as três seções 1 já dentro. Épico, Retomada e agora a loja estão todos
    esperando mão humana — a bateria é cega a mecânica de escolha (ver v0.5.5).
 4. **Limite de rodadas em 30**, com o critério de desempate proposto.

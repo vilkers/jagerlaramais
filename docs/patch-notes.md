@@ -16,6 +16,50 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.8 — arrastar para andar · 2026-08-10
+
+### O que mudou
+
+**Arrastar o herói move.** Encosta, puxa, solta. As casas ao alcance acendem durante o gesto e a
+casa sob o dedo fica marcada. O caminho antigo continua inteiro — tocar, abrir o comando, tocar
+MOVER, tocar a casa: o arrasto só nasce depois que o dedo anda **7px**, e abaixo disso tudo é
+toque normal. Ao soltar, o herói fica selecionado, para você já agir com ele.
+
+**Segurar uma habilidade por meio segundo abre a ficha dela:** Força mínima, alvo, alcance, a
+regra por extenso e **o resultado de cada um dos dados que estão na mesa naquela rodada** — que é
+a pergunta real do jogador ("com o 4 que eu tenho, isso mata?"). Vale nas habilidades apagadas
+também, que é justamente quando mais se quer saber. Para isso as habilidades deixaram de usar
+`disabled` (que engole evento de ponteiro) e passaram a usar a classe `.naoPode`; tocar numa
+apagada continua explicando por que ela não serve, como já explicava.
+
+**A tela de campeão virou placar.** Antes só dizia quem venceu. Agora mostra Nexus, torres
+derrubadas e ouro acumulado dos dois lados, e o motivo da vitória. `J.motivoFim` já está plumbado
+para o dia em que o limite de rodadas entrar.
+
+### Duas armadilhas que este trabalho encontrou
+
+**1. Arrasto não pode repintar a tela.** A primeira versão chamava `pinta()` ao começar o gesto,
+para acender as casas. Só que selecionar o herói faz o painel de comando crescer, o palco encolher
+e **o mapa inteiro se redimensionar — com o dedo encostado nele**. Medido: a casa sob o dedo
+pulava de `[0,5]` para `[0,7]` só por causa disso, e o herói ia parar no lugar errado.
+Agora o alcance é calculado sem tocar na tela e as casas são realçadas direto nos polígonos que já
+estão no DOM. O `pinta()` só acontece depois de soltar.
+
+**2. Os eventos moram no `<svg>`, nunca na peça.** `pinta()` reconstrói o mapa a todo momento, e
+um handler preso à peça morreria junto com ela no meio do arrasto — inclusive o
+`setPointerCapture`, que é o que garante receber o `pointerup` se o dedo sair de cima do elemento.
+
+Também precisou de `touch-action:none` na peça: sem isso o navegador entende o arrasto como
+rolagem e engole os `pointermove`. E de uma trava de clique de 350ms depois de soltar — o
+navegador ainda dispara um `click` no fim do gesto, que sem a trava movia o herói duas vezes.
+
+### O que não mudou
+
+Nenhuma regra. A bateria dá os mesmos números, e a auditoria de toque continua sem estouro
+horizontal e sem corte vertical nos quatro tamanhos.
+
+---
+
 ## v0.5.7 — a loja abre · 2026-08-10
 
 ### O que mudou

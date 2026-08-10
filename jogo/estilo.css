@@ -106,7 +106,12 @@ button:disabled{cursor:not-allowed}
 
 /* alvo de toque invisível — `transparent` recebe evento, `none` não receberia */
 #mapa .toque{fill:transparent;stroke:none;pointer-events:all;cursor:pointer}
-#mapa .peca{cursor:pointer}
+/* touch-action é lido no elemento onde o gesto COMEÇA: sem isto o navegador
+   entende o arrasto como rolagem e engole os pointermove. */
+#mapa .peca{cursor:grab;touch-action:none}
+#mapa.arrastando{cursor:grabbing}
+#mapa .peca.arrastada{pointer-events:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.65))}
+#mapa .hx.sob{stroke:var(--brass);stroke-width:3;fill:var(--brass);fill-opacity:.3}
 #mapa .peca circle.anel{stroke-width:1.6;fill:none}
 #mapa .peca.t0 circle.anel{stroke:var(--azul-2)} #mapa .peca.t1 circle.anel{stroke:var(--carmim-2)}
 #mapa .peca circle.fundo{stroke:none}
@@ -356,7 +361,8 @@ button:disabled{cursor:not-allowed}
   border:1px solid var(--line);background:var(--ground-3);text-align:left;
   transition:transform .1s,border-color .15s,background .15s}
 .opc:active:not(:disabled){transform:scale(.98)}
-.opc:disabled{opacity:.34}
+.opc:disabled,.opc.naoPode{opacity:.34}
+.opc.naoPode{cursor:default}
 .opc.on{border-color:var(--brass);background:var(--brass-glow)}
 .opc .ico{width:26px;height:26px;flex:none;display:grid;place-items:center}
 .opc .ico svg{width:22px;height:22px;fill:none;stroke:var(--ink-2);stroke-width:1.7;
@@ -371,6 +377,32 @@ button:disabled{cursor:not-allowed}
 .opc.pode .mark{color:var(--brass);border-color:var(--brass-dim)}
 .opc.on .mark{background:var(--brass);color:#0B120F;border-color:var(--brass)}
 .opc .mark.trava{color:var(--ink-3);border-style:dashed}
+
+/* ── ficha da habilidade (toque longo) ── */
+.fh-et{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+.fh-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:9px 0 4px}
+.fh-grade>div{background:var(--ground-3);border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
+.fh-grade .k{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.fh-grade .v{font-family:var(--display);font-size:17px;color:var(--ink);margin-top:2px;line-height:1.1}
+.fh-regra{font-size:14px;line-height:1.5;color:var(--ink-2);margin:12px 0 4px}
+.fh-sub{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-3);margin:14px 0 7px}
+.fdl{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;
+  border:1px solid var(--line);background:var(--ground-3);margin-bottom:6px;opacity:.45}
+.fdl.ok{opacity:1;border-color:var(--brass-dim)}
+.fdl .fdd{font-family:var(--display);font-size:20px;width:30px;text-align:center;flex:none;color:var(--ink-3)}
+.fdl.ok .fdd{color:var(--brass)}
+.fdl .fdt{font-size:13px;color:var(--ink-2);line-height:1.35}
+.fh-nota{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
+
+/* ── placar do fim de partida ── */
+.placar{width:100%;border-collapse:collapse;margin:16px 0 4px;font-size:14px}
+.placar th,.placar td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:center}
+.placar thead th{font-family:var(--display);font-size:15px;text-transform:uppercase;letter-spacing:.03em}
+.placar thead th.t0{color:var(--azul-2)} .placar thead th.t1{color:var(--carmim-2)}
+.placar tbody th{text-align:left;font-weight:400;color:var(--ink-3);font-size:13px}
+.placar td{font-family:var(--mono);color:var(--ink-3)}
+.placar td.mais{color:var(--brass)}
 
 /* ══════════ CARTA GRANDE ══════════ */
 .carta-g{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--ground-3);
