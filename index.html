@@ -30,6 +30,14 @@ a.bt .n{font-family:var(--display);font-size:19px;text-transform:uppercase;line-
 a.bt .d{font-size:13px;color:var(--ink-2);margin-top:4px;font-family:var(--body)}
 a.bt.forte{background:var(--brass);border-color:var(--brass);color:#12100A}
 a.bt.forte .d{color:#3A3113}
+a.bt.visual{position:relative;overflow:hidden;border-color:#8066ff;background:linear-gradient(125deg,#241d50,#151c1a 55%,#29330f);box-shadow:0 0 0 1px #b8ff4150,0 12px 35px #7357ff35;transform:translateZ(0);transition:transform .25s ease,box-shadow .25s ease}
+a.bt.visual:before{content:"";position:absolute;inset:-90% -35%;background:linear-gradient(110deg,transparent 42%,#ffffff42 49%,transparent 56%);transform:translateX(-60%) rotate(8deg);animation:lab-sheen 3.6s ease-in-out infinite}
+a.bt.visual:after{content:"NOVO · LAB ABERTO";position:absolute;right:13px;top:12px;background:#C8FF35;color:#111;font:700 8px/1 var(--carto);letter-spacing:.08em;padding:6px 8px;border-radius:999px;box-shadow:0 0 18px #c8ff3575;animation:lab-pulse 1.8s ease-in-out infinite}
+a.bt.visual .n,a.bt.visual .d{position:relative;z-index:1}.visual .n{color:#f5f2ff}.visual .n:before{content:"✦";color:#C8FF35;margin-right:9px}.visual .d{color:#c1bbd8!important;max-width:72%}
+a.bt.visual:hover{border-color:#C8FF35;transform:translateY(-3px);box-shadow:0 0 0 1px #c8ff3590,0 18px 45px #7357ff55}
+@keyframes lab-sheen{0%,55%{transform:translateX(-60%) rotate(8deg)}85%,100%{transform:translateX(70%) rotate(8deg)}}
+@keyframes lab-pulse{50%{box-shadow:0 0 5px #c8ff3530;transform:scale(.97)}}
+@media(prefers-reduced-motion:reduce){a.bt.visual:before,a.bt.visual:after{animation:none}}
 footer{margin-top:26px;font-family:var(--carto);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
 footer a{color:var(--ink-3)}
 </style>
@@ -49,7 +57,7 @@ footer a{color:var(--ink-3)}
     <div class="d">Regras, rotas, heróis, itens, mapa e glossário</div></a>
   <a class="bt" href="cartas/"><div class="n">As cartas</div>
     <div class="d">Os 20 heróis, quatro por rota</div></a>
-  <a class="bt" href="visual-lab/"><div class="n">Visual Guide</div>
+  <a class="bt visual" href="visual-lab/"><div class="n">Visual Guide</div>
     <div class="d">Novo universo, personagens, cartas e direção visual em construção</div></a>
 
   <footer>Vilker · Vinicius · Matheus —
