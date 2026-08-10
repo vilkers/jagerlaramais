@@ -567,10 +567,16 @@ const MONSTROS = [
   ["Fera Escarlate","acampamento · renasce a cada 3 rodadas","Buff: +1 de dano em toda alocação, durante 3 rodadas"],
   ["Ninhada de Pedra","acampamento · renasce a cada 2 rodadas","3 de ouro"],
   ["Ancião de Musgo","acampamento · renasce a cada 2 rodadas","Cura 3 e limpa efeitos"],
-  ["Arauto do Vale","épico · rodada 4, uma única vez","Invoca um aríete que empurra uma rota inteira até a próxima torre"],
-  ["Dragão","épico · rodada 5, renasce a cada 3","Buff acumulativo de time. O quarto Dragão concede a Alma"],
-  ["Devorador Antigo","épico · rodada 8","Todos os seus creeps viram super-creeps por 2 rodadas. O ponto sem volta"]
+  ["Dragão","épico · no poço da rodada 5 à 8, volta 3 rodadas depois de cair",
+   "Herança do Dragão: +1 de Poder em todo o time, para sempre, e acumula"],
+  ["Barão","épico · no poço da rodada 8 em diante, volta em 4",
+   "Fúria do Barão, por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas"],
+  ["Arauto","épico · desenhado, ainda sem regra no jogo",
+   "Empurra uma rota inteira até a próxima torre"]
 ];
+/* Os quatro acampamentos acima e o Arauto ainda não existem no motor — estão aqui como
+   desenho aprovado, não como regra jogável. Dragão e Barão existem desde a v0.5.5 e
+   dividem UM poço, que troca de morador na rodada 8. Ver docs/ESTADO.md. */
 
 const TURNO = [
   ["Manutenção","Ondas de creeps avançam em todas as rotas. Ouro passivo entra. Timers de respawn e objetivos descem 1.","~30s",0],
@@ -592,8 +598,11 @@ const GLOSS = [
   ["Patamar","Degrau de poder do Atirador, comprado com ouro acumulado. Três no total."],
   ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
   ["Crítico","Efeito extra na carta, ativado por um 6 natural no dado alocado."],
-  ["Super-creep","Creep reforçado, gerado por inibidor caído ou pelo Devorador Antigo."],
-  ["Alma","Bônus permanente de time, concedido pelo quarto Dragão da partida."]
+  ["Super-creep","Creep reforçado, gerado por inibidor caído. Desenhado, sem regra no motor."],
+  ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão até a rodada 8, Barão depois."],
+  ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
+  ["Fúria do Barão","Por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas, com herói na rota ou sem."],
+  ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
 ];
 
 /* ==================== MAPA ==================== */

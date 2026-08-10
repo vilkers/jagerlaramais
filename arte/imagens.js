@@ -34,6 +34,15 @@ const ARTE_CARTA = {};
 
 const ARTE_MAPA = "../arte/mapa/mapa.jpg";
 
+/* Itens da loja. `jogo.js` pedia `ARTE_ITEM` e este índice nunca existiu — a loja
+   quebrava com "ARTE_ITEM is not defined" no instante em que montava os cards.
+   Só os 12 itens originais têm arte; os 10 de ITENS_NOVOS caem no selo desenhado
+   por `itemProv()`, então quem lê usa `RETRATO_ITEM(id)`, nunca o índice direto. */
+const ARTE_ITEM = {};
+[ "eclipse","cetro","basalto","egide","manto","passos",
+  "ampulheta","garra","coroa","selo","espinho","veu"
+].forEach(id => ARTE_ITEM[id] = `../arte/itens/web/${id}.jpg`);
+
 const ARTE_MONSTRO = {
   barao:  "../arte/monstros/barao.jpg",
   dragao: "../arte/monstros/dragao.jpg",

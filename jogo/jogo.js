@@ -36,7 +36,12 @@ const ITENS=[
 ];
 if(typeof ITENS_NOVOS!=="undefined") ITENS.push(...ITENS_NOVOS);
 const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
-const naBase=h=>BASE[h.t].some(([c,r])=>c===h.pos[0]&&r===h.pos[1]);
+/* Vale a base E o entorno imediato, não o hexágono exato. A base tem dois hexágonos
+   e o time tem cinco heróis: `desempilha()` empurra três deles para as casas vizinhas
+   já na largada, e com a checagem exata NENHUM dos cinco contava como estando na base
+   — medido, a loja abria dizendo "Loja fechada" na rodada 1 de toda partida.
+   Efeito colateral assumido: voltar para comprar ficou mais barato. */
+const naBase=h=>BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
   return J.times[h.t].herois.some(o=>o!==h&&!o.morto&&(o.itens||[]).some(i=>ITEM[i].ef.aura)
@@ -49,61 +54,154 @@ const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 
 /* ---------- GEOMETRIA DO MAPA ---------- */
 /* O tabuleiro é quadrado de lado N e as rotas saem de regra, não de lista escrita
-   à mão: mudar N muda o mapa inteiro — rotas, bases, rio e posição das torres,
-   que já se calculam por proporção do comprimento da rota.
-   Em N=7 a regra reproduz exatamente as listas fixas que existiam até a v0.5.2. */
-const N=8;
+   à mão: mudar N muda o mapa inteiro — rotas, bases, rio e posição das torres.
+
+   SIMETRIA — leia antes de mexer. O mapa é 1v1: tudo que o time 0 tem, o time 1
+   tem na posição girada em 180°. Até a v0.5.9 o espelho era (COLS-1-c, LINS-1-r),
+   que PARECE rotação e não é numa grade offset odd-r: as linhas ímpares andam meio
+   hexágono, e a fórmula quebra a vizinhança justamente nelas. O estrago era medível
+   — rotas de 14 e 13 casas, bases fora do espelho, torres a distâncias diferentes
+   da própria base.
+
+   Agora a rotação passa por coordenada cúbica (`gira`) e o mapa é GERADO POR
+   METADE: escreve-se topo e meia rota do meio, e o resto é o espelho delas.
+   Assimetria deixa de ser coisa para consertar e passa a ser impossível de
+   escrever. Quem prova é `node sim/simetria.js`. */
+const N=9;
 const COLS=N,LINS=N,R=19;
-const BASE=[[[0,N-1],[1,N-1]],[[N-1,0],[N-1,1]]];
-/* sobe pela coluna 0 e vira à direita na linha 0 */
-const L_TOPO=(()=>{const l=[];for(let r=N-2;r>=1;r--)l.push([0,r]);
-  for(let c=1;c<=N-2;c++)l.push([c,0]);return l;})();
-/* corre pela linha de baixo e sobe pela última coluna */
-const L_BOT=(()=>{const l=[];for(let c=2;c<=N-1;c++)l.push([c,N-1]);
-  for(let r=N-2;r>=2;r--)l.push([N-1,r]);return l;})();
-/* o rio é só pintura: separa as duas metades, não afeta movimento */
-const RIO=(()=>{const l=[];for(let r=1;r<=N-1;r++)l.push([1+Math.floor(r/2),r]);return l;})();
 const k=(c,r)=>c+","+r;
 const centro=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
 const dist=(c1,r1,c2,r2)=>{const ax=c1-(r1-(r1&1))/2,ay=-ax-r1,bx=c2-(r2-(r2&1))/2,by=-bx-r2;
   return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(r1-r2));};
-const vizinhos=(c,r)=>((r&1)?[[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]]:[[-1,0],[1,0],[-1,-1],[0,-1],[-1,1],[0,1]])
-  .map(([a,b])=>[c+a,r+b]).filter(([a,b])=>a>=0&&a<COLS&&b>=0&&b<LINS);
 
-const L_MEIO=(()=>{                       // reta entre as bases, sem invadir as outras rotas
+/* Rotação de 180°, ancorada nos DOIS CANTOS opostos — e não no "hexágono central".
+   Em tabuleiro de lado par o centro cai entre casas e o cubo sairia fracionário;
+   com o eixo no canto a conta é exata nas duas paridades. */
+const _cubo=(c,r)=>{const x=c-(r-(r&1))/2;return[x,-x-r,r];};
+const _off=(x,y,z)=>[x+(z-(z&1))/2,z];
+const _EIXO=(()=>{const a=_cubo(0,0),b=_cubo(COLS-1,LINS-1);return[a[0]+b[0],a[1]+b[1],a[2]+b[2]];})();
+const gira=(c,r)=>{const p=_cubo(c,r);return _off(_EIXO[0]-p[0],_EIXO[1]-p[1],_EIXO[2]-p[2]);};
+
+/* O tabuleiro é o maior conjunto FECHADO sob a rotação: casa cujo espelho cairia
+   fora da grade simplesmente não existe. Em N=9 isso corta 4 casas da última
+   coluna — as que não tinham contraparte e só serviam para um lado. */
+const _naGrade=([c,r])=>c>=0&&c<COLS&&r>=0&&r<LINS;
+const NO_TAB=new Set();
+for(let _r=0;_r<LINS;_r++)for(let _c=0;_c<COLS;_c++)
+  if(_naGrade(gira(_c,_r))) NO_TAB.add(k(_c,_r));
+const noTab=(c,r)=>NO_TAB.has(k(c,r));
+
+const vizinhos=(c,r)=>((r&1)?[[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]]:[[-1,0],[1,0],[-1,-1],[0,-1],[-1,1],[0,1]])
+  .map(([a,b])=>[c+a,r+b]).filter(([a,b])=>noTab(a,b));
+
+/* a base do time 0 é escrita; a do time 1 é o espelho — nunca escrita duas vezes */
+const BASE=[[[0,N-1],[1,N-1]]];
+BASE.push(BASE[0].map(([c,r])=>gira(c,r)));
+const _BASE_K=new Set([...BASE[0],...BASE[1]].map(([c,r])=>k(c,r)));
+
+/* ---------- ESPINHA DAS ROTAS ----------
+   A espinha tem UMA casa por passo e é ela que indexa torre e onda: `frentes`
+   guarda um índice desta lista. Alargar a espinha mudaria o significado de todo
+   índice do motor — por isso quem alarga é o corredor, mais abaixo. */
+/* sobe pela coluna 0 e vira à direita na linha 0, parando antes da base inimiga */
+const L_TOPO=(()=>{const l=[];
+  for(let r=N-2;r>=1;r--) l.push([0,r]);
+  for(let c=1;c<=N-2;c++){ if(_BASE_K.has(k(c,0)))break; l.push([c,0]); }
+  return l;})();
+/* a rota de baixo NÃO é escrita: é o espelho da de cima, percorrida ao contrário */
+const L_BOT=L_TOPO.map(([c,r])=>gira(c,r)).reverse();
+
+/* O meio é espelho de si mesmo: metade escrita, e o resto espelhado.
+   Lado ÍMPAR tem uma casa fixa da rotação, que vira o centro exato da rota.
+   Lado PAR não tem: o eixo cai entre duas casas, e aí a rota é só as duas
+   metades emendadas. Sem esse ramo, `mapa=8` e `mapa=10` da bateria quebravam. */
+const L_MEIO=(()=>{
   const ocup=new Set([...BASE[0],...BASE[1],...L_TOPO,...L_BOT].map(([c,r])=>k(c,r)));
+  const fixo=(()=>{ for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+      const g=gira(c,r); if(g[0]===c&&g[1]===r&&noTab(c,r))return[c,r]; } return null; })();
+  const paraR=fixo?fixo[1]:(LINS-1)/2;      // até onde a metade escrita desce
   const[x1,y1]=centro(...BASE[0][1]),[x2,y2]=centro(...BASE[1][1]),L=Math.hypot(y2-y1,x2-x1);
-  const cam=[];
-  for(let r=LINS-2;r>=1;r--){
+  const meia=[];
+  for(let r=LINS-2;r>paraR;r--){
     let m=null,d0=1e9;
     for(let c=0;c<COLS;c++){
-      if(ocup.has(k(c,r)))continue;
+      if(!noTab(c,r)||ocup.has(k(c,r)))continue;
       const[x,y]=centro(c,r),d=Math.abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/L;
       if(d<d0){d0=d;m=[c,r];}
     }
     if(!m)continue;
-    const ant=cam.at(-1)||BASE[0][1];
+    const ant=meia.at(-1)||BASE[0][1];
     if(dist(...ant,...m)>1){
-      const p=vizinhos(...ant).find(v=>dist(...v,...m)===1&&!ocup.has(k(...v))&&!cam.some(z=>z[0]===v[0]&&z[1]===v[1]));
-      if(p)cam.push(p);
+      const p=vizinhos(...ant).find(v=>dist(...v,...m)===1&&!ocup.has(k(...v))&&!meia.some(z=>z[0]===v[0]&&z[1]===v[1]));
+      if(p)meia.push(p);
     }
-    cam.push(m);
+    meia.push(m);
   }
-  return cam;
+  const espelhada=meia.map(([c,r])=>gira(c,r)).reverse();
+  /* emenda: se as duas metades não se encostam, entra a casa que liga as duas —
+     escolhida entre as vizinhas comuns para não furar a rota nem invadir outra. */
+  const costura=[];
+  if(!fixo&&meia.length&&espelhada.length&&dist(...meia.at(-1),...espelhada[0])>1){
+    const p=vizinhos(...meia.at(-1)).find(v=>dist(...v,...espelhada[0])<=1&&!ocup.has(k(...v)));
+    if(p)costura.push(p);
+  }
+  return [...meia, ...(fixo?[fixo]:costura), ...espelhada];
 })();
 
 const ROTAS={topo:L_TOPO,meio:L_MEIO,baixo:L_BOT};
+
+/* ---------- CORREDOR: a rota com DUAS casas de largura ----------
+   A espinha indexa; o corredor é onde se anda. Cada passo ganha a casa vizinha
+   mais para dentro do mapa, e com isso suporte e atirador finalmente cabem na
+   mesma rota — que era a queixa registrada em docs/ESTADO.md.
+
+   Os estreitamentos são de propósito, não sobra: a ENTRADA DA BASE e a TRAVESSIA
+   DO RIO ficam com uma casa só, para que ainda exista lugar onde segurar avanço.
+   Como o corredor de baixo é o espelho do de cima, o estreitamento nasce em par. */
+const _espinhaK=new Set([...L_TOPO,...L_BOT,...L_MEIO].map(([c,r])=>k(c,r)));
+const _MEIO_TAB=[(COLS-1)/2,(LINS-1)/2];
+const _usados=new Set();
+const _paraDentro=p=>{
+  const cand=vizinhos(...p).filter(([a,b])=>
+    !_espinhaK.has(k(a,b))&&!_BASE_K.has(k(a,b))&&!_usados.has(k(a,b)));
+  if(!cand.length)return null;
+  return cand.sort((u,v)=>dist(...u,..._MEIO_TAB)-dist(...v,..._MEIO_TAB)||u[0]-v[0]||u[1]-v[1])[0];
+};
+/* passo 0 = boca da base · passo do meio = travessia do rio */
+const _estreito=(i,n)=>i===0||i===Math.floor(n/2);
+const _alarga=l=>{ const ex=[];
+  l.forEach((p,i)=>{ if(_estreito(i,l.length))return;
+    const v=_paraDentro(p); if(v){ ex.push(v); _usados.add(k(...v)); _usados.add(k(...gira(...v))); } });
+  return ex; };
+const EX_TOPO=_alarga(L_TOPO);
+const EX_BOT=EX_TOPO.map(([c,r])=>gira(c,r));
+/* no meio só a primeira metade é alargada; a outra é o espelho dela */
+const _EX_MEIO_A=_alarga(L_MEIO.slice(0,Math.floor(L_MEIO.length/2)));
+const EX_MEIO=[..._EX_MEIO_A,..._EX_MEIO_A.map(([c,r])=>gira(c,r))];
+
+const CORREDOR={topo:[...L_TOPO,...EX_TOPO],meio:[...L_MEIO,...EX_MEIO],baixo:[...L_BOT,...EX_BOT]};
 const LANE=new Map();
-Object.entries(ROTAS).forEach(([nome,l])=>l.forEach(([c,r])=>LANE.set(k(c,r),nome)));
+Object.entries(CORREDOR).forEach(([nome,l])=>l.forEach(([c,r])=>LANE.set(k(c,r),nome)));
+
+/* o rio é só pintura: separa as duas metades, não afeta movimento.
+   Metade escrita e metade espelhada, como todo o resto. */
+const RIO=(()=>{const meia=[];
+  for(let r=LINS-1;r>Math.floor((LINS-1)/2);r--){const c=1+Math.floor(r/2);if(noTab(c,r))meia.push([c,r]);}
+  return [...meia,...meia.map(([c,r])=>gira(c,r))];})();
 const RIO_S=new Set(RIO.map(([c,r])=>k(c,r)));
 const BASE_S=new Map();
 BASE.forEach((b,t)=>b.forEach(([c,r])=>BASE_S.set(k(c,r),t)));
 
-/* duas torres por lado, com um vão neutro no meio da rota para a onda disputar */
+/* duas torres por lado, medidas a partir da PRÓPRIA base e espelhadas por construção.
+   A versão anterior usava duas fórmulas diferentes para os dois lados e vinha com um
+   aviso para não "consertar" o desencontro: consertar sozinho jogava a vitória de quem
+   começa de 51,1% para 40,8%, porque o desencontro compensava a assimetria do mapa.
+   Com o mapa de fato simétrico a compensação perdeu a função e sai junto — o par
+   (mapa simétrico + torre simétrica) foi medido em conjunto, que era o que o aviso
+   pedia. Ver docs/patch-notes.md, v0.6. */
 const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
-  const n=l.length;
-  return[{rota:nome,i:1,t:0},{rota:nome,i:Math.max(2,Math.round(n*.28)),t:0},
-         {rota:nome,i:Math.min(n-3,Math.round(n*.72)),t:1},{rota:nome,i:n-2,t:1}];
+  const n=l.length, d=[1,Math.max(2,Math.round(n*.28))];
+  return [...d.map(i=>({rota:nome,i,t:0})), ...d.map(i=>({rota:nome,i:n-1-i,t:1}))];
 });
 /* Torre passou de 2 para 3 de vida em v0.5.1, quando o herói virou fonte de dano nela.
    Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
@@ -111,6 +209,12 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
 const VIDA_TORRE=3, VIDA_NEXUS=3;
 const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
 const REVIDE_TORRE=2;      /* e a torre cobra o pedágio de quem encostou */
+/* Meio do vão neutro. Com as torres espelhadas o meio é (a+b)/2 — inteiro só quando a
+   rota tem comprimento ímpar. Rota par não TEM hexágono central: a frente começa meio
+   passo para um dos lados, e esse meio passo é vantagem de siege para alguém.
+   Arredondar sempre para o mesmo lado empilha o viés nas três rotas; alternando, o que
+   a rota par tira de um time a próxima devolve. Em N=8: topo 12 e meio 8 são pares e se
+   cancelam, baixo 11 é ímpar e cai certo no meio. */
 const centroRota=nome=>{                       /* meio do vão neutro */
   const ts=TORRES_DEF.filter(t=>t.rota===nome);
   const a=Math.max(...ts.filter(t=>t.t===0).map(t=>t.i));
@@ -127,8 +231,67 @@ function limitaFrente(nome,f){
          Math.min(t1.length?Math.min(...t1):l.length-1, f));
 }
 
+/* ---------- OBJETIVO ÉPICO ---------- */
+/* UM poço só, e ele muda de morador: Dragão cedo, Barão tarde.
+   Dois poços foram tentados primeiro, um por metade do mapa, e a medição matou a ideia:
+   o time 1 ficava ao alcance 43% mais vezes que o time 0.
+
+   A casa do poço é MEDIDA, não deduzida, e essa distinção custou caro para aprender.
+   Distância no papel não prevê encontro no tabuleiro: [3,3] e [4,4] têm praticamente o
+   mesmo acesso teórico (19-19 contra 17-19), e rodando dão 45,4% e 48,0% de encontros
+   para o time 0; [4,4] e [5,5] têm acesso teórico idêntico e dão 48,0% contra 35,6%.
+   Nenhuma fórmula estática separa esses casos — herói não anda em linha reta.
+   Em N=8 a casa é [4,4]: a mais parelha das testadas e a que mais gera disputa (colada
+   numa rota, 43% mais encontros que [3,3]). Trocou N? A dedução abaixo dá um ponto de
+   partida razoável, mas rode `sim/` e meça antes de confiar nela. */
+const POCO=(N===8?[4,4]:(()=>{
+  const DE_ROTA_INI={topo:L_TOPO,meio:L_MEIO,adc:L_BOT,sup:L_BOT};
+  const inicio=t=>{
+    const p=[];
+    ["topo","meio","adc","sup"].forEach(papel=>{
+      const l=DE_ROTA_INI[papel], i=papel==="sup"?1:0;
+      p.push(t===0?l[i]:l.at(-1-i));
+    });
+    p.push(t===0?[1,LINS-3]:[COLS-3,1]);           // o Caçador, que começa fora de rota
+    return p;
+  };
+  const I=[inicio(0),inicio(1)];
+  const perto=(p,l)=>Math.min(...l.map(q=>dist(...p,...q)));
+  const acesso=(p,t)=>I[t].reduce((a,q)=>a+dist(...p,...q),0);
+  const cmp=(a,b)=>{ for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return a[i]-b[i]; return 0; };
+  let melhor=null;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    const p=[c,r];
+    if(!noTab(c,r))continue;
+    if(LANE.has(k(c,r))||BASE_S.has(k(c,r)))continue;
+    if(perto(p,BASE[0])<3||perto(p,BASE[1])<3)continue;          // não encosta em base
+    const nota=[Math.abs(acesso(p,0)-acesso(p,1)),               // justiça primeiro
+                Math.min(perto(p,L_TOPO),perto(p,L_MEIO),perto(p,L_BOT)),  // depois disputa
+                acesso(p,0)+acesso(p,1)];
+    if(!melhor||cmp(nota,melhor.nota)<0) melhor={p,nota};
+  }
+  return melhor?melhor.p:[(COLS-1)>>1,(LINS-1)>>1];
+})());
+const POCO_K=k(...POCO);
+
+/* Dragão compõe, Barão vira a mesa — a distinção do MOBA, ver docs/00-anatomia-moba.md.
+   `volta` é quantas rodadas depois de morrer o poço reabre. `revide` é o preço de
+   encostar, como na torre.
+   Ninguém tem limite de golpes por rodada: é o dado que você deixa de gastar em outro
+   lugar que mede o quanto você quer o objetivo — e é isso que abre a janela do roubo. */
+const EPICO={
+  dragao:{n:"Dragão", vida:3, revide:1, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:5, revide:2, volta:4, pre:"a Fúria do Barão"}
+};
+const R_DRAGAO=5, R_BARAO=8;          /* rodada em que cada morador passa a descer */
+const morador=r=>r>=R_BARAO?"barao":"dragao";
+const DRAGAO_PODER=1;      /* por Dragão levado, permanente e acumulativo */
+const BARAO_PODER=2;       /* enquanto a Fúria durar */
+const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
+
 /* ---------- ESTADO ---------- */
-let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],mover=[],lojaHeroi=null;
+let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
+    alvoNexus=null,mover=[],lojaHeroi=null;
 
 function novo(){
   J={
@@ -136,6 +299,7 @@ function novo(){
     times:[0,1].map(t=>({
       placas:0, prio:0, prioGuardada:0, ward:0,
       caca:null, cacaRevelada:null,
+      dragoes:0, baroes:0, barao:0, retomada:0,
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
@@ -145,7 +309,9 @@ function novo(){
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
-    nexus:[VIDA_NEXUS,VIDA_NEXUS], log:[]
+    /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
+    poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
+    nexus:[VIDA_NEXUS,VIDA_NEXUS], nexusBatido:[0,0], motivoFim:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
   const DE_ROTA={topo:"topo",meio:"meio",adc:"baixo",sup:"baixo"};
@@ -185,15 +351,57 @@ function faseOculta(){
 }
 /* perguntaCaca mora na seção FLUXO, lá embaixo — é a versão que roda. */
 
+/* ---------- RETOMADA ---------- */
+/* O freio da bola de neve. Ouro já tinha sido testado como freio e não moveu a agulha
+   (+10 por herói, medição registrada na v0.5.2) — dado move, porque dado é ação, e
+   ação é o que falta a quem está apanhando.
+   O perigo NÃO é medido só em torre caída. A primeira versão era, e a medição mostrou
+   por que não funcionava: torre só cai tarde, então a Retomada disparava na rodada 12,9
+   de uma partida que acaba na 15 — chegava depois da partida ter sido decidida.
+   Rota invadida é o mesmo perigo, várias rodadas antes: a onda passa do meio muito
+   antes da torre cair. Somando os dois, o freio chega a tempo de ser freio.
+   Some sozinha quando a diferença fecha: é rubber band, não presente permanente. */
+const torresPerdidas=t=>J.torres.filter(x=>x.t===t&&x.vida<=0).length;
+/* quantos hexágonos de onda inimiga estão do seu lado do meio, somando as três rotas.
+   Contar rota invadida como sim/não foi tentado e medido: as frentes oscilam em volta
+   do centro, então os dois times ficavam "invadidos" ao mesmo tempo e o sinal sumia
+   (disparava 39,4% × 36,6% dos turnos — rubber band que ajuda o líder não é freio).
+   O divisor é o meio do VÃO entre as torres, sem arredondar — e não `centroRota` nem o
+   meio da rota. Os dois foram medidos e os dois enviesam:
+     · `centroRota` arredonda, e o arredondamento dá ao time 0 um hexágono a mais de
+       vão para ser invadido: disparava 37,4% dos turnos para o time 0 contra 28,8%
+       para o time 1, socorrendo o líder;
+     · o meio da rota `(n-1)/2` não é o meio do vão: a frente nasce 2 unidades dentro
+       da metade do time 1, que ganhava Retomada de graça na rodada 1 (25,1% × 53,3%).
+   Sem arredondar, o vão fica com o mesmo alcance dos dois lados em todas as rotas
+   (topo 3 e 3, meio 1,5 e 1,5, baixo 2,5 e 2,5) e a conta nasce zerada. */
+const MEIO_VAO=Object.fromEntries(Object.keys(ROTAS).map(nome=>{
+  const ts=TORRES_DEF.filter(t=>t.rota===nome);
+  return[nome,(Math.max(...ts.filter(t=>t.t===0).map(t=>t.i))
+              +Math.min(...ts.filter(t=>t.t===1).map(t=>t.i)))/2];
+}));
+const invasao=t=>Object.keys(ROTAS).reduce((a,nome)=>{
+  const m=MEIO_VAO[nome], f=J.frentes[nome];
+  return a+Math.max(0, t===0 ? m-f : f-m);
+},0);
+const PESO_TORRE=2;                    /* torre caída vale por dois hexágonos de invasão */
+const perigo=t=>PESO_TORRE*torresPerdidas(t)+invasao(t);
+const atraso=t=>{ const d=perigo(t)-perigo(1-t); return d>=4?2:d>=2?1:0; };
+
 /* ---------- TURNO ---------- */
 function iniciaTurno(){
-  const extra=J.times[J.vez].herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
-  const m=1+Math.floor(Math.random()*6)+extra;
+  const t=J.vez, tm=J.times[t];
+  const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
+  tm.retomada=atraso(t);
+  const m=1+Math.floor(Math.random()*6)+extra+(tm.retomada>=2?1:0);
   J.mov={v:m,rest:m};
   J.dados=[0,1,2].map(()=>({v:1+Math.floor(Math.random()*6),usado:0}));
+  if(tm.retomada>=1) J.dados.push({v:1+Math.floor(Math.random()*6),usado:0,extra:1,retom:1});
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
-  const t=J.vez;
   reg(t?"c":"a",`${NOMES[t]} rola — movimento ${m} · ações ${J.dados.map(d=>d.v).join(" · ")}`);
+  if(tm.retomada>=1)
+    reg("b",`RETOMADA — ${NOMES[t]} está ${tm.retomada} ${tm.retomada===1?"torre":"torres"} atrás`
+           +`: +1 dado de ação${tm.retomada>=2?" e +1 no Dado Mestre":""}`);
   pinta();
 }
 function encerraTurno(){
@@ -227,12 +435,17 @@ function revelaCaca(t){
 
 /* ---------- FIM DE RODADA ---------- */
 function fimDaRodada(){
+  /* a Fúria do Barão empurra as três rotas sozinha, mesmo sem herói nenhum nelas.
+     É o que faz do Barão um relógio: dois times parados param de empatar. */
+  const furia=J.times.map(tm=>tm.barao>0?1:0);
   Object.entries(ROTAS).forEach(([nome,l])=>{     // ondas: a torre viva trava o avanço
     const n0=vivos(0).filter(h=>LANE.get(k(...h.pos))===nome).length;
     const n1=vivos(1).filter(h=>LANE.get(k(...h.pos))===nome).length;
-    let f=J.frentes[nome];
-    if(n0>n1) f++; else if(n1>n0) f--; else return;
-    J.frentes[nome]=limitaFrente(nome,f);
+    let d=0;
+    if(n0>n1) d=1; else if(n1>n0) d=-1;
+    d+=furia[0]-furia[1];
+    if(!d) return;
+    J.frentes[nome]=limitaFrente(nome,J.frentes[nome]+d);
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{     // cerco: só as torres do lado pressionado
     const f=J.frentes[nome];
@@ -248,7 +461,16 @@ function fimDaRodada(){
     if(J.torres.some(x=>x.rota===nome&&x.t===lado&&x.vida>0)) return;
     J.nexus[lado]--;
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
-    if(J.nexus[lado]<=0) J.fim=1-lado;
+    if(J.nexus[lado]<=0){ J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído.`; }
+  });
+  [0,1].forEach(t=>{                              // a Fúria expira e devolve o Poder
+    const tm=J.times[t];
+    if(!tm.barao)return;
+    tm.barao--;
+    if(!tm.barao){
+      tm.herois.forEach(h=>h.extraPoder-=BARAO_PODER);
+      reg("b",`a Fúria do Barão abandona o ${NOMES[t]}`);
+    }
   });
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
@@ -275,6 +497,7 @@ function fimDaRodada(){
   });
   desempilha();
   J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
+  J.nexusBatido=[0,0];                            // e o Nexus também, um golpe por rodada
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
   if(J.fim!==null){ pinta(); return telaFim(); }
   /* a iniciativa alterna. Antes `primeiro` era 0 e nunca mudava: o mesmo time
@@ -282,6 +505,13 @@ function fimDaRodada(){
      Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
   J.primeiro=1-J.primeiro;
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
+  const p=J.poco;                                 // o poço reabre, com o morador da vez
+  if(p.vida<=0&&J.rodada>=p.volta){
+    p.id=morador(J.rodada);
+    const d=EPICO[p.id];
+    p.vidaMax=d.vida; p.vida=d.vida;
+    reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
+  }
   pinta(); faseOculta();
 }
 
@@ -411,6 +641,15 @@ function rerola(){
 const NS="http://www.w3.org/2000/svg";
 const el=(t,a={})=>{const e=document.createElementNS(NS,t);for(const q in a)e.setAttribute(q,a[q]);return e;};
 const svg=document.getElementById("mapa");
+/* O viewBox sai da geometria, não de número escrito no HTML: trocar `N` tem que
+   redesenhar o mapa inteiro sem ninguém lembrar de ajustar o SVG à mão. Mede só
+   as casas que existem — a borda sem par não entra e não vira margem morta. */
+(()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){ if(!noTab(c,r))continue;
+    const[x,y]=centro(c,r); x0=Math.min(x0,x-R);y0=Math.min(y0,y-R);x1=Math.max(x1,x+R);y1=Math.max(y1,y+R); }
+  const m=6;
+  svg.setAttribute("viewBox",`${(x0-m).toFixed(1)} ${(y0-m).toFixed(1)} ${(x1-x0+2*m).toFixed(1)} ${(y1-y0+2*m).toFixed(1)}`);
+})();
 const palco=document.getElementById("palco");
 const G=id=>document.getElementById(id);
 function vibra(p){ if(navigator.vibrate) try{navigator.vibrate(p);}catch(e){} }
@@ -564,11 +803,11 @@ function limpaModo(){ modo=null; habAtual=null; confirmar=null; ativo=null; habS
 function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
-  mover=[]; alvos=[]; alvosTorre=[];
+  mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+(ehAgil(selHeroi)?1:0);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(em(c,r))continue;
+      if(!noTab(c,r)||em(c,r))continue;   // casa fora do tabuleiro não é destino
       const d=dist(...selHeroi.pos,c,r);
       if(d>0&&d<=teto) mover.push([c,r]);
     }
@@ -584,18 +823,52 @@ function calcula(){
       return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
     });
     alvosTorre=torresAoAlcance(h,hb,alc);
+    alvosEpico=epicosAoAlcance(h,hb,alc);
+    alvoNexus=nexusAoAlcance(h,hb,alc);
   }
 }
-/* Uma torre só é alvo se a SUA onda já está encostada nela. Sem isso, um assassino
-   sozinho derrubaria a base pelas costas — no MOBA quem derruba torre é a onda, o
-   herói só acelera. Uma torre aguenta um golpe de herói por rodada. */
+/* O épico não tem dono, então não tem a trava da onda que a torre tem: qualquer um
+   bate, a qualquer hora, quantas vezes quiser. É de propósito — o último golpe leva
+   o prêmio inteiro, e é essa janela que transforma o objetivo em briga. */
+function epicosAoAlcance(h,hb,alc){
+  if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
+  if(J.poco.vida<=0) return [];
+  return (hb.ef.semAlcance||dist(...h.pos,...POCO)<=alc) ? [J.poco] : [];
+}
+/* A torre EXPOSTA de uma rota: a mais avançada que ainda está de pé. Enquanto
+   ela vive, a de trás não aceita golpe — senão dava para passar por fora da
+   linha de frente e bater direto na porta da base. Time 0 avança para índice
+   maior, time 1 para índice menor: por isso os dois extremos. */
+function torreExposta(rota,t){
+  const vivas=J.torres.filter(x=>x.rota===rota&&x.t===t&&x.vida>0);
+  if(!vivas.length) return null;
+  return vivas.reduce((a,b)=>((t===0?b.i>a.i:b.i<a.i)?b:a));
+}
+/* Até a v0.6 havia aqui `if(J.frentes[tr.rota]!==tr.i) return false;` — a torre
+   só aceitava golpe de herói com a ONDA em cima dela. Na prática o herói nunca
+   cercava: esperava o creep chegar. Agora quem decide é a posição do herói, e a
+   onda voltou a ser o que devia ser — pressão constante, não permissão. */
 function torresAoAlcance(h,hb,alc){
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
   return J.torres.filter(tr=>{
     if(tr.t===h.t||tr.vida<=0||tr.batida) return false;
-    if(J.frentes[tr.rota]!==tr.i) return false;
+    if(torreExposta(tr.rota,tr.t)!==tr) return false;
     return hb.ef.semAlcance||dist(...h.pos,...ROTAS[tr.rota][tr.i])<=alc;
   });
+}
+
+/* O Nexus só fica exposto quando uma rota INTEIRA daquele lado cai — as duas
+   torres da rota no chão. É o que separa "invadir" de "ganhar por atalho":
+   sem isso um assassino veloz correria para a base na rodada 2. */
+const rotaAberta=t=>Object.keys(ROTAS).some(nome=>
+  !J.torres.some(x=>x.rota===nome&&x.t===t&&x.vida>0));
+function nexusAoAlcance(h,hb,alc){
+  if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return null;
+  const lado=1-h.t;
+  if(J.nexus[lado]<=0||J.nexusBatido[lado]) return null;
+  if(!rotaAberta(lado)) return null;
+  const d=Math.min(...BASE[lado].map(([c,r])=>dist(...h.pos,c,r)));
+  return (hb.ef.semAlcance||d<=alc) ? lado : null;
 }
 
 /* dado que será gasto: o escolhido à mão, senão o menor que atende */
@@ -610,7 +883,7 @@ function dadoPara(hb){
 }
 
 function escolheHeroi(h){
-  if(J.fase!=="jogando")return;
+  if(cliqueBloqueado||J.fase!=="jogando")return;
   if(modo==="mirar"&&alvos.includes(h)) return confirmaHab(h);
   if(h.t!==J.vez||h.morto){ // inspeciona o adversário sem mudar de estado
     abreCarta(h); return;
@@ -637,7 +910,7 @@ function iniciaHab(i){
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
-  if(!alvos.length&&!alvosTorre.length){
+  if(!alvos.length&&!alvosTorre.length&&!alvosEpico.length&&alvoNexus===null){
     limpaModo(); pinta();
     return toast(hb.alvo==="al"?"nenhum aliado no alcance":"ninguém no alcance","morte");
   }
@@ -685,6 +958,172 @@ function atacaTorre(tr){
   calcula(); pinta();
 }
 
+/* O Nexus, pela mesma porta da torre: dano fixo de 1, um golpe por rodada, e sem
+   revide — quem chegou até aqui já pagou o pedágio das duas torres da rota.
+   Até a v0.6 não existia caminho nenhum: só a onda derrubava Nexus, e a partida
+   terminava sem que ninguém desse o golpe final. */
+function atacaNexus(lado){
+  if(!selHeroi||habAtual===null)return;
+  const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
+  if(di===null)return;
+  J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(18);
+
+  J.nexus[lado]--; J.nexusBatido[lado]=1;
+  reg(J.vez?"c":"a",`${h.n} golpeia o NEXUS ${NOMES[lado]} com ${hb.n} `+
+      `(${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS})`);
+  fx(BASE[lado][0],"-1","dano");
+
+  if(J.nexus[lado]<=0){
+    J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído por ${h.n}.`;
+    reg("b",`NEXUS ${NOMES[lado]} DESTRUÍDO`);
+    toast("NEXUS DESTRUÍDO","gank"); vibra([60,80,60]);
+  }else{ toast("NEXUS EM "+J.nexus[lado],"gank"); }
+  modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
+  calcula(); pinta();
+}
+
+/* mesma porta da torre: dano fixo, sem armadura e sem status — mas sem a trava de
+   um golpe por rodada, e com o prêmio indo para quem der o último. */
+function atacaEpico(ep){
+  if(!selHeroi||habAtual===null)return;
+  const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
+  if(di===null)return;
+  const d=EPICO[ep.id];
+  J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
+
+  ep.vida--;
+  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n} com ${hb.n} (${Math.max(0,ep.vida)}/${ep.vidaMax})`);
+  fx(POCO,"-1","dano");
+
+  if(ep.vida<=0) levaEpico(ep,h.t);
+  else{
+    /* o revide nunca mata, pelo mesmo motivo da torre: `mata()` precisa de autor
+       para creditar o ouro, e monstro neutro não é autor. */
+    const levou=Math.min(d.revide,h.vida-1);
+    if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
+      fx(h.pos,-levou,"dano"); tremer(h); }
+  }
+  modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
+  calcula(); pinta();
+}
+/* Dragão compõe para sempre, Barão queima em duas rodadas. O Poder entra por
+   `extraPoder` — nunca por poderTotal, que é const e mata o script inteiro. */
+function levaEpico(ep,t){
+  const tm=J.times[t];
+  ep.volta=J.rodada+EPICO[ep.id].volta;
+  if(ep.id==="dragao"){
+    tm.dragoes++;
+    tm.herois.forEach(h=>h.extraPoder+=DRAGAO_PODER);
+    reg("b",`${NOMES[t]} levou o Dragão — Herança do Dragão ${tm.dragoes}`
+           +` (+${DRAGAO_PODER} de Poder no time, para sempre)`);
+  }else{
+    if(!tm.barao) tm.herois.forEach(h=>h.extraPoder+=BARAO_PODER);
+    tm.barao=BARAO_RODADAS; tm.baroes++;
+    reg("b",`${NOMES[t]} levou o Barão — Fúria por ${BARAO_RODADAS} rodadas`
+           +` (+${BARAO_PODER} de Poder e as ondas avançam sozinhas)`);
+  }
+  toast(EPICO[ep.id].n.toUpperCase()+" É DO "+NOMES[t],"gank"); vibra([40,60,40,60,80]);
+}
+
+/* ══════════════════ ARRASTAR PARA MOVER ══════════════════ */
+/* Pegar o herói, arrastar e soltar na casa. O caminho antigo continua inteiro —
+   tocar, abrir o comando, tocar MOVER, tocar a casa: o arrasto só nasce depois que
+   o dedo anda LIMIAR px, e antes disso tudo é toque normal.
+
+   Os eventos ficam no <svg>, não na peça. `pinta()` reconstrói o mapa inteiro toda
+   vez, e um handler preso à peça morreria junto com ela no meio do arrasto —
+   inclusive o `setPointerCapture`, que é o que garante receber o `pointerup` mesmo
+   se o dedo sair de cima do elemento. */
+const LIMIAR_ARRASTO=7;
+let arr=null, cliqueBloqueado=false;
+
+function paraSVG(ev){
+  const ctm=svg.getScreenCTM(); if(!ctm) return null;
+  const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY;
+  const q=p.matrixTransform(ctm.inverse());
+  return [q.x,q.y];
+}
+/* casa sob o dedo: a mais próxima em coordenada de mapa, com folga de um raio.
+   Folga generosa é de propósito — dedo não é cursor. */
+function hexSob(ev){
+  const p=paraSVG(ev); if(!p) return null;
+  let melhor=null,d0=Infinity;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    if(!noTab(c,r))continue;             // o dedo não pode mirar casa que não existe
+    const[x,y]=centro(c,r), d=(x-p[0])**2+(y-p[1])**2;
+    if(d<d0){ d0=d; melhor=[c,r]; }
+  }
+  return d0<=(R*1.1)**2 ? melhor : null;
+}
+const podeArrastar=h=>h&&!h.morto&&h.t===J.vez&&J.fase==="jogando"
+  &&!h.preso&&J.mov.rest>0&&!sheetAberto;
+
+function heroiDaPeca(no){
+  const d=no&&no.getAttribute("data-peca"); if(!d) return null;
+  const i=d.indexOf("-");
+  return J.times[+d.slice(0,i)].herois.find(x=>x.id===d.slice(i+1));
+}
+function marcaArrasto(ev,destino){
+  svg.querySelectorAll(".hx.sob").forEach(e=>e.classList.remove("sob"));
+  if(destino){
+    const e=svg.querySelector(`[data-hex="${k(...destino)}"]`);
+    if(e) e.classList.add("sob");
+  }
+  const g=svg.querySelector(`[data-peca="${arr.h.t}-${arr.h.id}"]`);
+  const p=paraSVG(ev); if(!g||!p) return;
+  const[x,y]=centro(...arr.h.pos);
+  g.setAttribute("transform",`translate(${(p[0]-x).toFixed(1)} ${(p[1]-y).toFixed(1)})`);
+  g.classList.add("arrastada");
+}
+svg.addEventListener("pointerdown",ev=>{
+  const alvo=ev.target.closest?ev.target.closest(".peca"):null;
+  const h=heroiDaPeca(alvo);
+  if(!podeArrastar(h))return;
+  arr={h,x0:ev.clientX,y0:ev.clientY,pid:ev.pointerId,ativo:false,destino:null};
+});
+svg.addEventListener("pointermove",ev=>{
+  if(!arr||ev.pointerId!==arr.pid)return;
+  if(!arr.ativo){
+    if(Math.hypot(ev.clientX-arr.x0,ev.clientY-arr.y0)<LIMIAR_ARRASTO)return;
+    arr.ativo=true;
+    try{ svg.setPointerCapture(arr.pid); }catch(e){}
+    /* NÃO chamar pinta() aqui. Selecionar o herói faz o painel de comando crescer,
+       o palco encolher e o mapa inteiro se redimensionar — no meio do gesto, com o
+       dedo encostado. Medido: a casa sob o dedo mudava de [0,5] para [0,7] só por
+       causa disso. O alcance é calculado sem tocar na tela e as casas são realçadas
+       na marra, direto nos polígonos que já estão no DOM. */
+    const selAntes=selHeroi, modoAntes=modo;
+    selHeroi=arr.h; modo="mover"; calcula();
+    arr.alcance=mover.slice();
+    selHeroi=selAntes; modo=modoAntes; calcula();
+    const s=new Set(arr.alcance.map(p=>k(...p)));
+    svg.querySelectorAll(".hx").forEach(e=>
+      e.classList.toggle("mover",s.has(e.getAttribute("data-hex"))));
+    svg.classList.add("arrastando"); vibra(8);
+  }
+  ev.preventDefault();
+  const alvo=hexSob(ev);
+  arr.destino = alvo&&arr.alcance.some(([c,r])=>c===alvo[0]&&r===alvo[1]) ? alvo : null;
+  marcaArrasto(ev,arr.destino);
+});
+function soltaArrasto(ev){
+  if(!arr||ev.pointerId!==arr.pid)return;
+  const a=arr; arr=null;
+  try{ svg.releasePointerCapture(a.pid); }catch(e){}
+  svg.classList.remove("arrastando");
+  svg.querySelectorAll(".hx.sob").forEach(e=>e.classList.remove("sob"));
+  if(!a.ativo)return;                       /* foi toque simples: deixa o clique seguir */
+  /* o navegador ainda dispara um `click` depois do arrasto; sem esta trava ele
+     abriria o comando do herói ou moveria de novo por cima do que acabou de sair */
+  cliqueBloqueado=true; setTimeout(()=>{cliqueBloqueado=false;},350);
+  /* só agora o herói é selecionado de fato: é o `pinta()` do fim que abre o painel,
+     e aí a mudança de layout já não atrapalha gesto nenhum */
+  if(a.destino){ limpaModo(); selHeroi=a.h; moveAte(...a.destino); }
+  else pinta();
+}
+svg.addEventListener("pointerup",soltaArrasto);
+svg.addEventListener("pointercancel",soltaArrasto);
+
 const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
@@ -695,22 +1134,37 @@ moveAte=function(c,r){
 };
 
 /* ══════════════════ MAPA ══════════════════ */
+/* O dedo não mira no desenho, mira no hexágono. A peça do herói é desenhada com raio
+   9,6 e a torre é um quadrado de 12 — no aparelho isso vira alvo de 25px e de 22px,
+   contra os 44px de referência (e de 12px num celular de 667 de altura, medido).
+   Este círculo invisível leva o alvo até a borda do hexágono sem mudar nada do desenho.
+   15,5 é o teto: os centros vizinhos ficam a sqrt(3)*R ≈ 32,9 um do outro, então
+   raio 16,45 já encostaria no vizinho e roubaria o toque dele. */
+const R_TOQUE=15.5;
+const alvoDeToque=(g,x,y,aoTocar)=>{
+  const c=el("circle",{cx:x,cy:y,r:R_TOQUE,class:"toque"});
+  if(aoTocar) c.onclick=aoTocar;
+  g.appendChild(c);
+  return c;
+};
 function desenhaMapa(){
   svg.textContent="";
   const gH=el("g"),gE=el("g"),gM=el("g"),gP=el("g");
   const moverS=new Set(mover.map(p=>k(...p)));
 
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
     let cls="hx ";
     if(BASE_S.has(k(c,r)))cls+="base"+BASE_S.get(k(c,r));
+    else if(k(c,r)===POCO_K)cls+="poco";
     else if(LANE.has(k(c,r)))cls+="rota";
     else if(RIO_S.has(k(c,r)))cls+="rio";
     else cls+="selva";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
-    const hx=el("polygon",{points:p.join(" "),class:cls});
-    if(moverS.has(k(c,r))) hx.onclick=()=>{vibra(9);moveAte(c,r);};
+    const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
+    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
   [[BASE[0][0],L_TOPO,BASE[1][0]],[BASE[0][1],L_MEIO,BASE[1][1]],[BASE[0][1],L_BOT,BASE[1][1]]]
@@ -726,15 +1180,49 @@ function desenhaMapa(){
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
     if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);});
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
     const[x,y]=centro(...l[Math.max(0,Math.min(l.length-1,J.frentes[nome]))]);
     gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"frente"}));
   });
+
+  /* o poço: retrato do morador e a vida por baixo. Vazio, ele mostra a rodada em
+     que o próximo desce — o relógio da partida só vale se estiver visível. */
+  (()=>{
+    const ep=J.poco, [x,y]=centro(...POCO);
+    if(ep.vida<=0){
+      const g=el("g",{class:"poco-vazio"});
+      g.appendChild(el("circle",{cx:x,cy:y,r:9}));
+      const t=el("text",{x:x,y:y+3});t.textContent="R"+ep.volta;g.appendChild(t);
+      return gM.appendChild(g);
+    }
+    const mirando=alvosEpico.includes(ep);
+    const g=el("g",{class:"epico"+(mirando?" alvo":""),role:"img"});
+    g.setAttribute("aria-label",`${EPICO[ep.id].n}, ${ep.vida} de vida`);
+    if(mirando) g.appendChild(el("circle",{cx:x,cy:y,r:13.4,class:"mira-torre"}));
+    g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"fundo"}));
+    const cid="cl-poco";
+    const cp=el("clipPath",{id:cid});
+    cp.appendChild(el("circle",{cx:x,cy:y,r:9}));
+    const ip=el("image",{x:x-9,y:y-9,width:18,height:18,
+      "clip-path":`url(#${cid})`,preserveAspectRatio:"xMidYMid slice"});
+    ip.setAttribute("href",RETRATO_EPICO(ep.id));
+    g.append(cp,ip);
+    g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
+    const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
+    if(mirando){ g.onclick=()=>{vibra(10);atacaEpico(ep);}; alvoDeToque(g,x,y); }
+    gM.appendChild(g);
+  })();
   [0,1].forEach(t=>{
     const[x,y]=centro(...BASE[t][0]);
-    gM.appendChild(el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t}));
+    const mirando=alvoNexus===t;
+    if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
+    const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
+    if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
+    gM.appendChild(nx);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);});
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -752,6 +1240,7 @@ function desenhaMapa(){
     const g=el("g",{class:"peca t"+h.t+(ehSel?" sel":"")+(ehAlvo?" alvo":"")+(foco?" foco":""),
       tabindex:"0",role:"button","data-peca":h.t+"-"+h.id});
     g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida`);
+    alvoDeToque(g,x,y);                       // primeiro filho: o alvo vale o hexágono
     if(ehAlvo) g.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira"}));
     g.appendChild(el("circle",{cx:x,cy:y,r:9.6,class:"fundo"}));
     const cid="cl-"+h.t+h.id;
@@ -806,7 +1295,7 @@ function abreCarta(h){
           <span class="f">Força ${hb.f}${hb.f===6?"":"+"}</span></div>`).join("")}
       </div>
       ${h.itens.length?`<div class="itens-g">${h.itens.map(i=>
-        `<figure><img src="${ARTE_ITEM[i]}" alt=""><figcaption>${ITEM[i].n}</figcaption></figure>`).join("")}</div>`:""}
+        `<figure><img src="${RETRATO_ITEM(i)}" alt=""><figcaption>${ITEM[i].n}</figcaption></figure>`).join("")}</div>`:""}
       <div class="rodape">${ehAgil(h)?"ágil · 1ª casa grátis · ":""}${CATALOGO[h.id].patamar?"escala por ouro · ":""}ouro ${h.ouro}</div>
     </div>`);
 }
@@ -834,7 +1323,7 @@ function fichaHTML(h,meu){
         <span>⚔ <b>${poderTotal(h)}</b></span><span>⛨ <b>${armTotal(h)}</b></span>
         <span>◈ <b>${h.ouro}</b></span></div>
       ${h.itens.length?`<div class="itens">${h.itens.map(i=>
-        `<img src="${ARTE_ITEM[i]}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
+        `<img src="${RETRATO_ITEM(i)}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
       ${selos?`<div class="itens">${selos}</div>`:""}
     </div></div>`;
 }
@@ -880,7 +1369,7 @@ function abreLoja(){
     const preco=Math.max(0,it.o-descontos[t]);
     const tem=quem.itens.includes(it.id), cheio=quem.itens.length>=(quem.slots||3), pode=quem.ouro>=preco&&!tem&&!cheio;
     return `<button class="itC${pode?"":" off"}${tem?" tem":""}" data-i="${it.id}" ${pode?"":"disabled"}>
-      <img src="${ARTE_ITEM[it.id]}" alt=""><span class="iN">${it.n}</span>
+      <img src="${RETRATO_ITEM(it.id)}" alt=""><span class="iN">${it.n}</span>
       <span class="iD">${it.d}</span>
       <span class="iO">${tem?"comprado":cheio?(quem.slots||3)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
   }).join("");
@@ -931,8 +1420,19 @@ function abreManual(){
       <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada.</p>
       <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
+    <section><h4>O Poço — Dragão e Barão</h4>
+      <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
+      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>3 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
+      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>5 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
+      <p>Bater no poço é como bater na torre — mira vermelha, um toque, 1 de dano — só que <b>sem limite por rodada</b> e <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+    <section><h4>Retomada</h4>
+      <p>O jogo conta o quanto você está apanhando: cada <b>torre sua caída</b> vale 2, cada <b>hexágono de onda inimiga do seu lado</b> do vão vale 1.</p>
+      <p>Se a sua conta passar a do adversário em <b>2</b>, você rola <b>+1 dado de ação</b>. Em <b>4</b>, também ganha <b>+1 no Dado Mestre</b>.</p>
+      <p>É automático e <b>some sozinho</b> quando a diferença fecha. Estar atrás não devolve a partida — devolve <b>ação</b> para brigar por ela.</p></section>
     <section><h4>No aparelho</h4>
-      <p>Toque num herói seu → abre o <b>comando</b> dele. De lá você escolhe <b>mover</b> ou uma <b>habilidade</b>.</p>
+      <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
+      <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
+      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: Força mínima, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
       <p>O dado é escolhido sozinho: o menor que dá conta. Quer gastar um específico? Toque nele antes.</p>
       <p>O <b>✕</b> cancela sempre. Toque num herói inimigo para ver a carta dele.</p></section>
   </div>`);
@@ -1007,6 +1507,9 @@ function pinta(){
     `<span>◈ <b>${ouro}</b></span>`+
     `<span class="${tm.placas?"on":""}">⬢ <b>${tm.placas}</b></span>`+
     (tm.prio?`<span class="on">⚡ <b>${tm.prio}</b></span>`:"")+
+    (tm.dragoes?`<span class="on">herança <b>${tm.dragoes}</b></span>`:"")+
+    (tm.barao?`<span class="on">fúria <b>${tm.barao}</b></span>`:"")+
+    (tm.retomada?`<span class="on">retomada${tm.retomada>1?" <b>2</b>":""}</span>`:"")+
     (cacaTxt?`<span class="on">${cacaTxt}</span>`:"");
 
   const dm=G("ddm");
@@ -1028,6 +1531,41 @@ function pinta(){
     if(J.dados[i].usado||J.fase!=="jogando")return;
     dadoSel=dadoSel===i?null:i; vibra(8); pinta();
   });
+
+  /* Placar de estruturas. Os números já existiam DENTRO da torre e do Nexus no
+     mapa, com ~6px de altura em tela — ninguém lia. Aqui em cima ficam por
+     extenso, por rota, com o lado de quem defende, e a torre exposta (a que
+     aceita golpe agora) marcada. Assim dá para decidir onde cercar sem
+     precisar caçar losango no tabuleiro. */
+  (()=>{
+    const est=G("estruturas");
+    if(!est) return;
+    if(J.fase!=="jogando"){ est.innerHTML=""; return; }
+    const pip=(v,max)=>`<span class="pips">${
+      Array.from({length:max},(_,i)=>`<i class="${i<v?"on":""}"></i>`).join("")}</span>`;
+    const lado=t=>{
+      const rotas=Object.keys(ROTAS).map(nome=>{
+        const ts=J.torres.filter(x=>x.rota===nome&&x.t===t);
+        const viva=torreExposta(nome,t);
+        const total=ts.reduce((a,x)=>a+Math.max(0,x.vida),0);
+        const caiu=ts.every(x=>x.vida<=0);
+        return `<div class="er${caiu?" aberta":""}">
+          <b>${nome.slice(0,3).toUpperCase()}</b>
+          ${caiu?'<span class="aviso">rota aberta</span>'
+                :pip(total,ts.length*VIDA_TORRE)+(viva&&viva.batida?'<span class="ja">já batida</span>':"")}
+        </div>`;
+      }).join("");
+      const nx=Math.max(0,J.nexus[t]);
+      return `<div class="ecol t${t}">
+        <div class="ecab">${NOMES[t]}${t===J.vez?" <i>· sua vez</i>":""}</div>
+        ${rotas}
+        <div class="er nex${rotaAberta(t)?" exposto":""}">
+          <b>NEXUS</b>${pip(nx,VIDA_NEXUS)}
+          ${rotaAberta(t)?'<span class="aviso">exposto</span>':""}
+        </div></div>`;
+    };
+    est.innerHTML=lado(0)+lado(1);
+  })();
 
   /* painel de comando — a peça central da correção de jogabilidade */
   const cmd=G("comando");
@@ -1053,7 +1591,7 @@ function pinta(){
       ${h.habs.map((hb,i)=>{
         const di=dadoPara(hb), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
-        return `<button class="opc${emMira?" on":""}${pode?" pode":""}" id="hab${i}" ${pode?"":"disabled"}>
+        return `<button class="opc${emMira?" on":""}${pode?" pode":" naoPode"}" id="hab${i}">
           <span class="ico">${svgIco(iconeDe(hb))}</span>
           <span class="txt"><span class="t1">${hb.n}${confirmar===i?" — confirmar":""}</span>
             <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
@@ -1063,7 +1601,11 @@ function pinta(){
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
     G("cmdMover").onclick=iniciaMover;
-    h.habs.forEach((_,i)=>{ const b=G("hab"+i); if(b) b.onclick=()=>iniciaHab(i); });
+    h.habs.forEach((_,i)=>{
+      const b=G("hab"+i); if(!b)return;
+      b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
+      toqueLongo(b,()=>fichaHab(h,i));      // segurar explica, mesmo apagada
+    });
   }else{
     cmd.innerHTML=`<div class="vaziomsg">${texto()}</div>`;
   }
@@ -1072,6 +1614,9 @@ function pinta(){
   G("btPlaca").disabled = tm.placas<1||!dLivre;
   G("btRerol").disabled = tm.placas<2||!dLivre;
   G("btConv").disabled = !dLivre;
+  /* linha inteira some quando nenhum dos três serve — devolve altura ao mapa */
+  G("extraBts").classList.toggle("ocioso",
+    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled);
   G("btLoja").classList.toggle("destaque",tm.herois.some(h=>h.morto||naBase(h)));
   G("btLoja").disabled=J.fase!=="jogando";
   G("btTime").innerHTML="Time"+(tm.prio?` <span class="bad">⚡${tm.prio}</span>`:"");
@@ -1081,6 +1626,9 @@ function pinta(){
   G("btCartas").disabled=J.fase!=="jogando";
   G("btFim").disabled = J.fase!=="jogando";
 
+  /* só desbota se realmente sobrar conteúdo para rolar */
+  const cmdEl=G("comando");
+  cmdEl.classList.toggle("rolando",cmdEl.scrollHeight>cmdEl.clientHeight+1);
   if(sheetAberto==="Time") abreTime();
   desenhaMapa();
   aplicaFoco();
@@ -1131,12 +1679,76 @@ iniciaTurno=function(){
 /* buffs do deck duram até o fim da rodada */
 const _fimDaRodada=fimDaRodada;
 fimDaRodada=function(){ limpaBuffs(); _fimDaRodada(); };
+/* A tela existia e só dizia quem venceu. Agora mostra o placar dos dois lados e o
+   motivo — que hoje é sempre o Nexus, mas `J.motivoFim` já está plumbado para o dia
+   em que o limite de rodadas entrar (ver docs/REVISAO-EXTERNA.md, item 3.3). */
 function telaFim(){
-  abre(`<span class="et">Fim de partida</span><h2 class="t${J.fim}">${NOMES[J.fim]} venceu</h2>
-    <p>Nexus ${NOMES[1-J.fim]} destruído na rodada ${J.rodada}.</p>
+  const v=J.fim, p=1-v;
+  const linha=(rot,a,b)=>`<tr><th>${rot}</th>
+    <td class="${a>=b?"mais":""}">${a}</td><td class="${b>=a?"mais":""}">${b}</td></tr>`;
+  abre(`<span class="et">Fim de partida · rodada ${J.rodada}</span>
+    <h2 class="t${v}">${NOMES[v]} venceu</h2>
+    <p>${J.motivoFim||`Nexus ${NOMES[p]} destruído.`}</p>
+    <table class="placar">
+      <thead><tr><th></th><th class="t${v}">${NOMES[v]}</th><th class="t${p}">${NOMES[p]}</th></tr></thead>
+      <tbody>
+        ${linha("Nexus",Math.max(0,J.nexus[v]),Math.max(0,J.nexus[p]))}
+        ${linha("Torres derrubadas",torresDerrubadas(v),torresDerrubadas(p))}
+        ${linha("Ouro acumulado",ouroDoTime(v),ouroDoTime(p))}
+      </tbody>
+    </table>
     <button class="grande" id="ok">Nova partida</button>`,()=>{fecha();partida(false);});
   vibra([60,80,60,80,120]);
 }
+/* ══════════════════ FICHA DA HABILIDADE ══════════════════ */
+/* Meio segundo de toque abre a regra por extenso e o resultado estimado PARA CADA
+   DADO QUE ESTÁ NA MESA nesta rodada — que é a pergunta real do jogador ("com o 4
+   que eu tenho, isso mata?"). Vale também para habilidade sem dado disponível: é
+   justamente quando mais se quer saber o que ela faria. */
+function toqueLongo(elem,aoSegurar){
+  let t=null,x0=0,y0=0;
+  const cancela=()=>{ if(t){clearTimeout(t);t=null;} };
+  elem.addEventListener("pointerdown",e=>{
+    x0=e.clientX; y0=e.clientY;
+    t=setTimeout(()=>{ t=null; cliqueBloqueado=true;
+      setTimeout(()=>{cliqueBloqueado=false;},350);
+      vibra(18); aoSegurar(); },460);
+  });
+  elem.addEventListener("pointermove",e=>{
+    if(t&&Math.hypot(e.clientX-x0,e.clientY-y0)>10) cancela();
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>elem.addEventListener(ev,cancela));
+}
+function fichaHab(h,i){
+  const hb=h.habs[i];
+  const ALVO={in:"um inimigo",al:"um aliado",eu:"você mesmo"};
+  const alc=alcTotal(h)+(hb.ef.alcExtra||0);
+  const alcTxt=hb.alvo==="eu"?"—":hb.ef.semAlcance?"o mapa inteiro":`${alc} ${alc===1?"casa":"casas"}`;
+  const dados=J.dados.map(d=>{
+    const gasto=d.usado, serve=!gasto&&d.v>=hb.f;
+    return `<div class="fdl${serve?" ok":""}">
+      <span class="fdd">${d.v}</span>
+      <span class="fdt">${gasto?"já gasto nesta rodada"
+        :serve?descreve(h,hb,d.v):`não chega à Força ${hb.f}`}</span></div>`;
+  }).join("");
+  abreSheet(hb.n,`
+    <div class="fh-top">
+      <span class="fh-et">${h.n} · ${POS[CATALOGO[h.id].pos].n}</span>
+      <div class="fh-grade">
+        <div><div class="k">Força mínima</div><div class="v">${hb.f}</div></div>
+        <div><div class="k">Alvo</div><div class="v">${ALVO[hb.alvo]||hb.alvo}</div></div>
+        <div><div class="k">Alcance</div><div class="v">${alcTxt}</div></div>
+      </div>
+    </div>
+    <p class="fh-regra">${typeof textoHab==="function"?textoHab(hb):descreve(h,hb,null)}</p>
+    <div class="fh-sub">Com os dados desta rodada</div>
+    ${dados}
+    ${h.agiu?'<p class="fh-nota">Este herói já agiu nesta rodada.</p>':""}`);
+}
+
+/* ══════════════════ FIM DE PARTIDA ══════════════════ */
+const ouroDoTime=t=>J.times[t].herois.reduce((a,h)=>a+h.ouro,0);
+const torresDerrubadas=t=>J.torres.filter(x=>x.t===1-t&&x.vida<=0).length;
 function usaPrioridade(){
   const tm=J.times[J.vez];
   if(!tm.prio||J.fase!=="jogando")return;
@@ -1197,6 +1809,26 @@ function retratoProv(id){
   return "data:image/svg+xml;utf8,"+encodeURIComponent(svg);
 }
 const RETRATO=id=>ARTE[id]||retratoProv(id);
+/* Item sem arte vira selo de latão com a inicial. Sem isso, os 10 itens de
+   ITENS_NOVOS entrariam na loja com `src="undefined"` e ícone quebrado. */
+function itemProv(id){
+  const n=(ITEM[id]||{n:"?"}).n;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#18251F"/>
+    <circle cx="50" cy="50" r="31" fill="none" stroke="#8A6A2F" stroke-width="4"/>
+    <text x="50" y="64" font-family="Copperplate,Georgia,serif" font-size="38"
+      fill="#D4A24C" text-anchor="middle">${n[0]}</text></svg>`;
+  return "data:image/svg+xml;utf8,"+encodeURIComponent(svg);
+}
+const ARTE_I = typeof ARTE_ITEM!=="undefined" ? ARTE_ITEM : {};
+const RETRATO_ITEM=id=>ARTE_I[id]||itemProv(id);
+/* mesma rede de segurança para os monstros do poço */
+const ARTE_M = typeof ARTE_MONSTRO!=="undefined" ? ARTE_MONSTRO : {};
+const RETRATO_EPICO=id=>ARTE_M[id]||("data:image/svg+xml;utf8,"+encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#1B2A24"/>
+    <text x="50" y="68" font-family="Impact,sans-serif" font-size="60" fill="#D4A24C"
+      text-anchor="middle">${(EPICO[id]||{n:"?"}).n[0]}</text></svg>`));
 const COR_FAM={dado:"#D4A24C",tempo:"#5B93B8",reacao:"#B75C52",mapa:"#6E8F6A",
                economia:"#A87F92",buff:"#8A7CAE",item:"#4F7F7A"};
 const ARTE_C = typeof ARTE_CARTA!=="undefined" ? ARTE_CARTA : {};

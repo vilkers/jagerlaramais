@@ -17,7 +17,7 @@
 const HEROIS_BASE = {
 
 vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
-  vida:14,poder:2,arm:3,alc:1,
+  vida:14,poder:3,arm:3,alc:1,
   habs:[{n:"Golpe de Escudo",f:1,alvo:"in",ef:{dano:1}},
         {n:"Provocar",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
         {n:"Muralha",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
@@ -29,49 +29,49 @@ kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
         {n:"Execução",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 nyx:{n:"Nyx",ep:"a Presa Silenciosa",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
-  vida:9,poder:4,arm:1,alc:1,agil:1,
+  vida:10,poder:3,arm:1,alc:1,agil:1,
   habs:[{n:"Bote",f:1,alvo:"in",ef:{dano:1,extra:2}},
         {n:"Sombra",f:3,alvo:"eu",ef:{intocavel:1}},
-        {n:"Caçada",f:5,alvo:"in",ef:{dano:2}}]},
+        {n:"Caçada",f:5,alvo:"in",ef:{dano:1}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
-  vida:13,poder:2,arm:3,alc:1,
+  vida:13,poder:3,arm:3,alc:1,
   habs:[{n:"Investida",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
         {n:"Digerir",f:2,alvo:"eu",ef:{cura:4,ouro:3}},
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndra",
-  vida:9,poder:3,arm:1,alc:3,
+  vida:10,poder:3,arm:1,alc:3,
   habs:[{n:"Feixe",f:1,alvo:"in",ef:{dano:1}},
         {n:"Prisma",f:4,alvo:"in",ef:{dano:1,area:1}},
-        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:11}}]},
+        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:8}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
-  vida:9,poder:4,arm:1,alc:1,agil:1,
+  vida:10,poder:4,arm:1,alc:1,agil:1,
   habs:[{n:"Estocada",f:1,alvo:"in",ef:{dano:1}},
         {n:"Eco",f:2,alvo:"in",ef:{marca:4}},
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 vesper:{n:"Vesper",ep:"a Pontaria Final",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
-  vida:9,poder:3,arm:1,alc:3,patamar:1,
+  vida:11,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro",f:1,alvo:"in",ef:{dano:1}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
         {n:"Chuva de Ferro",f:5,alvo:"eu",ef:{danoRaio:3}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
-  vida:9,poder:3,arm:1,alc:3,
+  vida:10,poder:3,arm:1,alc:3,
   habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
         {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2}},
-        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:9,semAlcance:1}}]},
+        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:6}}]},
 
 mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
-  vida:11,poder:1,arm:2,alc:2,
-  habs:[{n:"Sopro",f:1,alvo:"al",ef:{escudo:2}},
+  vida:11,poder:2,arm:2,alc:3,
+  habs:[{n:"Sopro",f:1,alvo:"al",ef:{escudo:2,cura:3}},
         {n:"Doar Dado",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Eco",f:4,alvo:"al",ef:{revive:1}}]},
+        {n:"Eco",f:4,alvo:"al",ef:{revive:1,cura:4,escudo:3}}]},
 
 torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nautilus",
-  vida:12,poder:2,arm:3,alc:1,
+  vida:12,poder:3,arm:3,alc:1,
   habs:[{n:"Ward",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Gancho",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2}},
         {n:"Cerco",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]}
@@ -98,10 +98,10 @@ xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven
 /* nyx = assassino · grumo = tanque que farma  (ambos em jogo/index.html) */
 
 kurr:{n:"Kurr",ep:"o Rastreador",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
-  vida:10,poder:4,arm:1,alc:2,agil:1,
+  vida:10,poder:3,arm:1,alc:2,agil:1,
   habs:[{n:"Lança Farpada",f:1,alvo:"in",ef:{dano:1}},
         {n:"Rastro",f:2,alvo:"in",ef:{marca:4}},
-        {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:4}}]},
+        {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
   vida:10,poder:4,arm:2,alc:2,agil:1,
@@ -128,22 +128,22 @@ arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
 /* vesper = sustentado · cael = armadilheiro  (ambos em jogo/index.html) */
 
 nessa:{n:"Nessa",ep:"a Rápida",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
-  vida:8,poder:3,arm:1,alc:3,patamar:1,agil:1,
+  vida:10,poder:3,arm:1,alc:3,patamar:1,agil:1,
   habs:[{n:"Virote",f:1,alvo:"in",ef:{dano:1}},
         {n:"Reposicionar",f:2,alvo:"eu",ef:{escudo:2}},
         {n:"Perfurar",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
-  vida:9,poder:4,arm:1,alc:4,patamar:1,
+  vida:10,poder:3,arm:1,alc:4,patamar:1,
   habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,marca:3}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
-        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:10,semAlcance:1}}]},
+        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:7}}]},
 
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */
 /* mirrha = curandeira · torvald = gancho com visão  (ambos em jogo/index.html) */
 
 gorm:{n:"Gorm",ep:"o Portão",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
-  vida:14,poder:2,arm:4,alc:1,
+  vida:14,poder:3,arm:4,alc:1,
   habs:[{n:"Empurrão",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
         {n:"Anteparo",f:1,alvo:"al",ef:{escudo:4}},
         {n:"Barreira",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
@@ -152,7 +152,7 @@ vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
   vida:10,poder:2,arm:2,alc:3,
   habs:[{n:"Presságio",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Empréstimo",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5,revive:1}}]}
+        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5}}]}
 };
 
 /* ═══════════ O CATÁLOGO COMPLETO ═══════════

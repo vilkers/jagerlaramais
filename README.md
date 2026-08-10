@@ -52,8 +52,9 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 | Pool de heróis | ✅ **20 heróis, 4 por rota** |
 | Arte dos heróis | ✅ **20 de 20** |
 | Mapa ilustrado | ✅ no guia, seção 05 |
-| Objetivos épicos (Dragão, Barão) no tabuleiro | ❌ nas regras e no mapa, fora do jogo |
-| Comeback / freio de bola de neve | ❌ não existe |
+| Poço épico (Dragão e Barão) | ✅ **funcionando** — casa [4,4], muda de morador na rodada 8 |
+| Comeback / freio de bola de neve | ✅ **Retomada** — dado extra para quem está atrás |
+| Arauto no tabuleiro | ❌ tem arte, não tem regra |
 | Highlight estilo LoL no tutorial | ❌ não existe |
 | Multiplayer em rede | ❌ não existe |
 
@@ -103,17 +104,19 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 **1. Não dá para jogar cada um no seu celular.** O jogo é hotseat — um aparelho, passando a vez. Fazer multiplayer em rede exigiria servidor e sincronização de estado; é um projeto à parte, não um ajuste.
 
-**2. Falta pressão de tempo.** Sem os objetivos épicos no tabuleiro, dois jogadores passivos arrastam a partida. É a próxima correção prioritária.
+**2. Épico e Retomada não estão validados.** Estão no jogo desde a v0.5.5, mas `sim/bateria.js` não consegue medi-los: o agente joga ao acaso, então ela enxerga o custo (dado gasto, revide) e não o prêmio (Poder). Dando 6 dados extras à Retomada o número não se moveu. **Só playtest humano resolve.**
 
-**3. Sem comeback.** Quem abre vantagem não devolve nada. Precisa de playtest para medir o tamanho do problema.
+**3. Quem começa ganha 53,5%** (n=20000). Sem épico e sem Retomada são 50,5%, então parte da diferença é o custo que a simulação vê sem o prêmio que ela não vê — mas sobra um resto real de acesso desigual ao poço, 48% contra 52% de encontros.
 
-**4. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
+**4. Aparelho pequeno aperta o tabuleiro.** Abaixo de 640px de altura o 8×8 dá hexágono de ~28px, contra os 44 de referência de toque. Todo o resto da tela está em 40–44px desde a v0.5.6; o mapa é o único que não alcança, e não é conserto de CSS.
+
+**5. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
 
 ---
 
 ## Próximos passos, na ordem
 
-1. **Objetivos épicos no tabuleiro** — Dragão na rodada 5, Barão na 8. Resolve a passividade e é uma tarde de trabalho.
-2. **Comeback** — carta extra ou ouro para quem está atrás.
-3. **Highlight do tutorial.**
-4. **Playtest de verdade** com as três pessoas e anotação do que trava.
+1. **Playtest de verdade** com as três pessoas — agora é o gargalo, não mais um item da lista. Épico e Retomada dependem dele para serem ajustados.
+2. **Highlight do tutorial.**
+3. **Arauto** — o poço já sabe trocar de morador, então entra sem motor novo.
+4. **Acampamentos de selva** — a válvula contra dado ruim.
