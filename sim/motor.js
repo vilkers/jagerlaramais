@@ -81,6 +81,7 @@ function aplicaTrocas(fonte, trocas) {
 const PONTE = `
 ;globalThis.__ponte = {
   get J(){return J},                 set J(v){J=v},
+  get TIMES(){return TIMES},         set TIMES(v){TIMES=v},
   get selHeroi(){return selHeroi},   set selHeroi(v){selHeroi=v},
   get modo(){return modo},           set modo(v){modo=v},
   get habAtual(){return habAtual},   set habAtual(v){habAtual=v},

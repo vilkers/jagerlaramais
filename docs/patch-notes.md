@@ -16,6 +16,54 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.3 — a iniciativa alterna, e o mapa virou parâmetro · 2026-08-09
+
+### O que mudou
+
+**A iniciativa alterna a cada rodada.** `J.primeiro` era 0 e **nunca mudava**: o mesmo time jogava
+primeiro nas ~12 rodadas de uma partida inteira. Agora troca no fim de cada rodada, e o log diz
+quem começa. **De 60,3% para 56,8% de vitórias de quem abre a partida** (3000 partidas por medição).
+
+**O tabuleiro virou parâmetro.** `L_TOPO`, `L_BOT`, `BASE` e `RIO` eram listas de coordenadas
+escritas à mão para um 7×7. Agora saem de regra a partir de `const N=7`, e em N=7 a regra reproduz
+as listas antigas **hexágono por hexágono** — verificado antes de trocar. Mudar N muda mapa, rotas,
+bases e posição das torres de uma vez. Nenhuma mudança de comportamento nesta versão: continua 7.
+
+**`sim/` ganhou variantes e um experimento.** `node sim/bateria.js 3000 mapa=9 mov=2d10` roda a
+variante sem sujar `jogo/jogo.js`. `node sim/ordem-vs-time.js` separa vantagem de ordem de vantagem
+de elenco.
+
+### Três hipóteses minhas que a medição derrubou
+
+Registro porque duas quase viraram decisão de design.
+
+**1. "O mapa pequeno causa a vantagem de quem começa."** Eu tinha escrito na v0.5.2 que a raiz era
+`6+4=10` — Dado Mestre até 6 mais alcance 4 cobrindo a rota inteira de 10 hexágonos. **Falso.**
+Mapa 9 (rota de 14) dá **60,6%**, o mesmo do mapa 7. Mapa 11 dá **65,1%**, pior. Aumentar o mapa é
+defensável pelo motivo que o Matheus deu — espaço para o suporte e o atirador dividirem rota — mas
+não conserta a assimetria, e cobra caro: a mediana vai de **12 para 18 rodadas** em N=9 e **22** em
+N=11.
+
+**2. "Compensar o segundo jogador com ouro resolve."** Testei +3, +6 e +10 de ouro por herói.
+Deu 60,7%, 59,7% e 60,3%. **Não move nada** — e +10 por herói é mais que um item inteiro.
+
+**3. "Pode ser o elenco, não a ordem."** Em partida sem draft os times são fixos, então ordem e
+composição estavam grudados na mesma medição. Rodei metade das partidas com os elencos trocados:
+**ordem 60,6% (z=13,3), elenco 50,1% (z=0,1).** A ordem é real e os dois times padrão estão
+notavelmente equilibrados. O confundimento existia, mas não era a explicação.
+
+O que sobra dos 56,5% é o tempo de abertura, e isso é trabalho de **comeback** — que já está na
+lista de buracos conhecidos desde a v0.4.
+
+### E o pacote de dados fica esperando
+
+O Matheus e o Vinicius pediram d20/2d10 no movimento e d8 na ação com ultimate em 7–8. Medido, cada
+dado maior **piora** a assimetria: d8 leva a 62,6%, 2d10 a 66,1%, os dois juntos a 68,1%, e mapa 11
+com 2d10 chega a **74,6%**. Dado maior no mesmo tabuleiro é mais alcance, e mais alcance é mais
+primeiro golpe. O pacote continua de pé, mas depois do comeback — não antes.
+
+---
+
 ## v0.5.2 — um dado de ação por herói · 2026-08-09
 
 ### O que mudou

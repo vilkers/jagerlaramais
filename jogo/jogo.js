@@ -48,11 +48,21 @@ const alcTotal=h=>h.alc+bonus(h,"alc");
 const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 
 /* ---------- GEOMETRIA DO MAPA ---------- */
-const COLS=7,LINS=7,R=19;
-const BASE=[[[0,6],[1,6]],[[6,0],[6,1]]];
-const L_TOPO=[[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0]];
-const L_BOT=[[2,6],[3,6],[4,6],[5,6],[6,6],[6,5],[6,4],[6,3],[6,2]];
-const RIO=[[1,1],[2,2],[2,3],[3,4],[3,5],[4,6]];
+/* O tabuleiro é quadrado de lado N e as rotas saem de regra, não de lista escrita
+   à mão: mudar N muda o mapa inteiro — rotas, bases, rio e posição das torres,
+   que já se calculam por proporção do comprimento da rota.
+   Em N=7 a regra reproduz exatamente as listas fixas que existiam até a v0.5.2. */
+const N=7;
+const COLS=N,LINS=N,R=19;
+const BASE=[[[0,N-1],[1,N-1]],[[N-1,0],[N-1,1]]];
+/* sobe pela coluna 0 e vira à direita na linha 0 */
+const L_TOPO=(()=>{const l=[];for(let r=N-2;r>=1;r--)l.push([0,r]);
+  for(let c=1;c<=N-2;c++)l.push([c,0]);return l;})();
+/* corre pela linha de baixo e sobe pela última coluna */
+const L_BOT=(()=>{const l=[];for(let c=2;c<=N-1;c++)l.push([c,N-1]);
+  for(let r=N-2;r>=2;r--)l.push([N-1,r]);return l;})();
+/* o rio é só pintura: separa as duas metades, não afeta movimento */
+const RIO=(()=>{const l=[];for(let r=1;r<=N-1;r++)l.push([1+Math.floor(r/2),r]);return l;})();
 const k=(c,r)=>c+","+r;
 const centro=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
 const dist=(c1,r1,c2,r2)=>{const ax=c1-(r1-(r1&1))/2,ay=-ax-r1,bx=c2-(r2-(r2&1))/2,by=-bx-r2;
@@ -142,7 +152,7 @@ function novo(){
   J.times.forEach((tm,t)=>tm.herois.forEach(h=>{
     const papel=CATALOGO[h.id].pos;
     const l=ROTAS[DE_ROTA[papel]];
-    if(!l){ h.pos=[...(t===0?[1,4]:[4,1])]; return; }   // selva
+    if(!l){ h.pos=[...(t===0?[1,N-3]:[N-3,1])]; return; }   // selva
     const i = papel==="sup" ? 1 : 0;
     h.pos=[...(t===0 ? l[i] : l.at(-1-i))];
   }));
@@ -267,7 +277,11 @@ function fimDaRodada(){
   J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
   if(J.fim!==null){ pinta(); return telaFim(); }
-  J.rodada++; reg("r",`— rodada ${J.rodada} —`);
+  /* a iniciativa alterna. Antes `primeiro` era 0 e nunca mudava: o mesmo time
+     jogava primeiro nas ~12 rodadas seguidas, e isso valia 60,3% de vitórias.
+     Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
+  J.primeiro=1-J.primeiro;
+  J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
   pinta(); faseOculta();
 }
 

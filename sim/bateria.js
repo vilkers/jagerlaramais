@@ -6,6 +6,8 @@
      node sim/bateria.js 300 torre=2        → e daí em diante, variantes
 
    Variantes disponíveis:
+     comp=N      ouro extra por herói para o SEGUNDO jogador (compensação)
+     mapa=N      lado do tabuleiro (7 hoje; 9 dá rota de 14, 11 dá rota de 18)
      torre=N     vida da torre
      mov=EXPR    fórmula do Dado Mestre (ex.: mov=2d10, mov=1d20, mov=1d6)
      acao=N      faces do dado de ação (6 hoje, 8 na proposta do Matheus)          */
@@ -36,6 +38,9 @@ function rolagem(expr) {                       // "2d10" → "(1+Math.floor(...)
 }
 
 const trocas = [];
+if (opcoes.alterna) trocas.push([/J\.rodada\+\+; reg\("r",/,
+                                 `J.primeiro=1-J.primeiro; J.rodada++; reg("r",`]);
+if (opcoes.mapa)  trocas.push([/^const N=\d+;$/m, `const N=${+opcoes.mapa};`]);
 if (opcoes.torre) trocas.push([/const VIDA_TORRE=\d+/, `const VIDA_TORRE=${+opcoes.torre}`]);
 if (opcoes.mov)   trocas.push([/const m=1\+Math\.floor\(Math\.random\(\)\*6\)\+extra;/,
                                `const m=${rolagem(opcoes.mov)}+extra;`]);
@@ -46,13 +51,20 @@ const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ")
   : "build atual";
 
+/* compensação para o SEGUNDO jogador, aplicada depois que a partida monta.
+   Não passa por troca de texto: é estado, não regra escrita no arquivo. */
+const comp = opcoes.comp ? +opcoes.comp : 0;
+const aoIniciar = comp
+  ? g => g.J.times[1].herois.forEach(h => { h.ouro += comp; })
+  : null;
+
 const ctx = carrega(trocas);
 const t0 = Date.now();
 const jogos = [];
 let naoTerminou = 0;
 
 for (let i = 0; i < n; i++) {
-  const r = jogaUma(ctx);
+  const r = jogaUma(ctx, { aoIniciar });
   r.terminou ? jogos.push(r) : naoTerminou++;
 }
 
