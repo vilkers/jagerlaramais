@@ -16,6 +16,82 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.9 — dois acertos para matar · 2026-08-10
+
+> **Em teste. Não aprovado.** Muda regra de combate e precisa de partida de teste
+> antes de virar oficial.
+
+### O que mudou
+
+**Piso de vida em 10.** Nenhum herói entra em partida com menos:
+
+| Herói | Vida |
+|---|---|
+| Nyx | 9 → **10** |
+| Solenne | 9 → **10** |
+| Zhet | 9 → **10** |
+| Cael | 9 → **10** |
+| Corvo | 9 → **10** |
+| Nessa | 8 → **10** |
+| Vesper | 9 → **11** |
+
+**Poder.** Os assassinos de alcance longo desceram, os tanques subiram:
+
+| Herói | Poder |
+|---|---|
+| Nyx | 4 → **3** |
+| Kurr | 4 → **3** |
+| Corvo | 4 → **3** |
+| Vharn | 2 → **3** |
+| Grumo | 2 → **3** |
+| Gorm | 2 → **3** |
+| Torvald | 2 → **3** |
+
+**Ultimates de dano fixo, todas cortadas:**
+
+| Habilidade | Dano fixo | Alcance |
+|---|---|---|
+| Solenne · Julgamento | 11 → **8** | inalterado |
+| Corvo · Ato Final | 10 → **7** | ilimitado → **alcance normal (4)** |
+| Cael · Sentença | 9 → **6** | ilimitado → **alcance normal (3)** |
+
+**Nyx · Caçada** deixa de aplicar o dano duas vezes (`dano:2` → **`dano:1`**).
+**Kurr · Salto Mortal**: bônus de dano 4 → **2**.
+
+**Mirrha vira a única curandeira do jogo.** Poder 1 → **2**, alcance 2 → **3**.
+Sopro passa a curar **3** além do escudo de 2. Eco devolve o aliado com **4 de vida
+e 3 de escudo**, em vez de só levantar.
+Em troca, **Vidra · Vento Contrário perde o revive** — mantém o escudo de 5.
+
+### Por quê
+
+O dano ia de 4 a 12 contra vidas de 8 a 9: um golpe matava, e a partida virava quem
+age primeiro. Com o teto de dano em 9 e o piso de vida em 10, **abate exige dois
+acertos** e existe janela para reagir, curar ou recuar.
+
+O Corvo era o único herói com alcance 4 e a ultimate ignorava alcance — ou seja,
+matava de qualquer casa do mapa, sem exposição. Perdeu o alcance ilimitado e um de Poder.
+
+A Mirrha era dominada pela Vidra em todos os eixos: menos alcance, menos poder, e a
+Vidra ainda revivia com escudo maior. Em vez de inflar a Mirrha, o revive saiu da
+Vidra — cura vira identidade de uma heroína só.
+
+Tanques ganharam +1 de Poder porque eram ignoráveis: sem ameaça de dano, ninguém
+precisava respeitar o corpo deles.
+
+### O que isso quebra
+
+Nada no motor — só `data/catalogo.js`. Guia e visualizador de cartas leem daqui e
+acompanham sozinhos.
+
+**Três habilidades ainda matam um alvo de vida cheia** (verificado por script, com
+Força 6 contra armadura 1): Nyx · Bote, Cael · Armadilha e Kurr · Salto Mortal
+chegam a **10** por causa do bônus fixo de +2, contra o piso de vida de 10.
+Baixar esse bônus de 2 para 1 nas três levaria o golpe a 9 e fecharia a meta.
+**Não aplicado** — decisão pendente.
+
+---
+
 ## v0.5.8 — arrastar para andar · 2026-08-10
 
 ### O que mudou
