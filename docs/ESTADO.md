@@ -25,7 +25,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada) |
 | Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
 | Vantagem de quem começa | **53,5%** (z=9,8, n=20000) · **50,5%** com épico e Retomada desligados |
-| Tamanho do tabuleiro | **8×8**, rota de 12 hexágonos — derivado de `const N` em jogo.js |
+| Tamanho do tabuleiro | **9×9**, 77 casas · espinha de rota com 13 · corredor com **2 de largura** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | ~15 rodadas (mediana medida: 15) |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
@@ -75,6 +75,9 @@ colide com medição já registrada.
 ```
 sim/bateria.js       Roda N partidas e imprime ritmo e assimetria. `node sim/bateria.js 20000`
                      Leia o cabeçalho: ele diz o que ela NÃO consegue medir.
+sim/simetria.js      Confere se o tabuleiro é espelho de si mesmo: casas sem par, rotas,
+                     bases, distância das torres e largura da rota. `node sim/simetria.js`
+                     Aceita mapa=N. Sai com código 1 se falhar — serve de teste.
 sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off

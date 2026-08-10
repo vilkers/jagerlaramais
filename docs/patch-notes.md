@@ -16,6 +16,87 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6 — o tabuleiro vira 9×9, simétrico, e a rota cabe em dois · 2026-08-10
+
+> **Em teste. Não aprovado.** Muda geometria e posição de torre.
+
+### O que mudou
+
+**Tabuleiro 8×8 → 9×9.** Casas jogáveis: 64 → **77**. Quatro casas da última coluna
+(linhas ímpares) **saíram do tabuleiro** por não terem contraparte no espelho — eram
+casas que só existiam para um dos lados.
+
+**A rota passou a ter 2 hexágonos de largura.** Separou-se o que estava junto:
+
+| | O que é | Largura |
+|---|---|---|
+| **Espinha** (`ROTAS`) | indexa torre e onda — `frentes` guarda índice dela | 1 casa |
+| **Corredor** (`LANE`) | por onde os heróis andam | **2 casas** |
+
+Corredor por rota: topo **13 → 22** casas, baixo **13 → 22**, meio **9 → 13**.
+Seção mínima de topo e baixo = **2** em todo o percurso. O meio mantém **2
+estreitamentos de propósito**, nas bocas de base, para que ainda exista onde
+segurar avanço. Era a queixa registrada em `ESTADO.md`: suporte e atirador não
+cabiam na mesma rota.
+
+**Comprimento da espinha:** topo 12 → **13**, baixo 11 → **13**, meio 8 → **9**.
+Topo e baixo agora têm o mesmo comprimento — antes diferiam em uma casa.
+
+**Torres.** As duas fórmulas diferentes por lado viraram uma só, medida a partir da
+própria base: distâncias **1** e **round(n×0,28)**, espelhadas por construção.
+
+### Por quê
+
+O espelho era `(COLS-1-c, LINS-1-r)`, que **parece** rotação e não é numa grade
+offset odd-r: as linhas ímpares andam meio hexágono, então a fórmula quebra a
+vizinhança justamente nelas. O estrago era medível — rotas de comprimentos
+diferentes, bases fora do espelho e torres a distâncias diferentes da própria base.
+
+Agora a rotação passa por **coordenada cúbica** e o mapa é **gerado por metade**:
+escreve-se topo e meia rota do meio, o resto é o espelho. Assimetria deixa de ser
+coisa para consertar e passa a ser impossível de escrever.
+
+O eixo da rotação fica nos **cantos opostos**, não no "hexágono central": em lado
+par o centro cai entre casas e o cubo sairia fracionário. Por isso `N` continua
+valendo par e ímpar — `mapa=8` e `mapa=10` seguem rodando na bateria.
+
+### O aviso que este trabalho encostou
+
+O código trazia um aviso para **não** "consertar" o desencontro das torres: fazê-lo
+sozinho jogava a vitória de quem começa de 51,1% para 40,8%, porque o desencontro
+compensava a assimetria do mapa. O aviso pedia medir os dois lados juntos, e foi o
+que se fez. Medido, 1500 partidas por caso:
+
+| Variante | Quem começa |
+|---|---|
+| 9×9 simétrico + **torre simétrica** | **58,7%** (z=6,7) |
+| 9×9 simétrico + torre antiga (assimétrica) | 73,5% (z=18,2) |
+
+No mapa simétrico a compensação virou o problema. Ela sai, e o aviso sai com ela.
+
+### O que isso custa
+
+**Vantagem de quem começa: 55,0% → 56,4%** (z=6,97, n=3000). **Duração: mediana
+15 → 16 rodadas.** O mapa simétrico não conserta a bola de neve — nunca prometeu.
+Ele tira do caminho a assimetria que mascarava parte dela; o freio continua sendo
+o comeback, que segue sendo a próxima coisa.
+
+### Ferramenta nova
+
+`node sim/simetria.js` (aceita `mapa=N`) percorre o tabuleiro e compara cada casa
+com o espelho: casas sem par, comprimento e espelhamento das rotas, bases, distância
+das torres e largura da rota. Sai com código 1 se algo falhar — serve de teste.
+
+### Três bugs que a mudança revelou
+
+Casa fora do tabuleiro precisava sumir de todo lugar que varre a grade. Estavam
+faltando: o **destino de movimento** (dava para andar até uma casa inexistente), o
+**alvo do toque** (`hexSob` mirava casa removida) e a **escolha do poço**. O
+`viewBox` do SVG, que estava fixo no HTML para 8×8, passou a ser derivado da
+geometria — trocar `N` redesenha sem ninguém lembrar de ajustar à mão.
+
+---
+
 ## v0.5.9 — dois acertos para matar · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda regra de combate e precisa de partida de teste
