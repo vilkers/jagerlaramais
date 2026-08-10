@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.4.1 · **Atualizado em:** 2026-08-08
+**Versão:** v0.5.2 · **Atualizado em:** 2026-08-09
 
 ---
 
@@ -21,7 +21,9 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
-| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação |
+| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
+| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada) |
+| Vantagem de quem começa | **58,3%** (z=9,06, n=3000) — medido, não resolvido |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | ~15 rodadas |
 | Peso da pasta `arte/` | ~9 MB |
@@ -38,7 +40,10 @@ guia navegável · visualizador de cartas.
 
 | O quê | Por que importa |
 |---|---|
-| **Objetivos épicos no tabuleiro** (Dragão, Barão) | Estão nas regras e no mapa ilustrado, fora do jogo. Sem eles não há pressão de tempo e dois jogadores passivos arrastam a partida. **É a próxima coisa.** |
+| **Mapa maior** | Rota de 10 hexágonos, Dado Mestre até 6, Corvo com alcance 4: **6+4=10 = a rota inteira**. Dá para sair da base e acertar o outro lado antes de ele jogar — é a raiz da vantagem de quem começa. **É a próxima coisa.** Simulado: aumentar o dado **sem** aumentar o mapa piora para 66–68%. |
+| **Compensação para o segundo jogador** | 58,3% é muito. Sai junto com o mapa. |
+| **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
+| **Objetivos épicos no tabuleiro** (Dragão, Barão) | Estão nas regras e no mapa ilustrado, fora do jogo. Sem eles não há pressão de tempo e dois jogadores passivos arrastam a partida. |
 | **Comeback** | Quem abre vantagem não devolve nada. Bola de neve sem freio. |
 | **Acampamentos de selva** | Buffs Azul e Vermelho — a válvula contra dado ruim. |
 | **Feitiços de invocador** | 5 cartas, alto retorno em história. |
@@ -48,6 +53,8 @@ guia navegável · visualizador de cartas.
 ## Onde as coisas moram
 
 ```
+sim/bateria.js       Roda N partidas e imprime ritmo e assimetria. `node sim/bateria.js 3000`
+sim/motor.js         Carrega o jogo em Node com DOM falso. Variantes: torre= mov= acao=
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
 jogo/index.html      Só a estrutura da tela. 63 linhas.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
