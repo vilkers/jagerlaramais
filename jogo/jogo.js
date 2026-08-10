@@ -52,7 +52,7 @@ const ehAgil=h=>h.agil||bonus(h,"agil")>0;
    à mão: mudar N muda o mapa inteiro — rotas, bases, rio e posição das torres,
    que já se calculam por proporção do comprimento da rota.
    Em N=7 a regra reproduz exatamente as listas fixas que existiam até a v0.5.2. */
-const N=7;
+const N=8;
 const COLS=N,LINS=N,R=19;
 const BASE=[[[0,N-1],[1,N-1]],[[N-1,0],[N-1,1]]];
 /* sobe pela coluna 0 e vira à direita na linha 0 */

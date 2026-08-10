@@ -16,6 +16,32 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.4 — mapa 8x8 · 2026-08-09
+
+### O que mudou
+
+**O tabuleiro foi de 7x7 para 8x8.** Rota de **10 para 12 hexágonos**. Como a geometria virou regra
+na v0.5.3, foi trocar `const N=7` por `const N=8` — rotas, bases, rio e posição das torres se
+recalculam sozinhos.
+
+| | 7x7 | 8x8 |
+|---|---|---|
+| rota | 10 hex | **12 hex** |
+| mediana da partida | 13 rodadas | **15 rodadas** |
+| vantagem de quem começa | 55,9% (z=8,3) | **52,4% (z=3,4)** |
+
+5000 partidas por medição.
+
+### Correção de uma coisa que eu disse na v0.5.3
+
+Eu tinha escrito que aumentar o mapa **não** mexia na vantagem de quem começa. Estava medindo mapa
+maior **sem** a iniciativa alternada. Os dois se somam: com a alternância, o 8x8 leva de 55,9% para
+52,4%. Sozinho, nenhum dos dois resolvia.
+
+Ainda sobra 2,4 pontos acima do justo — é o que o comeback tem que fechar.
+
+---
+
 ## v0.5.3 — a iniciativa alterna, e o mapa virou parâmetro · 2026-08-09
 
 ### O que mudou

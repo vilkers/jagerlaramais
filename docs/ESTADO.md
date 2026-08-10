@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.5.3 · **Atualizado em:** 2026-08-09
+**Versão:** v0.5.4 · **Atualizado em:** 2026-08-09
 
 ---
 
@@ -23,10 +23,10 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
 | Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada) |
-| Vantagem de quem começa | **56,5%** (z=7,1, n=3000) — era 60,3% antes da iniciativa alternar |
-| Tamanho do tabuleiro | **7×7**, agora derivado de `const N` — mudar N muda rotas, bases e torres |
+| Vantagem de quem começa | **52,4%** (z=3,4, n=5000) — era 60,3% antes de alternar iniciativa e crescer o mapa |
+| Tamanho do tabuleiro | **8×8**, rota de 12 hexágonos — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | ~15 rodadas |
+| Duração de uma partida | ~15 rodadas (mediana medida: 15) |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
 
