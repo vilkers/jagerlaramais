@@ -16,6 +16,69 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6.2 — selva de verdade, e o placar vira gaveta · 2026-08-10
+
+> **Em teste. Não aprovado.** Muda tamanho do tabuleiro.
+
+### O que mudou
+
+**Tabuleiro 9×9 → 11×11.** Casas jogáveis **77 → 116** (5 saem da grade por não
+terem par no espelho, contra 4 antes).
+
+| | 9×9 | 11×11 |
+|---|---|---|
+| **Selva** | 16 casas | **38 casas** |
+| Rota (corredor) | 57 | 74 |
+| Espinha topo/meio/baixo | 13/9/13 | 17/10/17 |
+
+**Nenhuma casa de rota foi perdida.** A selva é o *interior* do mapa e cresce ao
+quadrado; a rota é o *perímetro* e cresce linear — então aumentar o lado engorda
+a selva 2,4× enquanto a rota sobe 1,3×. Não foi preciso tirar nada de rota para
+dar espaço à selva.
+
+**O placar de estruturas saiu do painel e virou gaveta**, no botão **⌂** do
+cabeçalho. Com o tabuleiro maior quem precisa do espaço vertical é o mapa, e
+vida de torre é *consulta*, não HUD — olha-se de vez em quando. Na gaveta cabe
+mais do que cabia no painel: **torre por torre**, não só o total da rota, com a
+que aceita golpe agora marcada **ALVO**.
+
+O que fica sempre à vista é só o aviso no botão: **vermelho** quando é a sua
+rota que abriu, **dourado** quando foi a do adversário. Ninguém perde uma rota
+abrindo sem perceber.
+
+### Por que 11 e não 10
+
+Medido, 2500 partidas por caso:
+
+| | 9×9 (antes) | 10×10 | **11×11** |
+|---|---|---|---|
+| Selva | 16 | 28 | **38** |
+| Quem começa | 57,1% | **59,7%** | **55,0%** |
+| Dragões por partida | 0,76 | **0,21** | 0,55 |
+| Mediana | 15 rodadas | 16 | **18** |
+
+**10×10 foi medido e descartado**: piora a assimetria e o poço quase nunca é
+disputado — 0,21 Dragão por partida, contra 0,55 em 11×11. A casa do poço é
+deduzida quando `N` muda, e em 10 a dedução cai num lugar ruim.
+
+**11×11 derruba a vantagem de quem começa de 57,1% para 55,0%**, que era a
+regressão aberta desde a v0.6. Custa **3 rodadas a mais** de partida.
+
+### Duas ressalvas honestas
+
+**1. A selva cresceu, mas continua vazia.** Não existem acampamentos — os buffs
+Azul e Vermelho seguem na lista de *o que NÃO existe*. As 38 casas valem por
+espaço tático (flanco, gank, rota de fuga), não por conteúdo. Quem esperava
+"mais o que fazer na selva" vai encontrar mais chão para andar, e só.
+
+**2. O hexágono encolheu para ~33px** numa tela de 390px de largura, contra os
+**44px** de referência de toque do projeto. A peça do mapa vale o hexágono
+inteiro, então dá para jogar, mas é o menor alvo já medido. Foi por isso que o
+placar saiu do painel — devolveu altura ao mapa. **Precisa de olho humano numa
+tela pequena antes de aprovar.**
+
+---
+
 ## v0.6.1 — o herói cerca sozinho, e dá para ler a vida das estruturas · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda condição de vitória.

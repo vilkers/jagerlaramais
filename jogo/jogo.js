@@ -67,7 +67,14 @@ const ehAgil=h=>h.agil||bonus(h,"agil")>0;
    METADE: escreve-se topo e meia rota do meio, e o resto é o espelho delas.
    Assimetria deixa de ser coisa para consertar e passa a ser impossível de
    escrever. Quem prova é `node sim/simetria.js`. */
-const N=9;
+/* N=11 desde a v0.6.2, para dar selva. A selva é o INTERIOR do mapa e cresce ao
+   quadrado; a rota é o perímetro e cresce linear — então aumentar o lado engorda
+   a selva muito mais rápido que a rota, sem tirar uma casa que seja das rotas.
+   De 9 para 11: selva 16 → 38 casas, rota 57 → 74. Medido junto: quem começa cai
+   de 57,1% para 55,0%, e a partida vai de 15 para 18 rodadas de mediana.
+   N=10 foi medido e descartado — 59,7% para quem começa e o poço quase nunca
+   disputado (0,21 Dragão por partida contra 0,55 em N=11). */
+const N=11;
 const COLS=N,LINS=N,R=19;
 const k=(c,r)=>c+","+r;
 const centro=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
@@ -1532,39 +1539,19 @@ function pinta(){
     dadoSel=dadoSel===i?null:i; vibra(8); pinta();
   });
 
-  /* Placar de estruturas. Os números já existiam DENTRO da torre e do Nexus no
-     mapa, com ~6px de altura em tela — ninguém lia. Aqui em cima ficam por
-     extenso, por rota, com o lado de quem defende, e a torre exposta (a que
-     aceita golpe agora) marcada. Assim dá para decidir onde cercar sem
-     precisar caçar losango no tabuleiro. */
+  /* O placar de estruturas saiu do painel fixo e virou gaveta (botão ⌂ no
+     cabeçalho). Motivo: com o tabuleiro maior o mapa é quem precisa do espaço
+     vertical, e a vida das torres é consulta — olha-se de vez em quando, não o
+     tempo todo. O que fica sempre à vista é só o aviso no botão, para ninguém
+     perder a rota abrindo sem perceber. */
   (()=>{
-    const est=G("estruturas");
-    if(!est) return;
-    if(J.fase!=="jogando"){ est.innerHTML=""; return; }
-    const pip=(v,max)=>`<span class="pips">${
-      Array.from({length:max},(_,i)=>`<i class="${i<v?"on":""}"></i>`).join("")}</span>`;
-    const lado=t=>{
-      const rotas=Object.keys(ROTAS).map(nome=>{
-        const ts=J.torres.filter(x=>x.rota===nome&&x.t===t);
-        const viva=torreExposta(nome,t);
-        const total=ts.reduce((a,x)=>a+Math.max(0,x.vida),0);
-        const caiu=ts.every(x=>x.vida<=0);
-        return `<div class="er${caiu?" aberta":""}">
-          <b>${nome.slice(0,3).toUpperCase()}</b>
-          ${caiu?'<span class="aviso">rota aberta</span>'
-                :pip(total,ts.length*VIDA_TORRE)+(viva&&viva.batida?'<span class="ja">já batida</span>':"")}
-        </div>`;
-      }).join("");
-      const nx=Math.max(0,J.nexus[t]);
-      return `<div class="ecol t${t}">
-        <div class="ecab">${NOMES[t]}${t===J.vez?" <i>· sua vez</i>":""}</div>
-        ${rotas}
-        <div class="er nex${rotaAberta(t)?" exposto":""}">
-          <b>NEXUS</b>${pip(nx,VIDA_NEXUS)}
-          ${rotaAberta(t)?'<span class="aviso">exposto</span>':""}
-        </div></div>`;
-    };
-    est.innerHTML=lado(0)+lado(1);
+    const bt=G("btEstr");
+    if(!bt) return;
+    bt.disabled = J.fase!=="jogando";
+    /* aviso vermelho quando o SEU lado tem rota aberta — é o estado que muda a
+       jogada agora. Dourado quando é o inimigo que abriu: oportunidade. */
+    bt.classList.toggle("perigo", J.fase==="jogando"&&rotaAberta(J.vez));
+    bt.classList.toggle("chance", J.fase==="jogando"&&!rotaAberta(J.vez)&&rotaAberta(1-J.vez));
   })();
 
   /* painel de comando — a peça central da correção de jogabilidade */
@@ -1763,6 +1750,43 @@ function usaPrioridade(){
 G("btTime").onclick=()=>{ sheetAberto==="Time"?fechaSheet():abreTime(); };
 G("btLoja").onclick=()=>{ sheetAberto&&sheetAberto.startsWith("Loja")?fechaSheet():abreLoja(); };
 G("btCartas").onclick=()=>{ sheetAberto==="Cartas"?fechaSheet():abreMao(); };
+/* Estruturas: uma linha por rota, dos dois lados, com a vida em bolinha e a
+   torre que aceita golpe AGORA marcada. Na gaveta cabe o que não cabia no
+   painel — em que passo da rota cada torre está, e por que o Nexus está ou não
+   exposto. É consulta, não HUD: abre, decide onde cercar, fecha. */
+function abreEstruturas(){
+  const pip=(v,max)=>`<span class="pips">${
+    Array.from({length:max},(_,i)=>`<i class="${i<v?"on":""}"></i>`).join("")}</span>`;
+  const lado=t=>{
+    const rotas=Object.keys(ROTAS).map(nome=>{
+      const ts=J.torres.filter(x=>x.rota===nome&&x.t===t).sort((a,b)=>a.i-b.i);
+      const exp=torreExposta(nome,t);
+      const caiu=ts.every(x=>x.vida<=0);
+      const torres=ts.map(x=>{
+        if(x.vida<=0) return `<span class="tw caiu" title="passo ${x.i}">✕</span>`;
+        const eu=x===exp;
+        return `<span class="tw${eu?" exposta":""}" title="passo ${x.i}">`+
+               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}${x.batida?'<em class="ja">batida</em>':""}</span>`;
+      }).join("");
+      return `<div class="er${caiu?" aberta":""}">
+        <b>${nome.toUpperCase()}</b>
+        ${caiu?'<span class="aviso">ROTA ABERTA</span>':torres}</div>`;
+    }).join("");
+    const aberta=rotaAberta(t), nx=Math.max(0,J.nexus[t]);
+    return `<div class="ecol t${t}">
+      <div class="ecab">${NOMES[t]}${t===J.vez?" <i>· sua vez</i>":""}</div>
+      ${rotas}
+      <div class="er nex${aberta?" exposto":""}">
+        <b>NEXUS</b>${pip(nx,VIDA_NEXUS)}
+        <span class="${aberta?"aviso":"ja"}">${aberta?"EXPOSTO":"protegido"}</span></div></div>`;
+  };
+  abreSheet("Estruturas",
+    `<div id="estruturas">${lado(0)}${lado(1)}</div>
+     <p class="est-nota">A torre marcada <b>alvo</b> é a única da rota que aceita golpe de herói
+     agora — a de trás só depois que ela cair. O <b>Nexus</b> só fica exposto quando uma rota
+     inteira daquele lado cai, e aguenta um golpe de herói por rodada.</p>`);
+}
+G("btEstr").onclick=()=>{ sheetAberto==="Estruturas"?fechaSheet():abreEstruturas(); };
 G("btLog").onclick=()=>{ sheetAberto==="Histórico"?fechaSheet():abreLog(); };
 G("btAjuda").onclick=()=>{ sheetAberto==="Manual"?fechaSheet():abreManual(); };
 G("btFim").onclick=()=>{
