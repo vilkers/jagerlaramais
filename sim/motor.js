@@ -88,6 +88,7 @@ const PONTE = `
   get dadoSel(){return dadoSel},     set dadoSel(v){dadoSel=v},
   get alvos(){return alvos},
   get alvosTorre(){return alvosTorre},
+  get alvosEpico(){return alvosEpico},
   get mover(){return mover},
   get maos(){return maos},
   get baralho(){return baralho},

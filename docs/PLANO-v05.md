@@ -79,7 +79,7 @@ patch note próprio — a regra do projeto continua valendo: **mudou número, vi
 | v0.5.1 | Torre atacável |
 | v0.5.2 | Lore e facções em `data/catalogo.js` |
 | v0.5.3 | Arte nova dos 20 heróis |
-| v0.5.4 | Objetivos épicos + comeback *(entram juntos, não separados)* |
+| ~~v0.5.4~~ v0.5.5 | ✅ Objetivos épicos + comeback *(entraram juntos, como previsto)* — poço único em [4,4], Dragão/Barão, Retomada. Ficaram **sem validação**: a bateria é cega a mecânica de escolha, ver patch note |
 | v0.5.5 | Carta premium + página de campeões |
 | v0.5.6 | Acampamentos de selva |
 | v0.5.7 | Camada de juice |

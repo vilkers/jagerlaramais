@@ -76,6 +76,18 @@ button:disabled{cursor:not-allowed}
 #mapa .nexus.t0{stroke:var(--azul-2)} #mapa .nexus.t1{stroke:var(--carmim-2)}
 #mapa .tvida{font-family:var(--mono);font-size:6.4px;text-anchor:middle;pointer-events:none;fill:var(--ink)}
 #mapa .frente{fill:none;stroke:var(--brass);stroke-width:1.5;stroke-dasharray:2.5 2.2;pointer-events:none;opacity:.85}
+/* ── poço épico ── território de ninguém, e por isso latão e não cor de time */
+#mapa .hx.poco{fill:var(--rio);stroke:var(--brass-dim);stroke-width:1.6}
+#mapa .epico circle.fundo{fill:var(--ground-2);stroke:none}
+#mapa .epico circle.anel{fill:none;stroke:var(--brass);stroke-width:1.8}
+#mapa .epico image{pointer-events:none;filter:brightness(1.25) contrast(1.1) saturate(1.05)}
+#mapa .epico.alvo{cursor:pointer}
+#mapa .epico.alvo circle.anel{stroke:var(--dano);stroke-width:2.4}
+#mapa .epvida{font-family:var(--mono);font-size:6px;text-anchor:middle;
+  pointer-events:none;fill:var(--brass)}
+#mapa .poco-vazio circle{fill:none;stroke:var(--brass-dim);stroke-width:1;stroke-dasharray:2 2.6}
+#mapa .poco-vazio text{font-family:var(--mono);font-size:5.2px;text-anchor:middle;
+  pointer-events:none;fill:var(--ink-3)}
 #mapa .rotulo rect{fill:var(--ground-2);stroke:var(--line);stroke-width:.7}
 #mapa .rotulo text{font-family:var(--carto);font-size:5.4px;letter-spacing:.18em;
   fill:var(--ink-3);text-anchor:middle;pointer-events:none}

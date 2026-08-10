@@ -8,6 +8,11 @@
    - prefere agir a mover (3 em 4), senão o jogo nunca termina
    - só olha heróis que ainda não agiram, respeitando o limite de um dado por herói
    - bate em torre sempre que a torre estiver disponível, para exercitar o caminho novo
+   - só compromete dado com o épico quando consegue TERMINAR o serviço na rodada.
+     Tocar no Barão e ir embora é jogada que nenhum jogador faz, e um agente que faz
+     isso transforma o poço num ralo de dado: medido, custava ~11 golpes por partida
+     para levar 0,4 Dragão, e inflava a vantagem de quem abre de 52% para 55,6% —
+     assimetria de agente burro, não do objetivo
    - encerra o turno quando não sobra ação nem movimento útil                        */
 
 function jogaUma(ctx, opc = {}) {
@@ -18,7 +23,7 @@ function jogaUma(ctx, opc = {}) {
   g.comeca(false, false);
   if (opc.aoIniciar) opc.aoIniciar(g);
 
-  let passos = 0, golpesTorre = 0, acoes = 0;
+  let passos = 0, golpesTorre = 0, golpesEpico = 0, acoes = 0;
 
   while (passos++ < tetoPassos && g.J.fim === null) {
     if (g.J.fase !== "jogando") break;
@@ -34,7 +39,11 @@ function jogaUma(ctx, opc = {}) {
       if (g.dadoPara(h.habs[i]) !== null) {
         g.iniciaHab(i);
         if (g.modo === "mirar") {
-          if (g.alvosTorre.length) { g.atacaTorre(g.alvosTorre[0]); golpesTorre++; fez = true; }
+          /* podemAgir conta os heróis que ainda têm dado — teto otimista do que dá
+             para despejar no poço antes do turno acabar. */
+          const fechavel = g.alvosEpico.filter(ep => ep.vida <= podemAgir.length);
+          if (fechavel.length) { g.atacaEpico(fechavel[0]); golpesEpico++; fez = true; }
+          else if (g.alvosTorre.length) { g.atacaTorre(g.alvosTorre[0]); golpesTorre++; fez = true; }
           else if (g.alvos.length) { g.confirmaHab(g.alvos[rnd(g.alvos.length)]); fez = true; }
           else g.limpaModo();
         }
@@ -60,8 +69,11 @@ function jogaUma(ctx, opc = {}) {
     rodadas: g.J.rodada,
     passos,
     golpesTorre,
+    golpesEpico,
     acoes,
     torresCaidas: g.J.torres.filter(t => t.vida <= 0).length,
+    dragoes: g.J.times.map(t => t.dragoes),
+    baroes: g.J.times.map(t => t.baroes),
     nexus: [...g.J.nexus]
   };
 }

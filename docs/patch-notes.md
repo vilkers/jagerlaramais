@@ -16,6 +16,100 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.5.5 — o poço, a Retomada, e a descoberta de que a bateria é cega · 2026-08-10
+
+### O que mudou
+
+**Existe um poço no meio do mapa, e ele muda de morador.** Casa `[4,4]`, terreno de ninguém.
+Até a rodada 8 quem desce é o **Dragão** (3 de vida, revida 1, volta 3 rodadas depois de cair);
+da rodada 8 em diante é o **Barão** (5 de vida, revida 2, volta em 4). Poço vazio mostra na tela
+a rodada em que o próximo desce — o relógio da partida ficou visível.
+
+Bater no poço usa a mesma porta da torre: mira vermelha, um toque, 1 de dano. Duas diferenças,
+as duas de propósito: **não tem limite por rodada** e **não tem dono**. Quem dá o último golpe leva
+o prêmio inteiro, e é essa janela que faz do objetivo uma briga em vez de uma fila.
+
+| Prêmio | O quê | Dura |
+|---|---|---|
+| **Herança do Dragão** | +1 de Poder em todo o time, **acumula** a cada Dragão | para sempre |
+| **Fúria do Barão** | +2 de Poder no time e as **três ondas avançam sozinhas**, com herói na rota ou sem | 2 rodadas |
+
+**A Retomada entrou como freio de bola de neve.** O jogo conta o perigo de cada lado: cada torre
+sua caída vale 2, cada hexágono de onda inimiga do seu lado do vão vale 1. Passou a conta do
+adversário em **2**, você rola **+1 dado de ação**; em **4**, também ganha **+1 no Dado Mestre**.
+Automático, aparece no HUD, e some sozinho quando a diferença fecha.
+
+### O achado que vale mais que os dois recursos: a bateria é cega a agência
+
+Dando à Retomada 1, 2 e 3 dados extras **por grau de atraso** — até 6 dados a mais num turno —
+a vitória de quem começa ficou em 52,2%, 53,0% e 52,9%, contra 52,9% sem Retomada nenhuma.
+**Resposta-dose completamente plana.** 10 000 partidas por dose.
+
+O motivo é o agente: ele escolhe herói e habilidade quase ao acaso. Dado a mais só vira vitória
+na mão de quem escolhe bem. Então `sim/bateria.js` mede muito bem **estrutura** — geometria,
+regra de onda, posição de torre, ritmo — e **não enxerga nada** que dependa de escolha:
+Retomada, Prioridade, Placas, itens, cartas e o prêmio do épico.
+
+O sintoma aparece cru na medição do poço: **o time que levava 62% dos épicos perdia a partida.**
+A bateria via o custo (dado gasto, revide levado) e não via o prêmio (Poder). Quem confiar no
+número de `quem começa` para julgar essas mecânicas vai otimizar na direção errada — o ótimo,
+por esse número, é tornar o objetivo irrelevante. O aviso está agora no cabeçalho de
+`sim/bateria.js`. **Épico e Retomada se validam em playtest humano, não aqui.**
+
+### Correção de um número que estava no ESTADO
+
+A vantagem de quem começa na v0.5.4 estava registrada como **52,4% (z=3,4)**, medida com 5 000
+partidas. Com 20 000, a mesma build dá **50,5% a 51,0%**. A n=5 000 a banda de ruído é ±1,4 ponto
+a 2σ, e boa parte daqueles 2,4 pontos era ruído. Medições de assimetria deste projeto passam a
+querer 20 000.
+
+| | v0.5.4 | v0.5.5 |
+|---|---|---|
+| quem começa, sem épico e sem Retomada | 50,5% (z=1,4) | 50,5% (z=1,4) |
+| quem começa, build completa | — | **53,5% (z=9,8)** |
+| mediana da partida | 15 | 15 |
+| média da partida | 16,5 | 17,0 |
+
+20 000 partidas por medição. Os 3 pontos que o poço acrescenta são, em boa parte, o custo que a
+bateria enxerga sem o prêmio que ela não enxerga — mas **não** são zero: sobra um resto real de
+acesso desigual, medido em 48,0% contra 52,0% de encontros.
+
+### Três desenhos que a medição matou antes de virarem regra
+
+**1. Dois poços, um por metade do mapa.** Colocados "à mesma distância das duas bases", que parecia
+o critério justo. Não é: herói não mora na base, mora na rota. O time 1 ficava ao alcance do poço
+**43% mais vezes** que o time 0. Um poço central resolveu.
+
+**2. A casa do poço por fórmula.** Distância no papel não prevê encontro no tabuleiro. `[3,3]` e
+`[4,4]` têm acesso teórico praticamente igual (19-19 contra 17-19) e dão 45,4% e 48,0% de encontros;
+`[4,4]` e `[5,5]` têm acesso teórico idêntico e dão 48,0% contra 35,6%. Nenhuma fórmula estática
+separa esses casos. `[4,4]` foi escolhida **medindo**: a mais parelha das seis testadas, e a que
+mais gera disputa — 43% mais encontros que `[3,3]`.
+
+**3. Espelhar as torres.** As duas fórmulas de `TORRES_DEF` não batem por índice: no topo o time 0
+fica em `[1,3]` e o time 1 em `[9,10]`, quando o espelho de `[1,3]` seria `[8,10]`. Trocar a segunda
+por `n-1-i` parece o conserto óbvio e **joga a vitória de quem começa de 51,1% para 40,8%**. O
+desencontro compensa outra assimetria do sistema. Está revertido, com o experimento anotado no
+código para ninguém "consertar" de novo.
+
+E uma quarta, que era só o medidor errado: a Retomada media atraso **só em torre caída** e
+disparava na **rodada 12,9** de uma partida que acaba na 15 — chegava depois de a partida estar
+decidida. Somar hexágono de onda invadida trouxe para a 12,1, e o divisor teve que ser o meio do
+vão **sem arredondar**: com `centroRota` o freio socorria o líder (37,4% dos turnos do time 0
+contra 28,8% do time 1), e com o meio da rota o time 1 nascia com Retomada de graça (25,1% × 53,3%).
+Com o divisor certo, 30,6% × 37,1% — dispara para quem está atrás, e não para quem está na frente.
+
+### O que isso quebra
+
+`sim/agente.js` mudou: ele agora bate no poço, mas **só quando consegue terminar o serviço na
+rodada**. A versão que batia sempre gastava ~11 golpes por partida para levar 0,4 Dragão e inflava
+a vantagem de quem começa de 52% para 55,6% — ralo de dado, não disputa.
+
+Quem tiver medição antiga anotada: números de antes da v0.5.5 medidos com n=5 000 têm ±1,4 ponto
+de ruído e não dá para comparar de perto com os novos.
+
+---
+
 ## v0.5.4 — mapa 8x8 · 2026-08-09
 
 ### O que mudou

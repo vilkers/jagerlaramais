@@ -100,6 +100,13 @@ const BASE_S=new Map();
 BASE.forEach((b,t)=>b.forEach(([c,r])=>BASE_S.set(k(c,r),t)));
 
 /* duas torres por lado, com um vão neutro no meio da rota para a onda disputar */
+/* NÃO "conserte" a assimetria aparente destas duas fórmulas. Já foi tentado e medido.
+   Por índice elas não são espelho: no topo o time 0 fica em [1,3] e o time 1 em [9,10],
+   quando o espelho de [1,3] seria [8,10]. Trocar a segunda fórmula por `n-1-i`, que
+   parece o conserto óbvio, joga a vitória de quem começa de 51,1% para 40,8%
+   (8000 partidas por medição, `sim/bateria.js` com épico e retomada desligados).
+   O desencontro compensa outra assimetria do sistema — o `limitaFrente` somado ao
+   comprimento ímpar/par de cada rota. Mexer num lado sem medir o outro quebra as duas. */
 const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
   const n=l.length;
   return[{rota:nome,i:1,t:0},{rota:nome,i:Math.max(2,Math.round(n*.28)),t:0},
@@ -111,6 +118,12 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
 const VIDA_TORRE=3, VIDA_NEXUS=3;
 const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
 const REVIDE_TORRE=2;      /* e a torre cobra o pedágio de quem encostou */
+/* Meio do vão neutro. Com as torres espelhadas o meio é (a+b)/2 — inteiro só quando a
+   rota tem comprimento ímpar. Rota par não TEM hexágono central: a frente começa meio
+   passo para um dos lados, e esse meio passo é vantagem de siege para alguém.
+   Arredondar sempre para o mesmo lado empilha o viés nas três rotas; alternando, o que
+   a rota par tira de um time a próxima devolve. Em N=8: topo 12 e meio 8 são pares e se
+   cancelam, baixo 11 é ímpar e cai certo no meio. */
 const centroRota=nome=>{                       /* meio do vão neutro */
   const ts=TORRES_DEF.filter(t=>t.rota===nome);
   const a=Math.max(...ts.filter(t=>t.t===0).map(t=>t.i));
@@ -127,8 +140,66 @@ function limitaFrente(nome,f){
          Math.min(t1.length?Math.min(...t1):l.length-1, f));
 }
 
+/* ---------- OBJETIVO ÉPICO ---------- */
+/* UM poço só, e ele muda de morador: Dragão cedo, Barão tarde.
+   Dois poços foram tentados primeiro, um por metade do mapa, e a medição matou a ideia:
+   o time 1 ficava ao alcance 43% mais vezes que o time 0.
+
+   A casa do poço é MEDIDA, não deduzida, e essa distinção custou caro para aprender.
+   Distância no papel não prevê encontro no tabuleiro: [3,3] e [4,4] têm praticamente o
+   mesmo acesso teórico (19-19 contra 17-19), e rodando dão 45,4% e 48,0% de encontros
+   para o time 0; [4,4] e [5,5] têm acesso teórico idêntico e dão 48,0% contra 35,6%.
+   Nenhuma fórmula estática separa esses casos — herói não anda em linha reta.
+   Em N=8 a casa é [4,4]: a mais parelha das testadas e a que mais gera disputa (colada
+   numa rota, 43% mais encontros que [3,3]). Trocou N? A dedução abaixo dá um ponto de
+   partida razoável, mas rode `sim/` e meça antes de confiar nela. */
+const POCO=(N===8?[4,4]:(()=>{
+  const DE_ROTA_INI={topo:L_TOPO,meio:L_MEIO,adc:L_BOT,sup:L_BOT};
+  const inicio=t=>{
+    const p=[];
+    ["topo","meio","adc","sup"].forEach(papel=>{
+      const l=DE_ROTA_INI[papel], i=papel==="sup"?1:0;
+      p.push(t===0?l[i]:l.at(-1-i));
+    });
+    p.push(t===0?[1,LINS-3]:[COLS-3,1]);           // o Caçador, que começa fora de rota
+    return p;
+  };
+  const I=[inicio(0),inicio(1)];
+  const perto=(p,l)=>Math.min(...l.map(q=>dist(...p,...q)));
+  const acesso=(p,t)=>I[t].reduce((a,q)=>a+dist(...p,...q),0);
+  const cmp=(a,b)=>{ for(let i=0;i<a.length;i++) if(a[i]!==b[i]) return a[i]-b[i]; return 0; };
+  let melhor=null;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    const p=[c,r];
+    if(LANE.has(k(c,r))||BASE_S.has(k(c,r)))continue;
+    if(perto(p,BASE[0])<3||perto(p,BASE[1])<3)continue;          // não encosta em base
+    const nota=[Math.abs(acesso(p,0)-acesso(p,1)),               // justiça primeiro
+                Math.min(perto(p,L_TOPO),perto(p,L_MEIO),perto(p,L_BOT)),  // depois disputa
+                acesso(p,0)+acesso(p,1)];
+    if(!melhor||cmp(nota,melhor.nota)<0) melhor={p,nota};
+  }
+  return melhor?melhor.p:[(COLS-1)>>1,(LINS-1)>>1];
+})());
+const POCO_K=k(...POCO);
+
+/* Dragão compõe, Barão vira a mesa — a distinção do MOBA, ver docs/00-anatomia-moba.md.
+   `volta` é quantas rodadas depois de morrer o poço reabre. `revide` é o preço de
+   encostar, como na torre.
+   Ninguém tem limite de golpes por rodada: é o dado que você deixa de gastar em outro
+   lugar que mede o quanto você quer o objetivo — e é isso que abre a janela do roubo. */
+const EPICO={
+  dragao:{n:"Dragão", vida:3, revide:1, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:5, revide:2, volta:4, pre:"a Fúria do Barão"}
+};
+const R_DRAGAO=5, R_BARAO=8;          /* rodada em que cada morador passa a descer */
+const morador=r=>r>=R_BARAO?"barao":"dragao";
+const DRAGAO_PODER=1;      /* por Dragão levado, permanente e acumulativo */
+const BARAO_PODER=2;       /* enquanto a Fúria durar */
+const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
+
 /* ---------- ESTADO ---------- */
-let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],mover=[],lojaHeroi=null;
+let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
+    mover=[],lojaHeroi=null;
 
 function novo(){
   J={
@@ -136,6 +207,7 @@ function novo(){
     times:[0,1].map(t=>({
       placas:0, prio:0, prioGuardada:0, ward:0,
       caca:null, cacaRevelada:null,
+      dragoes:0, baroes:0, barao:0, retomada:0,
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
@@ -145,6 +217,8 @@ function novo(){
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
+    /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
+    poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
     nexus:[VIDA_NEXUS,VIDA_NEXUS], log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -185,15 +259,57 @@ function faseOculta(){
 }
 /* perguntaCaca mora na seção FLUXO, lá embaixo — é a versão que roda. */
 
+/* ---------- RETOMADA ---------- */
+/* O freio da bola de neve. Ouro já tinha sido testado como freio e não moveu a agulha
+   (+10 por herói, medição registrada na v0.5.2) — dado move, porque dado é ação, e
+   ação é o que falta a quem está apanhando.
+   O perigo NÃO é medido só em torre caída. A primeira versão era, e a medição mostrou
+   por que não funcionava: torre só cai tarde, então a Retomada disparava na rodada 12,9
+   de uma partida que acaba na 15 — chegava depois da partida ter sido decidida.
+   Rota invadida é o mesmo perigo, várias rodadas antes: a onda passa do meio muito
+   antes da torre cair. Somando os dois, o freio chega a tempo de ser freio.
+   Some sozinha quando a diferença fecha: é rubber band, não presente permanente. */
+const torresPerdidas=t=>J.torres.filter(x=>x.t===t&&x.vida<=0).length;
+/* quantos hexágonos de onda inimiga estão do seu lado do meio, somando as três rotas.
+   Contar rota invadida como sim/não foi tentado e medido: as frentes oscilam em volta
+   do centro, então os dois times ficavam "invadidos" ao mesmo tempo e o sinal sumia
+   (disparava 39,4% × 36,6% dos turnos — rubber band que ajuda o líder não é freio).
+   O divisor é o meio do VÃO entre as torres, sem arredondar — e não `centroRota` nem o
+   meio da rota. Os dois foram medidos e os dois enviesam:
+     · `centroRota` arredonda, e o arredondamento dá ao time 0 um hexágono a mais de
+       vão para ser invadido: disparava 37,4% dos turnos para o time 0 contra 28,8%
+       para o time 1, socorrendo o líder;
+     · o meio da rota `(n-1)/2` não é o meio do vão: a frente nasce 2 unidades dentro
+       da metade do time 1, que ganhava Retomada de graça na rodada 1 (25,1% × 53,3%).
+   Sem arredondar, o vão fica com o mesmo alcance dos dois lados em todas as rotas
+   (topo 3 e 3, meio 1,5 e 1,5, baixo 2,5 e 2,5) e a conta nasce zerada. */
+const MEIO_VAO=Object.fromEntries(Object.keys(ROTAS).map(nome=>{
+  const ts=TORRES_DEF.filter(t=>t.rota===nome);
+  return[nome,(Math.max(...ts.filter(t=>t.t===0).map(t=>t.i))
+              +Math.min(...ts.filter(t=>t.t===1).map(t=>t.i)))/2];
+}));
+const invasao=t=>Object.keys(ROTAS).reduce((a,nome)=>{
+  const m=MEIO_VAO[nome], f=J.frentes[nome];
+  return a+Math.max(0, t===0 ? m-f : f-m);
+},0);
+const PESO_TORRE=2;                    /* torre caída vale por dois hexágonos de invasão */
+const perigo=t=>PESO_TORRE*torresPerdidas(t)+invasao(t);
+const atraso=t=>{ const d=perigo(t)-perigo(1-t); return d>=4?2:d>=2?1:0; };
+
 /* ---------- TURNO ---------- */
 function iniciaTurno(){
-  const extra=J.times[J.vez].herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
-  const m=1+Math.floor(Math.random()*6)+extra;
+  const t=J.vez, tm=J.times[t];
+  const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
+  tm.retomada=atraso(t);
+  const m=1+Math.floor(Math.random()*6)+extra+(tm.retomada>=2?1:0);
   J.mov={v:m,rest:m};
   J.dados=[0,1,2].map(()=>({v:1+Math.floor(Math.random()*6),usado:0}));
+  if(tm.retomada>=1) J.dados.push({v:1+Math.floor(Math.random()*6),usado:0,extra:1,retom:1});
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
-  const t=J.vez;
   reg(t?"c":"a",`${NOMES[t]} rola — movimento ${m} · ações ${J.dados.map(d=>d.v).join(" · ")}`);
+  if(tm.retomada>=1)
+    reg("b",`RETOMADA — ${NOMES[t]} está ${tm.retomada} ${tm.retomada===1?"torre":"torres"} atrás`
+           +`: +1 dado de ação${tm.retomada>=2?" e +1 no Dado Mestre":""}`);
   pinta();
 }
 function encerraTurno(){
@@ -227,12 +343,17 @@ function revelaCaca(t){
 
 /* ---------- FIM DE RODADA ---------- */
 function fimDaRodada(){
+  /* a Fúria do Barão empurra as três rotas sozinha, mesmo sem herói nenhum nelas.
+     É o que faz do Barão um relógio: dois times parados param de empatar. */
+  const furia=J.times.map(tm=>tm.barao>0?1:0);
   Object.entries(ROTAS).forEach(([nome,l])=>{     // ondas: a torre viva trava o avanço
     const n0=vivos(0).filter(h=>LANE.get(k(...h.pos))===nome).length;
     const n1=vivos(1).filter(h=>LANE.get(k(...h.pos))===nome).length;
-    let f=J.frentes[nome];
-    if(n0>n1) f++; else if(n1>n0) f--; else return;
-    J.frentes[nome]=limitaFrente(nome,f);
+    let d=0;
+    if(n0>n1) d=1; else if(n1>n0) d=-1;
+    d+=furia[0]-furia[1];
+    if(!d) return;
+    J.frentes[nome]=limitaFrente(nome,J.frentes[nome]+d);
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{     // cerco: só as torres do lado pressionado
     const f=J.frentes[nome];
@@ -249,6 +370,15 @@ function fimDaRodada(){
     J.nexus[lado]--;
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
     if(J.nexus[lado]<=0) J.fim=1-lado;
+  });
+  [0,1].forEach(t=>{                              // a Fúria expira e devolve o Poder
+    const tm=J.times[t];
+    if(!tm.barao)return;
+    tm.barao--;
+    if(!tm.barao){
+      tm.herois.forEach(h=>h.extraPoder-=BARAO_PODER);
+      reg("b",`a Fúria do Barão abandona o ${NOMES[t]}`);
+    }
   });
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
@@ -282,6 +412,13 @@ function fimDaRodada(){
      Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
   J.primeiro=1-J.primeiro;
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
+  const p=J.poco;                                 // o poço reabre, com o morador da vez
+  if(p.vida<=0&&J.rodada>=p.volta){
+    p.id=morador(J.rodada);
+    const d=EPICO[p.id];
+    p.vidaMax=d.vida; p.vida=d.vida;
+    reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
+  }
   pinta(); faseOculta();
 }
 
@@ -564,7 +701,7 @@ function limpaModo(){ modo=null; habAtual=null; confirmar=null; ativo=null; habS
 function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
-  mover=[]; alvos=[]; alvosTorre=[];
+  mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[];
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+(ehAgil(selHeroi)?1:0);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
@@ -584,7 +721,16 @@ function calcula(){
       return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
     });
     alvosTorre=torresAoAlcance(h,hb,alc);
+    alvosEpico=epicosAoAlcance(h,hb,alc);
   }
+}
+/* O épico não tem dono, então não tem a trava da onda que a torre tem: qualquer um
+   bate, a qualquer hora, quantas vezes quiser. É de propósito — o último golpe leva
+   o prêmio inteiro, e é essa janela que transforma o objetivo em briga. */
+function epicosAoAlcance(h,hb,alc){
+  if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
+  if(J.poco.vida<=0) return [];
+  return (hb.ef.semAlcance||dist(...h.pos,...POCO)<=alc) ? [J.poco] : [];
 }
 /* Uma torre só é alvo se a SUA onda já está encostada nela. Sem isso, um assassino
    sozinho derrubaria a base pelas costas — no MOBA quem derruba torre é a onda, o
@@ -637,7 +783,7 @@ function iniciaHab(i){
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
-  if(!alvos.length&&!alvosTorre.length){
+  if(!alvos.length&&!alvosTorre.length&&!alvosEpico.length){
     limpaModo(); pinta();
     return toast(hb.alvo==="al"?"nenhum aliado no alcance":"ninguém no alcance","morte");
   }
@@ -685,6 +831,49 @@ function atacaTorre(tr){
   calcula(); pinta();
 }
 
+/* mesma porta da torre: dano fixo, sem armadura e sem status — mas sem a trava de
+   um golpe por rodada, e com o prêmio indo para quem der o último. */
+function atacaEpico(ep){
+  if(!selHeroi||habAtual===null)return;
+  const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
+  if(di===null)return;
+  const d=EPICO[ep.id];
+  J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
+
+  ep.vida--;
+  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n} com ${hb.n} (${Math.max(0,ep.vida)}/${ep.vidaMax})`);
+  fx(POCO,"-1","dano");
+
+  if(ep.vida<=0) levaEpico(ep,h.t);
+  else{
+    /* o revide nunca mata, pelo mesmo motivo da torre: `mata()` precisa de autor
+       para creditar o ouro, e monstro neutro não é autor. */
+    const levou=Math.min(d.revide,h.vida-1);
+    if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
+      fx(h.pos,-levou,"dano"); tremer(h); }
+  }
+  modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
+  calcula(); pinta();
+}
+/* Dragão compõe para sempre, Barão queima em duas rodadas. O Poder entra por
+   `extraPoder` — nunca por poderTotal, que é const e mata o script inteiro. */
+function levaEpico(ep,t){
+  const tm=J.times[t];
+  ep.volta=J.rodada+EPICO[ep.id].volta;
+  if(ep.id==="dragao"){
+    tm.dragoes++;
+    tm.herois.forEach(h=>h.extraPoder+=DRAGAO_PODER);
+    reg("b",`${NOMES[t]} levou o Dragão — Herança do Dragão ${tm.dragoes}`
+           +` (+${DRAGAO_PODER} de Poder no time, para sempre)`);
+  }else{
+    if(!tm.barao) tm.herois.forEach(h=>h.extraPoder+=BARAO_PODER);
+    tm.barao=BARAO_RODADAS; tm.baroes++;
+    reg("b",`${NOMES[t]} levou o Barão — Fúria por ${BARAO_RODADAS} rodadas`
+           +` (+${BARAO_PODER} de Poder e as ondas avançam sozinhas)`);
+  }
+  toast(EPICO[ep.id].n.toUpperCase()+" É DO "+NOMES[t],"gank"); vibra([40,60,40,60,80]);
+}
+
 const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
@@ -703,6 +892,7 @@ function desenhaMapa(){
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     let cls="hx ";
     if(BASE_S.has(k(c,r)))cls+="base"+BASE_S.get(k(c,r));
+    else if(k(c,r)===POCO_K)cls+="poco";
     else if(LANE.has(k(c,r)))cls+="rota";
     else if(RIO_S.has(k(c,r)))cls+="rio";
     else cls+="selva";
@@ -732,6 +922,34 @@ function desenhaMapa(){
     const[x,y]=centro(...l[Math.max(0,Math.min(l.length-1,J.frentes[nome]))]);
     gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"frente"}));
   });
+
+  /* o poço: retrato do morador e a vida por baixo. Vazio, ele mostra a rodada em
+     que o próximo desce — o relógio da partida só vale se estiver visível. */
+  (()=>{
+    const ep=J.poco, [x,y]=centro(...POCO);
+    if(ep.vida<=0){
+      const g=el("g",{class:"poco-vazio"});
+      g.appendChild(el("circle",{cx:x,cy:y,r:9}));
+      const t=el("text",{x:x,y:y+3});t.textContent="R"+ep.volta;g.appendChild(t);
+      return gM.appendChild(g);
+    }
+    const mirando=alvosEpico.includes(ep);
+    const g=el("g",{class:"epico"+(mirando?" alvo":""),role:"img"});
+    g.setAttribute("aria-label",`${EPICO[ep.id].n}, ${ep.vida} de vida`);
+    if(mirando) g.appendChild(el("circle",{cx:x,cy:y,r:13.4,class:"mira-torre"}));
+    g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"fundo"}));
+    const cid="cl-poco";
+    const cp=el("clipPath",{id:cid});
+    cp.appendChild(el("circle",{cx:x,cy:y,r:9}));
+    const ip=el("image",{x:x-9,y:y-9,width:18,height:18,
+      "clip-path":`url(#${cid})`,preserveAspectRatio:"xMidYMid slice"});
+    ip.setAttribute("href",RETRATO_EPICO(ep.id));
+    g.append(cp,ip);
+    g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
+    const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
+    if(mirando) g.onclick=()=>{vibra(10);atacaEpico(ep);};
+    gM.appendChild(g);
+  })();
   [0,1].forEach(t=>{
     const[x,y]=centro(...BASE[t][0]);
     gM.appendChild(el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t}));
@@ -931,6 +1149,15 @@ function abreManual(){
       <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada.</p>
       <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
+    <section><h4>O Poço — Dragão e Barão</h4>
+      <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
+      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>3 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
+      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>5 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
+      <p>Bater no poço é como bater na torre — mira vermelha, um toque, 1 de dano — só que <b>sem limite por rodada</b> e <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+    <section><h4>Retomada</h4>
+      <p>O jogo conta o quanto você está apanhando: cada <b>torre sua caída</b> vale 2, cada <b>hexágono de onda inimiga do seu lado</b> do vão vale 1.</p>
+      <p>Se a sua conta passar a do adversário em <b>2</b>, você rola <b>+1 dado de ação</b>. Em <b>4</b>, também ganha <b>+1 no Dado Mestre</b>.</p>
+      <p>É automático e <b>some sozinho</b> quando a diferença fecha. Estar atrás não devolve a partida — devolve <b>ação</b> para brigar por ela.</p></section>
     <section><h4>No aparelho</h4>
       <p>Toque num herói seu → abre o <b>comando</b> dele. De lá você escolhe <b>mover</b> ou uma <b>habilidade</b>.</p>
       <p>O dado é escolhido sozinho: o menor que dá conta. Quer gastar um específico? Toque nele antes.</p>
@@ -1007,6 +1234,9 @@ function pinta(){
     `<span>◈ <b>${ouro}</b></span>`+
     `<span class="${tm.placas?"on":""}">⬢ <b>${tm.placas}</b></span>`+
     (tm.prio?`<span class="on">⚡ <b>${tm.prio}</b></span>`:"")+
+    (tm.dragoes?`<span class="on">herança <b>${tm.dragoes}</b></span>`:"")+
+    (tm.barao?`<span class="on">fúria <b>${tm.barao}</b></span>`:"")+
+    (tm.retomada?`<span class="on">retomada${tm.retomada>1?" <b>2</b>":""}</span>`:"")+
     (cacaTxt?`<span class="on">${cacaTxt}</span>`:"");
 
   const dm=G("ddm");
@@ -1197,6 +1427,13 @@ function retratoProv(id){
   return "data:image/svg+xml;utf8,"+encodeURIComponent(svg);
 }
 const RETRATO=id=>ARTE[id]||retratoProv(id);
+/* mesma rede de segurança para os monstros do poço */
+const ARTE_M = typeof ARTE_MONSTRO!=="undefined" ? ARTE_MONSTRO : {};
+const RETRATO_EPICO=id=>ARTE_M[id]||("data:image/svg+xml;utf8,"+encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#1B2A24"/>
+    <text x="50" y="68" font-family="Impact,sans-serif" font-size="60" fill="#D4A24C"
+      text-anchor="middle">${(EPICO[id]||{n:"?"}).n[0]}</text></svg>`));
 const COR_FAM={dado:"#D4A24C",tempo:"#5B93B8",reacao:"#B75C52",mapa:"#6E8F6A",
                economia:"#A87F92",buff:"#8A7CAE",item:"#4F7F7A"};
 const ARTE_C = typeof ARTE_CARTA!=="undefined" ? ARTE_CARTA : {};

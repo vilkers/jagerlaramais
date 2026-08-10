@@ -27,11 +27,16 @@ Veja a tabela de status no `README.md`. Resumindo o que **falta** e vale atacar:
 
 | Prioridade | O que | Por quê |
 |---|---|---|
-| 🔴 1 | Objetivos épicos (Dragão, Barão) no tabuleiro | Sem eles não há pressão de tempo e a partida se arrasta |
-| 🟠 2 | Comeback | Quem abre vantagem hoje não devolve nada |
-| 🟠 3 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
+| 🔴 1 | **Playtest humano** do poço épico e da Retomada | Entraram na v0.5.5 e a simulação **não consegue medi-los** — ver abaixo |
+| 🟠 2 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
+| 🟡 3 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
 | 🟡 4 | Acampamentos de selva | Buffs Azul e Vermelho, as válvulas contra dado ruim |
 | 🟡 5 | Feitiços de invocador | 5 cartas, alto retorno em história |
+
+> **Cuidado com `sim/bateria.js`.** Ela mede estrutura (geometria, onda, torre, ritmo) muito bem e
+> é **cega a qualquer mecânica de escolha** — épico, Retomada, Prioridade, Placas, itens, cartas.
+> O agente joga ao acaso, então dado a mais não vira vitória. Medido: 6 dados extras por turno não
+> moveram o número. Ela vê o custo e não vê o prêmio. Leia o cabeçalho do arquivo antes de usar.
 
 ---
 
