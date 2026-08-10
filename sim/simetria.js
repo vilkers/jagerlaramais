@@ -96,6 +96,20 @@ Object.keys(ROTAS).forEach(nome => {
     torreFora.push(`${nome}: time0 a ${d0.join("/")} passos da base · time1 a ${d1.join("/")}`);
 });
 
+/* ---------- 4b. a espinha é um caminho contínuo? ----------
+   `frentes` guarda um ÍNDICE da espinha, e a onda anda de um índice para o
+   seguinte. Se dois passos vizinhos na lista não forem vizinhos no tabuleiro, a
+   onda atravessa o vão como se nada fosse. Já aconteceu: em N=11 a rota do meio
+   nasceu partida em duas, com um vão de 3 casas, porque o tabuleiro não tinha
+   casa fixa da rotação e a emenda só sabia costurar buraco de uma casa.         */
+const rachaduras = [];
+Object.entries(ROTAS).forEach(([nome, l]) => {
+  for (let i = 1; i < l.length; i++) {
+    const d = G.dist(...l[i - 1], ...l[i]);
+    if (d > 1) rachaduras.push(`${nome}: passo ${i - 1} (${l[i - 1]}) → ${i} (${l[i]}) dista ${d}`);
+  }
+});
+
 /* ---------- 5. largura da rota ----------
    Espinha = a lista ordenada de ROTAS (é ela que indexa torre e onda).
    Corredor = tudo que LANE marca com o nome da rota.
@@ -132,11 +146,15 @@ baseFora.forEach(f => L(`      ${f}`));
 L(`\n4. Torres a distâncias espelhadas da base: ${torreFora.length ? "FALHA" : "ok"}`);
 torreFora.forEach(f => L(`      ${f}`));
 
+L(`\n4b. Espinha contínua (passo vizinho na lista = vizinho no tabuleiro): ${rachaduras.length ? "FALHA" : "ok"}`);
+rachaduras.forEach(f => L(`      ${f}`));
+
 L(`\n5. Largura da rota:`);
 Object.entries(larguras).forEach(([n, w]) =>
   L(`   ${n.padEnd(6)} espinha=${String(w.espinha).padStart(2)}  corredor=${String(w.corredor).padStart(3)}  seção min=${w.min} max=${w.max}` +
     `${w.min < 2 ? `   <<< ${w.estreitos} passo(s) com 1 casa` : ""}`));
 
-const falhas = (semPar.length ? 1 : 0) + (tb.ok ? 0 : 1) + (baseFora.length ? 1 : 0) + (torreFora.length ? 1 : 0);
+const falhas = (semPar.length ? 1 : 0) + (tb.ok ? 0 : 1) + (baseFora.length ? 1 : 0) + (torreFora.length ? 1 : 0)
+              + (rachaduras.length ? 1 : 0);
 L(`\n${falhas ? falhas + " verificação(ões) falhando" : "tabuleiro simétrico"}\n`);
 process.exit(falhas ? 1 : 0);

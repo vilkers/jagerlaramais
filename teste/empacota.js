@@ -62,6 +62,9 @@ html = html.replace(
   [imagensEmbutidas, ler("data/catalogo.js"), ler("jogo/jogo.js")]
     .map(s => `<script>\n${s}\n</script>`).join("\n"));
 
+/* Carimbo do commit de ORIGEM — o estado da fonte no momento de gerar. Por
+   construção ele é o commit ANTERIOR ao que carrega este arquivo: gera-se,
+   depois commita-se. Um carimbo "atrasado em um" é o esperado, não defeito. */
 let carimbo = "";
 try {
   carimbo = execSync("git log -1 --format=%h\\ %ad --date=short", { cwd: RAIZ }).toString().trim();

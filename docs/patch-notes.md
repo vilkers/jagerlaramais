@@ -25,16 +25,19 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 **Tabuleiro 9×9 → 11×11.** Casas jogáveis **77 → 116** (5 saem da grade por não
 terem par no espelho, contra 4 antes).
 
-| | 9×9 | 11×11 |
+| | 9×9 (antes) | 11×11 |
 |---|---|---|
-| **Selva** | 16 casas | **38 casas** |
-| Rota (corredor) | 57 | 74 |
-| Espinha topo/meio/baixo | 13/9/13 | 17/10/17 |
+| **Selva** | 16 casas | **30 casas** |
+| Rota (corredor) | 57 | **82** |
+| Espinha topo/meio/baixo | 13/9/13 | 17/12/17 |
 
-**Nenhuma casa de rota foi perdida.** A selva é o *interior* do mapa e cresce ao
-quadrado; a rota é o *perímetro* e cresce linear — então aumentar o lado engorda
-a selva 2,4× enquanto a rota sobe 1,3×. Não foi preciso tirar nada de rota para
-dar espaço à selva.
+**Nenhuma casa de rota foi perdida — as rotas cresceram junto.** A selva é o
+*interior* do mapa e cresce ao quadrado; a rota é o *perímetro* e cresce linear,
+então aumentar o lado engorda a selva quase o dobro sem tirar nada das rotas.
+
+> A selva chegou a marcar 38 casas numa medição intermediária desta mesma leva.
+> Não valia: naquele momento a rota do meio ainda estava fina e partida (ver
+> abaixo). Consertá-la devolveu 8 casas para a rota, e é assim que fica.
 
 **O placar de estruturas saiu do painel e virou gaveta**, no botão **⌂** do
 cabeçalho. Com o tabuleiro maior quem precisa do espaço vertical é o mapa, e
@@ -64,10 +67,38 @@ deduzida quando `N` muda, e em 10 a dedução cai num lugar ruim.
 **11×11 derruba a vantagem de quem começa de 57,1% para 55,0%**, que era a
 regressão aberta desde a v0.6. Custa **3 rodadas a mais** de partida.
 
+### O que a rota do meio escondia
+
+Alargar a rota destapou dois defeitos nela, os dois só visíveis em 11×11:
+
+**1. A espinha do meio estava PARTIDA em duas.** Entre os passos 4 e 5 havia um
+vão de **3 casas** — `(4,6)` e `(6,4)` não são vizinhas. Como `frentes` guarda um
+índice da espinha e a onda anda de um índice para o seguinte, **a onda
+atravessava o buraco como se nada fosse**.
+
+A causa: o eixo da rotação em N=11 cai *entre* casas (não existe hexágono
+central), e a metade escrita parava na linha do centro em vez de avançar uma
+linha além dela. Em 9×9 o defeito não aparecia porque lá existe casa fixa, que
+fechava a emenda sozinha. A metade agora desce uma linha a mais — aí a última
+casa dela e o espelho dessa casa são vizinhas — e a costura de emergência
+caminha até fechar o vão, em vez de tentar uma casa só.
+
+**2. A rota do meio era mais fina que as outras duas.** Tinha **6 casas extras
+para 10 de espinha**, contra 12 para 17 do topo. O estreitamento do meio da rota
+era calculado sobre a *metade* da lista — o meio é escrito pela metade e
+espelhado — então caía no lugar errado. O estreitamento do meio saiu; só a
+**boca da base** continua com uma casa. Agora o meio tem **10 extras para 12 de
+espinha** e seção mínima **2 em todo o percurso**.
+
+`sim/simetria.js` ganhou a verificação **4b — espinha contínua**, que compara
+cada passo com o seguinte. Era o teste que faltava: o de largura reportava
+`min=2` e passava, porque uma casa extra pode servir a dois passos vizinhos.
+Rodado em N=9, 10, 11, 12 e 13: contínua nas três rotas.
+
 ### Duas ressalvas honestas
 
 **1. A selva cresceu, mas continua vazia.** Não existem acampamentos — os buffs
-Azul e Vermelho seguem na lista de *o que NÃO existe*. As 38 casas valem por
+Azul e Vermelho seguem na lista de *o que NÃO existe*. As 30 casas valem por
 espaço tático (flanco, gank, rota de fuga), não por conteúdo. Quem esperava
 "mais o que fazer na selva" vai encontrar mais chão para andar, e só.
 
