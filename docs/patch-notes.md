@@ -16,6 +16,74 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6.1 — o herói cerca sozinho, e dá para ler a vida das estruturas · 2026-08-10
+
+> **Em teste. Não aprovado.** Muda condição de vitória.
+
+### O que mudou
+
+**A torre deixou de depender da onda.** Estava assim:
+
+```js
+if(J.frentes[tr.rota]!==tr.i) return false;   // só com a ONDA em cima da torre
+```
+
+O herói só podia bater na torre se o creep já tivesse chegado nela. Na prática
+ninguém cercava: esperava. Agora quem decide é a **posição do herói**, e a onda
+voltou a ser o que devia ser — pressão constante, não permissão.
+
+**No lugar do portão da onda entrou a torre exposta.** Só aceita golpe a torre
+**mais avançada que ainda está de pé** naquela rota. Enquanto ela vive, a de trás
+está protegida — senão dava para passar por fora da linha de frente e bater direto
+na porta da base. Uma torre continua aguentando **um golpe de herói por rodada**,
+e o revide de 2 continua sendo o preço de encostar.
+
+**O Nexus passou a ter caminho de dano por herói**, que não existia: até aqui só a
+onda o derrubava, e a partida terminava sem ninguém dar o golpe final.
+
+| | Regra |
+|---|---|
+| Quando | Só depois que uma **rota inteira** daquele lado cai — as duas torres no chão |
+| Alcance | O herói precisa alcançar a base inimiga |
+| Dano | **1** por golpe, **um golpe por rodada** (`J.nexusBatido`) |
+| Revide | **Nenhum** — quem chegou até aqui já pagou o pedágio das duas torres |
+
+**Placar de estruturas abaixo do mapa.** Os números já existiam desenhados dentro
+da torre e do Nexus, com ~6px de altura em tela — ninguém lia. Agora há uma coluna
+por lado, uma linha por rota, vida em bolinha cheia/vazia, aviso de **rota aberta**
+e de **Nexus exposto**, e marca de torre **já batida** nesta rodada.
+
+### O que isso muda no ritmo
+
+Medido, n=3000:
+
+| | Antes (v0.6) | Agora |
+|---|---|---|
+| Golpes de herói em torre, por partida | 1,4 | **4,8** |
+| Golpes de herói no Nexus | — | **0,3** |
+| Torres caídas | 5,5/12 | 5,8/12 |
+| Duração (mediana) | 16 | **14** rodadas |
+| Quem começa | 56,4% | **56,1%** (z=6,65) |
+
+O herói virou fonte real de pressão em estrutura — era o buraco — e a partida
+encurtou duas rodadas. A vantagem de quem começa não se moveu.
+
+### Duas coisas que este trabalho encontrou
+
+**1. O agente da bateria não sabia atacar o Nexus.** `sim/agente.js` só olhava
+épico, torre e herói. Sem o ramo novo, a bateria mediria um jogo que não é o que
+está no arquivo — regra nova com zero cobertura. Ele agora ataca o Nexus com
+prioridade máxima (é condição de vitória) e `sim/motor.js` expõe `alvoNexus` na
+ponte, que é `let` e não vira propriedade do global sozinha.
+
+**2. `--pos` nunca foi declarada na paleta do CSS.** É usada em quatro lugares;
+três são anteriores a este trabalho (`.fic`, `.fic .ps`, e a borda da linha 436).
+Variável indefinida invalida a declaração inteira, então a cor simplesmente não
+pinta. O placar novo usa `--vivo`, que existe. **As outras três continuam lá** —
+conserto separado, para não misturar aparência com regra nesta leva.
+
+---
+
 ## v0.6 — o tabuleiro vira 9×9, simétrico, e a rota cabe em dois · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda geometria e posição de torre.

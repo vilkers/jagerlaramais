@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.5.8 · **Atualizado em:** 2026-08-10
+**Versão:** v0.6.1 (em teste, não aprovada) · **Atualizado em:** 2026-08-10
 
 ---
 
@@ -22,7 +22,8 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
-| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada) |
+| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
+| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
 | Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
 | Vantagem de quem começa | **53,5%** (z=9,8, n=20000) · **50,5%** com épico e Retomada desligados |
 | Tamanho do tabuleiro | **9×9**, 77 casas · espinha de rota com 13 · corredor com **2 de largura** — derivado de `const N` em jogo.js |
@@ -106,9 +107,11 @@ existe". Para dar bônus, escreva em `extraPoder`/`arm`/`agil` e guarde quanto a
 **2. IDs duplicados entre `<section>` e o container interno.** `querySelector` pega o primeiro e
 você apaga a seção inteira. Já aconteceu no guia.
 
-**3. As duas fórmulas de `TORRES_DEF` não são espelho, e isso é proposital.** Trocar a segunda por
-`n-1-i`, que parece o conserto óbvio, joga a vitória de quem começa de 51,1% para **40,8%**. O
-desencontro compensa outra assimetria do sistema. Está anotado no código; não mexa sem medir.
+**3. ~~As duas fórmulas de `TORRES_DEF` não são espelho~~ — resolvido na v0.6.** O desencontro
+existia para compensar a assimetria do mapa, e o aviso pedia para medir os dois lados juntos.
+Foi o que se fez: com o tabuleiro simétrico, torre simétrica dá **58,7%** para quem começa e a
+fórmula antiga dá **73,5%** (1500 partidas por caso). A compensação virou o problema e saiu.
+Fica a lição, que continua valendo: **assimetria de mapa e posição de torre se medem em conjunto.**
 
 **4. Medição de assimetria quer n=20000.** A n=5000 a banda de ruído é ±1,4 ponto a 2σ, e foi ela
 que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
@@ -117,9 +120,10 @@ que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
 encolher e o mapa se redimensionar — com o dedo encostado. Medido: a casa sob o dedo pulava de
 `[0,5]` para `[0,7]`. Realce durante gesto se faz direto no DOM; repinta só no fim. Ver v0.5.8.
 
-**5. O tabuleiro 8×8 não cabe direito abaixo de 640px de altura.** Dá hexágono de ~28px, contra
+**5. O tabuleiro não cabe direito abaixo de 640px de altura.** Em 8×8 dava hexágono de ~28px, contra
 os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-
 ampliar. Nesse tamanho a lista de comando mostra uma linha por vez e rola. Ver v0.5.6.
+**Em 9×9 (v0.6) o aperto é maior** — o hexágono encolhe de novo. Ainda não reavaliado em tela pequena.
 
 ## Como testar rápido
 

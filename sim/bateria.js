@@ -127,7 +127,7 @@ console.log(`  ${jogos.length}/${n} partidas concluídas em ${((Date.now() - t0)
 console.log(`\n  rodadas    mediana ${rodadas.mediana}   média ${rodadas.media}   `
           + `faixa ${rodadas.min}–${rodadas.max}`);
 console.log(`  por partida  ${media("acoes")} ações · ${media("torresCaidas")}/12 torres · `
-          + `${media("golpesTorre")} golpes de herói em torre`);
+          + `${media("golpesTorre")} golpes de herói em torre · ${media("golpesNexus")} no Nexus`);
 const soma = campo => +(jogos.reduce((a, j) => a + j[campo][0] + j[campo][1], 0) / jogos.length).toFixed(2);
 console.log(`  épicos       ${soma("dragoes")} Dragões · ${soma("baroes")} Barões · `
           + `${media("golpesEpico")} golpes de herói em épico`);

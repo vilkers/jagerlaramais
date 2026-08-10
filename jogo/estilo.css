@@ -125,6 +125,7 @@ button:disabled{cursor:not-allowed}
 #mapa circle.mira-torre{fill:none;stroke:var(--dano);stroke-width:1.8;
   stroke-dasharray:3 2.4;animation:mira .85s ease-in-out infinite;pointer-events:none}
 #mapa .torre.alvo{cursor:pointer;stroke-width:2.6;fill-opacity:.9}
+#mapa .nexus.alvo{cursor:pointer;stroke-width:3.4;fill-opacity:.95}
 #mapa .peca image{pointer-events:none;filter:brightness(1.5) contrast(1.12) saturate(1.1)}
 #mapa .barravida rect{stroke:none}
 #mapa .selo{fill:var(--brass);stroke:var(--ground);stroke-width:.8;pointer-events:none}
@@ -154,6 +155,35 @@ button:disabled{cursor:not-allowed}
 .tst.gank{border-color:var(--carmim);color:var(--carmim-2)}
 @keyframes tin{from{opacity:0;transform:translateY(-14px) scale(.9)}to{opacity:1;transform:none}}
 @keyframes tout{to{opacity:0;transform:translateY(-10px)}}
+
+/* ══════════ PLACAR DE ESTRUTURAS ══════════
+   A vida da torre e do Nexus existia só desenhada dentro da peça no mapa, com
+   ~6px em tela. Aqui ela fica legível: uma coluna por lado, uma linha por rota,
+   e bolinha cheia/vazia em vez de número miúdo — dá para ler de relance. */
+#estruturas{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:none}
+#estruturas:empty{display:none}
+.ecol{border:1px solid var(--line);border-radius:10px;padding:5px 7px;
+  background:var(--ground-3);display:flex;flex-direction:column;gap:3px}
+.ecol.t0{border-left:3px solid var(--azul)}
+.ecol.t1{border-left:3px solid var(--carmim)}
+.ecab{font-family:var(--display);font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--ink-2);display:flex;gap:4px;align-items:baseline}
+.ecab i{font-style:normal;font-size:9.5px;color:var(--brass)}
+.er{display:flex;align-items:center;gap:5px;font-size:10.5px;line-height:1}
+.er b{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);width:30px;flex:none}
+.er.nex b{color:var(--brass)}
+.er.nex.exposto b{color:var(--dano)}
+.pips{display:flex;gap:2px}
+.pips i{width:7px;height:7px;border-radius:50%;border:1px solid var(--line);display:block}
+.pips i.on{background:var(--brass);border-color:var(--brass)}
+/* --vivo, não --pos: `--pos` é usada em quatro lugares do arquivo e NUNCA foi
+   declarada na paleta, então a declaração inteira é inválida e a cor não pinta.
+   Ver as outras três ocorrências — são anteriores a este placar. */
+.er.nex .pips i.on{background:var(--vivo);border-color:var(--vivo)}
+.er.nex.exposto .pips i.on{background:var(--dano);border-color:var(--dano)}
+.er .aviso{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--dano)}
+.er .ja{font-size:9px;color:var(--ink-3)}
+.er.aberta b{color:var(--dano)}
 
 /* ══════════ PAINEL ══════════ */
 /* Medido em quatro tamanhos: hud + palco + painel estourava a janela nos QUATRO,

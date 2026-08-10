@@ -291,7 +291,7 @@ const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta,
 
 /* ---------- ESTADO ---------- */
 let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
-    mover=[],lojaHeroi=null;
+    alvoNexus=null,mover=[],lojaHeroi=null;
 
 function novo(){
   J={
@@ -311,7 +311,7 @@ function novo(){
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
-    nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, log:[]
+    nexus:[VIDA_NEXUS,VIDA_NEXUS], nexusBatido:[0,0], motivoFim:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
   const DE_ROTA={topo:"topo",meio:"meio",adc:"baixo",sup:"baixo"};
@@ -497,6 +497,7 @@ function fimDaRodada(){
   });
   desempilha();
   J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
+  J.nexusBatido=[0,0];                            // e o Nexus também, um golpe por rodada
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
   if(J.fim!==null){ pinta(); return telaFim(); }
   /* a iniciativa alterna. Antes `primeiro` era 0 e nunca mudava: o mesmo time
@@ -802,7 +803,7 @@ function limpaModo(){ modo=null; habAtual=null; confirmar=null; ativo=null; habS
 function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
-  mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[];
+  mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+(ehAgil(selHeroi)?1:0);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
@@ -823,6 +824,7 @@ function calcula(){
     });
     alvosTorre=torresAoAlcance(h,hb,alc);
     alvosEpico=epicosAoAlcance(h,hb,alc);
+    alvoNexus=nexusAoAlcance(h,hb,alc);
   }
 }
 /* O épico não tem dono, então não tem a trava da onda que a torre tem: qualquer um
@@ -833,16 +835,40 @@ function epicosAoAlcance(h,hb,alc){
   if(J.poco.vida<=0) return [];
   return (hb.ef.semAlcance||dist(...h.pos,...POCO)<=alc) ? [J.poco] : [];
 }
-/* Uma torre só é alvo se a SUA onda já está encostada nela. Sem isso, um assassino
-   sozinho derrubaria a base pelas costas — no MOBA quem derruba torre é a onda, o
-   herói só acelera. Uma torre aguenta um golpe de herói por rodada. */
+/* A torre EXPOSTA de uma rota: a mais avançada que ainda está de pé. Enquanto
+   ela vive, a de trás não aceita golpe — senão dava para passar por fora da
+   linha de frente e bater direto na porta da base. Time 0 avança para índice
+   maior, time 1 para índice menor: por isso os dois extremos. */
+function torreExposta(rota,t){
+  const vivas=J.torres.filter(x=>x.rota===rota&&x.t===t&&x.vida>0);
+  if(!vivas.length) return null;
+  return vivas.reduce((a,b)=>((t===0?b.i>a.i:b.i<a.i)?b:a));
+}
+/* Até a v0.6 havia aqui `if(J.frentes[tr.rota]!==tr.i) return false;` — a torre
+   só aceitava golpe de herói com a ONDA em cima dela. Na prática o herói nunca
+   cercava: esperava o creep chegar. Agora quem decide é a posição do herói, e a
+   onda voltou a ser o que devia ser — pressão constante, não permissão. */
 function torresAoAlcance(h,hb,alc){
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
   return J.torres.filter(tr=>{
     if(tr.t===h.t||tr.vida<=0||tr.batida) return false;
-    if(J.frentes[tr.rota]!==tr.i) return false;
+    if(torreExposta(tr.rota,tr.t)!==tr) return false;
     return hb.ef.semAlcance||dist(...h.pos,...ROTAS[tr.rota][tr.i])<=alc;
   });
+}
+
+/* O Nexus só fica exposto quando uma rota INTEIRA daquele lado cai — as duas
+   torres da rota no chão. É o que separa "invadir" de "ganhar por atalho":
+   sem isso um assassino veloz correria para a base na rodada 2. */
+const rotaAberta=t=>Object.keys(ROTAS).some(nome=>
+  !J.torres.some(x=>x.rota===nome&&x.t===t&&x.vida>0));
+function nexusAoAlcance(h,hb,alc){
+  if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return null;
+  const lado=1-h.t;
+  if(J.nexus[lado]<=0||J.nexusBatido[lado]) return null;
+  if(!rotaAberta(lado)) return null;
+  const d=Math.min(...BASE[lado].map(([c,r])=>dist(...h.pos,c,r)));
+  return (hb.ef.semAlcance||d<=alc) ? lado : null;
 }
 
 /* dado que será gasto: o escolhido à mão, senão o menor que atende */
@@ -884,7 +910,7 @@ function iniciaHab(i){
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
-  if(!alvos.length&&!alvosTorre.length&&!alvosEpico.length){
+  if(!alvos.length&&!alvosTorre.length&&!alvosEpico.length&&alvoNexus===null){
     limpaModo(); pinta();
     return toast(hb.alvo==="al"?"nenhum aliado no alcance":"ninguém no alcance","morte");
   }
@@ -928,6 +954,30 @@ function atacaTorre(tr){
     if(levou>0){ h.vida-=levou; reg("b",`a torre revida — ${levou} em ${h.n}`);
       fx(h.pos,-levou,"dano"); tremer(h); }
   }
+  modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
+  calcula(); pinta();
+}
+
+/* O Nexus, pela mesma porta da torre: dano fixo de 1, um golpe por rodada, e sem
+   revide — quem chegou até aqui já pagou o pedágio das duas torres da rota.
+   Até a v0.6 não existia caminho nenhum: só a onda derrubava Nexus, e a partida
+   terminava sem que ninguém desse o golpe final. */
+function atacaNexus(lado){
+  if(!selHeroi||habAtual===null)return;
+  const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
+  if(di===null)return;
+  J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(18);
+
+  J.nexus[lado]--; J.nexusBatido[lado]=1;
+  reg(J.vez?"c":"a",`${h.n} golpeia o NEXUS ${NOMES[lado]} com ${hb.n} `+
+      `(${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS})`);
+  fx(BASE[lado][0],"-1","dano");
+
+  if(J.nexus[lado]<=0){
+    J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído por ${h.n}.`;
+    reg("b",`NEXUS ${NOMES[lado]} DESTRUÍDO`);
+    toast("NEXUS DESTRUÍDO","gank"); vibra([60,80,60]);
+  }else{ toast("NEXUS EM "+J.nexus[lado],"gank"); }
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
@@ -1167,7 +1217,12 @@ function desenhaMapa(){
   })();
   [0,1].forEach(t=>{
     const[x,y]=centro(...BASE[t][0]);
-    gM.appendChild(el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t}));
+    const mirando=alvoNexus===t;
+    if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
+    const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
+    if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
+    gM.appendChild(nx);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);});
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -1476,6 +1531,41 @@ function pinta(){
     if(J.dados[i].usado||J.fase!=="jogando")return;
     dadoSel=dadoSel===i?null:i; vibra(8); pinta();
   });
+
+  /* Placar de estruturas. Os números já existiam DENTRO da torre e do Nexus no
+     mapa, com ~6px de altura em tela — ninguém lia. Aqui em cima ficam por
+     extenso, por rota, com o lado de quem defende, e a torre exposta (a que
+     aceita golpe agora) marcada. Assim dá para decidir onde cercar sem
+     precisar caçar losango no tabuleiro. */
+  (()=>{
+    const est=G("estruturas");
+    if(!est) return;
+    if(J.fase!=="jogando"){ est.innerHTML=""; return; }
+    const pip=(v,max)=>`<span class="pips">${
+      Array.from({length:max},(_,i)=>`<i class="${i<v?"on":""}"></i>`).join("")}</span>`;
+    const lado=t=>{
+      const rotas=Object.keys(ROTAS).map(nome=>{
+        const ts=J.torres.filter(x=>x.rota===nome&&x.t===t);
+        const viva=torreExposta(nome,t);
+        const total=ts.reduce((a,x)=>a+Math.max(0,x.vida),0);
+        const caiu=ts.every(x=>x.vida<=0);
+        return `<div class="er${caiu?" aberta":""}">
+          <b>${nome.slice(0,3).toUpperCase()}</b>
+          ${caiu?'<span class="aviso">rota aberta</span>'
+                :pip(total,ts.length*VIDA_TORRE)+(viva&&viva.batida?'<span class="ja">já batida</span>':"")}
+        </div>`;
+      }).join("");
+      const nx=Math.max(0,J.nexus[t]);
+      return `<div class="ecol t${t}">
+        <div class="ecab">${NOMES[t]}${t===J.vez?" <i>· sua vez</i>":""}</div>
+        ${rotas}
+        <div class="er nex${rotaAberta(t)?" exposto":""}">
+          <b>NEXUS</b>${pip(nx,VIDA_NEXUS)}
+          ${rotaAberta(t)?'<span class="aviso">exposto</span>':""}
+        </div></div>`;
+    };
+    est.innerHTML=lado(0)+lado(1);
+  })();
 
   /* painel de comando — a peça central da correção de jogabilidade */
   const cmd=G("comando");

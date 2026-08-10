@@ -89,6 +89,7 @@ const PONTE = `
   get alvos(){return alvos},
   get alvosTorre(){return alvosTorre},
   get alvosEpico(){return alvosEpico},
+  get alvoNexus(){return alvoNexus},
   get mover(){return mover},
   get maos(){return maos},
   get baralho(){return baralho},
