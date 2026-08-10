@@ -66,7 +66,26 @@ Medido, n=3000:
 | Quem começa | 56,4% | **56,1%** (z=6,65) |
 
 O herói virou fonte real de pressão em estrutura — era o buraco — e a partida
-encurtou duas rodadas. A vantagem de quem começa não se moveu.
+encurtou duas rodadas.
+
+### O custo acumulado da leva, medido no tamanho que o projeto exige
+
+`ESTADO.md` manda medir assimetria com **n=20000**, porque a n=3000 a banda de
+ruído é ±1,8 ponto a 2σ. Rodado:
+
+| Build | Quem começa |
+|---|---|
+| v0.5.8 (base desta branch) | 53,5% (z=9,8) |
+| v0.5.9 + v0.6 + v0.6.1 | **57,1%** (z=20,1) |
+
+**+3,6 pontos**, e o z não deixa dúvida. Não é ruído: as três mudanças juntas
+pioraram a vantagem de quem abre. O mapa simétrico responde por boa parte —
+ele tirou do caminho a assimetria que empurrava para o outro lado e mascarava
+o problema. Mediana da partida: 15 rodadas, igual à de antes.
+
+**Isto é assunto de aprovação, não de conserto silencioso.** O freio continua
+sendo o comeback, que segue sem existir. Enquanto ele não entra, quem abre leva
+57 partidas em 100 contra um adversário que joga igual.
 
 ### Duas coisas que este trabalho encontrou
 

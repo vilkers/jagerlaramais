@@ -25,10 +25,10 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
 | Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
-| Vantagem de quem começa | **53,5%** (z=9,8, n=20000) · **50,5%** com épico e Retomada desligados |
+| Vantagem de quem começa | **57,1%** (z=20,1, n=20000) — era **53,5%** na v0.5.8. A leva v0.5.9→v0.6.1 custou +3,6 pontos e ainda não tem freio |
 | Tamanho do tabuleiro | **9×9**, 77 casas · espinha de rota com 13 · corredor com **2 de largura** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | ~15 rodadas (mediana medida: 15) |
+| Duração de uma partida | ~15 rodadas (mediana medida: 15, n=20000) |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
