@@ -58,7 +58,7 @@ export default function Home() {
 
       <section className="worldmap" id="mapa">
         <div className="map-intro"><span>03 / MAPA · EM REDESIGN</span><h2>A VÁRZEA<br/>DO FIM</h2><p>O mapa mantém a leitura tática atual, mas cada rota ganha identidade narrativa, habitantes e materiais próprios.</p></div>
-        <div className="map-board"><img src="/images/mapa-atual.jpg" alt="Mapa atual do jogo, base para o redesign da Várzea do Fim"/><div className="construction">⚒ MAPA ATUAL<br/><b>REDESIGN EM CONSTRUÇÃO</b></div></div>
+        <div className="map-board"><img src="/images/mapa-atual.jpg" srcSet="/images/mapa-atual-700.jpg 700w, /images/mapa-atual-1200.jpg 1200w, /images/mapa-atual.jpg 1400w" sizes="(max-width: 620px) calc(100vw - 36px), 92vw" alt="Mapa atual do jogo, base para o redesign da Várzea do Fim" loading="lazy" decoding="async"/><div className="construction">⚒ MAPA ATUAL<br/><b>REDESIGN EM CONSTRUÇÃO</b></div></div>
         <div className="territories">{territories.map(([id,name,route,copy]) => <article key={id}><b>{id}</b><small>{route}</small><h3>{name}</h3><p>{copy}</p></article>)}</div>
       </section>
 
@@ -88,14 +88,14 @@ export default function Home() {
         <div className="filters">{["TODOS", "TOPO", "SELVA", "MEIO", "ATIRADOR", "SUPORTE"].map((item) => <button key={item} data-filter={item} className={filter === item ? "on" : ""} onClick={() => setFilter(item)}>{item}</button>)}</div>
         <div className="roster-grid">
           {filtered.map((hero) => <article className={`hero-slot ${hero.image ? "complete" : ""}`} data-role={hero.role} key={hero.id} style={{ "--route": hero.color } as React.CSSProperties}>
-            <div className="slot-image">{hero.image ? <img src={hero.image} alt={hero.name} /> : <span>{hero.id}</span>}</div>
+            <div className="slot-image">{hero.image ? <img src={hero.image} alt={hero.name} loading="lazy" decoding="async" /> : <span>{hero.id}</span>}</div>
             <div className="slot-meta"><small>{hero.id} · {hero.role}</small><h3>{hero.name}</h3><p>{hero.title}</p><b>{hero.status}</b></div>
           </article>)}
         </div>
       </section>
 
       <section className="chinela" id="chinela">
-        <div className="chinela-art"><img src="/images/dona-chinela-v1.jpeg" alt="Dona Chinela, primeira heroína oficial do novo universo"/><div className="approved">CHARACTER 01<br/><b>APPROVED</b></div></div>
+        <div className="chinela-art"><img src="/images/dona-chinela-v1.jpeg" alt="Dona Chinela, primeira heroína oficial do novo universo" loading="lazy" decoding="async"/><div className="approved">CHARACTER 01<br/><b>APPROVED</b></div></div>
         <div className="chinela-copy">
           <span>06 / PERSONAGEM-MATRIZ</span><h2>DONA<br/>CHINELA</h2><h3>A ÚLTIMA PALAVRA</h3><p>Uma avó aparentemente acolhedora que trata a arena como uma reunião de condomínio fora de controle. Seu tamanco mecânico, O Corretivo, foi reconstruído com madeira, pistões, azulejos e tudo que sobrou do edifício que ela salvou.</p>
           <div className="stats"><div><b>13</b><span>VIDA</span></div><div><b>03</b><span>PODER</span></div><div><b>03</b><span>ARMADURA</span></div><div><b>01</b><span>ALCANCE</span></div></div>
@@ -105,7 +105,7 @@ export default function Home() {
 
       <section className="sheet-study">
         <div className="sheet-label"><span>06B / CHARACTER SHEET RENDERIZADO</span><h2>MESMA HEROÍNA.<br/><i>TODOS OS ÂNGULOS.</i></h2><p>Estudo premium para validar consistência antes da modelagem 3D. Frente, costas, perfil, expressões e construção do Corretivo preservam o acabamento da arte-matriz.</p><b>TESTE PARA SUA VALIDAÇÃO · NÃO FINAL</b></div>
-        <img src="/images/dona-chinela-character-sheet-rendered.jpg" alt="Character sheet renderizado da Dona Chinela com vistas, expressões e detalhe do tamanco"/>
+        <a className="sheet-scroll" href="/images/dona-chinela-character-sheet-rendered.jpg" target="_blank" rel="noreferrer" aria-label="Abrir character sheet da Dona Chinela em alta resolução"><img src="/images/dona-chinela-character-sheet-900.jpg" srcSet="/images/dona-chinela-character-sheet-900.jpg 900w, /images/dona-chinela-character-sheet-1600.jpg 1600w, /images/dona-chinela-character-sheet-rendered.jpg 2400w" sizes="(max-width: 620px) calc(100vw - 36px), 92vw" alt="Character sheet renderizado da Dona Chinela com vistas, expressões e detalhe do tamanco" loading="lazy" decoding="async"/><span>TOQUE PARA AMPLIAR ↗</span></a>
       </section>
 
       <section className="bestiary" id="monstros">
