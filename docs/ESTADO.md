@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.6.2 (em teste, não aprovada) · **Atualizado em:** 2026-08-10
+**Versão de pacote:** v15 (em teste, não aprovada) · **Base anterior:** v0.6.2 · **Atualizado em:** 2026-08-11
 
 ---
 
@@ -21,14 +21,14 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
-| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
+| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação; Retomada pode acrescentar **1 ou 2 dados de ação** |
 | Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
-| Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
-| Vantagem de quem começa | **55,5%** (z=15,41, n=20000) — era **53,5%** na v0.5.8 e chegou a **57,1%** na v0.6.1. O tabuleiro 11×11 devolveu 1,6 ponto, mas ainda sobra +2,0 sobre a base e não há freio |
+| Poço épico | casa **[4,4]** · Dragão (**8 de vida**) até a rodada 8, Barão (**14**) depois · básica tira 1, Ultimate tira 2 |
+| Vantagem de quem começa | **Última medição válida: 55,5% na v0.6.2** (z=15,41, n=20000). A v15 ainda não foi medida em amostra adequada |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | **~19 rodadas** (mediana medida: 19, n=20000) — eram 15 em 9×9. O tabuleiro maior alongou a partida |
+| Duração de uma partida | **Base v0.6.2: 19 rodadas** (mediana, n=20000). A v15 ainda precisa de nova medição e playtest |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
@@ -37,7 +37,8 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 
 Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de ação ·
 Caçador com comando oculto · Placas do Topo · Prioridade do Meio · loja e itens ·
-**poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
+**poço épico com Dragão e Barão** · **Retomada aplicada** · **Lampejo/Retorno** ·
+**três acampamentos de ouro** · **Plano de Caça** · **partida contra IA com draft** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
 guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·
 **arrastar o herói para andar** · **segurar a habilidade abre a ficha dela** · **placar no fim**.
@@ -52,9 +53,11 @@ Ela mede bem **estrutura** (geometria, onda, torre, ritmo) e não mede **escolha
 Prioridade, Placas, itens e cartas. Na medição do poço, o time que levava 62% dos épicos perdia —
 a bateria via o dado gasto e o revide, não via o Poder ganho. Detalhes na v0.5.5 dos patch notes.
 
-**Então o próximo passo do épico e da Retomada é sentar os três e jogar**, não rodar mais partida.
+**Então o próximo passo da v15 é sentar os três e jogar**, não aceitar os números do smoke test como balanço.
 A loja entra na mesma lista: a correção da v0.5.7 barateou voltar para comprar, e o agente não faz
 compras, então só playtest diz se o peso ficou certo.
+
+As decisões abertas e as mudanças não descritas no guia recebido estão em `docs/versions/v15/README.md`.
 
 **Revisão externa do Vinicius e do Matheus:** análise item a item em `docs/REVISAO-EXTERNA.md`.
 As correções entraram na v0.5.7; as propostas de tabuleiro e regra estão avaliadas lá, com o que
@@ -65,8 +68,7 @@ colide com medição já registrada.
 | O quê | Por que importa |
 |---|---|
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
-| **Acampamentos de selva** | Buffs Azul e Vermelho — a válvula contra dado ruim. |
-| **Feitiços de invocador** | 5 cartas, alto retorno em história. |
+| **Buffs de acampamento** | A v15 tem três acampamentos de ouro, mas ainda não tem os buffs Azul/Vermelho antes descritos no guia. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
 | **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
@@ -83,7 +85,7 @@ sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
-jogo/index.html      Só a estrutura da tela. 64 linhas.
+jogo/index.html      Só a estrutura da tela. O pacote autocontido fica em teste/JOGAR.html.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
 jogo/jogo.js         Motor de regras + interface.
 guia/index.html      Manual navegável. Lê do catálogo.

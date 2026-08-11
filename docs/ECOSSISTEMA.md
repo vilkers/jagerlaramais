@@ -4,6 +4,14 @@ Vilker, Vinicius e Matheus, cada um com a sua versão, e um jogo oficial que jun
 
 ---
 
+## Regra permanente a partir da v15
+
+**Não substituir `jogo/index.html` diretamente na `main`.** O arquivo de 3 MB usado para teste é gerado; ele não é a fonte do jogo. Mudanças definitivas entram em `jogo/index.html`, `jogo/estilo.css`, `jogo/jogo.js` e `data/catalogo.js`, cada uma no lugar correto.
+
+Toda contribuição usa branch + Pull Request e recebe um registro em `docs/versions/vNN/`. O checklist completo está em `docs/UPDATE-PROTOCOL.md`.
+
+---
+
 ## O modelo: 1 oficial + 1 cópia para cada um
 
 ```

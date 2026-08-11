@@ -518,8 +518,8 @@ const DESC_ROTAS = {
     "<b>Placa é moeda de dado.</b> Uma ajusta um dado em <b>±1</b> — vira o 5 em 6 e destrava uma ultimate. Duas <b>re-rolam</b> um dado. É a única fonte de controle sobre a sorte que você mesmo constrói: <em>ganhar de lado no topo é o que faz o seu meio ter a ultimate na hora certa</em>."
   ],
   selva:[
-    "O único herói cuja ação é programada em segredo. Você põe a carta virada em uma de quatro zonas — cima, meio, baixo ou selva — e ela vira no fim do turno do oponente.",
-    "Selva rende ouro e buff. Rota vira <b>gank</b>. E o blefe é real: virar carta no topo e o oponente jogar defensivo lá enquanto era só farm já ganhou a rota de baixo de graça."
+    "O único herói com um Plano de Caça secreto. Você escolhe Topo, Meio, Baixo ou Farm; a carta vira no fim do turno do oponente, mas não teleporta o Caçador.",
+    "Se ele chegar à rota declarada, a próxima habilidade ofensiva recebe <b>+2 de Força</b>. Farm dá <b>+1 ouro</b> somente se ele coletar um acampamento. Ward revela o plano inimigo."
   ],
   meio:[
     "A rota mais curta. Quem empurra a onda primeiro fica livre — no jargão do jogo, <b>prioridade de mid</b>, e é o que decide quem leva cada objetivo do mapa.",
@@ -563,20 +563,19 @@ const ITENS = [
 ];
 
 const MONSTROS = [
-  ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
-  ["Fera Escarlate","acampamento · renasce a cada 3 rodadas","Buff: +1 de dano em toda alocação, durante 3 rodadas"],
-  ["Ninhada de Pedra","acampamento · renasce a cada 2 rodadas","3 de ouro"],
-  ["Ancião de Musgo","acampamento · renasce a cada 2 rodadas","Cura 3 e limpa efeitos"],
+  ["Acampamento Azul","acampamento · renasce a cada 3 rodadas","3 de ouro; roubado pelo rival rende 4"],
+  ["Acampamento Carmim","acampamento · renasce a cada 3 rodadas","3 de ouro; roubado pelo rival rende 4"],
+  ["Acampamento Neutro","acampamento · renasce a cada 3 rodadas","4 de ouro"],
   ["Dragão","épico · no poço da rodada 5 à 8, volta 3 rodadas depois de cair",
-   "Herança do Dragão: +1 de Poder em todo o time, para sempre, e acumula"],
+   "8 de vida; Herança do Dragão dá +1 de Poder em todo o time, para sempre, e acumula"],
   ["Barão","épico · no poço da rodada 8 em diante, volta em 4",
-   "Fúria do Barão, por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas"],
+   "14 de vida; Fúria do Barão, por 2 rodadas: +2 de Poder e as três ondas avançam sozinhas"],
   ["Arauto","épico · desenhado, ainda sem regra no jogo",
    "Empurra uma rota inteira até a próxima torre"]
 ];
-/* Os quatro acampamentos acima e o Arauto ainda não existem no motor — estão aqui como
-   desenho aprovado, não como regra jogável. Dragão e Barão existem desde a v0.5.5 e
-   dividem UM poço, que troca de morador na rodada 8. Ver docs/ESTADO.md. */
+/* Os três acampamentos existem no motor da v15 como fontes de ouro. Os buffs antes
+   desenhados ainda não existem. O Arauto continua sem regra. Dragão e Barão dividem
+   um único poço, que troca de morador na rodada 8. Ver docs/ESTADO.md. */
 
 const TURNO = [
   ["Manutenção","Ondas de creeps avançam em todas as rotas. Ouro passivo entra. Timers de respawn e objetivos descem 1.","~30s",0],
@@ -593,8 +592,9 @@ const GLOSS = [
   ["Prioridade","Ficha que o Meio ganha ao dominar a rota. Gasta 1 para rolar um dado de ação a mais."],
   ["Dado Mestre","O dado de movimento. Seu valor é o total de casas que os cinco heróis andam juntos na rodada."],
   ["Força","O valor do dado de ação alocado num herói. Toda habilidade exige uma Força mínima."],
-  ["Gank","Quando a carta da Selva revela numa rota em vez da selva. Entra no combate com bônus de emboscada."],
-  ["Ward","Ficha de visão do Suporte. Revela a carta da Selva inimiga antes dela virar."],
+  ["Plano de Caça","Missão secreta do Caçador: Topo, Meio, Baixo ou Farm. Precisa ser cumprida andando pelo mapa."],
+  ["Gank","Plano de rota cumprido. A próxima habilidade ofensiva do Caçador naquela rota recebe +2 de Força."],
+  ["Ward","Ficha de visão do Suporte. Revela o Plano de Caça inimigo antes dele virar."],
   ["Patamar","Degrau de poder do Atirador, comprado com ouro acumulado. Três no total."],
   ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
   ["Crítico","Efeito extra na carta, ativado por um 6 natural no dado alocado."],
@@ -602,7 +602,10 @@ const GLOSS = [
   ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão até a rodada 8, Barão depois."],
   ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
   ["Fúria do Barão","Por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas, com herói na rota ou sem."],
-  ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
+  ["Retomada","Freio de bola de neve. Torre sua caída conta 2 e hexágono de invasão conta 1; atraso 2 dá +1 dado de ação, atraso 4 dá +2."],
+  ["Feitiço","Uma carga compartilhada pelo time, usada em Lampejo ou Retorno. Recarrega em 3 rodadas."],
+  ["Lampejo","Salta até 2 casas sem gastar dado ou movimento e remove preso."],
+  ["Retorno","Volta à base e recupera até 3 de vida. É interrompido por inimigo adjacente."]
 ];
 
 /* ==================== MAPA ==================== */

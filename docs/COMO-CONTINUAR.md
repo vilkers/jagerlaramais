@@ -18,6 +18,7 @@ Leia docs/ESTADO.md e docs/patch-notes.md e me diga em que pé está o jogo.
 ```
 
 Entrando agora no projeto? `docs/ACESSO.md`. Mexendo em grupo? `docs/ECOSSISTEMA.md`.
+Recebeu um ZIP ou uma nova versão? Siga `docs/UPDATE-PROTOCOL.md` antes de alterar qualquer arquivo.
 
 ---
 
@@ -27,11 +28,11 @@ Veja a tabela de status no `README.md`. Resumindo o que **falta** e vale atacar:
 
 | Prioridade | O que | Por quê |
 |---|---|---|
-| 🔴 1 | **Playtest humano** do poço épico e da Retomada | Entraram na v0.5.5 e a simulação **não consegue medi-los** — ver abaixo |
+| 🔴 1 | **Playtest humano da v15** | Feitiços, IA, acampamentos, Plano de Caça e novos números do Poço chegaram juntos |
 | 🟠 2 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
 | 🟡 3 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
-| 🟡 4 | Acampamentos de selva | Buffs Azul e Vermelho, as válvulas contra dado ruim |
-| 🟡 5 | Feitiços de invocador | 5 cartas, alto retorno em história |
+| 🟡 4 | Decidir pendências da v15 | Vida dos épicos, escudo persistente e regras cumulativas não vieram justificadas |
+| 🟡 5 | Buffs de acampamento | A v15 tem acampamentos de ouro, mas não os buffs antes desenhados |
 
 > **Cuidado com `sim/bateria.js`.** Ela mede estrutura (geometria, onda, torre, ritmo) muito bem e
 > é **cega a qualquer mecânica de escolha** — épico, Retomada, Prioridade, Placas, itens, cartas.

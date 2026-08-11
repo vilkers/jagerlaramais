@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit af3b077 2026-08-10
+     commit 0441a90 2026-08-11
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -110,7 +110,7 @@ button:disabled{cursor:not-allowed}
 #mapa .epico image{pointer-events:none;filter:brightness(1.25) contrast(1.1) saturate(1.05)}
 #mapa .epico.alvo{cursor:pointer}
 #mapa .epico.alvo circle.anel{stroke:var(--dano);stroke-width:2.4}
-#mapa .epvida{font-family:var(--mono);font-size:6px;text-anchor:middle;
+#mapa .epvida{font-family:var(--mono);font-size:5.2px;text-anchor:middle;
   pointer-events:none;fill:var(--brass)}
 #mapa .poco-vazio circle{fill:none;stroke:var(--brass-dim);stroke-width:1;stroke-dasharray:2 2.6}
 #mapa .poco-vazio text{font-family:var(--mono);font-size:5.2px;text-anchor:middle;
@@ -170,6 +170,41 @@ button:disabled{cursor:not-allowed}
 .tst.gank{border-color:var(--carmim);color:var(--carmim-2)}
 @keyframes tin{from{opacity:0;transform:translateY(-14px) scale(.9)}to{opacity:1;transform:none}}
 @keyframes tout{to{opacity:0;transform:translateY(-10px)}}
+
+/* ── narração da IA ──
+   O toast do centro é para EVENTO: torre caiu, alguém morreu, o Barão trocou de dono.
+   Coisa que para o jogo. O passo a passo da IA não é evento — é o adversário
+   pensando alto, e chegava em rajada de seis ou sete por turno bem em cima do
+   tabuleiro, que é justamente o que o jogador está tentando ler naquele momento.
+   Desceu para o canto, ficou pequeno e cinza: quem quiser acompanhar acompanha,
+   quem não quiser lê o mapa. Três linhas no máximo — o resto está no Histórico. */
+#iaFala{position:absolute;right:7px;bottom:7px;z-index:8;display:flex;flex-direction:column;
+  align-items:flex-end;gap:3px;pointer-events:none;max-width:60%}
+.iaL{font-family:var(--ui);font-size:11px;line-height:1.3;padding:3px 8px;border-radius:7px;
+  background:rgba(11,18,15,.82);border:1px solid var(--line-soft);color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+  animation:iaIn .2s ease-out, iaOut .4s ease-in 1.5s forwards}
+/* três cores, três pesos de notícia: cinza = andou, latão = usou habilidade,
+   carmim = aconteceu alguma coisa (morte, gank, torre). */
+.iaL.viva{color:var(--brass);border-color:var(--brass-dim)}
+/* o que ANTES ia para o meio da tela: morte, gank, torre caída. Continua sendo o
+   que mais importa do turno da IA, então continua destacado — só que no canto. */
+.iaL.evento{color:var(--carmim-2);border-color:var(--carmim);font-family:var(--display);
+  text-transform:uppercase;letter-spacing:.03em;font-size:12px}
+
+/* Pular o turno da IA. O ritmo lento é para ENTENDER, e entender é opcional: na
+   décima partida ninguém quer ver o Grumo andar uma casa por vez. O botão não muda
+   nada do que a IA faz — só tira as pausas e as linhas de passo a passo, deixando
+   os eventos. Vive no canto oposto da narração para os dois nunca se cobrirem. */
+#btPularIA{position:absolute;left:7px;bottom:7px;z-index:9;display:none;
+  font-family:var(--ui);font-size:11px;padding:6px 11px;border-radius:8px;
+  border:1px solid var(--line);background:rgba(11,18,15,.9);color:var(--ink-2);
+  backdrop-filter:blur(4px)}
+#btPularIA.on{display:block}
+#btPularIA:active{color:var(--ink);border-color:var(--brass-dim)}
+#btPularIA.correndo{color:var(--ink-3);border-color:var(--line-soft)}
+@keyframes iaIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+@keyframes iaOut{to{opacity:0}}
 
 /* ══════════ PLACAR DE ESTRUTURAS (gaveta) ══════════
    Vive na gaveta, aberta pelo ⌂ do cabeçalho — com o tabuleiro em 11×11 quem
@@ -237,7 +272,7 @@ button:disabled{cursor:not-allowed}
   padding:9px;align-content:center}
 #ativo.vazio b{color:var(--brass);font-weight:600}
 
-#habs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#habs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 #habs:empty{display:none}
 .hb{border:1px solid var(--line);background:var(--ground-3);border-radius:11px;padding:9px 6px;
   display:flex;flex-direction:column;gap:3px;align-items:center;min-height:58px;justify-content:center;
@@ -575,6 +610,8 @@ button:disabled{cursor:not-allowed}
 .dr-chip img{width:22px;height:22px;border-radius:50%;object-fit:cover;object-position:50% 18%}
 .dr-chip.t0{border-color:rgba(76,155,214,.5)} .dr-chip.t1{border-color:rgba(212,91,78,.5)}
 
+.camp{pointer-events:none}.camp-bg{fill:#243B32;stroke:#9CC7A8;stroke-width:1.2}.camp-core{fill:#D5B25D}.camp.neutro .camp-bg{fill:#4B3B22;stroke:#E0B85E}.camp-txt,.camp-cd{font:700 6px Arial;fill:#E8F0EB;text-anchor:middle;paint-order:stroke;stroke:#0E1614;stroke-width:2px}.camp-cd{fill:#D9B86C}
+
 </style>
 
 
@@ -598,6 +635,8 @@ button:disabled{cursor:not-allowed}
     <svg id="mapa" viewBox="0 0 300 286" role="img" aria-label="Tabuleiro"></svg>
     <div id="fx"></div>
     <div id="toast"></div>
+    <div id="iaFala"></div>
+    <button id="btPularIA">▸▸ pular vez da IA</button>
     <div id="tut"></div>
   </div>
 
@@ -614,6 +653,7 @@ button:disabled{cursor:not-allowed}
       <button class="mini-bt" id="btConv">→ mover</button>
       <button class="mini-bt" id="btPlaca">placa ±1</button>
       <button class="mini-bt" id="btRerol">re-rolar</button>
+      <button class="mini-bt" id="btPrio">⚡ prioridade</button>
     </div>
     <div id="acoes">
       <button class="abt" id="btTime">Time</button>
@@ -1251,18 +1291,20 @@ const POCO_K=k(...POCO);
    Ninguém tem limite de golpes por rodada: é o dado que você deixa de gastar em outro
    lugar que mede o quanto você quer o objetivo — e é isso que abre a janela do roubo. */
 const EPICO={
-  dragao:{n:"Dragão", vida:3, revide:1, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:5, revide:2, volta:4, pre:"a Fúria do Barão"}
+  dragao:{n:"Dragão", vida:8, revide:1, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:14, revide:2, volta:4, pre:"a Fúria do Barão"}
 };
 const R_DRAGAO=5, R_BARAO=8;          /* rodada em que cada morador passa a descer */
 const morador=r=>r>=R_BARAO?"barao":"dragao";
 const DRAGAO_PODER=1;      /* por Dragão levado, permanente e acumulativo */
 const BARAO_PODER=2;       /* enquanto a Fúria durar */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
+const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
 
 /* ---------- ESTADO ---------- */
 let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
     alvoNexus=null,mover=[],lojaHeroi=null;
+let aiMode=false, simMode=false;
 
 function novo(){
   J={
@@ -1271,6 +1313,7 @@ function novo(){
       placas:0, prio:0, prioGuardada:0, ward:0,
       caca:null, cacaRevelada:null,
       dragoes:0, baroes:0, barao:0, retomada:0,
+      feitico:1, feiticoCd:0,
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
@@ -1282,6 +1325,11 @@ function novo(){
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
+    camps:[
+      {id:"azul",t:0,pos:[3,4],ouro:3,respawn:0,ativo:1},
+      {id:"carmim",t:1,pos:[7,6],ouro:3,respawn:0,ativo:1},
+      {id:"neutro",t:-1,pos:[6,4],ouro:4,respawn:0,ativo:1}
+    ],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], nexusBatido:[0,0], motivoFim:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -1316,6 +1364,10 @@ const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
 /* ---------- FASE OCULTA ---------- */
 function faseOculta(){
   J.fase="oculto";
+  if(simMode){
+    J.times.forEach((tm,t)=>{ tm.caca=["selva","topo","meio","baixo"][Math.floor(Math.random()*4)]; tm.cacaRevelada=null; });
+    J.fase="jogando"; J.vez=J.primeiro; iniciaTurno(); return;
+  }
   perguntaCaca(0,()=>perguntaCaca(1,()=>{
     fecha(); J.fase="jogando"; J.vez=J.primeiro; iniciaTurno();
   }));
@@ -1364,15 +1416,17 @@ function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
   const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
   tm.retomada=atraso(t);
-  const m=1+Math.floor(Math.random()*6)+extra+(tm.retomada>=2?1:0);
+  const m=1+Math.floor(Math.random()*6)+extra;
   J.mov={v:m,rest:m};
-  J.dados=[0,1,2].map(()=>({v:1+Math.floor(Math.random()*6),usado:0}));
-  if(tm.retomada>=1) J.dados.push({v:1+Math.floor(Math.random()*6),usado:0,extra:1,retom:1});
+  /* RETOMADA aplicada: o freio da bola de neve vira DADO, que era a intenção
+     declarada na seção RETOMADA. Antes `tm.retomada` era calculado e desenhado
+     no HUD, mas a mão era sempre de 3 — o freio nunca chegava à mesa. */
+  J.dados=Array.from({length:3+tm.retomada},(_,i)=>
+    ({v:1+Math.floor(Math.random()*6),usado:0,...(i>2?{extra:1}:{})}));
+
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
   reg(t?"c":"a",`${NOMES[t]} rola — movimento ${m} · ações ${J.dados.map(d=>d.v).join(" · ")}`);
-  if(tm.retomada>=1)
-    reg("b",`RETOMADA — ${NOMES[t]} está ${tm.retomada} ${tm.retomada===1?"torre":"torres"} atrás`
-           +`: +1 dado de ação${tm.retomada>=2?" e +1 no Dado Mestre":""}`);
+  if(tm.retomada) reg("b",`RETOMADA — ${NOMES[t]} está atrás e rola ${tm.retomada} dado${tm.retomada>1?"s":""} a mais`);
   pinta();
 }
 function encerraTurno(){
@@ -1385,33 +1439,54 @@ function encerraTurno(){
 function revelaCaca(t){
   const z=J.times[t].caca; if(!z)return;
   J.times[t].cacaRevelada=z;
-  const cac=J.times[t].herois.find(h=>h.pos==="selva")||J.times[t].herois[1];
-  if(cac.morto){ reg("b",`Caçador do ${NOMES[t]} está morto — carta descartada`); return; }
+  const cac=J.times[t].herois.find(h=>CATALOGO[h.id].pos==="selva")||J.times[t].herois[1];
+  if(cac.morto){ reg("b",`Plano de Caça falhou — Caçador morto`); return; }
+
   if(z==="selva"){
-    cac.ouro+=3; reg(t?"c":"a",`${cac.n} farmou a selva (+3 de ouro)`);
+    /* FARM: só premia se o caçador realmente tiver coletado camp nesta rodada.
+       coletaAcampamento marca farmouCamp. */
+    if(cac.farmouCamp){
+      cac.ouro+=1;
+      reg(t?"c":"a",`PLANO FARM cumprido — ${cac.n} ganha +1 ouro`);
+    } else reg("b",`PLANO FARM não cumprido — nenhum acampamento coletado`);
   }else{
-    const l=ROTAS[z], destino=l[Math.max(0,Math.min(l.length-1,J.frentes[z]))];
-    if(!em(...destino)) cac.pos=[...destino]; else{
-      const v=vizinhos(...destino).find(p=>!em(...p)); if(v)cac.pos=v;
-    }
-    reg("b",`GANK — ${cac.n} aparece no ${z}`);
-    const presa=vizinhos(...cac.pos).map(p=>em(...p)).find(h=>h&&h.t!==t&&!h.intoc);
-    /* 3 de base + o bônus de gank (+2). O Poder tem que passar por poderTotal,
-       senão os itens do Caçador não contam justo na jogada principal dele. */
-    if(presa){ aplicaDano(cac,presa,3+poderTotal(cac)+2); }
-    else reg("b","…e não achou ninguém");
+    const chegou=rotaDaPos(cac)===z;
+    if(chegou){
+      cac.gankPlano=z;
+      reg("b",`PLANO ${z.toUpperCase()} CUMPRIDO — próxima habilidade ofensiva de ${cac.n} nessa rota recebe +2 Força`);
+    } else reg("b",`PLANO ${z.toUpperCase()} falhou — ${cac.n} não chegou à zona ativa da rota`);
   }
+  cac.farmouCamp=0;
   pinta();
 }
 
 /* ---------- FIM DE RODADA ---------- */
+function rotaDaPos(h){
+  let melhor=null, md=1e9, idx=-1;
+  Object.entries(ROTAS).forEach(([nome,l])=>{
+    l.forEach((p,i)=>{
+      const d=dist(...h.pos,...p);
+      if(d<md){md=d;melhor=nome;idx=i;}
+    });
+  });
+  if(md>1||!melhor)return null;
+
+  /* REGRA DE MESA: só exerce pressão depois de passar da própria Torre Exterior.
+     No físico, a própria torre é a linha visual: antes dela = desenvolvimento; depois = lane ativa. */
+  const l=ROTAS[melhor];
+  const minhas=TORRES_DEF.filter(x=>x.t===h.t&&x.rota===melhor).map(x=>x.i);
+  if(!minhas.length)return melhor;
+  const exterior = h.t===0 ? Math.max(...minhas) : Math.min(...minhas);
+  const passou = h.t===0 ? idx>exterior : idx<exterior;
+  return passou?melhor:null;
+}
 function fimDaRodada(){
   /* a Fúria do Barão empurra as três rotas sozinha, mesmo sem herói nenhum nelas.
      É o que faz do Barão um relógio: dois times parados param de empatar. */
   const furia=J.times.map(tm=>tm.barao>0?1:0);
   Object.entries(ROTAS).forEach(([nome,l])=>{     // ondas: a torre viva trava o avanço
-    const n0=vivos(0).filter(h=>LANE.get(k(...h.pos))===nome).length;
-    const n1=vivos(1).filter(h=>LANE.get(k(...h.pos))===nome).length;
+    const n0=vivos(0).filter(h=>rotaDaPos(h)===nome).length;
+    const n1=vivos(1).filter(h=>rotaDaPos(h)===nome).length;
     let d=0;
     if(n0>n1) d=1; else if(n1>n0) d=-1;
     d+=furia[0]-furia[1];
@@ -1449,6 +1524,12 @@ function fimDaRodada(){
     if(h.patamar){ const p=Math.min(3,Math.floor(h.ouro/10)); if(p>h.pat){h.extraPoder+=2*(p-h.pat);h.pat=p;
       reg("b",`${h.n} sobe ao patamar ${p} (+2 de Poder)`);} }
   });
+  [0,1].forEach(t=>{                              // o feitiço do time volta a carregar
+    const tm=J.times[t];
+    if(tm.feitico||!tm.feiticoCd)return;
+    tm.feiticoCd--;
+    if(!tm.feiticoCd){ tm.feitico=1; reg("b",`o feitiço do ${NOMES[t]} recarregou`); }
+  });
   [0,1].forEach(t=>{                              // placas do topo
     const meu=J.times[t].herois[0], dele=J.times[1-t].herois[0];
     const i1=L_TOPO.findIndex(p=>k(...p)===k(...meu.pos)), i2=L_TOPO.findIndex(p=>k(...p)===k(...dele.pos));
@@ -1464,7 +1545,7 @@ function fimDaRodada(){
   });
   todos().forEach(h=>{                            // respawn e limpeza
     if(h.morto){ h.morto--; if(!h.morto){ h.vida=h.vidaMax; h.pos=[...BASE[h.t][0]]; reg("b",`${h.n} voltou`);} }
-    h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0; h.esc=0; h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
+    h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0;  h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
   });
   desempilha();
   J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
@@ -1476,6 +1557,7 @@ function fimDaRodada(){
      Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
   J.primeiro=1-J.primeiro;
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
+  atualizaAcampamentos();
   const p=J.poco;                                 // o poço reabre, com o morador da vez
   if(p.vida<=0&&J.rodada>=p.volta){
     p.id=morador(J.rodada);
@@ -1493,28 +1575,134 @@ function moveAte(c,r){
   const d=dist(...h.pos,c,r), custo=Math.max(0,d-(ehAgil(h)?1:0));
   if(custo>J.mov.rest)return;
   h.pos=[c,r]; J.mov.rest-=custo;
+  coletaAcampamento(h);
   reg(J.vez?"c":"a",
     `${h.n} anda ${d} ${d>1?"casas":"casa"}${ehAgil(h)&&d>0?" (ágil)":""} — movimento restante ${J.mov.rest}`);
   calcula(); pinta();
 }
+/* ---------- FEITIÇOS DE INVOCADOR ---------- */
+/* UMA carga por time, não uma por herói. A primeira versão deu Lampejo e Retorno a
+   cada um dos cinco, com recarga própria: vinte contadores girando na mesa, e o
+   feitiço deixava de ser decisão — quando todo mundo tem, ninguém escolhe.
+   Agora o time tem uma carga só, gasta em Lampejo OU em Retorno, e ela demora
+   3 rodadas para voltar. Numa partida de ~15 rodadas isso dá quatro ou cinco usos
+   no total, para os cinco heróis somados.
+
+   O que isso compra, e é o ponto: a pergunta deixa de ser "posso?" e vira "quem
+   merece?". E o adversário passa a contar junto — feitiço gasto é informação, do
+   mesmo jeito que no MOBA se guarda na cabeça quem está sem flash.
+
+   É aqui, e só aqui, que a versão digital se solta do tabuleiro físico: no papel
+   seria um contador extra por time. Um cabe na mesa; vinte não cabiam. */
+const LAMPEJO_ALC=2, FEITICO_CD=3, RETORNO_CURA=3;
+
+const temFeitico=t=>!!J.times[t].feitico;
+function gastaFeitico(t){
+  const tm=J.times[t];
+  tm.feitico=0; tm.feiticoCd=FEITICO_CD;
+}
+
+function iniciaLampejo(){
+  const h=selHeroi;
+  if(!h||h.morto||h.t!==J.vez||J.fase!=="jogando")return;
+  if(!temFeitico(h.t))
+    return toast(`feitiço recarrega em ${J.times[h.t].feiticoCd}`,"morte");
+  modo = modo==="lampejo" ? null : "lampejo";
+  habAtual=null; confirmar=null; calcula();
+  if(modo==="lampejo"&&!mover.length){ modo=null; calcula(); pinta();
+    return toast("nenhuma casa livre no salto","morte"); }
+  vibra(8); pinta();
+}
+function lampejaAte(c,r){
+  const h=selHeroi;
+  if(!h||!temFeitico(h.t)||em(c,r)||!noTab(c,r))return;
+  if(dist(...h.pos,c,r)>LAMPEJO_ALC)return;
+  const de=[...h.pos];
+  h.pos=[c,r]; gastaFeitico(h.t);
+  h.preso=0;                       /* o Lampejo é a saída do prende — é o sabor dele */
+  coletaAcampamento(h);
+  reg(J.vez?"c":"a",`LAMPEJO — ${h.n} salta ${dist(...de,c,r)} `
+     +`${dist(...de,c,r)>1?"casas":"casa"} · feitiço do time gasto`);
+  if(!souIA()) toast("lampejo","gank");
+  vibra([10,30,10]);
+  modo=null; calcula(); pinta(); animaMovimento(h,de);
+}
+function usaRetorno(){
+  const h=selHeroi;
+  if(!h||h.morto||h.t!==J.vez||J.fase!=="jogando")return;
+  if(!temFeitico(h.t))
+    return toast(`feitiço recarrega em ${J.times[h.t].feiticoCd}`,"morte");
+  if(naBase(h)) return toast("já está na própria base","morte");
+  /* a única trava que sobrevive à carga compartilhada: quem foi pego não escapa.
+     Sem ela o Retorno viraria botão de anular gank, e gank é metade do jogo. */
+  const colado=vizinhos(...h.pos).some(([vc,vr])=>{ const o=em(vc,vr); return o&&o.t!==h.t; });
+  if(colado) return toast("inimigo colado — retorno interrompido","morte");
+  const de=[...h.pos];
+  h.pos=[...BASE[h.t][0]];
+  gastaFeitico(h.t);
+  h.preso=0;
+  const antes=h.vida;
+  h.vida=Math.min(h.vidaMax,h.vida+RETORNO_CURA);
+  desempilha();
+  reg(J.vez?"c":"a",`RETORNO — ${h.n} volta à base`
+     +(h.vida>antes?` e recupera ${h.vida-antes}`:"")+` · feitiço do time gasto`);
+  if(!souIA()) toast("retorno","");
+  vibra([14,40,14]);
+  limpaModo(); pinta(); animaMovimento(h,de);
+}
+
+const campEm=(c,r)=>J.camps.find(cp=>cp.ativo&&cp.pos[0]===c&&cp.pos[1]===r);
+function coletaAcampamento(h){
+  const cp=campEm(...h.pos);
+  if(!cp||cp.respawn>0)return;
+  if(CATALOGO[h.id].pos==="selva") h.farmouCamp=1;
+  if(cp.t!==-1&&cp.t!==h.t){
+    cp.ativo=0; cp.respawn=3; h.ouro+=cp.ouro+1;
+    reg("b",`${h.n} invadiu a selva e roubou um acampamento (+${cp.ouro+1} ouro)`);
+  }else{
+    cp.ativo=0; cp.respawn=3; h.ouro+=cp.ouro;
+    reg(h.t?"c":"a",`${h.n} farmou acampamento (+${cp.ouro} ouro)`);
+  }
+}
+function atualizaAcampamentos(){
+  J.camps.forEach(cp=>{
+    if(cp.respawn>0){ cp.respawn--; if(cp.respawn===0)cp.ativo=1; }
+  });
+}
+
 function usaHab(alvo){
   const{h,forca}=ativo, hb=h.habs[habSel], F=forca, ef=hb.ef;
   if(F<hb.f)return;
   const critico=ativo.seis;
   let txt=`${h.n} usa ${hb.n} (Força ${F})`;
 
-  const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h);
+  let bonusGank=0;
+  if(h.gankPlano && (ef.dano||ef.danoFixo||ef.danoVizinhos||ef.danoRaio)){
+    if(rotaDaPos(h)===h.gankPlano){
+      bonusGank=2; h.gankPlano=null;
+      reg("b",`GANK! Plano cumprido: +2 Força para ${h.n}`);
+    }
+  }
+  const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h)+bonusGank;
   const base=(mult)=>Math.round(F*mult)+poder;
 
-  if(ef.doar){ ativo={h:alvo,forca:F,seis:critico}; alvo.agiu=1; habSel=null; selHeroi=alvo;
-    reg(J.vez?"c":"a",`${h.n} doa o dado para ${alvo.n} (Força ${F})`); calcula(); return pinta(); }
+  if(ef.doar){
+    J.dados.push({v:F,usado:0,extra:1,doado:1,dono:alvo.id});
+    alvo.agiu=0;
+    reg(J.vez?"c":"a",`${h.n} doa um dado ${F} para ${alvo.n} — ele pode agir agora`);
+    toast(`Dado ${F} doado para ${alvo.n}`,"");
+    calcula(); return pinta();
+  }
   if(ef.escudo){ alvo.esc+=F+ef.escudo; txt+=` — escudo ${F+ef.escudo} em ${alvo.n}`; }
   if(ef.cura){ if(h.semCura){txt+=' — CURA BLOQUEADA';} else {h.vida=Math.min(h.vidaMax,h.vida+ef.cura); txt+=` — cura ${ef.cura}`;} }
   if(ef.ouro){ h.ouro+=ef.ouro; txt+=` (+${ef.ouro} de ouro)`; }
   if(ef.recarga){ h.recarga=ef.recarga; txt+=` — próximo golpe +${ef.recarga}`; }
   if(ef.intocavel){ h.intoc=1; txt+=" — intocável até o próximo turno"; }
-  if(ef.ward){ J.times[h.t].ward=1; const z=J.times[1-h.t].caca;
-    txt+=z?` — WARD: o Caçador inimigo foi para ${z.toUpperCase()}`:" — ward posta"; }
+  if(ef.ward){
+    J.times[h.t].ward=1;
+    const z=J.times[1-h.t].caca;
+    txt+=z?` — WARD revela o PLANO DE CAÇA inimigo: ${(z==="selva"?"FARM":z.toUpperCase())}`:" — ward posta";
+  }
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
   if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
 
@@ -1637,7 +1825,8 @@ const ICO={
   estrela:"M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z",
   dado:"M5 5h14v14H5zM9 9h.01M15 9h.01M9 15h.01M15 15h.01",
   passos:"M12 20V6M6 12l6-6 6 6",
-  oculto:"M3 3l18 18M10.6 10.6a3 3 0 004.2 4.2M6.5 6.6C4 8.2 2 12 2 12s3.5 6 10 6c1.6 0 3-.4 4.3-.9"
+  oculto:"M3 3l18 18M10.6 10.6a3 3 0 004.2 4.2M6.5 6.6C4 8.2 2 12 2 12s3.5 6 10 6c1.6 0 3-.4 4.3-.9",
+  casa:"M4 11l8-7 8 7v9h-6v-5h-4v5H4z"
 };
 function iconeDe(hb){
   const e=hb.ef;
@@ -1701,17 +1890,51 @@ function fx(pos,txt,tipo){
   G("fx").appendChild(d);
   setTimeout(()=>d.remove(),1050);
 }
+/* A IA descobre o que dá para fazer CHAMANDO iniciaHab em cada habilidade de cada
+   herói e vendo o que sobra mirado — ou seja, ela erra de propósito, dezenas de vezes
+   por turno. Cada erro desses disparava o mesmo aviso que o jogador humano recebe, e
+   a tela virava uma cascata de "ninguém no alcance" durante a vez do adversário.
+   O aviso é certo; o público é que estava errado. `sondando` cala a UI enquanto a IA
+   está só tateando — as mensagens que ela emite de propósito ficam fora da sonda. */
+let sondando=false;
+/* True durante TODO o turno da máquina — não só enquanto `J.vez` aponta para ela.
+   O buraco anterior estava no fecho: `encerraTurno` e `fimDaRodada` rodam de dentro
+   do turno da IA mas já com a vez virada, e era de lá que saíam justamente as
+   mensagens que insistiam em aparecer no meio da tela (o gank do Plano de Caça, a
+   torre que a onda derrubou, quem caiu na virada). `iaRodando` só é desligado
+   depois disso tudo, então é ele quem marca a fronteira certa. */
+const souIA=()=>aiMode&&J&&(iaRodando||J.vez===1);
+/* narração da IA — canto inferior direito, fora do caminho do tabuleiro */
+function falaIA(txt,cls){
+  const cx=G("iaFala"); if(!cx)return;
+  /* pulando: o passo a passo perde a função (ninguém lê seis linhas em meio segundo),
+     mas o evento não — é ele o "resultado" que o botão promete mostrar. */
+  if(pularIA&&cls!=="evento")return;
+  const d=document.createElement("div");
+  d.className="iaL"+(cls?" "+cls:""); d.textContent=txt;
+  cx.appendChild(d);
+  while(cx.children.length>3) cx.firstChild.remove();
+  setTimeout(()=>{ if(d.parentNode) d.remove(); },pularIA?2600:1900);
+}
 function toast(txt,tipo){
+  if(sondando)return;
+  /* Nada da vez da IA aparece no meio da tela. Antes só a narração descia para o
+     canto, e "GANK NO TOPO" continuava cobrindo o tabuleiro — mas quem dá o gank é
+     ela, então a mensagem é dela também. O meio da tela volta a ser exclusivo do
+     que VOCÊ faz; a vez do adversário inteira mora no rodapé. */
+  if(souIA()) return falaIA(txt,(tipo==="morte"||tipo==="gank")?"evento":"viva");
   const d=document.createElement("div");
   d.className="tst"+(tipo?" "+tipo:""); d.textContent=txt;
   G("toast").appendChild(d);
   setTimeout(()=>d.remove(),2300);
 }
 function tremer(h){
-  const g=svg.querySelector(`[data-peca="${h.t}-${h.id}"]`);
-  if(!g)return;
-  g.classList.remove("treme"); void g.getBBox(); g.classList.add("treme");
-  setTimeout(()=>g.classList.remove("treme"),360);
+  agendaAnim(()=>{
+    const g=svg.querySelector(`[data-peca="${h.t}-${h.id}"]`);
+    if(!g)return;
+    g.classList.remove("treme"); void g.getBBox(); g.classList.add("treme");
+    setTimeout(()=>g.classList.remove("treme"),360);
+  });
 }
 function fotografa(){ return new Map(todos().map(h=>[h,{v:h.vida,e:h.esc,m:h.morto}])); }
 function revela(snap){
@@ -1727,7 +1950,13 @@ function revela(snap){
   if(bateu) vibra(18);
 }
 const _usaHab=usaHab;
-usaHab=function(alvo){ const s=fotografa(); _usaHab(alvo); revela(s); };
+usaHab=function(alvo){
+  const s=fotografa();
+  /* posição capturada ANTES: puxar e empurrar mudam o alvo de casa no meio do golpe */
+  const quem=ativo&&ativo.h, onde=alvo&&alvo!==quem&&alvo.pos?[...alvo.pos]:null;
+  _usaHab(alvo); revela(s);
+  if(quem&&onde) agendaAnim(()=>animaAtaque(quem,onde));
+};
 const _revelaCaca=revelaCaca;
 revelaCaca=function(t){
   const z=J.times[t].caca, s=fotografa();
@@ -1736,7 +1965,36 @@ revelaCaca=function(t){
   revela(s);
 };
 
-/* animação de deslocamento da peça */
+/* Fila de animação da peça. `pinta()` refaz o SVG inteiro (svg.textContent=""), e
+   tudo que era aplicado à peça ANTES dele morria junto — foi por isso que `tremer`
+   nunca apareceu na tela: era chamado de `revela()`, que roda antes do redesenho de
+   `confirmaHab`. Agendar e disparar no fim de `pinta()` conserta isso de uma vez. */
+let animPend=[];
+function agendaAnim(fn){ animPend.push(fn); }
+function rodaAnims(){
+  if(!animPend.length)return;
+  const fila=animPend; animPend=[];
+  requestAnimationFrame(()=>fila.forEach(f=>{ try{ f(); }catch(e){} }));
+}
+/* O golpe: a peça avança meio caminho na direção do alvo e volta. Vale para herói,
+   torre, Nexus e poço — o alvo entra como posição, não como objeto, justamente para
+   estrutura poder usar a mesma animação. O avanço é limitado a pouco mais de meio
+   hexágono para o atirador de alcance 3 não atravessar o tabuleiro em 380ms. */
+function animaAtaque(quem,pos){
+  const g=svg.querySelector(`[data-peca="${quem.t}-${quem.id}"]`);
+  if(!g||!pos)return;
+  const [x0,y0]=centro(...quem.pos), [x1,y1]=centro(...pos);
+  const dx=x1-x0, dy=y1-y0, n=Math.hypot(dx,dy);
+  if(!n)return;
+  const esc=(()=>{ try{ const m=svg.getScreenCTM(); return m?m.a:1; }catch(e){ return 1; } })();
+  const av=Math.min(n*0.5, R*0.62)*esc;
+  try{
+    g.animate([{transform:"none",offset:0},
+               {transform:`translate(${dx/n*av}px,${dy/n*av}px)`,offset:.38},
+               {transform:"none",offset:1}],
+      {duration:380,easing:"cubic-bezier(.2,.85,.3,1)"});
+  }catch(e){}
+}
 let animandoDe=null;
 function animaMovimento(h,de){
   const g=svg.querySelector(`[data-peca="${h.t}-${h.id}"]`);
@@ -1783,14 +2041,24 @@ function calcula(){
       if(d>0&&d<=teto) mover.push([c,r]);
     }
   }
+  /* o Lampejo pinta as mesmas casas verdes do mover, mas com outra régua:
+     ignora movimento restante e ignora `preso`. Só não atravessa para dentro
+     da base inimiga — de lá o Nexus ficaria a um salto de distância. */
+  if(modo==="lampejo"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&temFeitico(selHeroi.t)){
+    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+      if(!noTab(c,r)||em(c,r))continue;
+      if(BASE_S.get(k(c,r))===1-selHeroi.t)continue;
+      const d=dist(...selHeroi.pos,c,r);
+      if(d>0&&d<=LAMPEJO_ALC) mover.push([c,r]);
+    }
+  }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
     const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
     alvos=todos().filter(o=>{
       if(o.morto)return false;
       if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
       if(hb.alvo==="al"&&(o.t!==h.t||o===h))return false;
-      if(hb.ef.doar&&o.agiu)return false;      // doar dado para quem já agiu era jogar fora
-      if(hb.alvo==="eu")return o===h;
+            if(hb.alvo==="eu")return o===h;
       return hb.ef.semAlcance||dist(...h.pos,...o.pos)<=alc;
     });
     alvosTorre=torresAoAlcance(h,hb,alc);
@@ -1844,10 +2112,11 @@ function nexusAoAlcance(h,hb,alc){
 
 /* dado que será gasto: o escolhido à mão, senão o menor que atende */
 function dadoPara(hb){
-  if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f) return dadoSel;
+  if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f
+     &&(!J.dados[dadoSel].dono||J.dados[dadoSel].dono===selHeroi?.id)) return dadoSel;
   let melhor=null;
   J.dados.forEach((d,i)=>{
-    if(d.usado||d.v<hb.f)return;
+    if(d.usado||d.v<hb.f||(d.dono&&d.dono!==selHeroi?.id))return;
     if(melhor===null||d.v<J.dados[melhor].v) melhor=i;
   });
   return melhor;
@@ -1911,6 +2180,7 @@ function atacaTorre(tr){
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
   tr.vida-=DANO_TORRE; tr.batida=1;
+  agendaAnim(()=>animaAtaque(h,ROTAS[tr.rota][tr.i]));
   reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} `+
       `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
   fx(ROTAS[tr.rota][tr.i],"-"+DANO_TORRE,"dano");
@@ -1940,6 +2210,7 @@ function atacaNexus(lado){
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(18);
 
   J.nexus[lado]--; J.nexusBatido[lado]=1;
+  agendaAnim(()=>animaAtaque(h,BASE[lado][0]));
   reg(J.vez?"c":"a",`${h.n} golpeia o NEXUS ${NOMES[lado]} com ${hb.n} `+
       `(${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS})`);
   fx(BASE[lado][0],"-1","dano");
@@ -1962,9 +2233,17 @@ function atacaEpico(ep){
   const d=EPICO[ep.id];
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
-  ep.vida--;
-  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n} com ${hb.n} (${Math.max(0,ep.vida)}/${ep.vidaMax})`);
-  fx(POCO,"-1","dano");
+  /* A ultimate vale por duas. Antes todo golpe tirava 1, e a consequência era que
+     a habilidade básica de Força 1 era o jeito mais barato de matar o épico — o
+     objetivo grande premiava o dado pequeno. Com 2, derrubar o poço em uma rodada
+     exige que alguém queime a ultimate nele em vez de num herói: é a escolha que
+     faz o objetivo pesar. Testado na mesa antes de entrar. */
+  const golpe = habAtual===2 ? GOLPE_ULT : GOLPE_HAB;
+  ep.vida-=golpe;
+  agendaAnim(()=>animaAtaque(h,POCO));
+  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n} com ${hb.n} (−${golpe}) `
+     +`(${Math.max(0,ep.vida)}/${ep.vidaMax})`);
+  fx(POCO,"-"+golpe,"dano");
 
   if(ep.vida<=0) levaEpico(ep,h.t);
   else{
@@ -2098,6 +2377,7 @@ svg.addEventListener("pointercancel",soltaArrasto);
 const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
+  if(modo==="lampejo") return lampejaAte(c,r);
   const de=[...selHeroi.pos];
   _moveAte(c,r);
   modo=null; calcula(); pinta();
@@ -2141,6 +2421,21 @@ function desenhaMapa(){
   [[BASE[0][0],L_TOPO,BASE[1][0]],[BASE[0][1],L_MEIO,BASE[1][1]],[BASE[0][1],L_BOT,BASE[1][1]]]
     .forEach(([a,l,b])=>gE.appendChild(el("polyline",
       {points:[a,...l,b].map(p=>centro(...p).map(n=>n.toFixed(1)).join(",")).join(" "),class:"estrada"})));
+
+  /* acampamentos: 2 de cada lado + 1 neutro disputável. Farmar é feito ao
+     pisar na casa; isso transforma o caminho do Caçador em uma escolha de macro. */
+  J.camps.forEach(cp=>{
+    const [x,y]=centro(...cp.pos);
+    if(cp.ativo){
+      const g=el("g",{class:"camp"+(cp.t===-1?" neutro":"")});
+      g.appendChild(el("circle",{cx:x,cy:y,r:7.2,class:"camp-bg"}));
+      g.appendChild(el("circle",{cx:x,cy:y,r:4.4,class:"camp-core"}));
+      const tx=el("text",{x:x,y:y+11,class:"camp-txt"}); tx.textContent=cp.t===-1?"NEUTRO":(cp.t===0?"AZUL":"CARMIM"); g.appendChild(tx);
+      gM.appendChild(g);
+    } else if(cp.respawn>0){
+      const tx=el("text",{x:x,y:y+3,class:"camp-cd"}); tx.textContent="R"+cp.respawn; gM.appendChild(tx);
+    }
+  });
 
   const torreS=new Set(alvosTorre);
   J.torres.forEach(t=>{
@@ -2372,9 +2667,15 @@ function abreManual(){
       <tr><td>Habilidades de controle</td><td>Força 3+</td></tr>
       <tr><td>Ultimates</td><td>Força 5+ ou 6</td></tr></table>
       <p style="margin-top:7px">Precisa de mais movimento? <b>Vire um dado de ação em movimento</b> pelo botão <b>→ mover</b>.</p></section>
+    <section class="destaque"><h4>Feitiços de invocador</h4>
+      <p>O time tem <b>uma carga</b>, não um feitiço por herói. Ela não gasta dado nem movimento, serve a <b>qualquer</b> um dos cinco, e volta <b>3 rodadas</b> depois de usada.</p>
+      <table><tr><td><b>Lampejo</b></td><td>salta até 2 casas e escapa de <i>preso</i></td></tr>
+      <tr><td><b>Retorno</b></td><td>volta à base e recupera 3</td></tr></table>
+      <p style="margin-top:7px">Como a carga é uma só, a pergunta nunca é <i>posso?</i> — é <b>quem merece</b>. E vale contar a do adversário: feitiço gasto é informação.</p>
+      <p>O Retorno é <b>interrompido por inimigo colado</b>. Quem foi pego não escapa de graça.</p></section>
     <section class="destaque"><h4>3 · Quem não age, enriquece</h4>
       <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p></section>
-    <section><h4>Combate</h4>
+    <section class="destaque"><h4>Escudo persistente</h4><p>Escudo não expira no fim da rodada. Ele permanece no herói até absorver dano suficiente para chegar a 0.</p></section><section><h4>Combate</h4>
       <p>Sem rolagem extra — o dado já foi rolado.</p>
       <table><tr><td>Dano</td><td>Força + Poder − Armadura</td></tr>
       <tr><td>Dado 6 natural</td><td>Crítico</td></tr>
@@ -2382,24 +2683,24 @@ function abreManual(){
       <tr><td>Quem matou</td><td>+4 de ouro</td></tr></table></section>
     <section><h4>As cinco posições</h4>
       <p><b>Topo</b> — sozinho lá em cima. Dominar a rota dá <b>Placas</b>: 1 ajusta um dado em ±1, 2 re-rolam. É a sua única fonte de controle sobre a sorte.</p>
-      <p><b>Selva</b> — o Caçador. A ação dele é <b>escondida</b> no início da rodada e revelada no fim do turno do adversário. Ir a uma rota é <b>gank</b>: +2 de Força.</p>
+      <p><b>Farm</b> — o Caçador. A intenção dele é <b>escondida</b> no início da rodada. Ele se move normalmente com o <b>Dado Mestre</b>. Se alcançar a rota declarada, arma o <b>gank</b>: +2 de Força.</p>
       <p><b>Meio</b> — a rota mais curta. Dominar dá <b>Prioridade</b>: gaste para rolar <b>um dado de ação a mais</b>, quando quiser.</p>
       <p><b>Atirador</b> — frágil e caro, mas escala: a cada 10 de ouro ganha +2 de Poder. Perto do Suporte, ganha escudo e dano.</p>
       <p><b>Suporte</b> — escuda, doa o próprio dado, e a <b>Ward</b> revela o Caçador inimigo antes da hora.</p></section>
+    <section class="destaque"><h4>Regra de mesa · presença na rota</h4>
+      <p>Um herói só conta para empurrar uma rota depois de <b>passar da própria Torre Exterior</b>. Antes dela, está em desenvolvimento e não gera Top/Meio/Bot. Mais heróis ativos que o rival: a onda anda 1. Empate: não anda.</p></section>
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
-      <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada.</p>
+      <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada, e o golpe de herói tira <b>1</b> — qualquer habilidade ofensiva, inclusive a Ultimate. Torre não é poço: quem quer derrubar mais rápido junta heróis, não gasta a Ultimate.</p>
       <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
-      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>3 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
-      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>5 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
-      <p>Bater no poço é como bater na torre — mira vermelha, um toque, 1 de dano — só que <b>sem limite por rodada</b> e <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
-    <section><h4>Retomada</h4>
-      <p>O jogo conta o quanto você está apanhando: cada <b>torre sua caída</b> vale 2, cada <b>hexágono de onda inimiga do seu lado</b> do vão vale 1.</p>
-      <p>Se a sua conta passar a do adversário em <b>2</b>, você rola <b>+1 dado de ação</b>. Em <b>4</b>, também ganha <b>+1 no Dado Mestre</b>.</p>
-      <p>É automático e <b>some sozinho</b> quando a diferença fecha. Estar atrás não devolve a partida — devolve <b>ação</b> para brigar por ela.</p></section>
+      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>8 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
+      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>14 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
+      <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem limite por rodada</b> e <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+    <section><h4>Plano de Caça</h4>
+<p>No início da rodada, cada Caçador escolhe secretamente <b>TOP, MEIO, BAIXO ou FARM</b>. A ficha não move ninguém: todo deslocamento usa o Dado Mestre. Se chegar à rota declarada, a primeira habilidade ofensiva recebe <b>+2 Força</b>. FARM dá <b>+1 ouro</b> somente se o Caçador coletar um acampamento. Se não cumprir, perde o bônus. <b>Ward revela o Plano de Caça inimigo.</b></p></section>
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
@@ -2466,6 +2767,11 @@ function aplicaFoco(){
 /* ══════════════════ RENDER ══════════════════ */
 let assinaturaDados="";
 function pinta(){
+  /* Durante a sondagem a IA abre e fecha a ficha de cada habilidade de cada herói
+     dezenas de vezes por turno, e isso piscava na tela como se ela estivesse
+     folheando as cartas na sua frente. Não é jogada, é raciocínio — e raciocínio
+     não se mostra. O que se mostra é para onde ela andou e o que ela fez. */
+  if(sondando)return;
   const tm=J.times[J.vez];
   G("rod").textContent="R"+J.rodada;
   G("faixa").className="faixa t"+J.vez;
@@ -2481,6 +2787,7 @@ function pinta(){
     (tm.dragoes?`<span class="on">herança <b>${tm.dragoes}</b></span>`:"")+
     (tm.barao?`<span class="on">fúria <b>${tm.barao}</b></span>`:"")+
     (tm.retomada?`<span class="on">retomada${tm.retomada>1?" <b>2</b>":""}</span>`:"")+
+    `<span class="${tm.feitico?"on":""}">✦ ${tm.feitico?"feitiço":"<b>"+tm.feiticoCd+"</b>"}</span>`+
     (cacaTxt?`<span class="on">${cacaTxt}</span>`:"");
 
   const dm=G("ddm");
@@ -2518,9 +2825,37 @@ function pinta(){
     bt.classList.toggle("chance", J.fase==="jogando"&&!rotaAberta(J.vez)&&rotaAberta(1-J.vez));
   })();
 
-  /* painel de comando — a peça central da correção de jogabilidade */
+  /* Um botão de feitiço lê igual a uma habilidade: nome, uma linha de regra, e o
+   número da direita. Só que o número é a recarga, não a Força — por isso a classe
+   `trava`, a mesma que a habilidade sem dado usa. Estado é o único idioma da UI. */
+function feiticoBt(h,qual){
+  const lampejo = qual==="lampejo";
+  const cd = J.times[h.t].feitico ? 0 : J.times[h.t].feiticoCd;
+  const colado = !lampejo && vizinhos(...h.pos).some(([vc,vr])=>{
+    const o=em(vc,vr); return o&&o.t!==h.t; });
+  const pode = !cd && J.fase==="jogando" && (lampejo || (!naBase(h)&&!colado));
+  const linha = cd ? `feitiço do time gasto — volta em ${cd} ${cd>1?"rodadas":"rodada"}`
+    : lampejo ? `salta até ${LAMPEJO_ALC} casas · gasta o feitiço do time`
+    : colado ? "inimigo colado — interrompido"
+    : naBase(h) ? "já está na própria base"
+    : `volta à base e recupera ${RETORNO_CURA} · gasta o feitiço do time`;
+  return `<button class="opc${modo==="lampejo"&&lampejo?" on":""}${pode?" pode":" naoPode"}"
+      id="cmd${lampejo?"Lampejo":"Retorno"}" ${pode?"":"disabled"}>
+    <span class="ico">${svgIco(lampejo?ICO.raio:ICO.casa)}</span>
+    <span class="txt"><span class="t1">${lampejo?"Lampejo":"Retorno"}</span>
+      <span class="t2">${linha}</span></span>
+    <span class="mark${pode?"":" trava"}">${cd?cd:"◇"}</span>
+  </button>`;
+}
+
+/* painel de comando — a peça central da correção de jogabilidade */
   const cmd=G("comando");
-  if(selHeroi&&!selHeroi.morto){
+  /* e o painel de comando não abre no herói da IA: durante a vez dela o painel diz
+     de quem é a vez e mais nada. */
+  if(aiMode&&iaRodando){
+    cmd.innerHTML=`<div class="vaziomsg">Vez de <b>${NOMES[J.vez]}</b><br>`
+      +`acompanhe pelo tabuleiro e pelo canto</div>`;
+  }else if(selHeroi&&!selHeroi.morto){
     const h=selHeroi;
     const podeMover=J.mov.rest>0&&!h.preso;
     cmd.innerHTML=`
@@ -2539,6 +2874,8 @@ function pinta(){
             podeMover?`até <b>${J.mov.rest+(ehAgil(h)?1:0)}</b> casas · sai do bolso do time`:"sem movimento restante"}</span></span>
         <span class="mark">${J.mov.rest}</span>
       </button>
+      ${feiticoBt(h,"lampejo")}
+      ${feiticoBt(h,"retorno")}
       ${h.habs.map((hb,i)=>{
         const di=dadoPara(hb), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
@@ -2552,6 +2889,8 @@ function pinta(){
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
     G("cmdMover").onclick=iniciaMover;
+    G("cmdLampejo").onclick=iniciaLampejo;
+    G("cmdRetorno").onclick=usaRetorno;
     h.habs.forEach((_,i)=>{
       const b=G("hab"+i); if(!b)return;
       b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
@@ -2565,9 +2904,11 @@ function pinta(){
   G("btPlaca").disabled = tm.placas<1||!dLivre;
   G("btRerol").disabled = tm.placas<2||!dLivre;
   G("btConv").disabled = !dLivre;
+  G("btPrio").disabled = !tm.prio || J.fase!=="jogando";
+  G("btPrio").textContent = tm.prio ? `⚡ prioridade (${tm.prio})` : "⚡ prioridade";
   /* linha inteira some quando nenhum dos três serve — devolve altura ao mapa */
   G("extraBts").classList.toggle("ocioso",
-    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled);
+    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled && G("btPrio").disabled);
   G("btLoja").classList.toggle("destaque",tm.herois.some(h=>h.morto||naBase(h)));
   G("btLoja").disabled=J.fase!=="jogando";
   G("btTime").innerHTML="Time"+(tm.prio?` <span class="bad">⚡${tm.prio}</span>`:"");
@@ -2584,6 +2925,7 @@ function pinta(){
   desenhaMapa();
   aplicaFoco();
   checaTut();
+  rodaAnims();
 }
 function texto(){
   if(J.fim!==null)return `<b>${NOMES[J.fim]} venceu.</b>`;
@@ -2593,8 +2935,143 @@ function texto(){
          `toque num herói seu para abrir o comando`;
 }
 
+/* ══════════════════ IA TÁTICA ══════════════════ */
+function iaEscolheAlvo(h){
+  if(alvoNexus!==null)return {tipo:"nexus",v:alvoNexus};
+  if(alvosTorre.length)return {tipo:"torre",v:alvosTorre.sort((a,b)=>a.vida-b.vida)[0]};
+  if(alvosEpico.length)return {tipo:"epico",v:alvosEpico[0]};
+  const inimigos=alvos.filter(x=>x.t!==h.t&&!x.morto);
+  if(inimigos.length)return {tipo:"heroi",v:inimigos.sort((a,b)=>a.vida-b.vida)[0]};
+  return null;
+}
+/* 650ms era o tempo de ver que algo mexeu, não de entender o quê. Uma jogada da IA
+   é herói + habilidade + alvo + resultado: quatro leituras. 1200 dá para acompanhar
+   sem virar espera, e quem já entendeu tem o botão de pular. */
+const RITMO_IA=1200;
+let iaRodando=false, pularIA=false;
+async function iaExecutaTurno(){
+  if(iaRodando||(!aiMode&&!simMode)||J.fim!==null||J.fase!=="jogando"||(aiMode&&J.vez!==1))return;
+  iaRodando=true; pularIA=false;
+  const bp=G("btPularIA");
+  if(bp&&aiMode){ bp.classList.add("on"); bp.classList.remove("correndo");
+    bp.textContent="▸▸ pular vez da IA"; }
+  const lado=J.vez, passos=new Map();
+  const pausa=ms=>new Promise(r=>setTimeout(r,ms));
+  falaIA("vez da IA","viva");
+
+  let guard=0;
+  while(guard++<45&&J.fim===null&&J.vez===lado){
+    pinta();
+    await pausa(pularIA?0:(aiMode?RITMO_IA:0));
+
+    const vivosAI=vivos(lado);
+
+    /* Feitiço de emergência. A IA não sabe engajar com Lampejo — sabe só fugir, e só
+       quando está de fato morrendo. É pouco de propósito: uma IA que lampeja para
+       cima acerta por acidente e o jogador aprende a regra errada. Fugir ela acerta
+       sempre, e é o que faz o humano sentir que os dois botões são do jogo, não dele.
+       As duas condições são exclusivas: Lampejo é para inimigo colado, Retorno é
+       justamente para quando NÃO há ninguém colado (com inimigo ao lado ele é
+       interrompido, mesma regra do jogador). */
+    const colado=h=>vizinhos(...h.pos).some(([vc,vr])=>{const o=em(vc,vr);return o&&o.t!==lado;});
+    const machucado=h=>h.vida<=Math.ceil(h.vidaMax/3);
+    const longeDeInimigo=p=>Math.min(...J.times[1-lado].herois.filter(o=>!o.morto)
+      .map(o=>dist(...p,...o.pos)),99);
+
+    const saltador=temFeitico(lado)&&vivosAI.find(h=>machucado(h)&&colado(h));
+    if(saltador){
+      limpaModo(); selHeroi=saltador; modo="lampejo"; calcula();
+      const destino=mover.slice().sort((a,b)=>longeDeInimigo(b)-longeDeInimigo(a))[0];
+      if(destino){
+        if(aiMode) falaIA(`${saltador.n} lampeja`,"viva");
+        lampejaAte(...destino); continue;
+      }
+      limpaModo();
+    }
+    const voltador=temFeitico(lado)&&vivosAI.find(h=>machucado(h)&&!colado(h)&&!naBase(h));
+    if(voltador){
+      limpaModo(); selHeroi=voltador;
+      if(aiMode) falaIA(`${voltador.n} volta à base`,"viva");
+      usaRetorno(); continue;
+    }
+
+    let melhor=null;
+    sondando=true;
+    try{
+      for(const h of vivosAI){
+        if(h.agiu)continue;
+        for(let i=0;i<h.habs.length;i++){
+          const hb=h.habs[i], d=dadoPara(hb); if(d===null)continue;
+          selHeroi=h; limpaModo(); selHeroi=h; iniciaHab(i);
+          const alvo=iaEscolheAlvo(h);
+          if(alvo){ melhor={h,i,alvo,dv:J.dados[d].v}; break; }
+          /* aqui a sonda acaba e a jogada começa: habilidade de alvo "eu" ainda
+             pode bater em área (Avalanche, Chuva de Ferro) e portanto ainda pode
+             matar alguém — e "X caiu" é justamente o aviso que não pode sumir. */
+          if(hb.alvo==="eu"&&confirmar===i){
+            sondando=false; confirmaHab(h); melhor={feito:1}; break; }
+          limpaModo();
+        }
+        if(melhor)break;
+      }
+    } finally { sondando=false; }
+
+    if(melhor&&!melhor.feito){
+      selHeroi=melhor.h;
+      if(aiMode) falaIA(`${melhor.h.n} usa ${melhor.h.habs[melhor.i].n}`,"viva");
+      if(melhor.alvo.tipo==="nexus")atacaNexus(melhor.alvo.v);
+      else if(melhor.alvo.tipo==="torre")atacaTorre(melhor.alvo.v);
+      else if(melhor.alvo.tipo==="epico")atacaEpico(melhor.alvo.v);
+      else confirmaHab(melhor.alvo.v);
+      continue;
+    }
+
+    if(J.mov.rest>0){
+      const inimigos=J.times[1-lado].herois.filter(o=>!o.morto);
+      const candidatos=vivosAI.filter(h=>!h.preso).sort((a,b)=>(passos.get(a.id)||0)-(passos.get(b.id)||0));
+      let moveu=false;
+      for(const h of candidatos){
+        const alvo=inimigos.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
+        const camps=J.camps.filter(c=>c.ativo&&(c.t===lado||c.t===-1));
+        const obj=camps.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
+        const papel=CATALOGO[h.id].pos;
+        let destino = papel==="selva"&&obj ? obj.pos : (alvo?alvo.pos:null);
+        if(!destino)continue;
+        selHeroi=h; modo="mover"; calcula();
+        const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
+          .sort((a,b)=>dist(...a,...destino)-dist(...b,...destino))[0];
+        if(umPasso){
+          if(aiMode) falaIA(`${h.n} anda`);
+          moveAte(...umPasso);
+          passos.set(h.id,(passos.get(h.id)||0)+1);
+          moveu=true; break;
+        }
+      }
+      if(moveu)continue;
+    }
+    break;
+  }
+
+  limpaModo(); selHeroi=null;
+  pinta();
+  if(bp) bp.classList.remove("on");
+  if(J.fim===null){
+    if(aiMode){
+      falaIA("encerrou o turno","viva");
+      await pausa(pularIA?0:900);
+    }
+    encerraTurno();
+  }
+  iaRodando=false; pularIA=false;
+}
+
 /* ══════════════════ FLUXO ══════════════════ */
 function perguntaCaca(t,depois){
+  if(aiMode&&t===1){
+    const op=["selva","topo","meio","baixo"];
+    J.times[t].caca=op[Math.floor(Math.random()*op.length)]; J.times[t].cacaRevelada=null;
+    return depois();
+  }
   const cac=J.times[t].herois[1];
   abre(`
     <span class="et">Comando oculto · em segredo</span>
@@ -2602,7 +3079,7 @@ function perguntaCaca(t,depois){
     <p>Para onde vai <b>${cac.n}</b>, seu Caçador?<br>
     A escolha fica virada para baixo e só é revelada no fim do turno do adversário.</p>
     <div class="zonas">
-      <button class="zona" data-z="selva"><span class="zn">Selva</span><span class="zd">+3 de ouro · seguro</span></button>
+      <button class="zona" data-z="selva"><span class="zn">Farm</span><span class="zd">+3 de ouro · seguro</span></button>
       <button class="zona" data-z="topo"><span class="zn">Topo</span><span class="zd">gank · +2 de Força</span></button>
       <button class="zona" data-z="meio"><span class="zn">Meio</span><span class="zd">gank · +2 de Força</span></button>
       <button class="zona" data-z="baixo"><span class="zn">Baixo</span><span class="zd">gank · +2 de Força</span></button>
@@ -2620,6 +3097,12 @@ iniciaTurno=function(){
   _iniciaTurno();
   limpaModo(); selHeroi=null;
   const nova=compra(J.vez);
+  if(simMode || (aiMode&&J.vez===1)){
+    if(aiMode&&J.vez===1) J.times[1].caca=J.times[1].caca||["selva","topo","meio","baixo"][Math.floor(Math.random()*4)];
+    pinta();
+    iaExecutaTurno();
+    return;
+  }
   abre(`<span class="et">Passe o aparelho</span><h2 class="t${J.vez}">${NOMES[J.vez]}</h2>
     <p>É a sua vez. Ninguém mais deve estar olhando.</p>
     ${nova?`<span class="et" style="display:block;margin-bottom:2px">Você comprou</span>
@@ -2712,6 +3195,13 @@ function usaPrioridade(){
 
 /* ══════════════════ BOTÕES ══════════════════ */
 G("btTime").onclick=()=>{ sheetAberto==="Time"?fechaSheet():abreTime(); };
+G("btPrio").onclick=()=>usaPrioridade();
+G("btPularIA").onclick=()=>{
+  if(pularIA)return;
+  pularIA=true;
+  const b=G("btPularIA");
+  b.classList.add("correndo"); b.textContent="resolvendo…";
+};
 G("btLoja").onclick=()=>{ sheetAberto&&sheetAberto.startsWith("Loja")?fechaSheet():abreLoja(); };
 G("btCartas").onclick=()=>{ sheetAberto==="Cartas"?fechaSheet():abreMao(); };
 /* Estruturas: uma linha por rota, dos dois lados, com a vida em bolinha e a
@@ -2935,6 +3425,59 @@ function iniciaDraft(depois){
   dr={fase:"ban", passo:0, bans:[], times:[[],[]], aoFim:depois};
   telaDraft();
 }
+
+function draftTurnoAtual(){
+  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
+    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
+     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
+  if(dr.fase==="ban") return dr.passo;
+  const et=ORDEM[Math.floor(dr.passo/2)];
+  return dr.passo%2===0 ? et.primeiro : 1-et.primeiro;
+}
+function draftEscolhaIA(){
+  if(!aiMode || draftTurnoAtual()!==1)return false;
+  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
+    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
+     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
+
+  let legais=[];
+  if(dr.fase==="ban"){
+    const rotasBanidas=dr.bans.map(id=>CATALOGO[id].pos);
+    legais=Object.keys(CATALOGO).filter(id=>!dr.bans.includes(id)&&!rotasBanidas.includes(CATALOGO[id].pos));
+  } else {
+    const et=ORDEM[Math.floor(dr.passo/2)], rota=et.rota;
+    legais=Object.keys(CATALOGO).filter(id=>
+      CATALOGO[id].pos===rota &&
+      !dr.bans.includes(id) &&
+      !dr.times[0].includes(id) &&
+      !dr.times[1].includes(id));
+  }
+  if(!legais.length)return false;
+
+  /* IA prefere, entre opções legais, mais vida+poder+armadura; pequeno ruído evita draft sempre idêntico. */
+  legais.sort((a,b)=>{
+    const A=CATALOGO[a], B=CATALOGO[b];
+    const sa=A.vida+A.poder*2+A.arm*1.5+Math.random()*2;
+    const sb=B.vida+B.poder*2+B.arm*1.5+Math.random()*2;
+    return sb-sa;
+  });
+  const id=legais[0];
+
+  setTimeout(()=>{
+    if(dr.fase==="ban"){
+      dr.bans.push(id); dr.passo++;
+      if(dr.passo>=2){dr.fase="pick";dr.passo=0;}
+    } else {
+      const et=ORDEM[Math.floor(dr.passo/2)];
+      const t=dr.passo%2===0?et.primeiro:1-et.primeiro;
+      dr.times[t].push(id); dr.passo++;
+      if(dr.passo>=10){ fecha(); return dr.aoFim(dr.times); }
+    }
+    telaDraft();
+  },500);
+  return true;
+}
+
 function telaDraft(){
   const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
     [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
@@ -2978,6 +3521,10 @@ function telaDraft(){
           `<span class="dr-chip t${x}"><img src="${RETRATO(id)}" alt="">${CATALOGO[id].n}</span>`).join("")).join("")}
       </div></div>`);
   }
+  if(draftEscolhaIA()){
+    document.querySelectorAll(".dr-h").forEach(b=>b.disabled=true);
+    return;
+  }
   document.querySelectorAll(".dr-h").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id; vibra(10);
     if(dr.fase==="ban"){
@@ -3010,12 +3557,23 @@ function telaAbertura(){
     <p>Cada um comanda <b>cinco heróis</b> — no mesmo aparelho.</p>
     <button class="grande" id="ok">Jogar o tutorial</button>
     <button class="grande" id="btDraft">Partida com draft</button>
+    <button class="grande" id="btIA" style="background:#315B52">Jogar contra a IA · com Draft</button>
     <button class="grande" id="btDireto"
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
-  G("btDireto").onclick=()=>comeca(false,false);
+  G("btIA").onclick=()=>{
+    aiMode=true; simMode=false;
+    iniciaDraft(times=>{ TIMES=times; partida(false); });
+  };
+  G("btDireto").onclick=()=>{aiMode=false;comeca(false,false);};
 }
+globalThis.__JAGER_AI__={
+  start:()=>{ aiMode=false; simMode=true; TIMES=[["vharn","nyx","solenne","vesper","mirrha"],["vharn","nyx","solenne","vesper","mirrha"]]; baralho=typeof montaDeck!=="undefined"?montaDeck():[]; cemiterio=[]; maos=[[],[]]; descontos=[0,0]; novo(); },
+  startHuman:()=>{ aiMode=true; simMode=false; baralho=typeof montaDeck!=="undefined"?montaDeck():[]; cemiterio=[]; maos=[[],[]]; descontos=[0,0]; novo(); },
+  turn:()=>iaExecutaTurno(),
+  get state(){return J}
+};
 telaAbertura();
 
 </script>

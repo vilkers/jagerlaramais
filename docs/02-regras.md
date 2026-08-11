@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras completas
 
-Versão 0.2 · para quem nunca jogou. Leia na ordem.
+Pacote v15 · atualizado em 2026-08-11 · para quem nunca jogou. Leia na ordem.
 
 ---
 
@@ -16,7 +16,7 @@ Para chegar lá você precisa empurrar uma rota até o fim, derrubando as torres
 
 ## OS DADOS: 1 DE MOVIMENTO + 3 DE AÇÃO
 
-Toda rodada você rola **quatro dados**, e eles fazem coisas diferentes:
+Toda rodada começa com **quatro dados**, e eles fazem coisas diferentes. Retomada e Prioridade podem acrescentar dados de ação durante o turno.
 
 ### 🎲 O Dado Mestre de Movimento — um só, para o time inteiro
 
@@ -42,6 +42,10 @@ Cada habilidade exige uma **Força mínima**, e é isso que dá personalidade a 
 
 Precisa de mais mobilidade numa rodada específica? **Você pode virar um dado de ação em movimento** — ele soma seu valor ao total de casas. Você troca uma jogada por posição.
 
+### Retomada
+
+O jogo compara o perigo dos dois lados: cada torre perdida vale 2 e cada casa de invasão da onda inimiga vale 1. Se você estiver 2 pontos atrás, recebe **+1 dado de ação**; com 4 pontos de atraso, recebe **+2 dados**. O bônus some quando a diferença fecha.
+
 ---
 
 ## A OUTRA REGRA QUE DECIDE TUDO
@@ -61,18 +65,18 @@ Agir custa dinheiro. Toda rodada você decide: intervir agora, ou ficar rico e i
 
 ## A RODADA, PASSO A PASSO
 
-### 1 · Comando Oculto
-Os dois jogadores, **ao mesmo tempo e em segredo**, escolhem para onde o próprio **Caçador** (o herói da selva) vai: rota de cima, meio, baixo, ou ficar na selva. A escolha fica virada para baixo.
+### 1 · Plano de Caça
+Os dois jogadores, **ao mesmo tempo e em segredo**, escolhem uma missão para o próprio **Caçador**: Topo, Meio, Baixo ou Farm. A ficha não teleporta o herói; ele precisa andar usando o Dado Mestre.
 
 ### 2 · Turno do primeiro jogador
 Rola 3d6. Aloca. Age. Encerra.
-**No fim deste turno, a carta do Caçador do OUTRO jogador é revelada** e resolve.
+**No fim deste turno, a carta do Caçador do OUTRO jogador é revelada** e verifica se o plano foi cumprido.
 
 ### 3 · Turno do segundo jogador
 Mesma coisa.
 **No fim deste turno, a carta do Caçador do PRIMEIRO jogador é revelada** e resolve.
 
-> Por que assim: você esconde o Caçador antes de saber o que o adversário vai fazer, e ele só aparece depois que o adversário já se comprometeu. É o blefe do gank, inteiro, em uma carta virada.
+> Por que assim: você esconde o plano antes de saber o que o adversário vai fazer, e ele só é conferido depois que o adversário já se comprometeu.
 
 ### 4 · Ondas
 Em cada rota, a **Frente de Onda** desliza 1 casa para o lado de quem tem mais heróis vivos naquela rota. Empate: não anda.
@@ -135,15 +139,15 @@ Fica sozinho na rota de cima, longe de tudo. Não espere ajuda e não vá ajudar
 O Topo é a única fonte de controle sobre a sorte que você mesmo constrói. Ganhar de lado no topo é o que faz seu meio conseguir a ultimate na hora certa.
 
 ### 🌑 SELVA — "O Caçador"
-O único herói cuja ação é **decidida em segredo**.
+O único herói com um plano **decidido em segredo**.
 
-Toda rodada você escolhe uma de quatro zonas com a carta virada:
-- **Selva** → ganha 3 de ouro e um buff de acampamento
-- **Uma rota** → **gank**: aparece lá e ataca com **+2 de Força**
+Toda rodada você escolhe uma missão com a carta virada:
+- **Farm** → se o Caçador coletar um acampamento, ganha **+1 ouro** além da recompensa do acampamento;
+- **Uma rota** → se ele chegar à zona ativa da rota, a próxima habilidade ofensiva naquela rota recebe **+2 de Força**.
 
-A carta revela no fim do turno do adversário. Ele já se comprometeu quando você aparece.
+O Caçador não é movido pela carta. Ele usa o mesmo Dado Mestre do time. Ward revela o Plano de Caça inimigo antes da hora.
 
-**O blefe é metade do valor.** Virar a carta no topo e ver o adversário jogar defensivo lá enquanto era só farm já ganha a rota de baixo de graça.
+Há três acampamentos: Azul, Carmim e neutro. Eles dão ouro, somem quando coletados e renascem 3 rodadas depois. Roubar o acampamento do rival rende 1 ouro adicional.
 
 ### ⏱️ MEIO — "O Relógio"
 A rota do meio é a mais curta do mapa. Quem domina ela chega primeiro em qualquer lugar.
@@ -183,12 +187,18 @@ O Suporte é o único herói cujo poder é medido inteiramente pelo que os outro
 
 Três rotas ligam as duas bases. Selva nos dois quadrantes, rio na diagonal.
 
-**Frente de Onda** — cada rota tem um marcador que mostra onde as duas ondas de tropas se encontram. Ele desliza para o lado de quem tem mais heróis vivos naquela rota, 1 casa por rodada.
+**Frente de Onda** — cada rota tem um marcador que mostra onde as duas ondas de tropas se encontram. Um herói só pressiona a rota depois de passar da própria Torre Exterior. O marcador desliza 1 casa para o lado com mais heróis ativos; empate não move.
 
 **Torres** — duas por rota, de cada lado. Cada uma tem **3 de vida**.
 A Frente de Onda encostada numa torre causa **1 de dano por rodada**. Heróis também podem atacá-la.
 
-**Nexus** — quando as **duas torres** de uma rota caem, aquela rota fica aberta e a Frente de Onda passa a bater direto no Nexus. O Nexus tem **5 de vida**.
+**Nexus** — quando as **duas torres** de uma rota caem, aquela rota fica aberta e a Frente de Onda passa a bater direto no Nexus. O Nexus tem **3 de vida**.
+
+**Poço épico** — o Dragão tem **8 de vida** até a rodada 8; depois entra o Barão, com **14**. Habilidade ofensiva básica tira 1; Ultimate ofensiva tira 2. O épico revida e o último golpe leva a recompensa.
+
+**Feitiço do time** — cada time compartilha uma única carga, recarregada em 3 rodadas:
+- **Lampejo:** salta até 2 casas e remove `preso`;
+- **Retorno:** volta à base e cura até 3, mas é interrompido por inimigo adjacente.
 
 **Zerou o Nexus, acabou o jogo.**
 
@@ -207,15 +217,14 @@ A Frente de Onda encostada numa torre causa **1 de dano por rodada**. Heróis ta
 
 ---
 
-## O QUE AINDA NÃO ESTÁ DEFINIDO 🔸
+## O QUE AINDA PRECISA DE DECISÃO 🔸
 
-Sinalizando o que falta para o jogo ficar completo:
+Sinalizando o que permanece aberto depois da integração da v15:
 
 | # | Falta | Por que importa |
 |---|---|---|
-| 1 | **Loja e itens** | Sem gastar, o ouro é só placar. É o que dá autoria à build |
-| 2 | **Draft / pick-ban** | É o que faz 50 partidas serem diferentes com as mesmas cartas |
-| 3 | **Feitiços de invocador** | 5 cartas que geram as melhores histórias da partida |
-| 4 | **Acampamentos de selva** | Os buffs Azul e Vermelho, que mexem nos dados |
-| 5 | **Empate / limite de rodadas** | O que acontece se ninguém fechar? |
-| 6 | **Comeback** | Sem freio, quem abre vantagem na rodada 3 já ganhou na 5 |
+| 1 | **Playtest da v15** | Muitas regras entraram juntas e ainda não foram aprovadas pelo trio |
+| 2 | **Buffs de acampamento** | O motor tem acampamentos de ouro, não os buffs antes desenhados |
+| 3 | **Empate / limite de rodadas** | O que acontece se ninguém fechar? |
+| 4 | **Arauto** | Tem arte e ainda não tem regra |
+| 5 | **Highlight do tutorial** | A caixa explica, mas ainda não aponta o elemento certo |

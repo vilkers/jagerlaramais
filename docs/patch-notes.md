@@ -16,6 +16,32 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v15 — feitiços, IA, acampamentos e reconciliação das fontes · 2026-08-11
+
+> **Em teste. Não aprovado.** Integra uma contribuição externa cumulativa sobre a base v0.6.2.
+
+### O que mudou
+
+- Retomada agora entrega **+1 dado de ação** com atraso 2 e **+2 dados** com atraso 4; o antigo bônus de +1 no Dado Mestre saiu.
+- Dragão: vida **3 → 8**. Barão: vida **5 → 14**.
+- Golpe no Poço: habilidade básica causa **1**; Ultimate ofensiva causa **2**. Torre continua recebendo 1.
+- Entraram Lampejo e Retorno como um único feitiço compartilhado por time, com recarga de **3 rodadas**.
+- Entraram três acampamentos de ouro com respawn de **3 rodadas**.
+- O Caçador passa a cumprir um Plano de Caça andando pelo mapa; rota cumprida dá **+2 de Força** na próxima habilidade ofensiva e Farm cumprido dá **+1 ouro**.
+- Entrou partida contra IA com draft, narração lateral, ritmo de 1200 ms e botão de pular pausas.
+- Entraram animação de golpe e correção da animação `tremer`.
+- Prioridade ganhou botão direto no painel; doação do Suporte passa a criar um dado destinado ao aliado.
+
+### Integração
+
+O pacote havia sido publicado como um único `jogo/index.html` de 3,3 MB. A v15 foi separada novamente em `jogo/index.html`, `jogo/estilo.css` e `jogo/jogo.js`, preservando exatamente o comportamento recebido. O catálogo embutido era idêntico a `data/catalogo.js` e não foi alterado.
+
+### O que exige revisão
+
+Os números dos épicos, a persistência de escudos, os acampamentos, a nova pressão de rota e a IA não estavam descritos no resumo do pacote. Foram preservados para não perder trabalho, mas precisam de decisão e playtest. Inventário completo em `docs/versions/v15/CHANGELOG.md`.
+
+---
+
 ## v0.6.2 — selva de verdade, e o placar vira gaveta · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda tamanho do tabuleiro.

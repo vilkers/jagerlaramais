@@ -4,6 +4,8 @@ Um MOBA de tabuleiro para **duas pessoas**. Cada jogador é o **técnico de cinc
 
 Feito por Vilker, Vinicius e Matheus.
 
+> **Estado atual:** pacote v15 integrado nas fontes em 2026-08-11. A versão está jogável, mas as mudanças cumulativas ainda aguardam revisão e playtest. Ver `docs/versions/v15/README.md`.
+
 ---
 
 ## Jogar agora
@@ -14,9 +16,10 @@ Não precisa instalar nada, não tem build, não tem servidor. É HTML/CSS/JS pu
 Na abertura você escolhe:
 - **Tutorial** — 9 passos que ensinam jogando
 - **Partida com draft** — ban e escolha de heróis antes de começar
+- **Jogar contra a IA** — draft e turnos automatizados, em teste
 - **Partida rápida** — times pré-montados
 
-> ⚠️ **O jogo é _hotseat_: os dois jogam no MESMO aparelho**, passando o celular a cada turno. Ele **não** é multiplayer em rede — dois celulares diferentes ainda não funciona. Ver "Limitações conhecidas".
+> ⚠️ Contra outra pessoa, o jogo é _hotseat_: os dois jogam no MESMO aparelho, passando o celular a cada turno. A IA permite jogar sozinho, mas ainda não existe multiplayer em rede.
 
 **Guia completo:** abra `guia/index.html` — o manual em formato de livro navegável.
 **As cartas:** abra `cartas/index.html` — os 20 heróis em formato de carta.
@@ -36,7 +39,7 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 
 ---
 
-## Estado do desenvolvimento — v0.4
+## Estado do desenvolvimento — v15
 
 | Sistema | Status |
 |---|---|
@@ -54,11 +57,14 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 | Mapa ilustrado | ✅ no guia, seção 05 |
 | Poço épico (Dragão e Barão) | ✅ **funcionando** — casa [4,4], muda de morador na rodada 8 |
 | Comeback / freio de bola de neve | ✅ **Retomada** — dado extra para quem está atrás |
+| Feitiço compartilhado | ✅ **Lampejo ou Retorno**, recarga de 3 rodadas |
+| Acampamentos | ✅ **3 acampamentos de ouro**, respawn de 3 rodadas |
+| Partida contra IA | ✅ draft e turno automatizados, em teste |
 | Arauto no tabuleiro | ❌ tem arte, não tem regra |
 | Highlight estilo LoL no tutorial | ❌ não existe |
 | Multiplayer em rede | ❌ não existe |
 
-Uma partida completa fecha em **~15 rodadas** com os dois jogadores usando cartas.
+A última base medida fechava em **19 rodadas de mediana**. A v15 ainda precisa de nova medição e playtest.
 
 Detalhe do que mudou: `docs/patch-notes.md`. Retrato do presente: `docs/ESTADO.md`.
 
@@ -97,6 +103,8 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 | `docs/ECOSSISTEMA.md` | **Como três pessoas (e duas IAs) mexem no mesmo jogo** sem se atropelar |
 | `docs/ACESSO.md` | Para mandar para quem está entrando agora |
 | `docs/COMO-CONTINUAR.md` | Como usar o Claude neste projeto |
+| `docs/UPDATE-PROTOCOL.md` | **Regra permanente para receber e integrar novas versões** |
+| `docs/versions/v15/` | Registro, changelog e arquivos da integração atual |
 
 ---
 
@@ -104,9 +112,9 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 **1. Não dá para jogar cada um no seu celular.** O jogo é hotseat — um aparelho, passando a vez. Fazer multiplayer em rede exigiria servidor e sincronização de estado; é um projeto à parte, não um ajuste.
 
-**2. Épico e Retomada não estão validados.** Estão no jogo desde a v0.5.5, mas `sim/bateria.js` não consegue medi-los: o agente joga ao acaso, então ela enxerga o custo (dado gasto, revide) e não o prêmio (Poder). Dando 6 dados extras à Retomada o número não se moveu. **Só playtest humano resolve.**
+**2. A v15 não está validada.** Épico, Retomada, feitiços, acampamentos, Plano de Caça e IA chegaram juntos. A simulação serve para detectar quebra, mas não substitui playtest humano dessas decisões.
 
-**3. Quem começa ganha 53,5%** (n=20000). Sem épico e sem Retomada são 50,5%, então parte da diferença é o custo que a simulação vê sem o prêmio que ela não vê — mas sobra um resto real de acesso desigual ao poço, 48% contra 52% de encontros.
+**3. A última base medida com amostra adequada foi a v0.6.2:** quem começa ganhou **55,5%** (n=20000). A v15 mudou várias regras depois dessa medição; nenhum percentual novo deve ser tratado como aprovado antes de repetir a bateria completa.
 
 **4. Aparelho pequeno aperta o tabuleiro.** Abaixo de 640px de altura o 8×8 dá hexágono de ~28px, contra os 44 de referência de toque. Todo o resto da tela está em 40–44px desde a v0.5.6; o mapa é o único que não alcança, e não é conserto de CSS.
 
@@ -116,7 +124,7 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 ## Próximos passos, na ordem
 
-1. **Playtest de verdade** com as três pessoas — agora é o gargalo, não mais um item da lista. Épico e Retomada dependem dele para serem ajustados.
+1. **Playtest de verdade da v15** com as três pessoas — épico, Retomada, feitiços, acampamentos, Plano de Caça e IA.
 2. **Highlight do tutorial.**
 3. **Arauto** — o poço já sabe trocar de morador, então entra sem motor novo.
-4. **Acampamentos de selva** — a válvula contra dado ruim.
+4. **Decidir os pontos abertos da v15** registrados em `docs/versions/v15/README.md`.
