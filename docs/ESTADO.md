@@ -4,7 +4,10 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.6.2 (em teste, não aprovada) · **Atualizado em:** 2026-08-10
+**Versão:** v0.6.2 · **Atualizado em:** 2026-08-11
+
+> A v0.6.2 é **a build corrente** — foi revisada e mergeada na `main` (PR #1 + os commits que
+> vieram depois). O que está descrito aqui é o jogo como ele é hoje, não uma proposta.
 
 ---
 
@@ -24,9 +27,11 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
 | Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
-| Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
-| Vantagem de quem começa | **55,5%** (z=15,41, n=20000) — era **53,5%** na v0.5.8 e chegou a **57,1%** na v0.6.1. O tabuleiro 11×11 devolveu 1,6 ponto, mas ainda sobra +2,0 sobre a base e não há freio |
-| Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
+| Poço épico | casa **[8,8]** (derivada de `N`, não fixa) · abre na rodada **5** com o Dragão (3 de vida, revide 1, reabre 3 rodadas depois); da rodada **8** em diante quem desce é o Barão (5 de vida, revide 2, reabre em 4) |
+| Vantagem de quem começa | **55,5%** (z=15,41, n=20000), confirmado por segunda medição independente na mesma build: **55,6%** (z=15,74, n=20000) — era **53,5%** na v0.5.8 e chegou a **57,1%** na v0.6.1. O tabuleiro 11×11 devolveu 1,6 ponto, mas ainda sobra +2,0 sobre a base. **O freio existe (Retomada) — a bateria é que não consegue vê-lo**, ver abaixo |
+| Tamanho do tabuleiro | **11×11**, 116 casas · **82 de corredor** (30/22/30) · **4 de base** · **30 de selva** · espinha 17/12/17 — tudo derivado de `const N` em jogo.js |
+| Largura da rota | meio tem **2 casas em toda a extensão**. Topo e baixo têm **um passo de 1 casa** cada — um estrangulamento onde os dois heróis da rota não passam lado a lado. Simétrico entre os lados, então não dá vantagem a ninguém; ver "o que NÃO existe" |
+| Torres | **12** no tabuleiro, 6 por lado |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | **~19 rodadas** (mediana medida: 19, n=20000) — eram 15 em 9×9. O tabuleiro maior alongou a partida |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
@@ -65,7 +70,8 @@ colide com medição já registrada.
 | O quê | Por que importa |
 |---|---|
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
-| **Acampamentos de selva** | Buffs Azul e Vermelho — a válvula contra dado ruim. |
+| **Acampamentos de selva** | Buffs Azul e Vermelho — a válvula contra dado ruim. **A v0.6.2 abriu 30 casas de selva e não pôs nada dentro:** hoje elas são espaço vazio que só serve de atalho. É o buraco mais visível do tabuleiro novo. |
+| **Corredor de 2 casas em toda a extensão** | Topo e baixo ainda têm um passo de 1 casa. O motivo de o mapa ter crescido era suporte e atirador dividirem rota — no estrangulamento eles ainda não dividem. |
 | **Feitiços de invocador** | 5 cartas, alto retorno em história. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
@@ -116,14 +122,16 @@ Fica a lição, que continua valendo: **assimetria de mapa e posição de torre 
 **4. Medição de assimetria quer n=20000.** A n=5000 a banda de ruído é ±1,4 ponto a 2σ, e foi ela
 que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
 
-**6. Gesto no mapa não pode chamar `pinta()`.** Selecionar herói faz o painel crescer, o palco
+**5. Gesto no mapa não pode chamar `pinta()`.** Selecionar herói faz o painel crescer, o palco
 encolher e o mapa se redimensionar — com o dedo encostado. Medido: a casa sob o dedo pulava de
 `[0,5]` para `[0,7]`. Realce durante gesto se faz direto no DOM; repinta só no fim. Ver v0.5.8.
 
-**5. O tabuleiro não cabe direito abaixo de 640px de altura.** Em 8×8 dava hexágono de ~28px, contra
+**6. O tabuleiro não cabe direito abaixo de 640px de altura.** Em 8×8 dava hexágono de ~28px, contra
 os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-
 ampliar. Nesse tamanho a lista de comando mostra uma linha por vez e rola. Ver v0.5.6.
-**Em 9×9 (v0.6) o aperto é maior** — o hexágono encolhe de novo. Ainda não reavaliado em tela pequena.
+**Em 11×11 (v0.6.2) o aperto é bem maior** — o tabuleiro cresceu de 64 para 116 casas e o hexágono
+encolhe na mesma proporção. **Ainda não reavaliado em tela pequena, e é a dívida mais provável
+da leva v0.6.**
 
 ## Como testar rápido
 

@@ -111,7 +111,11 @@ DANO = FORÇA + PODER do herói − ARMADURA do alvo   (mínimo 1)
 
 **Crítico:** se o dado alocado era um **6 natural**, a habilidade dispara o efeito extra escrito na carta.
 
-**Morte:** vida em 0 o herói sai do mapa e volta à base depois de **2 rodadas** (3 se estava com o dobro de ouro do adversário — quem está na frente demora mais para voltar). Quem matou ganha **4 de ouro**.
+**Morte:** vida em 0 o herói sai do mapa e volta à base depois de **2 rodadas**. Quem matou ganha **4 de ouro**.
+
+> 🔸 O respawn mais longo para quem está rico (**3 rodadas com o dobro de ouro do adversário**)
+> está descrito no design e **nunca foi implementado** — o motor usa 2 rodadas fixas para todo
+> mundo. Era um freio de bola de neve; hoje esse papel é da **Retomada**. Decidir se volta.
 
 ---
 
@@ -163,7 +167,10 @@ Frágil e caro. É o único que fica mais forte com o tempo.
 
 **Patamares:** a cada **10 de ouro** que o Atirador acumular, ele ganha **+2 de Poder**, para sempre. Até 3 vezes.
 
-**Dupla:** enquanto o seu Suporte estiver vivo e a até 2 casas dele, o Atirador ganha **+2 de Poder e +2 de Armadura**.
+**Dupla:** enquanto o seu Suporte estiver vivo e a até 2 casas dele, o Atirador ganha **+2 de Poder**.
+
+> 🔸 A **+2 de Armadura** que este documento prometia junto **nunca foi implementada** — no motor
+> a Dupla só entra no cálculo de Poder. Decidir se volta.
 
 Isso instala o relógio da partida: um lado joga para fechar antes do Atirador ficar pronto, o outro joga para segurar até lá.
 
@@ -185,12 +192,52 @@ Três rotas ligam as duas bases. Selva nos dois quadrantes, rio na diagonal.
 
 **Frente de Onda** — cada rota tem um marcador que mostra onde as duas ondas de tropas se encontram. Ele desliza para o lado de quem tem mais heróis vivos naquela rota, 1 casa por rodada.
 
-**Torres** — duas por rota, de cada lado. Cada uma tem **3 de vida**.
-A Frente de Onda encostada numa torre causa **1 de dano por rodada**. Heróis também podem atacá-la.
+**Torres** — duas por rota, de cada lado, **12 no tabuleiro**. Cada uma tem **3 de vida**.
+A Frente de Onda encostada numa torre causa **1 de dano por rodada**.
 
-**Nexus** — quando as **duas torres** de uma rota caem, aquela rota fica aberta e a Frente de Onda passa a bater direto no Nexus. O Nexus tem **5 de vida**.
+**Herói também derruba torre, sem depender da onda.** Ele bate na **torre exposta** da rota — a
+mais avançada que ainda está de pé. A de trás fica protegida enquanto a da frente viver. É **1 de
+dano, um golpe por rodada**, e a torre **revida**: o preço de encostar. O revide nunca mata,
+deixa em 1 de vida.
+
+**Nexus** — tem **3 de vida**. Quando as **duas torres** de uma rota caem, aquela rota fica aberta
+e a Frente de Onda passa a bater direto nele. **Herói também pode golpeá-lo**, pela mesma porta da
+torre: exige uma rota inteira caída, é 1 de dano, um golpe por rodada, e **sem revide** — quem
+chegou até ali já pagou o pedágio das duas torres.
 
 **Zerou o Nexus, acabou o jogo.**
+
+---
+
+## O POÇO ÉPICO
+
+Uma casa no centro do mapa (**[8,8]**, derivada do tamanho do tabuleiro) onde desce um monstro.
+
+| Rodada | Quem está no poço | Vida | Revide | Reabre depois de |
+|---|---|---|---|---|
+| a partir da **5** | **Dragão** | 3 | 1 | 3 rodadas |
+| a partir da **8** | **Barão** | 5 | 2 | 4 rodadas |
+
+Bater no poço é como bater na torre — 1 de dano por golpe — **só que sem limite por rodada e sem
+dono**. Quem dá o **último golpe** leva o prêmio inteiro: a Herança do Dragão ou a Fúria do Barão.
+É por isso que ninguém deixa o poço sozinho.
+
+---
+
+## RETOMADA — o freio da bola de neve
+
+Quem está apanhando recebe **ação**, não ouro (ouro já foi testado como freio e não moveu a agulha).
+
+O jogo mede o **perigo** de cada lado: cada torre perdida vale 2, mais quantos hexágonos de onda
+inimiga estão do seu lado do meio do vão, somando as três rotas. A diferença entre os dois perigos
+dá a Retomada:
+
+| Você está atrás por | Ganha |
+|---|---|
+| 2 ou mais | **+1 dado de ação** na rodada |
+| 4 ou mais | **+1 dado de ação e +1 de movimento** |
+
+**Some sozinha quando a diferença fecha** — é elástico, não presente permanente.
 
 ---
 
@@ -213,9 +260,11 @@ Sinalizando o que falta para o jogo ficar completo:
 
 | # | Falta | Por que importa |
 |---|---|---|
-| 1 | **Loja e itens** | Sem gastar, o ouro é só placar. É o que dá autoria à build |
-| 2 | **Draft / pick-ban** | É o que faz 50 partidas serem diferentes com as mesmas cartas |
+| 1 | **Acampamentos de selva** | Os buffs Azul e Vermelho, que mexem nos dados. O mapa 11×11 abriu **30 casas de selva** e não pôs nada dentro |
+| 2 | **Empate / limite de rodadas** | O que acontece se ninguém fechar? Hoje não existe limite: a partida só acaba com Nexus zerado. `J.motivoFim` já está preparado no código para o dia em que entrar |
 | 3 | **Feitiços de invocador** | 5 cartas que geram as melhores histórias da partida |
-| 4 | **Acampamentos de selva** | Os buffs Azul e Vermelho, que mexem nos dados |
-| 5 | **Empate / limite de rodadas** | O que acontece se ninguém fechar? |
-| 6 | **Comeback** | Sem freio, quem abre vantagem na rodada 3 já ganhou na 5 |
+| 4 | **Zona de armadilha** | 3 cartas do Deck declaram `quando:"reacao"` e o motor nunca lê esse campo — hoje elas só funcionam como escudo antecipado no próprio turno |
+| 5 | **Arauto** | O terceiro monstro tem arte e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo |
+
+**Já saíram desta lista:** loja e itens (v0.4), draft com ban e counterpick (v0.4), comeback
+(v0.5.5, virou a **Retomada** acima) e objetivos épicos (v0.5.5, viraram o **poço**).

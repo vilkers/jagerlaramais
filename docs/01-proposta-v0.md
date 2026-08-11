@@ -2,6 +2,11 @@
 
 > **Substitui a v1 desta proposta.** O briefing real mudou o gênero do jogo: não é "cada jogador controla um campeão", é **cada jogador é o técnico de um time de 5**. Isso resolve 5v5 completo com 2 pessoas na mesa.
 
+> 📜 **Documento de intenção, não de regra.** É a proposta que abriu o projeto, preservada como
+> registro do raciocínio. **Vários números e sistemas daqui não são o jogo de hoje** — o inibidor
+> e os super-creeps nunca foram implementados, e o Nexus tem 3 de vida, não 5.
+> **As regras vigentes estão em `docs/02-regras.md`; o estado atual, em `docs/ESTADO.md`.**
+
 ---
 
 ## 1. O que o jogo é

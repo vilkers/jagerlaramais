@@ -1,9 +1,28 @@
-# PLANO v0.5 — "o salto"
+# PLANO v0.5 — "o salto"  ·  ENCERRADO
 
-> Como esta leva está organizada: o que entra, em que ordem, em qual branch e virando qual versão.
-> Documento de trabalho. Quando a v0.5 fechar, ele morre e vira patch note.
+> ⛔ **Documento fechado. Não é mais roteiro — é registro histórico.**
+> A leva v0.5 terminou e a v0.6 veio por cima. O que valia como plano virou patch note:
+> o histórico completo está em `docs/patch-notes.md`, e o retrato do presente em `docs/ESTADO.md`.
+> **Não planeje a partir daqui.** A fila atual está no `README.md`, em "Próximos passos".
 
-**Aberto em:** 2026-08-09 · **Base:** v0.4.1 · **Meta:** v0.5.0 completa
+**Aberto em:** 2026-08-09 · **Base:** v0.4.1 · **Encerrado em:** 2026-08-11, na v0.6.2
+
+## O que dessa leva chegou, e o que não chegou
+
+| Previsto no plano | Onde parou |
+|---|---|
+| Torre atacável | ✅ v0.5.1 — e a v0.6.1 completou: o herói cerca sem a onda, e o Nexus virou alvo |
+| Objetivos épicos + comeback | ✅ v0.5.5 — poço, Dragão/Barão, Retomada. **Seguem sem validação:** a bateria é cega a escolha |
+| Tipografia, paleta, arte dos 20, lore | ✅ v0.5.0 – v0.5.3 |
+| Tamanho do mapa ("só cresce se pedirem espaço") | ✅ pediram — 8×8 → 9×9 na v0.6 → **11×11** na v0.6.2 |
+| Acampamentos de selva | ❌ **não entrou.** A v0.6.2 abriu as 30 casas e deixou vazias — é o item 2 da fila hoje |
+| Carta premium + página de campeões | ❌ não entrou |
+| Camada de juice | ❌ não entrou |
+
+---
+
+<details>
+<summary>Conteúdo original do plano, preservado como registro</summary>
 
 ---
 
@@ -94,3 +113,5 @@ Ordem pode mudar; o que não muda é que **épicos e comeback entram no mesmo pa
 - Glossário é lei. A lore pode criar termo novo, mas termo antigo não muda de nome.
 - Sem build, sem npm, sem CDN. Abre com duplo clique.
 - Nomes e lore são autorais. Referência ao LoL é interna e só aparece nos docs.
+
+</details>

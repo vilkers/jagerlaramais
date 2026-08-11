@@ -27,11 +27,13 @@ Veja a tabela de status no `README.md`. Resumindo o que **falta** e vale atacar:
 
 | Prioridade | O que | Por quê |
 |---|---|---|
-| 🔴 1 | **Playtest humano** do poço épico e da Retomada | Entraram na v0.5.5 e a simulação **não consegue medi-los** — ver abaixo |
-| 🟠 2 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
-| 🟡 3 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
-| 🟡 4 | Acampamentos de selva | Buffs Azul e Vermelho, as válvulas contra dado ruim |
-| 🟡 5 | Feitiços de invocador | 5 cartas, alto retorno em história |
+| 🔴 1 | **Playtest humano** do poço épico, da Retomada e da loja | Entraram na v0.5.5–v0.5.7 e a simulação **não consegue medi-los** — ver abaixo. Mande `teste/JOGAR.html`: é o jogo inteiro num arquivo só |
+| 🟠 2 | Acampamentos de selva | Buffs Azul e Vermelho, as válvulas contra dado ruim. **A v0.6.2 abriu 30 casas de selva e não pôs nada dentro** |
+| 🟠 3 | Reavaliar o tabuleiro em tela pequena | O mapa saltou de 64 para 116 casas na v0.6.2 e o hexágono encolheu junto. Nunca foi reavaliado depois disso |
+| 🟡 4 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
+| 🟡 5 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
+| 🟡 6 | Zona de armadilha | 3 cartas declaram `quando:"reacao"` e o motor nunca lê esse campo |
+| 🟡 7 | Feitiços de invocador | 5 cartas, alto retorno em história |
 
 > **Cuidado com `sim/bateria.js`.** Ela mede estrutura (geometria, onda, torre, ritmo) muito bem e
 > é **cega a qualquer mecânica de escolha** — épico, Retomada, Prioridade, Placas, itens, cartas.
@@ -101,6 +103,9 @@ jogo/jogo.js
 Na v0.4.1 o arquivo único virou três, para que visual e motor possam ser mexidos em paralelo — por duas pessoas ou por duas IAs. Ver `docs/ECOSSISTEMA.md`.
 
 ### Duas armadilhas que já custaram tempo
+
+> A lista completa — são seis — está em `docs/ESTADO.md`. Estas duas são as que matam o script
+> inteiro sem deixar rastro no console, então repetem aqui.
 
 **1. `poderTotal`, `armTotal` e `ehAgil` são `const`.** Tentar reatribuí-las para adicionar um efeito lança `TypeError` e **mata o script inteiro dali para baixo**, sem erro visível no console — o sintoma é uma função que "não existe". Para adicionar bônus, escreva nos campos que o motor já soma (`extraPoder`, `arm`, `agil`) e guarde quanto aplicou para devolver depois. Veja `aplicaBuff` / `limpaBuffs`.
 

@@ -16,6 +16,70 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6.2-docs — a documentação alcança o código · 2026-08-11
+
+> Nenhum número do jogo mudou. Esta entrada é **só de documentação** — e da auditoria
+> que a produziu. A v0.6.2 passa a ser **a build corrente**: foi revisada, mergeada
+> (PR #1 + os commits seguintes) e o aviso de "em teste, não aprovado" das entradas
+> abaixo está vencido. Elas ficam como estão: patch note é append-only.
+
+### O que mudou
+
+Os docs foram conferidos **contra o código**, não contra a memória — as constantes
+foram lidas em tempo de execução por ponte no `sim/motor.js`, do mesmo jeito que o
+`sim/simetria.js` faz. Sete divergências encontradas e corrigidas:
+
+| Onde | Dizia | É |
+|---|---|---|
+| `ESTADO.md`, `README.md` | Poço épico na casa **[4,4]** | **[8,8]** — a casa é derivada de `N` e mudou junto com o tabuleiro |
+| `02-regras.md` | Nexus com **5 de vida** | **3** |
+| `02-regras.md` | Respawn de **3 rodadas** para quem tem o dobro de ouro | Não existe: **2 rodadas fixas** para todo mundo |
+| `02-regras.md` | Dupla dá **+2 de Poder e +2 de Armadura** | Só **+2 de Poder** |
+| `ESTADO.md` | Corredor com **2 de largura nas três rotas** | O meio sim; **topo e baixo têm um passo de 1 casa** |
+| `teste/LEIA.md` | Selva de **38 casas** | **30** |
+| `CLAUDE.md` | Glossário em `docs/glossario.md` | O arquivo nunca existiu — o glossário é a seção 09 do `guia/index.html` |
+
+Além disso: `CLAUDE.md` e `README.md` saíram de **v0.4** para **v0.6.2**; o
+`PLANO-v05.md` foi **encerrado** (o próprio cabeçalho mandava que ele morresse quando
+a v0.5 fechasse); `02-regras.md` ganhou as seções do **poço épico** e da **Retomada**,
+que estavam no jogo e não estavam nas regras; e a lista "o que ainda não está definido"
+perdeu loja, draft e comeback, que já entraram.
+
+Numeração das armadilhas do `ESTADO.md` corrigida — estava 1, 2, 3, 4, 6, 5.
+
+### Medição
+
+Segunda medição independente da mesma build, para conferir o número publicado:
+
+```
+n=20000 · mediana 19 rodadas · quem começa 55,6% (z=15,74)
+```
+
+Contra os **55,5% (z=15,41)** que a v0.6.2 registrou. As duas concordam — a diferença
+é ruído entre execuções, não mudança de build. O número está honesto.
+
+`node sim/simetria.js` continua saindo com código 0.
+
+### Por quê
+
+Doc que contradiz o código é pior que doc que falta: quem lê acredita. O poço em [4,4]
+e o Nexus com 5 de vida eram números que alguém usaria para balancear e chegaria à
+conclusão errada.
+
+### O que isso quebra
+
+Nada no jogo. Duas regras ficaram **marcadas como decisão pendente** em `02-regras.md`,
+porque estavam escritas no design e nunca chegaram ao motor: o respawn mais longo para
+quem está rico, e a Armadura da Dupla. Não foram implementadas nem removidas do
+documento — foram marcadas com 🔸 para o grupo decidir.
+
+### Regra nova no `CLAUDE.md`
+
+> **Número no doc se tira do código, não da memória.** `sim/motor.js` carrega o jogo em
+> Node; dá para ler qualquer `const` por ponte. Doc que contradiz o código é bug de doc.
+
+---
+
 ## v0.6.2 — selva de verdade, e o placar vira gaveta · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda tamanho do tabuleiro.
