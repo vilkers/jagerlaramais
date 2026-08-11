@@ -1,0 +1,45 @@
+<meta charset="utf-8">
+<title>JAGERLARAMAIS — Playtest v0.8</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B120F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="../jogo/estilo.css">
+<div id="app">
+  <header id="hud">
+    <div class="hud-l1">
+      <span class="marca">JAGER<b>LARAMAIS</b></span>
+      <span class="rodada" id="rod">R1</span>
+      <button class="icobt" id="btEstr" aria-label="Vida das torres e do Nexus">⌂</button>
+      <button class="icobt" id="btAjuda" aria-label="Como jogar">?</button>
+      <button class="icobt" id="btLog" aria-label="Histórico">☰</button>
+    </div>
+    <div class="faixa t0" id="faixa">
+      <span class="quem" id="quem">AZUL</span>
+      <div class="pill" id="pills"></div>
+    </div>
+  </header>
+  <div id="palco">
+    <svg id="mapa" viewBox="0 0 300 286" role="img" aria-label="Tabuleiro"></svg>
+    <div id="fx"></div><div id="toast"></div><div id="tut"></div>
+  </div>
+  <div id="painel">
+    <div id="comando"></div>
+    <div id="dados">
+      <span class="rotlbl">Mover</span><div class="dado mestre" id="ddm">–</div><div class="divisor"></div>
+      <span class="rotlbl">Ação</span><div id="dadosAcao"></div>
+    </div>
+    <div id="extraBts">
+      <button class="mini-bt" id="btConv">→ mover</button><button class="mini-bt" id="btPlaca">placa ±1</button><button class="mini-bt" id="btRerol">re-rolar</button>
+    </div>
+    <div id="acoes">
+      <button class="abt" id="btTime">Time</button><button class="abt" id="btCartas">Cartas</button><button class="abt" id="btLoja">Loja</button><button class="abt fim" id="btFim">Encerrar</button>
+    </div>
+  </div>
+  <div id="veu"></div>
+  <div id="sheet"><div class="sh-cab"><h3 id="shTit"></h3><button class="fechar" id="shX">✕</button></div><div class="sh-corpo" id="shCorpo"></div></div>
+  <div id="tela"><div id="telacx"></div></div>
+</div>
+<script src="../arte/imagens.js"></script>
+<script src="../data/catalogo.js"></script>
+<script src="../jogo/jogo.js"></script>
+<script src="playtest.js"></script>
