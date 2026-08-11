@@ -16,6 +16,86 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6.3 — a documentação passa a se conferir sozinha · 2026-08-11
+
+> **Não muda regra nem número do jogo.** Nenhuma partida joga diferente por causa
+> desta entrada. A v0.6.2 continua **em teste, não aprovada** — o que muda é que a
+> documentação agora descreve o jogo que existe.
+
+### O que estava errado
+
+Os números do jogo moram no código e eram copiados à mão para os documentos. Copiar à
+mão funciona uma vez; na terceira versão a documentação anuncia um jogo que não existe.
+Levantado item a item:
+
+| Onde | Dizia | O jogo fazia |
+|---|---|---|
+| `README.md` | v0.4 · Nexus com **5** de vida · ~15 rodadas | v0.6.2 · Nexus com **3** · ~19 rodadas |
+| `docs/02-regras.md` | torre só apanha com a onda em cima; Nexus com 5 | herói cerca sozinho desde a v0.6.1; Nexus com 3 |
+| `docs/02-regras.md` | respawn de 3 rodadas para quem lidera; Teleporte por 3 Placas; Dupla dá +2 de Armadura | nada disso existe no motor |
+| `docs/ESTADO.md` | poço na casa **[4,4]** | **[8,8]** — o `[4,4]` só vale em tabuleiro 8×8, e o mapa é 11×11 desde a v0.6.2 |
+| `guia/index.html` | "Ampulheta Rachada: re-rolar 1 dado por rodada" | **+1 no Dado Mestre** |
+| `guia/` e `cartas/` | rótulo **v0.4** | três versões atrás |
+| `teste/LEIA.md` | selva de **38** casas · 55,0% | **30** casas · **55,5%** (z=15,41, n=20000) |
+| `CLAUDE.md` | "ver `docs/glossario.md`" | o arquivo **não existia** |
+
+As regras desenhadas e nunca implementadas agora aparecem marcadas com 🔸 em
+`docs/02-regras.md`, em vez de passar por regra vigente.
+
+### A loja saiu de `jogo/jogo.js` e foi para o catálogo
+
+Os 12 itens originais eram declarados **dentro do motor**, e os 10 novos no catálogo.
+Como o guia não carrega `jogo.js`, ele mantinha uma **segunda lista dos 12, escrita à
+mão** — a mesma doença dos três catálogos de herói da v0.3, com o mesmo sintoma: efeitos
+de outra versão anunciados por meses.
+
+Agora `data/catalogo.js` tem `ITENS_BASE` (12) + `ITENS_NOVOS` (10) = `ITENS_LOJA` (**22**),
+e jogo e guia leem a mesma lista. **Nenhum preço ou efeito mudou** — é mudança de
+endereço, não de conteúdo. A etiqueta de categoria do guia (dano/defesa/resposta…) passou
+a ser **deduzida do efeito**, no espírito do `iconeDe()` do motor, em vez de escrita à mão.
+
+### O sistema que impede a reincidência
+
+**Marcador de número.** Número derivado do código vira comentário HTML no texto —
+`<!--n:vidaTorre-->3<!--/n-->` — que some ao ler e é conferido por script.
+
+| Script | O quê |
+|---|---|
+| `node sim/numeros.js` | imprime os números canônicos, extraídos do código |
+| `node sim/docs.js` | confere a documentação inteira · sai com **1** se divergir |
+| `node sim/docs.js --escrever` | atualiza os números marcados de uma vez |
+
+Hoje são **101 números marcados** em 22 arquivos. Além dos marcadores, `sim/docs.js`
+confere: versão do ESTADO × topo do patch note · glossário do guia × `docs/glossario.md` ·
+**nenhuma página declara lista própria de herói ou item** (a lei nº 1 do projeto, agora
+com teste) · todo efeito do catálogo existe no motor · todo herói tem retrato.
+
+**Duas automações**, porque regra que depende de memória humana é a regra que falhou:
+
+- `.claude/settings.json` — hook `PostToolUse` que roda a conferência sozinho quando
+  alguém edita `jogo/jogo.js` ou `data/catalogo.js` numa sessão do Claude;
+- `.github/workflows/documentacao.yml` — a mesma conferência, mais `simetria.js` e uma
+  bateria de 50 partidas, a cada push e Pull Request. Não é build: continua sem npm, sem
+  CDN, e o jogo continua abrindo com duplo clique.
+
+### O que ele NÃO faz
+
+Não confere prosa, não confere **medição** (`55,5%` sai de `sim/bateria.js`, não do
+código — e se escreve à mão sempre com o n e a versão) e não toca em `docs/patch-notes.md`,
+que é histórico append-only: os números daqui **são** o passado. Regra inteira em
+`docs/DOCUMENTACAO.md`.
+
+### Duas pendências que o script passou a avisar, e ninguém consertou ainda
+
+1. **O visualizador de mapa do guia é um 7×7 escrito à mão**, da era anterior ao mapa
+   gerado — o tabuleiro real é 11×11 com 116 casas. Consertar é portar a geometria de
+   `jogo.js` para o guia.
+2. **`guia/` e `cartas/` imprimem `ref. de kit: <campeão do LoL>`** em página publicada,
+   e o `CLAUDE.md` diz que essa referência é interna, nunca do produto. Fica como aviso
+   porque tirar é decisão dos três, não de quem roda o script.
+
+---
+
 ## v0.6.2 — selva de verdade, e o placar vira gaveta · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda tamanho do tabuleiro.

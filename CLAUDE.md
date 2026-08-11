@@ -15,8 +15,9 @@ arte/       assets gerados
 
 ## Regras do projeto
 
-- **`data/catalogo.js` é a fonte de verdade** do conteúdo (heróis, itens, deck, classes, `textoHab()`).
+- **`data/catalogo.js` é a fonte de verdade** do conteúdo (heróis, **os 22 itens**, deck, classes, `textoHab()`).
   `jogo/`, `guia/` e `cartas/` leem daí. Nunca escreva carta direto no HTML — já criou três catálogos divergentes uma vez.
+  `node sim/docs.js` falha se alguma página declarar lista própria.
 - **`poderTotal`/`armTotal`/`ehAgil` são `const`** — reatribuir mata o script inteiro sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
 - **Guia web é vanilla** — sem framework, sem npm, sem CDN. Abre com duplo clique.
   **Exceção declarada:** `visual-lab/` é a área de criação (universo, personagens, visual, lore),
@@ -24,8 +25,22 @@ arte/       assets gerados
   esta regra e **não deve ser apagada** por causa dela. O que nasce lá só entra no jogo depois de
   o guide estar fechado, e entra em cima da base mecânica — nunca por cima dela.
 - **Nomes e lore são autorais.** Referência mecânica ao LoL é interna e explícita nos docs; nunca no produto.
-- **Glossário é lei.** Termo definido não muda de nome. Ver `docs/glossario.md`.
-- **Toda mudança de número vira patch note** em `docs/patch-notes.md`.
+- **Glossário é lei.** Termo definido não muda de nome. Ver `docs/glossario.md` — termo novo entra
+  lá **e** na lista `GLOSS` do guia, na mesma mudança.
+- **Toda mudança de número vira patch note** em `docs/patch-notes.md`, dizendo de quanto para quanto.
+- **Número do jogo não se escreve à mão em documento.** Escreve-se marcado —
+  `<!--n:vidaTorre-->3<!--/n-->` — e o marcador some ao ler. Mudou o jogo, rode:
+
+  ```bash
+  node sim/docs.js --escrever   # atualiza os números da documentação
+  node sim/docs.js              # confere o resto; sai com 1 se algo divergir
+  ```
+
+  Chaves em `node sim/numeros.js`. Regra inteira em `docs/DOCUMENTACAO.md`.
+  **Medição** (`55,5% de quem começa`) é exceção: não vem do código, e se escreve à mão
+  **sempre com o n e a versão**.
+- **Regra desenhada e não implementada leva 🔸** em `docs/02-regras.md`. Documento não anuncia
+  mecânica que a mesa não entrega.
 
 ## Quem mexe em quê
 

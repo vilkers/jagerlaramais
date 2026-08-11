@@ -27,9 +27,9 @@ baixe e abra pelo navegador.
 O PR completo está em **[#1](https://github.com/vilkers/jagerlaramais/pull/1)**.
 Os pontos que mais precisam do julgamento de vocês:
 
-**1. Quem começa está forte demais?** O tabuleiro 11×11 melhorou isso —
-**55,0%** de vitórias para quem abre, contra 57,1% em 9×9 — mas ainda é acima
-dos 53,5% da v0.5.8. A simulação é cega a escolha — ela mede estrutura, não decisão —
+**1. Quem começa está forte demais?** O tabuleiro <!--n:tabuleiro-->11×11<!--/n--> melhorou isso —
+**55,5%** de vitórias para quem abre (z=15,41, n=20000), contra 57,1% em 9×9 — mas
+ainda é acima dos 53,5% da v0.5.8. A simulação é cega a escolha — ela mede estrutura, não decisão —
 então a impressão de vocês jogando vale mais que a medição. **É motivo legítimo
 para reprovar.**
 
@@ -40,9 +40,9 @@ dependia do creep e ninguém cercava de verdade.
 **3. A rota com 2 hexágonos de largura resolveu?** Suporte e atirador agora
 cabem juntos numa rota. Cabe mesmo, ou ficou largo demais e ninguém se encontra?
 
-**3b. A selva de 38 casas vale a pena?** Ela mais que dobrou (eram 16), mas
+**3b. A selva de <!--n:casasSelva-->30<!--/n--> casas vale a pena?** Ela quase dobrou (eram 16), mas
 **continua vazia** — acampamentos de selva não existem. É mais chão para andar
-e flanquear, não mais o que fazer. E o hexágono encolheu para ~32px no celular,
+e flanquear, não mais o que fazer. E o hexágono encolheu para ~33px no celular,
 contra os 44px de referência de toque. **Reparem se erra o dedo.**
 
 **4. Nenhum golpe mata de vida cheia — menos três.** A meta era essa, mas

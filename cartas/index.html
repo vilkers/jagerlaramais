@@ -71,7 +71,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 </style>
 
 <div class="topo">
-  <span class="et">Jagerlaramais · baralho de heróis v0.4</span>
+  <span class="et">Jagerlaramais · baralho de heróis <!--n:versao-->v0.6.3<!--/n--></span>
   <h1>As vinte cartas</h1>
   <p>Quatro por rota, quatro arquétipos diferentes — o suficiente para o draft ter escolha sem virar catálogo. A <b>Força</b> ao lado de cada habilidade é o valor mínimo do dado de ação para usá-la. Ultimates pedem 5 ou 6, e dado alto é raro: é isso que as torna decisivas.</p>
 </div>
@@ -88,6 +88,10 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 <script>
 const POS={topo:{n:"Topo",c:"var(--topo)"},selva:{n:"Selva",c:"var(--selva)"},
   meio:{n:"Meio",c:"var(--meio)"},adc:{n:"Atirador",c:"var(--adc)"},sup:{n:"Suporte",c:"var(--sup)"}};
+
+/* A versão sai do rótulo do cabeçalho, que `sim/docs.js` mantém em dia. Estava
+   escrita à mão em dois lugares desta página e as duas envelheceram em v0.4. */
+const VERSAO = document.querySelector(".topo .et").textContent.trim().split(/\s+/).pop();
 
 /* Os 20 heróis vêm de data/catalogo.js. Até a v0.3 esta página tinha a própria
    lista, com textos que já divergiam do motor. */
@@ -113,7 +117,7 @@ document.getElementById("grade").innerHTML=CARTAS.map(c=>{
     <div class="habs">${c.h.map(([f,n,d,u])=>`<div class="hab${u?" ult":""}">
       <span class="f">Força<br>${f}</span><div><span class="hn">${n}</span><span class="hd">${d}</span></div></div>`).join("")}</div>
     ${c.pas?`<div class="pass">${c.pas}</div>`:""}
-    <div class="rodape"><span>ref. de kit: ${c.ref}</span><span>v0.4</span></div>
+    <div class="rodape"><span>ref. de kit: ${c.ref}</span><span>${VERSAO}</span></div>
   </article>`;
 }).join("");
 

@@ -202,6 +202,27 @@ const CLASSES = [
   ["Suporte",   "Força 1+, e doa o próprio dado","Faz o outro jogar melhor. Nunca fica sem nada para fazer."]
 ];
 
+/* ═══════════ ITENS — os 12 originais ═══════════
+   Moraram dentro de `jogo/jogo.js` até a v0.6.3, e por isso o guia mantinha uma
+   SEGUNDA lista, escrita à mão — a mesma doença dos três catálogos de herói da v0.3,
+   com o mesmo sintoma: a Ampulheta Rachada foi anunciada por meses como "re-rolar 1
+   dado por rodada" enquanto o item dava +1 no Dado Mestre. Agora a loja inteira mora
+   aqui e o jogo, o guia e as cartas leem a mesma lista. */
+const ITENS_BASE = [
+ {id:"eclipse",  n:"Lâmina do Eclipse", o:6, d:"+2 de Poder",                        ef:{poder:2}},
+ {id:"cetro",    n:"Cetro Cinéreo",     o:6, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
+ {id:"basalto",  n:"Coração de Basalto",o:5, d:"+4 de Vida máxima",                  ef:{vida:4}},
+ {id:"egide",    n:"Égide do Juramento",o:5, d:"+2 de Armadura",                     ef:{arm:2}},
+ {id:"manto",    n:"Manto de Cinzas",   o:5, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
+ {id:"passos",   n:"Passos do Vento",   o:4, d:"Ágil: a 1ª casa andada é grátis",    ef:{agil:1}},
+ {id:"ampulheta",n:"Ampulheta Rachada", o:6, d:"+1 no Dado Mestre, toda rodada",     ef:{mov:1}},
+ {id:"garra",    n:"Garra do Faminto",  o:7, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
+ {id:"coroa",    n:"Coroa do Comando",  o:5, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
+ {id:"selo",     n:"Selo da Ruína",     o:5, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
+ {id:"espinho",  n:"Cota do Espinho",   o:6, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
+ {id:"veu",      n:"Véu Prismático",    o:7, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
+];
+
 /* ═══════════ ITENS — 10 novos (loja passa a 22) ═══════════ */
 const ITENS_NOVOS = [
  {id:"presagio",  n:"Presságio de Ferro", o:8, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:3}},
@@ -215,6 +236,10 @@ const ITENS_NOVOS = [
  {id:"couraca",   n:"Couraça de Ossos",   o:8, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:3,vida:2}},
  {id:"ampuldour", n:"Ampulheta Dourada",  o:9, d:"+2 no Dado Mestre, toda rodada",     ef:{mov:2}}
 ];
+
+/* A loja inteira, na ordem em que aparece na prateleira. É ISTO que jogo/ e guia/
+   consomem — ninguém remonta a lista por conta própria. */
+const ITENS_LOJA = [...ITENS_BASE, ...ITENS_NOVOS];
 
 /* ═══════════ DECK DE COMANDO — 30 cartas ═══════════
    Compre 1 no início do seu turno · mão máxima 3 · usadas vão pro cemitério.
@@ -298,4 +323,5 @@ const ORDEM_DRAFT=[
 const BANS=1;   /* por jogador */
 
 if(typeof module!=="undefined")
-  module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,TEXTO_PATAMAR,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
+  module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,TEXTO_PATAMAR,
+                  ITENS_BASE,ITENS_NOVOS,ITENS_LOJA,DECK,montaDeck,ORDEM_DRAFT,BANS};

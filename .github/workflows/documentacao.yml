@@ -1,0 +1,34 @@
+# Confere, a cada push e Pull Request, se a documentação ainda descreve o jogo que
+# existe — e se o tabuleiro continua simétrico.
+#
+# Não é build: o jogo continua abrindo com duplo clique, sem npm, sem CDN. Os dois
+# scripts usam só o Node da máquina e não instalam nada (o projeto não tem
+# dependência). Isto existe para o caso de quem abriu o PR não usar o Claude Code —
+# o hook de `.claude/settings.json` só pega quem usa.
+
+name: documentação e tabuleiro
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: O tabuleiro é espelho de si mesmo?
+        run: node sim/simetria.js
+
+      - name: A documentação bate com o código?
+        run: node sim/docs.js
+
+      # Uma bateria curta só para garantir que a partida FECHA. Não serve para
+      # medir assimetria — para isso é n=20000, e isso não cabe em CI.
+      - name: Uma partida ainda termina?
+        run: node sim/bateria.js 50

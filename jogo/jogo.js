@@ -20,21 +20,10 @@ const porRota=r=>Object.keys(CATALOGO).filter(id=>CATALOGO[id].pos===r);
 
 
 /* ---------- LOJA ---------- */
-const ITENS=[
- {id:"eclipse",  n:"Lâmina do Eclipse", o:6, d:"+2 de Poder",                        ef:{poder:2}},
- {id:"cetro",    n:"Cetro Cinéreo",     o:6, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
- {id:"basalto",  n:"Coração de Basalto",o:5, d:"+4 de Vida máxima",                  ef:{vida:4}},
- {id:"egide",    n:"Égide do Juramento",o:5, d:"+2 de Armadura",                     ef:{arm:2}},
- {id:"manto",    n:"Manto de Cinzas",   o:5, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
- {id:"passos",   n:"Passos do Vento",   o:4, d:"Ágil: a 1ª casa andada é grátis",    ef:{agil:1}},
- {id:"ampulheta",n:"Ampulheta Rachada", o:6, d:"+1 no Dado Mestre, toda rodada",     ef:{mov:1}},
- {id:"garra",    n:"Garra do Faminto",  o:7, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
- {id:"coroa",    n:"Coroa do Comando",  o:5, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
- {id:"selo",     n:"Selo da Ruína",     o:5, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
- {id:"espinho",  n:"Cota do Espinho",   o:6, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
- {id:"veu",      n:"Véu Prismático",    o:7, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
-];
-if(typeof ITENS_NOVOS!=="undefined") ITENS.push(...ITENS_NOVOS);
+/* Os 22 itens moram em data/catalogo.js, como os heróis e as cartas. Ficaram aqui
+   dentro até a v0.6.3, e o preço foi o guia manter uma segunda lista com efeitos de
+   outra versão. Este arquivo não guarda conteúdo — nem herói, nem carta, nem item. */
+const ITENS = typeof ITENS_LOJA!=="undefined" ? [...ITENS_LOJA] : [];
 const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
 /* Vale a base E o entorno imediato, não o hexágono exato. A base tem dois hexágonos
    e o time tem cinco heróis: `desempilha()` empurra três deles para as casas vizinhas

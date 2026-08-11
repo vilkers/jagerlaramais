@@ -3,8 +3,15 @@
 > **Abrindo uma janela nova do Claude? Comece por aqui.**
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
+>
+> Os números marcados se atualizam sozinhos: mexeu no jogo, rode `node sim/docs.js --escrever`.
+> Ver `docs/DOCUMENTACAO.md`.
 
-**Versão:** v0.6.2 (em teste, não aprovada) · **Atualizado em:** 2026-08-10
+**Versão:** <!--n:versao-->v0.6.3<!--/n--> · **Atualizado em:** 2026-08-11
+
+A **v0.6.3 não muda regra**: é a documentação passando a se conferir sozinha, mais a loja
+saindo do motor para o catálogo. O que continua **em teste e não aprovado** é a leva
+v0.5.9 → v0.6.2 — tabuleiro 11×11, cerco por herói, Nexus atacável. Ver `teste/LEIA.md`.
 
 ---
 
@@ -17,17 +24,17 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 
 | | |
 |---|---|
-| Heróis no pool | **20** (4 por rota) — todos com arte |
-| Itens na loja | **22** |
-| Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
-| Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
-| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
-| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
-| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
-| Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
+| Heróis no pool | **<!--n:herois-->20<!--/n-->** (<!--n:heroisPorRota-->4<!--/n--> por rota) — todos com arte |
+| Itens na loja | **<!--n:itens-->22<!--/n-->** |
+| Deck de Comando | **<!--n:cartas-->46<!--/n--> cartas**, <!--n:tiposCarta-->22<!--/n--> tipos, <!--n:familias-->7<!--/n--> famílias — todas com arte |
+| Banimentos no draft | **<!--n:bans-->1<!--/n--> por jogador**, e uma rota só pode perder um herói |
+| Dados por rodada | 1 Mestre (movimento do time) + <!--n:dadosAcao-->3<!--/n--> de ação, **1 por herói** |
+| Vida de torre | **<!--n:vidaTorre-->3<!--/n-->** — a onda tira 1/rodada, o herói tira <!--n:danoTorre-->1<!--/n--> (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
+| Vida do Nexus | **<!--n:vidaNexus-->3<!--/n-->** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
+| Poço épico | casa **<!--n:poco-->[8,8]<!--/n-->** · Dragão (<!--n:vidaDragao-->3<!--/n--> de vida) até a rodada <!--n:rodadaBarao-->8<!--/n-->, Barão (<!--n:vidaBarao-->5<!--/n-->) depois. **A casa é DEDUZIDA de `N`** — o `[4,4]` que este arquivo trazia só valia no tabuleiro 8×8 |
 | Vantagem de quem começa | **55,5%** (z=15,41, n=20000) — era **53,5%** na v0.5.8 e chegou a **57,1%** na v0.6.1. O tabuleiro 11×11 devolveu 1,6 ponto, mas ainda sobra +2,0 sobre a base e não há freio |
-| Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
-| Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
+| Tamanho do tabuleiro | **<!--n:tabuleiro-->11×11<!--/n-->**, <!--n:casas-->116<!--/n--> casas · **<!--n:casasSelva-->30<!--/n--> de selva** · espinha <!--n:espinhas-->topo 17 · meio 12 · baixo 17<!--/n--> · corredor de <!--n:casasCorredor-->82<!--/n--> casas, **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
+| Ouro por rodada | agiu **<!--n:ouroAgiu-->1<!--/n-->** · farmou **<!--n:ouroFarmou-->3<!--/n-->** · morto **0** |
 | Duração de uma partida | **~19 rodadas** (mediana medida: 19, n=20000) — eram 15 em 9×9. O tabuleiro maior alongou a partida |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
@@ -70,6 +77,8 @@ colide com medição já registrada.
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
 | **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
+| **Mapa do guia atualizado** | O visualizador de `guia/index.html` desenha um **7×7 escrito à mão**, da era anterior ao mapa gerado — o tabuleiro real é <!--n:tabuleiro-->11×11<!--/n-->. `node sim/docs.js` avisa toda vez. Consertar é portar a geometria de `jogo.js` para lá. |
+| **Teleporte do Topo · respawn crescente** | Estão nas regras desde a v0 e nunca foram implementados. Agora aparecem marcados com 🔸 em `docs/02-regras.md`, em vez de passar por regra vigente. |
 
 ## Onde as coisas moram
 
@@ -82,7 +91,11 @@ sim/simetria.js      Confere se o tabuleiro é espelho de si mesmo: casas sem pa
 sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off
-data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
+sim/numeros.js       Os números canônicos, extraídos do código. `node sim/numeros.js`
+sim/docs.js          A documentação bate com o código? Sai com 1 se não bater.
+                     `node sim/docs.js --escrever` atualiza os números marcados.
+data/catalogo.js     ÚNICA fonte de conteúdo: heróis, ITENS (os 22, desde a v0.6.3),
+                     deck, classes, textoHab()
 jogo/index.html      Só a estrutura da tela. 64 linhas.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
 jogo/jogo.js         Motor de regras + interface.
@@ -95,6 +108,8 @@ arte/herois/web/     Retratos usados em tela · arte/herois/ guarda o original
 arte/cartas/         As 22 artes do Deck de Comando
 arte/mapa/mapa.jpg   O mapa ilustrado
 docs/                Regras, design e decisões. Leia na ordem numerada.
+docs/DOCUMENTACAO.md Como a documentação se mantém sozinha. Leia antes de mexer em número.
+docs/glossario.md    O léxico. Termo definido não muda de nome.
 ```
 
 ## Seis armadilhas que já custaram tempo

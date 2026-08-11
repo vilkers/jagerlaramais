@@ -315,7 +315,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v0.4 · protótipo</span>
+    <span class="ver"><!--n:versao-->v0.6.3<!--/n--> · protótipo</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -547,20 +547,21 @@ const FICHAS = Object.entries(HEROIS).map(([id,h])=>({
   pas:h.patamar ? TEXTO_PATAMAR : null
 }));
 
-const ITENS = [
-  ["Lâmina do Eclipse",6,"+2 de poder físico","dano"],
-  ["Cetro Cinéreo",6,"+2 de poder mágico; dano em área leva +1","dano"],
-  ["Coração de Basalto",5,"+3 de vida","defesa"],
-  ["Égide do Juramento",5,"+2 de armadura","defesa"],
-  ["Manto de Cinzas",5,"+2 contra dano mágico","defesa"],
-  ["Passos do Vento",4,"+1 casa de passo","mobilidade"],
-  ["Ampulheta Rachada",6,"Re-rolar 1 dado por rodada","dado"],
-  ["Garra do Faminto",7,"Cura 2 sempre que causar dano","sustento"],
-  ["Coroa do Comando",5,"Aliados adjacentes levam +1 de dano nas ordens","suporte"],
-  ["Selo da Ruína",5,"Quem você atinge não cura por 1 rodada","resposta"],
-  ["Cota do Espinho",6,"Devolve 2 de dano a quem atacar de perto","resposta"],
-  ["Véu Prismático",7,"Bloqueia a próxima Ultimate que atingir este herói","resposta"]
-];
+/* A loja vem de data/catalogo.js — os 22 itens, com o preço e o efeito que o motor
+   de fato executa. Até a v0.6.3 esta lista era escrita aqui à mão, com 12 itens e
+   efeitos de outra versão: o guia prometia "Ampulheta Rachada — re-rolar 1 dado por
+   rodada" e o jogo dava +1 no Dado Mestre. Não reescreva a lista: leia daqui.
+   A etiqueta é DEDUZIDA do efeito, no mesmo espírito do `iconeDe()` do jogo — sem
+   tabela paralela para alguém esquecer de atualizar. */
+const ETIQUETA = e =>
+    e.veu||e.espinho||e.antiCura ? "resposta"
+  : e.mov                        ? "dado"
+  : e.agil                       ? "mobilidade"
+  : e.roubo                      ? "sustento"
+  : e.aura                       ? "suporte"
+  : e.arm||e.vida                ? "defesa"
+  :                                "dano";
+const ITENS = ITENS_LOJA.map(i => [i.n, i.o, i.d, ETIQUETA(i.ef)]);
 
 const MONSTROS = [
   ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
