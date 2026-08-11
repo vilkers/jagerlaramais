@@ -12,7 +12,7 @@ O que estava errado no dia em que este sistema nasceu — nada disso é hipótes
 
 | Onde | Dizia | O jogo fazia |
 |---|---|---|
-| `README.md` | Nexus com 5 de vida, v0.4, ~15 rodadas | <!--n:vidaNexus-->3<!--/n--> de vida, <!--n:versao-->v0.6.3<!--/n-->, ~19 rodadas |
+| `README.md` | Nexus com 5 de vida, v0.4, ~15 rodadas | <!--n:vidaNexus-->3<!--/n--> de vida, <!--n:versao-->v0.6.4<!--/n-->, ~19 rodadas |
 | `docs/02-regras.md` | torre só apanha com a onda em cima | herói cerca sozinho desde a v0.6.1 |
 | `docs/ESTADO.md` | poço na casa `[4,4]` | `[8,8]` — o `[4,4]` só vale em tabuleiro 8×8 |
 | `guia/index.html` | "Ampulheta Rachada: re-rolar 1 dado" | +1 no Dado Mestre |
@@ -61,15 +61,16 @@ da mudança, e razão nenhum script deduz.
 | 1 | Todo marcador bate com o valor real no código | sim |
 | 2 | A versão do `ESTADO.md` é a mesma da primeira entrada do patch note | sim |
 | 3 | O glossário do guia e o `docs/glossario.md` definem os mesmos termos de mesa | sim |
-| 4 | `guia/` e `cartas/` **não** declaram lista própria de herói ou item | sim |
+| 4 | `guia/` e `cartas/` **não** declaram lista própria de herói, item **ou geometria** | sim |
 | 5 | Todo efeito usado no catálogo existe no motor | sim |
 | 6 | Todo herói tem retrato em `arte/imagens.js` | sim |
-| 7 | Pendências conhecidas (mapa do guia, cartas de reação, `ref. de kit`) | **não**, avisa |
+| 7 | Pendências conhecidas (cartas de reação, `ref. de kit` em página publicada) | **não**, avisa |
 
-A verificação 4 é a que mais importa. É a lei nº 1 do projeto — *conteúdo mora no
-catálogo* — e ela já foi quebrada três vezes: três catálogos de herói na v0.3, e a lista
-de itens do guia, que sobreviveu até a v0.6.3 anunciando efeitos de outra versão. O teste
-existe para que a quarta vez não passe.
+A verificação 4 é a que mais importa. É a lei nº 1 do projeto — *fonte única* — e ela já foi
+quebrada três vezes: três catálogos de herói na v0.3; a lista de itens do guia, que sobreviveu
+até a v0.6.3 anunciando efeitos de outra versão; e a **geometria do mapa**, que fez o guia
+desenhar um tabuleiro 7×7 enquanto o jogo estava em 11×11, com dois poços épicos que nunca
+existiram. O teste existe para que a quarta vez não passe.
 
 A verificação 5 pega o erro mais silencioso do projeto: efeito com nome errado em
 `data/catalogo.js` não quebra nada — a habilidade simplesmente **não faz nada**, e isso

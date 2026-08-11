@@ -7,11 +7,37 @@
 > Os números marcados se atualizam sozinhos: mexeu no jogo, rode `node sim/docs.js --escrever`.
 > Ver `docs/DOCUMENTACAO.md`.
 
-**Versão:** <!--n:versao-->v0.6.3<!--/n--> · **Atualizado em:** 2026-08-11
+**Versão:** <!--n:versao-->v0.6.4<!--/n--> · **Atualizado em:** 2026-08-11
 
-A **v0.6.3 não muda regra**: é a documentação passando a se conferir sozinha, mais a loja
-saindo do motor para o catálogo. O que continua **em teste e não aprovado** é a leva
-v0.5.9 → v0.6.2 — tabuleiro 11×11, cerco por herói, Nexus atacável. Ver `teste/LEIA.md`.
+As v0.6.3 e v0.6.4 **não mudam regra**: são a documentação passando a se conferir sozinha, a
+loja saindo do motor para o catálogo e a geometria virando `data/mapa.js` — que é o que fez o
+mapa do guia deixar de ser um 7×7 escrito à mão. O que continua **em teste e não aprovado** é a
+leva v0.5.9 → v0.6.2: tabuleiro 11×11, cerco por herói, Nexus atacável. Ver `teste/LEIA.md`.
+
+---
+
+## Leia isto antes de qualquer coisa: o que roda hoje é bancada
+
+**Este jogo é uma bancada de mecânica, não o produto.** Os <!--n:herois-->20<!--/n--> heróis,
+os nomes, os epítetos e a arte de hoje são **andaime** — existem para que a regra possa ser
+construída e medida contra conteúdo de verdade, e não contra planilha.
+
+**O elenco real está sendo criado no `visual-lab/` e vai ser implementado aqui.** Dona Chinela,
+P.O.M.B.O., Catarino, Frete, Bexiga. Não é referência nem inspiração: é o time que vai entrar.
+
+| | Hoje | Quando o elenco entrar |
+|---|---|---|
+| Regra, números, mapa, economia | é o que se constrói agora | **fica** |
+| Kit mecânico (vida, Poder, Armadura, Força das 3 habilidades) | balanceado por medição | **fica**, e veste o personagem novo |
+| Nome, epíteto, arte, lore, território | provisório | **sai**, substituído pelo `visual-lab/` |
+
+O pool vai **encolher**: o handoff criativo fala em cinco heróis iniciais e depois dez
+aprovados, contra os 20 de hoje. Kit que sobrar volta para `docs/herois-aposentados.md`.
+
+> **O que isso muda no dia a dia:** não gaste esforço em nome, epíteto ou lore de herói atual —
+> é trabalho que será jogado fora. Gaste no **kit**, que é o que sobrevive. E não trave a
+> mecânica esperando a arte: as duas trilhas correm em paralelo e se encontram no fim
+> (`docs/ECOSSISTEMA.md`).
 
 ---
 
@@ -77,7 +103,6 @@ colide com medição já registrada.
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
 | **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
-| **Mapa do guia atualizado** | O visualizador de `guia/index.html` desenha um **7×7 escrito à mão**, da era anterior ao mapa gerado — o tabuleiro real é <!--n:tabuleiro-->11×11<!--/n-->. `node sim/docs.js` avisa toda vez. Consertar é portar a geometria de `jogo.js` para lá. |
 | **Teleporte do Topo · respawn crescente** | Estão nas regras desde a v0 e nunca foram implementados. Agora aparecem marcados com 🔸 em `docs/02-regras.md`, em vez de passar por regra vigente. |
 
 ## Onde as coisas moram

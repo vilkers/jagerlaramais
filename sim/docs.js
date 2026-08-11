@@ -153,10 +153,15 @@ for (const arq of DOCS) {
 (() => {
   for (const arq of ["guia/index.html", "cartas/index.html"]) {
     const txt = ler(arq);
-    for (const [re, oque] of [[/const ITENS\s*=\s*\[/, "lista própria de ITENS"],
-                              [/const HEROIS\s*=\s*\{/, "lista própria de HEROIS"]])
+    for (const [re, oque, onde] of [
+        [/const ITENS\s*=\s*\[/,        "lista própria de ITENS",            "data/catalogo.js"],
+        [/const HEROIS\s*=\s*\{/,       "lista própria de HEROIS",           "data/catalogo.js"],
+        /* o guia desenhou um 7×7 escrito à mão até a v0.6.4, com dois poços épicos
+           e quatro acampamentos, enquanto o jogo estava em 11×11 com um poço só. */
+        [/const (COLS|LINS|N)\s*=\s*\d/, "geometria própria de tabuleiro",    "data/mapa.js"],
+        [/const LANE_(TOPO|BOT|MEIO)\s*=/, "rotas de tabuleiro escritas à mão", "data/mapa.js"]])
       if (re.test(txt))
-        erro(arq, `declara ${oque} — conteúdo mora em data/catalogo.js e se lê de lá`);
+        erro(arq, `declara ${oque} — isso mora em ${onde} e se lê de lá`);
   }
 })();
 
@@ -192,8 +197,6 @@ for (const arq of DOCS) {
    Não falham a build: são buracos já registrados, com dono e motivo. Aparecem toda
    vez para não virarem paisagem. Fechou? Tire a linha daqui e do docs/ESTADO.md. */
 const PENDENCIAS = [
-  ["guia/index.html", "o visualizador do mapa é um 7×7 escrito à mão, da era anterior ao mapa gerado — " +
-                      `o tabuleiro real é ${N.tabuleiro.valor} com ${N.casas.valor} casas`],
   ["data/catalogo.js", "3 cartas declaram `quando:\"reacao\"` e o motor nunca lê esse campo — " +
                        "só funcionam como escudo antecipado no próprio turno"]
 ];

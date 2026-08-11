@@ -4,6 +4,12 @@ Um MOBA de tabuleiro para **duas pessoas**. Cada jogador é o **técnico de cinc
 
 Feito por Vilker, Vinicius e Matheus.
 
+> ⚠️ **O que roda aqui é uma bancada de mecânica, não o produto.** Os heróis, nomes e a arte
+> de hoje são **provisórios**: existem para a regra poder ser construída e medida contra
+> conteúdo de verdade. O **elenco real está sendo criado em `visual-lab/`** — Dona Chinela,
+> P.O.M.B.O., Catarino — e **vai ser implementado neste jogo**, herdando os kits já
+> balanceados. Ver `docs/ESTADO.md`, primeira seção.
+
 > Os números deste arquivo saem do código, não da memória de quem escreve.
 > Ver `docs/DOCUMENTACAO.md` — e, ao mudar o jogo, rodar `node sim/docs.js --escrever`.
 
@@ -39,7 +45,7 @@ Herói que recebe dado ganha <!--n:ouroAgiu-->1<!--/n--> de ouro. Quem fica de f
 
 ---
 
-## Estado do desenvolvimento — <!--n:versao-->v0.6.3<!--/n-->
+## Estado do desenvolvimento — <!--n:versao-->v0.6.4<!--/n-->
 
 > **Em teste, não aprovada.** A leva v0.5.9 → v0.6.2 mudou tamanho de tabuleiro e
 > condição de vitória, e espera o julgamento dos três. Ver `teste/LEIA.md`.
@@ -153,8 +159,6 @@ node teste/empacota.js      # gera teste/JOGAR.html, o jogo inteiro num arquivo 
 **4. O hexágono encolheu.** Com o tabuleiro <!--n:tabuleiro-->11×11<!--/n--> ele fica em ~33px numa tela de 390px de largura, contra os **44px** de referência de toque do projeto. A peça vale o hexágono inteiro, então dá para jogar — mas é o menor alvo já medido, e precisa de olho humano em tela pequena.
 
 **5. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
-
-**6. O visualizador de mapa do guia está atrasado.** Ele desenha um 7×7 escrito à mão, da era anterior ao mapa gerado. `node sim/docs.js` avisa disso toda vez.
 
 ---
 

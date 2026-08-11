@@ -60,6 +60,7 @@ function contextoDOM() {
 /* ---------- carga ---------- */
 const LEITURA = {
   imagens: fs.readFileSync(path.join(RAIZ, "arte/imagens.js"), "utf8"),
+  mapa: fs.readFileSync(path.join(RAIZ, "data/mapa.js"), "utf8"),
   catalogo: fs.readFileSync(path.join(RAIZ, "data/catalogo.js"), "utf8"),
   jogo: fs.readFileSync(path.join(RAIZ, "jogo/jogo.js"), "utf8")
 };
@@ -99,6 +100,7 @@ const PONTE = `
 function carrega(trocas = []) {
   const ctx = vm.createContext(contextoDOM());
   vm.runInContext(LEITURA.imagens, ctx, { filename: "imagens.js" });
+  vm.runInContext(LEITURA.mapa, ctx, { filename: "mapa.js" });
   vm.runInContext(LEITURA.catalogo, ctx, { filename: "catalogo.js" });
   vm.runInContext(aplicaTrocas(LEITURA.jogo, trocas) + PONTE, ctx, { filename: "jogo.js" });
 

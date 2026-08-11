@@ -16,6 +16,73 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v0.6.4 — o guia passa a desenhar o mapa de verdade · 2026-08-11
+
+> **Não muda regra nem número do jogo.** Provado, e não suposto: a geometria foi despejada
+> antes e depois da mudança e comparada byte a byte — 3394 bytes, idênticos.
+
+### O mapa do manual mostrava um tabuleiro que não existe
+
+A seção 05 do guia desenhava geometria **própria, escrita à mão**, e ela parou de acompanhar
+o jogo três versões atrás:
+
+| O guia mostrava | O jogo tem |
+|---|---|
+| tabuleiro **7×7** | **11×11**, 116 casas |
+| rotas de 10 e 9 casas, escritas à mão | espinha 17/12/17, gerada e espelhada |
+| rota de **1 casa** de largura | corredor de **2**, com 82 casas |
+| **dois** poços épicos — "covil do Dragão" e "cova do Barão" | **um** poço, que troca de morador |
+| **quatro** acampamentos de selva | nenhum — eles não existem no motor |
+| cada peça com "passo" próprio de 2 ou 3 casas | **um Dado Mestre para o time inteiro** |
+
+O último item era o pior: o mapa interativo do manual ensinava o **oposto** da regra nº 1 do
+jogo. Agora ele rola um Dado Mestre de verdade e desconta o movimento do mesmo bolo — mover
+uma peça tira do orçamento das outras nove.
+
+### A geometria virou fonte única: `data/mapa.js`
+
+Mesma doença dos três catálogos de herói da v0.3 e da lista de itens da v0.6.3, e mesma cura.
+A geometria saiu de `jogo/jogo.js` e virou **`data/mapa.js`** — sem estado de partida, sem DOM,
+sem regra: só onde ficam as casas, as rotas, as bases, as torres e o poço.
+
+Quem lê: o motor, o guia e `sim/`. O que ficou em `jogo/jogo.js` é o que depende do estado da
+partida (`limitaFrente`) ou é número de balanceamento (vida de torre, revide).
+
+**Trocar `const N` agora redesenha o mapa do manual junto com o do jogo.** `guia/index.html`
+também deixou de ter o `viewBox` escrito à mão: ele é medido a partir das casas que existem.
+
+Efeito colateral necessário: no guia, `ROTAS` eram os cinco **papéis** e em `data/mapa.js` são
+as três **rotas do tabuleiro**. Dois `const ROTAS` na mesma página é `SyntaxError` e derrubaria
+o guia inteiro — os papéis viraram `PAPEIS`.
+
+### Outros textos do guia que envelheceram junto
+
+- pool "**dez** no protótipo, a meta pede vinte" → são **20**, quatro por rota, desde a v0.4;
+- "45 minutos, **~10 rodadas**" → **~19 rodadas** (mediana medida, n=20000);
+- os quatro acampamentos e o Arauto agora aparecem na tabela marcados **🔸 só no papel**, em
+  vez de passarem por regra vigente.
+
+### E a coisa que não estava escrita em lugar nenhum
+
+**O jogo que roda hoje é uma bancada de mecânica, não o produto.** Os 20 heróis, os nomes, os
+epítetos e a arte são **andaime**: existem para a regra ser construída e medida contra conteúdo
+de verdade. O **elenco real está sendo criado no `visual-lab/` e vai ser implementado aqui** —
+Dona Chinela, P.O.M.B.O., Catarino, Frete, Bexiga.
+
+O `CLAUDE.md` dizia que o canon criativo mora no `visual-lab/` e que ele "entra no jogo depois",
+mas **nenhum documento dizia que o conteúdo atual é provisório** — e os documentos liam como se
+os 20 heróis fossem o elenco final ("arte: 20 de 20 ✅"). Agora está escrito em
+`docs/ESTADO.md` (primeira seção), `CLAUDE.md`, `README.md`, no guia e na página das cartas.
+
+O que sobrevive à troca: **regra, números e o kit mecânico** (vida, Poder, Armadura, Força
+mínima das três habilidades). O que sai: nome, epíteto, arte, lore. E o pool **vai encolher** —
+o handoff fala em cinco heróis iniciais e depois dez aprovados, contra os 20 de hoje.
+
+**Consequência prática:** não investir em nome, epíteto e lore de herói atual. É trabalho que
+será jogado fora. Investir no kit, não.
+
+---
+
 ## v0.6.3 — a documentação passa a se conferir sozinha · 2026-08-11
 
 > **Não muda regra nem número do jogo.** Nenhuma partida joga diferente por causa

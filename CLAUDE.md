@@ -67,6 +67,29 @@ mecânica e **não é canon** — o canon criativo mora em `visual-lab/`.
 
 Agentes globais úteis: `@designer` (layout/tipografia), `@criativo` (QA de identidade), `@prompteiro` (arte das cartas).
 
+## O que é definitivo e o que é andaime
+
+**O jogo que roda hoje é uma BANCADA DE MECÂNICA, não o produto.** Os 20 heróis, os nomes,
+os epítetos e a arte atual são **provisórios**: existem para que a regra possa ser construída,
+medida e quebrada contra conteúdo de verdade, em vez de contra planilha.
+
+**O elenco real vem do `visual-lab/` e será implementado no jogo** — Dona Chinela, P.O.M.B.O.,
+Catarino, Frete, Bexiga e o que mais for aprovado. Não é inspiração: é o roster.
+
+| Camada | Hoje | Amanhã |
+|---|---|---|
+| **Regra e números** — dado, ouro, torre, onda, poço, Retomada | é o que está sendo construído | **sobrevive**, é a base |
+| **Kit mecânico** — vida, Poder, Armadura, Força mínima das 3 habilidades | ajustado por medição | **sobrevive**, veste o personagem novo |
+| **Nome, epíteto, arte, lore, território** | andaime | **é substituído** pelo `visual-lab/` |
+
+Consequência prática, e ela é real: **o pool vai encolher.** O handoff criativo fala em cinco
+heróis iniciais e depois dez aprovados — contra os 20 de hoje. Quando o elenco entrar, cada
+personagem novo herda um kit já balanceado; os kits que sobrarem voltam para
+`docs/herois-aposentados.md`.
+
+Por isso: **não invista em nome, epíteto e lore dos heróis atuais.** Investir em Vharn é
+trabalho que será jogado fora. Investir no kit dele não.
+
 ## Estado atual
 
 v0.4 jogável: draft, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**, 22 itens, tutorial.

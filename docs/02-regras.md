@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras completas
 
-Versão <!--n:versao-->v0.6.3<!--/n--> · para quem nunca jogou. Leia na ordem.
+Versão <!--n:versao-->v0.6.4<!--/n--> · para quem nunca jogou. Leia na ordem.
 
 > **Este documento descreve o jogo que o motor executa hoje.** Onde houver regra
 > desenhada mas ainda **não implementada**, está marcado com 🔸 — nada de anunciar
