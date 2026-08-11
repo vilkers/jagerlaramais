@@ -7,6 +7,10 @@
   },
   "scripts": {
     "install:ci": "bash scripts/install-ci.sh",
+    "dados": "node scripts/gerar-dados.mjs",
+    "imagens": "node scripts/sync-imagens.mjs",
+    "publicar": "npm run dados && npm run build && node scripts/publicar-estatico.mjs",
+    "checa": "node scripts/gerar-dados.mjs --checa && node scripts/sync-imagens.mjs --checa",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vite",
     "build": "bash scripts/build-verified.sh",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",

@@ -23,6 +23,9 @@ arte/       assets gerados
   tocada pelo Vilker com o ChatGPT, e tem stack própria (Next/React/Vite). Não é o guia, não segue
   esta regra e **não deve ser apagada** por causa dela. O que nasce lá só entra no jogo depois de
   o guide estar fechado, e entra em cima da base mecânica — nunca por cima dela.
+  Antes de mexer lá, leia `visual-lab/COMO-MEXER.md`: o `index.html` publicado é **gerado**
+  (`npm run publicar`), e atributo de personagem vem de `data/catalogo.js`, nunca digitado na página.
+  O procedimento de produção de arte está em `visual-lab/PIPELINE-VISUAL.md`.
 - **Nomes e lore são autorais.** Referência mecânica ao LoL é interna e explícita nos docs; nunca no produto.
 - **Glossário é lei.** Termo definido não muda de nome. Ver `docs/glossario.md`.
 - **Toda mudança de número vira patch note** em `docs/patch-notes.md`.

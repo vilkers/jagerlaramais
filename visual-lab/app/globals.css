@@ -20,3 +20,148 @@ footer{min-height:160px;padding:40px 4vw;display:grid;grid-template-columns:1fr 
 @media(max-width:420px){.roster-grid{grid-template-columns:1fr}.hero-slot{display:grid;grid-template-columns:112px minmax(0,1fr)}.slot-image{aspect-ratio:1/1}.slot-meta small,.slot-meta p,.slot-meta>b{font-size:10px}.slot-meta h3{font-size:24px}.stats{grid-template-columns:1fr 1fr}.stats div:nth-child(2){border-right:0}.stats div:nth-child(-n+2){border-bottom:1px solid var(--black)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
 @media(max-width:620px){.map-board{height:auto;aspect-ratio:auto}.map-board img{height:auto;aspect-ratio:1/1}.map-board .construction{position:relative;inset:auto;transform:none;border-width:0;border-top:1px solid var(--black)}}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FICHA DE PERSONAGEM, CARTA E ERGONOMIA — auditoria de UX de 2026-08-11.
+   Este bloco vem por último de propósito: ele corrige regras acima por
+   cascata, sem cirurgia nas linhas compactadas do topo do arquivo.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Voo animado de 12.000px numa página comprida é inutilizável no celular. */
+html{scroll-behavior:auto}
+
+/* Nada aqui tinha :hover, :focus ou :active — o toque não devolvia sinal. */
+.hero-slot.linkado{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.hero-slot.linkado:hover{transform:translateY(-3px);box-shadow:6px 6px 0 var(--black)}
+.hero-slot.linkado:active{transform:translateY(1px);box-shadow:none}
+.filters button{transition:background .12s ease,color .12s ease}
+.filters button:hover{background:var(--black);color:var(--cream)}
+a:focus-visible,button:focus-visible,video:focus-visible{outline:3px solid var(--purple);outline-offset:3px}
+.bestiary a:focus-visible,.roadmap a:focus-visible{outline-color:var(--lime)}
+
+/* Piso de 11px no mono: abaixo disso ninguém lê em tela de celular. */
+.edition,.slot-meta small,.slot-meta>b,.monster-grid small,.monster-grid em,footer{font-size:11px}
+
+/* Entre 621px e 1000px a navegação simplesmente não existia. */
+@media(max-width:1000px){
+  header{grid-template-columns:1fr auto;grid-template-rows:auto auto;height:auto;padding:10px 3vw 0}
+  nav{display:flex;grid-column:1/-1;gap:7px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav a{flex:0 0 auto;min-height:44px;display:grid;place-items:center;border:1px solid var(--black);
+        border-radius:999px;padding:0 14px;background:var(--cream)}
+  nav a:active{background:var(--black);color:var(--cream)}
+}
+
+/* ── as seis bolinhas: estado do kit antes de qualquer texto ───────────── */
+.etapas{display:flex;align-items:center;gap:5px;margin:12px 0}
+.etapas i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--black);background:transparent}
+.etapas i[data-estado="pronto"]{background:var(--route,var(--lime))}
+.etapas i[data-estado="estudo"]{background:repeating-linear-gradient(45deg,var(--black) 0 2px,transparent 2px 4px)}
+.etapas i[data-estado="refine"]{background:var(--black)}
+.etapas i[data-estado="rejeitado"]{background:var(--coral)}
+.etapas b{font:650 11px var(--mono);margin-left:4px}
+.bestiary .etapas i,.ficha-corpo .etapas i{border-color:currentColor}
+
+/* ── ficha ─────────────────────────────────────────────────────────────── */
+.ficha{display:grid;grid-template-columns:1.02fr .98fr;background:var(--cream);
+       border-top:2px solid var(--black);border-bottom:2px solid var(--black);scroll-margin-top:90px}
+.ficha-art{position:relative;overflow:hidden;border-right:2px solid var(--black);background:#dcd5c8}
+.ficha-art>img{height:100%;object-fit:cover;object-position:center top}
+.ficha-sem-art{height:100%;min-height:420px;display:grid;place-items:center;font:650 11px var(--mono);color:#0007}
+.ficha-selo{position:absolute;left:14px;top:14px;background:var(--route,var(--lime));border:2px solid var(--black);
+            padding:7px 11px;font:700 11px var(--mono)}
+.ficha-corpo{padding:56px 4vw;display:flex;flex-direction:column;gap:34px}
+.ficha-cabeca small{font:650 11px var(--mono);letter-spacing:.12em}
+.ficha-cabeca h3{font:880 clamp(48px,6vw,92px)/.82 var(--display);letter-spacing:-.06em;margin:10px 0 0}
+.ficha-cabeca em{font:650 12px var(--mono);font-style:normal;color:#0009}
+.ficha-cabeca p{font-size:16px;line-height:1.5;margin:14px 0 0;max-width:52ch}
+.ficha h5{font:650 11px var(--mono);letter-spacing:.12em;margin:0 0 12px}
+
+/* ── a carta: atributos e skills, derivados de data/catalogo.js ─────────── */
+.carta{border:2px solid var(--black);background:white;box-shadow:7px 7px 0 var(--route,var(--lime))}
+.carta-topo{padding:16px 18px;border-bottom:2px solid var(--black);background:var(--route,var(--lime))}
+.carta-topo small{font:650 11px var(--mono);letter-spacing:.1em}
+.carta-topo h4{font:880 clamp(28px,4vw,42px)/.86 var(--display);letter-spacing:-.05em;margin:6px 0 2px}
+.carta-topo em{font:650 11px var(--mono);font-style:normal}
+.carta-atr{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--black)}
+.carta-atr div{padding:14px 8px;text-align:center;border-right:1px solid var(--black)}
+.carta-atr div:last-child{border-right:0}
+.carta-atr b{display:block;font:850 34px/1 var(--display)}
+.carta-atr span{display:block;font:650 9.5px var(--mono);letter-spacing:.06em;margin-top:5px;color:#0009}
+.carta-marcas{display:flex;flex-wrap:wrap;gap:6px;padding:11px 18px;border-bottom:2px solid var(--black)}
+.carta-marcas span{border:1px solid var(--black);border-radius:999px;padding:4px 10px;font:650 11px var(--mono)}
+.carta-skills article{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:start;
+                      padding:14px 18px;border-bottom:1px solid var(--black)}
+.carta-skills article:last-child{border-bottom:0}
+.carta-skills>article>b{width:30px;height:30px;display:grid;place-items:center;border:2px solid var(--black);
+                        border-radius:50%;font:800 14px var(--display)}
+.carta-skills strong{display:block;font:750 17px var(--display);letter-spacing:-.01em}
+.carta-skills strong i{font:650 10px var(--mono);font-style:normal;color:#0008;letter-spacing:0}
+.carta-skills p{font-size:13.5px;line-height:1.42;margin:4px 0 0;color:#000b}
+.carta-skills>article>span{font:650 11px var(--mono);color:#0009;white-space:nowrap}
+.carta-fonte{padding:10px 18px;border-top:2px solid var(--black);font:650 11px/1.4 var(--mono);color:#0009}
+.carta-fonte.proposta{background:#ffe9a8}
+.carta.vazia{padding:22px 18px;box-shadow:none}
+.carta.vazia b{font:650 11px var(--mono)}
+.carta.vazia p{font-size:14px;line-height:1.45;margin:8px 0 0}
+
+/* ── vídeo: um por ficha, nunca vinte no roster; sem autoplay ───────────── */
+.ficha-video video{width:100%;border:2px solid var(--black);background:var(--black);aspect-ratio:3/4}
+.ficha-video .pendente{border:2px dashed var(--black);padding:18px;font-size:14px;line-height:1.45;
+                       margin:0;color:#000a;background:#0000000a}
+
+/* ── kit de produção: as seis etapas com estado ─────────────────────────── */
+.ficha-kit ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--black)}
+.ficha-kit li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:baseline;
+              padding:13px 0;border-bottom:1px solid var(--black)}
+.ficha-kit li>b{font:650 11px var(--mono);color:var(--purple)}
+.ficha-kit strong{font:750 17px var(--display)}
+.ficha-kit p{font-size:13.5px;line-height:1.42;margin:3px 0 0;color:#000a}
+.ficha-kit code{display:block;font:650 11px var(--mono);color:#0007;margin-top:5px;word-break:break-all}
+.ficha-kit li>a,.ficha-kit li>span{font:650 11px var(--mono);white-space:nowrap;min-height:44px;
+                                   display:grid;place-items:center;padding:0 4px}
+.ficha-kit li>a{border-bottom:2px solid var(--route,var(--lime))}
+.ficha-kit li[data-estado="falta"]>span{color:#0006}
+.ficha-kit li[data-estado="rejeitado"]>span{color:var(--coral)}
+
+.ficha-lore{display:grid;gap:16px}
+.ficha-lore article{border-left:3px solid var(--route,var(--lime));padding-left:14px}
+.ficha-lore b{font:650 11px var(--mono);letter-spacing:.1em}
+.ficha-lore strong{display:block;font:750 21px var(--display);margin-top:4px}
+.ficha-lore p{font-size:14.5px;line-height:1.5;margin:5px 0 0;color:#000b}
+
+/* ── um bloco no lugar de quinze cards idênticos dizendo "não fizemos" ──── */
+.slots-abertos{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center;
+               margin-top:14px;border:2px dashed var(--black);padding:24px}
+.slots-abertos>b{font:880 clamp(52px,8vw,86px)/.8 var(--display)}
+.slots-abertos strong{font:750 19px var(--display)}
+.slots-abertos p{font-size:14.5px;line-height:1.5;margin:5px 0 0;max-width:62ch}
+
+/* O bestiário perdeu o "?" de 170px; o texto já sustenta a seção. */
+.monster-grid article{min-height:auto;padding:26px;gap:10px}
+.monster-grid h3{margin:6px 0 10px}
+.roadmap-nota{font-size:14.5px;line-height:1.5;margin:30px 0 0;max-width:62ch;color:#fffc}
+
+@media(max-width:1000px){
+  .ficha{grid-template-columns:1fr}
+  .ficha-art{border-right:0;border-bottom:2px solid var(--black);aspect-ratio:3/4;height:auto}
+  .ficha-corpo{padding:40px 18px}
+}
+@media(max-width:620px){
+  .carta-atr{grid-template-columns:repeat(2,1fr)}
+  .carta-atr div:nth-child(2){border-right:0}
+  .carta-atr div:nth-child(-n+2){border-bottom:1px solid var(--black)}
+  .slots-abertos{grid-template-columns:1fr;gap:10px;padding:20px}
+  .ficha-kit li,.carta-skills article{grid-template-columns:28px minmax(0,1fr)}
+  .ficha-kit li>a,.ficha-kit li>span,.carta-skills>article>span{grid-column:2;justify-self:start}
+}
+
+/* "IMPROVISO." pede 422px a 74px; em 390 de viewport ele era cortado pelo
+   overflow:hidden do .hero — sumia sem deixar rastro. 17vw resolve. */
+@media(max-width:620px){.hero h1{font-size:clamp(46px,17vw,78px)}}
+
+/* Personagem sem arte não ganha uma coluna vazia de 3.800px: vira uma faixa. */
+.ficha.sem-art{grid-template-columns:1fr}
+.ficha.sem-art .ficha-art{border-right:0;border-bottom:2px solid var(--black);aspect-ratio:auto;height:auto}
+.ficha.sem-art .ficha-sem-art{min-height:0;padding:26px 4vw 26px 150px;text-align:left;place-items:start}
+.ficha.sem-art .ficha-selo{top:50%;transform:translateY(-50%)}

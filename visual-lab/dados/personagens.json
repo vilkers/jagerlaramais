@@ -1,0 +1,738 @@
+{
+  "_gerado": "NÃO EDITE À MÃO. Saída de visual-lab/scripts/gerar-dados.mjs.",
+  "_fontes": [
+    "visual-lab/dados/criacao.json",
+    "data/catalogo.js"
+  ],
+  "versao": "0.1",
+  "etapas": [
+    {
+      "id": "01",
+      "slug": "concept",
+      "nome": "Concept ilustrado",
+      "papel": "Silhueta, proporção, arquétipo e arma."
+    },
+    {
+      "id": "02",
+      "slug": "render",
+      "nome": "Render master",
+      "papel": "Congela rosto, materiais e paleta. Fundo neutro. É a referência de identidade de todas as etapas seguintes."
+    },
+    {
+      "id": "03",
+      "slug": "sheet",
+      "nome": "Character sheet",
+      "papel": "Frente, costas, perfil, duas expressões e a arma isolada."
+    },
+    {
+      "id": "04",
+      "slug": "miniatura",
+      "nome": "Miniatura 3D",
+      "papel": "Clay e colorido, base hexagonal, silhueta viável para impressão."
+    },
+    {
+      "id": "05",
+      "slug": "keyart",
+      "nome": "Carta ambientada",
+      "papel": "Key art no território, com acting. Versão limpa e versão aplicada na carta."
+    },
+    {
+      "id": "06",
+      "slug": "video",
+      "nome": "Vídeo",
+      "papel": "Acting curto para a carta animada no Guide e no jogo."
+    }
+  ],
+  "personagens": [
+    {
+      "slug": "dona-chinela",
+      "ordem": "01",
+      "nome": "DONA CHINELA",
+      "epiteto": "A ÚLTIMA PALAVRA",
+      "rota": "TOPO",
+      "classe": "TANQUE",
+      "cor": "#c8ff35",
+      "status": "aprovada",
+      "catalogo": {
+        "id": "vharn",
+        "confirmado": true
+      },
+      "territorio": {
+        "nome": "Pátio do Conjunto Fortaleza",
+        "descricao": "Azulejo, reboco descascado, varais cruzando o alto, caixas-d'água, antenas e puxadinhos. O Nexus verde-lima racha o chão no meio do pátio."
+      },
+      "resumo": "Uma avó aparentemente acolhedora que trata a arena como uma reunião de condomínio fora de controle. O tamanco mecânico dela foi reconstruído com madeira, pistões, azulejos e tudo que sobrou do edifício que ela salvou.",
+      "obsessao": "A última palavra. Ela não briga para vencer, briga para encerrar o assunto.",
+      "arma": {
+        "nome": "O CORRETIVO",
+        "descricao": "Tamanco gigante de madeira avermelhada usado como bazuca: fivela no peito do pé, pistão cromado na sola, dentes serrilhados na borda, argola de metal na traseira e o nome ODETE gravado na lateral."
+      },
+      "skillsNome": [
+        "TAMANCADA",
+        "VEM CÁ, MEU FILHO",
+        "CHINELO VOADOR"
+      ],
+      "assets": {
+        "01": {
+          "estado": "pronto",
+          "arquivos": [
+            "dona-chinela-v1.jpeg"
+          ],
+          "nuvem": []
+        },
+        "02": {
+          "estado": "pronto",
+          "arquivos": [],
+          "nuvem": [
+            "1lsPghSr4r",
+            "O6Nh38tynm"
+          ],
+          "obs": "1lsPghSr4r é o render aprovado; O6Nh38tynm é o master limpo do corpo. Nenhum dos dois foi baixado para o repositório ainda."
+        },
+        "03": {
+          "estado": "pronto",
+          "arquivos": [
+            "dona-chinela-character-sheet-900.jpg",
+            "dona-chinela-character-sheet-1600.jpg",
+            "dona-chinela-character-sheet-rendered.jpg"
+          ],
+          "nuvem": [
+            "Ifa5PnHtvE",
+            "4R3f2Jm9Aa",
+            "4R3fnnb9Aa",
+            "eI8wQ8odqL"
+          ],
+          "obs": "4R3f… são os product sheets de O Corretivo; eI8wQ8odqL é a prova neutra."
+        },
+        "04": {
+          "estado": "estudo",
+          "arquivos": [],
+          "nuvem": [
+            "vQuxuyna47"
+          ]
+        },
+        "05": {
+          "estado": "pronto",
+          "arquivos": [],
+          "nuvem": [
+            "p8oUb7nehw",
+            "1ls4sxnr4r"
+          ],
+          "obs": "p8oUb7nehw é a key art aprovada e ainda não está no repositório — é a peça que falta baixar."
+        },
+        "06": {
+          "estado": "rejeitado",
+          "arquivos": [],
+          "nuvem": [
+            "jUSpalFLD0"
+          ],
+          "obs": "Seedance Mini deformou rosto e expressão. Refazer no Kling 3.0 com key art + character master + product master como referência."
+        }
+      },
+      "atributos": [
+        {
+          "chave": "vida",
+          "rotulo": "VIDA",
+          "valor": 14,
+          "texto": "14"
+        },
+        {
+          "chave": "poder",
+          "rotulo": "PODER",
+          "valor": 3,
+          "texto": "03"
+        },
+        {
+          "chave": "arm",
+          "rotulo": "ARMADURA",
+          "valor": 3,
+          "texto": "03"
+        },
+        {
+          "chave": "alc",
+          "rotulo": "ALCANCE",
+          "valor": 1,
+          "texto": "01"
+        }
+      ],
+      "marcas": [],
+      "skills": [
+        {
+          "tecla": "Q",
+          "nome": "TAMANCADA",
+          "nomeMecanico": "Golpe de Escudo",
+          "forca": 1,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura",
+          "batizada": true
+        },
+        {
+          "tecla": "W",
+          "nome": "VEM CÁ, MEU FILHO",
+          "nomeMecanico": "Provocar",
+          "forca": 3,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura · Puxa o alvo 1 casa na sua direção · Prende o alvo nesta rodada",
+          "batizada": true
+        },
+        {
+          "tecla": "R",
+          "nome": "CHINELO VOADOR",
+          "nomeMecanico": "Muralha",
+          "forca": 6,
+          "alvo": "eu",
+          "texto": "Escudo de Força + 6 · Prende todos os inimigos adjacentes",
+          "batizada": true
+        }
+      ],
+      "referenciaCatalogo": {
+        "id": "vharn",
+        "nome": "Vharn",
+        "epiteto": "o Muro de Ferro"
+      },
+      "progresso": {
+        "feitas": 4,
+        "total": 6
+      }
+    },
+    {
+      "slug": "pombo",
+      "ordem": "02",
+      "nome": "P.O.M.B.O.",
+      "epiteto": "PRAGA ORBITAL",
+      "rota": "SELVA",
+      "classe": "ASSASSINO",
+      "cor": "#23d7a0",
+      "status": "refine",
+      "catalogo": {
+        "id": "nyx",
+        "confirmado": false
+      },
+      "territorio": {
+        "nome": "Ferro-Velho Vivo",
+        "descricao": "Sucata biotecnológica que cresce, caça e recicla invasores."
+      },
+      "resumo": "Pombo urbano ciborgue em escala de praga, não de mascote. Nervoso, oportunista e territorial — rouba e sai correndo antes de você entender o que perdeu.",
+      "obsessao": "Território. Cada telhado que ele marca vira propriedade, e ele defende telhado como quem defende a vida.",
+      "arma": {
+        "nome": "MOCHILA DE ROTEADOR",
+        "descricao": "Roteador com antena torta preso às costas por cintas, próteses assimétricas de sucata e um crucifixo ciborgue integrado ao peitoral, com cara de relíquia pessoal gasta."
+      },
+      "skillsNome": [],
+      "assets": {
+        "01": {
+          "estado": "refine",
+          "arquivos": [],
+          "nuvem": [
+            "jUSe7MuLD0"
+          ],
+          "obs": "Wave 1 promissor. Falta o moicano e o crucifixo ciborgue; precisa ficar mais nervoso e com acabamento 3D premium, com menos linework."
+        },
+        "02": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "03": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "04": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "05": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "06": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        }
+      },
+      "atributos": [
+        {
+          "chave": "vida",
+          "rotulo": "VIDA",
+          "valor": 10,
+          "texto": "10"
+        },
+        {
+          "chave": "poder",
+          "rotulo": "PODER",
+          "valor": 3,
+          "texto": "03"
+        },
+        {
+          "chave": "arm",
+          "rotulo": "ARMADURA",
+          "valor": 1,
+          "texto": "01"
+        },
+        {
+          "chave": "alc",
+          "rotulo": "ALCANCE",
+          "valor": 1,
+          "texto": "01"
+        }
+      ],
+      "marcas": [
+        {
+          "chave": "agil",
+          "rotulo": "ÁGIL",
+          "texto": "Anda uma casa a mais."
+        }
+      ],
+      "skills": [
+        {
+          "tecla": "Q",
+          "nome": "Bote",
+          "nomeMecanico": "Bote",
+          "forca": 1,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura · +2 de dano",
+          "batizada": false
+        },
+        {
+          "tecla": "W",
+          "nome": "Sombra",
+          "nomeMecanico": "Sombra",
+          "forca": 3,
+          "alvo": "eu",
+          "texto": "Fica intocável até o próximo turno",
+          "batizada": false
+        },
+        {
+          "tecla": "R",
+          "nome": "Caçada",
+          "nomeMecanico": "Caçada",
+          "forca": 5,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura",
+          "batizada": false
+        }
+      ],
+      "referenciaCatalogo": {
+        "id": "nyx",
+        "nome": "Nyx",
+        "epiteto": "a Presa Silenciosa"
+      },
+      "progresso": {
+        "feitas": 0,
+        "total": 6
+      }
+    },
+    {
+      "slug": "catarino",
+      "ordem": "03",
+      "nome": "CATARINO",
+      "epiteto": "O MENINO CONGESTIONADO",
+      "rota": "MEIO",
+      "classe": "MAGO",
+      "cor": "#8c6cff",
+      "status": "refine",
+      "catalogo": {
+        "id": "solenne",
+        "confirmado": false
+      },
+      "territorio": {
+        "nome": "Praça da Transmissão",
+        "descricao": "O centro nervoso onde antenas disputam a última frequência da Várzea."
+      },
+      "resumo": "Criança congestionada com energia de moleque que apronta. O catarro é o recurso, e ele tem um aparato caseiro inteiro para coletar, pressurizar e disparar.",
+      "obsessao": "Nunca assoar. Tudo que sai do nariz dele tem uso, e desperdiçar é burrice.",
+      "arma": {
+        "nome": "MOCHILA QUÍMICA IMPROVISADA",
+        "descricao": "Garrafão, mangueiras e válvulas nas costas, ligados a um tubo de sucção que sobe até o nariz, câmara de pressão transparente e bico de disparo. Plástico de garrafa, elástico de câmara de ar, fita isolante e cano de PVC."
+      },
+      "skillsNome": [],
+      "assets": {
+        "01": {
+          "estado": "refine",
+          "arquivos": [],
+          "nuvem": [
+            "s7wXy49l8e"
+          ],
+          "obs": "Wave 1 promissor. Precisa ficar mais over e caótico, e a fonte do catarro tem que sair da esfera verde genérica e virar um objeto peculiar."
+        },
+        "02": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "03": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "04": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "05": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "06": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        }
+      },
+      "atributos": [
+        {
+          "chave": "vida",
+          "rotulo": "VIDA",
+          "valor": 10,
+          "texto": "10"
+        },
+        {
+          "chave": "poder",
+          "rotulo": "PODER",
+          "valor": 3,
+          "texto": "03"
+        },
+        {
+          "chave": "arm",
+          "rotulo": "ARMADURA",
+          "valor": 1,
+          "texto": "01"
+        },
+        {
+          "chave": "alc",
+          "rotulo": "ALCANCE",
+          "valor": 3,
+          "texto": "03"
+        }
+      ],
+      "marcas": [],
+      "skills": [
+        {
+          "tecla": "Q",
+          "nome": "Feixe",
+          "nomeMecanico": "Feixe",
+          "forca": 1,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura",
+          "batizada": false
+        },
+        {
+          "tecla": "W",
+          "nome": "Prisma",
+          "nomeMecanico": "Prisma",
+          "forca": 4,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura · Atinge também os vizinhos do alvo",
+          "batizada": false
+        },
+        {
+          "tecla": "R",
+          "nome": "Julgamento",
+          "nomeMecanico": "Julgamento",
+          "forca": 6,
+          "alvo": "in",
+          "texto": "Dano fixo de 8, ignora a Força",
+          "batizada": false
+        }
+      ],
+      "referenciaCatalogo": {
+        "id": "solenne",
+        "nome": "Solenne",
+        "epiteto": "a Voz do Arcano"
+      },
+      "progresso": {
+        "feitas": 0,
+        "total": 6
+      }
+    },
+    {
+      "slug": "frete",
+      "ordem": "04",
+      "nome": "FRETE",
+      "epiteto": "ENTREGA ANTES DO FIM",
+      "rota": "ATIRADOR",
+      "classe": "ATIRADOR",
+      "cor": "#ff5f48",
+      "status": "craft",
+      "catalogo": {
+        "id": "vesper",
+        "confirmado": false
+      },
+      "territorio": {
+        "nome": "Corredor do Frete",
+        "descricao": "Viadutos, oficinas e rotas de entrega que nunca podem parar."
+      },
+      "resumo": "Conceito provisório do roster. Antes de gerar qualquer imagem, precisa de lore, silhueta, obsessão, função, skills, materiais, território e assinatura de movimento.",
+      "obsessao": "",
+      "arma": {
+        "nome": "",
+        "descricao": ""
+      },
+      "skillsNome": [],
+      "assets": {
+        "01": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "02": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "03": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "04": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "05": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "06": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        }
+      },
+      "atributos": [
+        {
+          "chave": "vida",
+          "rotulo": "VIDA",
+          "valor": 11,
+          "texto": "11"
+        },
+        {
+          "chave": "poder",
+          "rotulo": "PODER",
+          "valor": 3,
+          "texto": "03"
+        },
+        {
+          "chave": "arm",
+          "rotulo": "ARMADURA",
+          "valor": 1,
+          "texto": "01"
+        },
+        {
+          "chave": "alc",
+          "rotulo": "ALCANCE",
+          "valor": 3,
+          "texto": "03"
+        }
+      ],
+      "marcas": [
+        {
+          "chave": "patamar",
+          "rotulo": "PATAMARES",
+          "texto": "Patamares — a cada 10 de ouro acumulado, +2 de Poder para sempre. Até 3 vezes."
+        }
+      ],
+      "skills": [
+        {
+          "tecla": "Q",
+          "nome": "Tiro",
+          "nomeMecanico": "Tiro",
+          "forca": 1,
+          "alvo": "in",
+          "texto": "Dano = Força + Poder − Armadura",
+          "batizada": false
+        },
+        {
+          "tecla": "W",
+          "nome": "Recarregar",
+          "nomeMecanico": "Recarregar",
+          "forca": 2,
+          "alvo": "eu",
+          "texto": "O próximo golpe leva +4",
+          "batizada": false
+        },
+        {
+          "tecla": "R",
+          "nome": "Chuva de Ferro",
+          "nomeMecanico": "Chuva de Ferro",
+          "forca": 5,
+          "alvo": "eu",
+          "texto": "Atinge todos os inimigos a até 3 casas",
+          "batizada": false
+        }
+      ],
+      "referenciaCatalogo": {
+        "id": "vesper",
+        "nome": "Vesper",
+        "epiteto": "a Pontaria Final"
+      },
+      "progresso": {
+        "feitas": 0,
+        "total": 6
+      }
+    },
+    {
+      "slug": "bexiga",
+      "ordem": "05",
+      "nome": "BEXIGA",
+      "epiteto": "O MASCOTE QUE NÃO DESISTE",
+      "rota": "SUPORTE",
+      "classe": "SUPORTE",
+      "cor": "#ff91c8",
+      "status": "craft",
+      "catalogo": {
+        "id": "mirrha",
+        "confirmado": false
+      },
+      "territorio": {
+        "nome": "",
+        "descricao": ""
+      },
+      "resumo": "Conceito provisório do roster. Antes de gerar qualquer imagem, precisa de lore, silhueta, obsessão, função, skills, materiais, território e assinatura de movimento.",
+      "obsessao": "",
+      "arma": {
+        "nome": "",
+        "descricao": ""
+      },
+      "skillsNome": [],
+      "assets": {
+        "01": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "02": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "03": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "04": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "05": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        },
+        "06": {
+          "estado": "falta",
+          "arquivos": [],
+          "nuvem": []
+        }
+      },
+      "atributos": [
+        {
+          "chave": "vida",
+          "rotulo": "VIDA",
+          "valor": 11,
+          "texto": "11"
+        },
+        {
+          "chave": "poder",
+          "rotulo": "PODER",
+          "valor": 2,
+          "texto": "02"
+        },
+        {
+          "chave": "arm",
+          "rotulo": "ARMADURA",
+          "valor": 2,
+          "texto": "02"
+        },
+        {
+          "chave": "alc",
+          "rotulo": "ALCANCE",
+          "valor": 3,
+          "texto": "03"
+        }
+      ],
+      "marcas": [],
+      "skills": [
+        {
+          "tecla": "Q",
+          "nome": "Sopro",
+          "nomeMecanico": "Sopro",
+          "forca": 1,
+          "alvo": "al",
+          "texto": "Escudo de Força + 2 · Cura 3",
+          "batizada": false
+        },
+        {
+          "tecla": "W",
+          "nome": "Doar Dado",
+          "nomeMecanico": "Doar Dado",
+          "forca": 1,
+          "alvo": "al",
+          "texto": "Doa este dado para um aliado usar como se fosse dele",
+          "batizada": false
+        },
+        {
+          "tecla": "R",
+          "nome": "Eco",
+          "nomeMecanico": "Eco",
+          "forca": 4,
+          "alvo": "al",
+          "texto": "Escudo de Força + 3 · Cura 4 · Um aliado morto volta 1 rodada antes",
+          "batizada": false
+        }
+      ],
+      "referenciaCatalogo": {
+        "id": "mirrha",
+        "nome": "Mirrha",
+        "epiteto": "a Guardiã de Ecos"
+      },
+      "progresso": {
+        "feitas": 0,
+        "total": 6
+      }
+    }
+  ],
+  "slotsAbertos": [
+    {
+      "rota": "TOPO",
+      "quantidade": 3,
+      "cor": "#c8ff35"
+    },
+    {
+      "rota": "SELVA",
+      "quantidade": 3,
+      "cor": "#23d7a0"
+    },
+    {
+      "rota": "MEIO",
+      "quantidade": 3,
+      "cor": "#8c6cff"
+    },
+    {
+      "rota": "ATIRADOR",
+      "quantidade": 3,
+      "cor": "#ff5f48"
+    },
+    {
+      "rota": "SUPORTE",
+      "quantidade": 3,
+      "cor": "#ff91c8"
+    }
+  ],
+  "progresso": {
+    "personagens": 5,
+    "slotsAbertos": 15,
+    "etapasFeitas": 4,
+    "etapasTotais": 30
+  }
+}

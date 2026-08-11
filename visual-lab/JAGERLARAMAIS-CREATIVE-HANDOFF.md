@@ -1,5 +1,11 @@
 # Jagerlaramais — Creative Handoff
 
+> **Este documento é a intenção criativa.** O procedimento — em que ordem gerar, qual
+> referência entra em qual etapa, como escrever o prompt e quais portões rodar antes de
+> aprovar — mora em **`PIPELINE-VISUAL.md`**. Como mexer no Guide sem quebrar a
+> publicação está em **`COMO-MEXER.md`**. O estado de cada asset é dado, não texto:
+> vive em `dados/criacao.json` e aparece no Guide.
+
 ## Objetivo
 
 Construir o coração criativo do jogo: universo, lore, personagens, cartas, mapa, monstros, territórios e linguagem visual. A mecânica e a estrutura continuam sendo desenvolvidas separadamente. O jogo não deve ser alterado durante esta fase criativa.
