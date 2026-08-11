@@ -1,5 +1,25 @@
 # Patch notes — JAGERLARAMAIS
 
+## v15.2 — organização e UX pós-playtest · 2026-08-11
+
+> **Em validação.** Não adiciona conteúdo definitivo; organiza a base e torna as regras atuais legíveis durante a partida.
+
+### Entrou
+
+- Um comando único (`npm run atualizar`) sincroniza o retrato mecânico, README, Estado, regras, validações e pacote offline.
+- O CI falha quando a documentação automática ou o retrato consumido pelo guia ficam atrás do motor.
+- O painel do herói virou camada flutuante: selecionar uma peça não redimensiona mais o mapa; ao mirar ou mover, o painel compacta.
+- Habilidades mostram o alcance no texto e pintam no mapa todas as casas alcançáveis, inclusive quando não há alvo válido.
+- Torres e acampamentos ganharam alvos de toque, leitura acessível e instrução contextual. Acampamentos atuais são fontes de ouro coletadas ao entrar, não monstros atacáveis.
+- Encerrar com recursos sobrando agora abre uma confirmação explícita e informa qual time recebe a vez.
+- O guia passou a consumir um retrato gerado do motor para mapa, estruturas, itens, acampamentos e épicos.
+- O conteúdo atual foi marcado como protótipo mecânico; `visual-lab/` permanece a futura origem do cânone visual.
+
+### Não entrou
+
+- IA, multiplayer em rede, buffs de acampamento, Arauto ou personagens definitivos.
+- Mudanças de balanceamento. A vantagem de ordem continua uma decisão aberta.
+
 Histórico de mudanças. **Append-only**: entrada nova vai no topo, entrada antiga nunca é reescrita.
 Regra do projeto: *toda mudança de número vira patch note.*
 

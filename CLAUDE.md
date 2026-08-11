@@ -15,6 +15,23 @@ arte/       assets gerados
 
 ## Regras do projeto
 
+### Fechamento obrigatório de qualquer tarefa
+
+Antes de dizer que uma alteração está pronta, rode na raiz:
+
+```bash
+npm run atualizar
+git diff --check
+git status --short
+```
+
+`npm run atualizar` sincroniza README, Estado, regras e o retrato usado pelo guia,
+roda os testes e regenera `teste/JOGAR.html`. Inclua no commit todos os arquivos
+gerados por esse comando. Se ele falhar, a tarefa não está pronta.
+
+Não atualize manualmente blocos entre `AUTO:*:INICIO` e `AUTO:*:FIM` nem
+`data/retrato.js`. Altere a fonte correspondente e rode o comando.
+
 - **`data/catalogo.js` é a fonte de verdade** do conteúdo (heróis, itens, deck, classes, `textoHab()`).
   `jogo/`, `guia/` e `cartas/` leem daí. Nunca escreva carta direto no HTML — já criou três catálogos divergentes uma vez.
 - **`poderTotal`/`armTotal`/`ehAgil` são `const`** — reatribuir mata o script inteiro sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
@@ -56,11 +73,11 @@ Agentes globais úteis: `@designer` (layout/tipografia), `@criativo` (QA de iden
 
 ## Estado atual
 
-v15.1 pós-playtest, em validação: draft hotseat, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**,
+v15.2, organização e UX pós-playtest: draft hotseat, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**,
 22 itens, tutorial, três acampamentos, Plano de Caça, feitiço compartilhado e objetivos épicos.
 
 **Leia `docs/ESTADO.md` primeiro** — é o retrato do presente e foi feito para gastar pouco contexto.
 Histórico em `docs/patch-notes.md`. Desenvolvimento em grupo em `docs/ECOSSISTEMA.md`.
-Registro da integração atual em `docs/versions/v15.1/README.md`.
+Registro da integração atual em `docs/versions/v15.2/README.md`.
 
-Falta: playtest de confirmação da v15.1, decisão sobre os números não documentados, Arauto e highlight do tutorial.
+Falta: playtest de usabilidade da v15.2, decisão sobre vantagem de ordem, buffs de acampamento e highlight do tutorial.

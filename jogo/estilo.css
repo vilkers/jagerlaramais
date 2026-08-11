@@ -85,6 +85,9 @@ button:disabled{cursor:not-allowed}
 @keyframes respira{0%,100%{stroke-opacity:.5}50%{stroke-opacity:1}}
 #mapa .hx.mover{stroke:var(--brass);stroke-width:2.2;cursor:pointer;animation:respira 1.5s ease-in-out infinite}
 #mapa .hx.mover:active{fill:var(--brass);fill-opacity:.35}
+#mapa .hx.alcance{stroke:var(--brass);stroke-width:1.55;stroke-dasharray:2.2 2.2;
+  fill:var(--brass);fill-opacity:.13}
+#mapa .hx.alcance.mover{stroke-width:2.4;stroke-dasharray:none}
 #mapa .estrada{fill:none;stroke:var(--estrada);stroke-width:5;stroke-opacity:.34;
   stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 #mapa .torre{stroke-width:1.7;fill:var(--ground);fill-opacity:.6}
@@ -204,16 +207,26 @@ button:disabled{cursor:not-allowed}
 /* Medido em quatro tamanhos: hud + palco + painel estourava a janela nos QUATRO,
    e no iPhone SE sobrava 14px para fora. O painel deixa de crescer sem limite —
    quem rola por dentro é a lista de comando, e dados e ações ficam sempre à vista. */
-#painel{flex:none;min-height:0;padding:7px 10px calc(7px + var(--safe));
+#painel{flex:none;min-height:0;padding:7px 10px calc(7px + var(--safe));position:relative;z-index:10;
   display:flex;flex-direction:column;gap:6px;
   border-top:1px solid var(--line);background:var(--ground-2)}
-#comando{flex:none;min-height:0;max-height:var(--cmd-max);
+#comando{display:none;position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);
+  max-height:min(54dvh,430px);padding:8px;z-index:12;
+  border:1px solid var(--brass-dim);border-radius:14px;background:rgba(17,26,22,.98);
+  box-shadow:0 -12px 36px rgba(0,0,0,.55);backdrop-filter:blur(8px);
   overflow-y:auto;overscroll-behavior:contain;
   /* quando sobra conteúdo, a última linha desbota em vez de ser cortada em seco —
      linha cortada pela metade lê como bug; desbotada lê como "tem mais abaixo" */
   -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 18px),transparent);
           mask-image:linear-gradient(180deg,#000 calc(100% - 18px),transparent)}
 #comando:not(.rolando){-webkit-mask-image:none;mask-image:none}
+#comando.aberto{display:flex}
+#comando.compacto .opc:not(.on),#comando.compacto .cmd-x.carta{display:none}
+#comando.compacto .cmd-cab{min-height:40px}
+#estadoTurno{min-height:24px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);font-size:11.5px;line-height:1.25;text-align:center}
+#estadoTurno b{color:var(--brass);font-weight:600}
+@media (max-height:640px){#estadoTurno{display:none}}
 
 #ativo{display:flex;align-items:center;gap:9px;min-height:38px;padding:6px 9px;border-radius:11px;
   background:var(--ground-3);border:1px solid var(--line)}
@@ -389,7 +402,7 @@ button:disabled{cursor:not-allowed}
 .regra p{font-size:13.5px}
 
 /* ══════════ PAINEL DE COMANDO ══════════ */
-#comando{display:flex;flex-direction:column;gap:5px}
+#comando{flex-direction:column;gap:5px}
 .cmd-cab{display:flex;align-items:center;gap:9px;padding:2px 4px}
 .cmd-cab img{width:34px;height:34px;border-radius:9px;object-fit:cover;object-position:50% 18%;
   border:1.5px solid var(--brass);flex:none;filter:brightness(1.4)}
@@ -409,6 +422,8 @@ button:disabled{cursor:not-allowed}
 .opc:disabled,.opc.naoPode{opacity:.34}
 .opc.naoPode{cursor:default}
 .opc.on{border-color:var(--brass);background:var(--brass-glow)}
+.opc.on .t1::after{content:" · modo ativo";font-family:var(--ui);font-size:10px;
+  text-transform:none;color:var(--brass)}
 .opc .ico{width:26px;height:26px;flex:none;display:grid;place-items:center}
 .opc .ico svg{width:22px;height:22px;fill:none;stroke:var(--ink-2);stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
@@ -566,4 +581,4 @@ button:disabled{cursor:not-allowed}
 .dr-chip img{width:22px;height:22px;border-radius:50%;object-fit:cover;object-position:50% 18%}
 .dr-chip.t0{border-color:rgba(76,155,214,.5)} .dr-chip.t1{border-color:rgba(212,91,78,.5)}
 
-.camp{pointer-events:none}.camp-bg{fill:#243B32;stroke:#9CC7A8;stroke-width:1.2}.camp-core{fill:#D5B25D}.camp.neutro .camp-bg{fill:#4B3B22;stroke:#E0B85E}.camp-txt,.camp-cd{font:700 6px Arial;fill:#E8F0EB;text-anchor:middle;paint-order:stroke;stroke:#0E1614;stroke-width:2px}.camp-cd{fill:#D9B86C}
+.camp{cursor:pointer}.camp-bg{fill:#243B32;stroke:#9CC7A8;stroke-width:1.2}.camp-core{fill:#D5B25D}.camp.neutro .camp-bg{fill:#4B3B22;stroke:#E0B85E}.camp.coletavel .camp-bg{stroke:var(--brass);stroke-width:2;animation:respira 1.5s ease-in-out infinite}.camp-txt,.camp-cd{font:700 6px Arial;fill:#E8F0EB;text-anchor:middle;paint-order:stroke;stroke:#0E1614;stroke-width:2px;pointer-events:none}.camp-cd{fill:#D9B86C}

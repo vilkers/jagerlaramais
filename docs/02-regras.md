@@ -1,6 +1,18 @@
 # JAGERLARAMAIS — regras completas
 
-Pacote v15.1 · atualizado em 2026-08-11 · para quem nunca jogou. Leia na ordem.
+<!-- AUTO:RETRATO:INICIO -->
+| Retrato automático | Valor |
+|---|---|
+| Versão | **v15.2** — organização e UX pós-playtest |
+| Modo jogável | **hotseat local para 2 jogadores** · IA desativada |
+| Tabuleiro | **11×11** |
+| Conteúdo de teste | **20 heróis · 22 itens · 46 cartas** |
+| Torres / Nexus | **3 / 3 de vida** · golpe 1 · revide 2 |
+| Poço | Dragão 8 de vida até R8; Barão 14 depois |
+| Acampamentos | **3 fontes de ouro** · coleta ao entrar na casa · respawn 3 |
+<!-- AUTO:RETRATO:FIM -->
+
+Para quem nunca jogou. Leia na ordem.
 
 ---
 

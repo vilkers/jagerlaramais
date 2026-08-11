@@ -22,6 +22,8 @@ Nenhuma contribuição entra por substituição silenciosa. Toda atualização d
 - `jogo/cartas.js` contém o Deck de Comando.
 - `jogo/jogo.js` contém draft, abertura e inicialização.
 - `data/catalogo.js` é a fonte única de conteúdo.
+- `data/projeto.js` identifica versão, status e o caráter provisório do conteúdo.
+- `data/retrato.js` é gerado do motor e alimenta o guia; nunca é editado à mão.
 - `teste/JOGAR.html` é um pacote autocontido gerado por `node teste/empacota.js`.
 
 Nunca editar ou publicar um arquivo autocontido de 3 MB como se fosse a fonte do jogo. Ele serve para teste e avaliação. A mudança definitiva deve ser aplicada nos arquivos-fonte e o pacote deve ser regenerado depois.
@@ -30,30 +32,32 @@ Nunca editar ou publicar um arquivo autocontido de 3 MB como se fosse a fonte do
 
 1. Criar uma branch para a contribuição.
 2. Integrar as mudanças por assunto, preservando a arquitetura atual.
-3. Atualizar `docs/ESTADO.md` quando o retrato do jogo mudar.
-4. Inserir uma entrada nova no topo de `docs/patch-notes.md` quando houver mudança de regra ou número.
-5. Criar `docs/versions/vNN/` com:
+3. Rodar `npm run atualizar`. O comando sincroniza os blocos automáticos do README,
+   Estado e regras, atualiza o retrato usado pelo guia, valida o jogo e regenera o pacote offline.
+4. Atualizar manualmente somente o contexto que nenhuma automação pode inferir: motivo,
+   decisão de design, risco e resultado de playtest.
+5. Inserir uma entrada nova no topo de `docs/patch-notes.md` quando houver mudança de regra ou número.
+6. Criar `docs/versions/vNN/` com:
    - `README.md`: origem, escopo, status e decisões abertas;
    - `CHANGELOG.md`: tudo o que entrou, inclusive mudanças não citadas no resumo recebido;
    - `FILES.md`: arquivos adicionados, alterados e preservados.
-6. Rodar as validações disponíveis.
 7. Revisar `git diff` e `git status`.
 8. Abrir Pull Request. Não fazer commit direto na `main` para uma nova contribuição.
 
 ## Validação mínima
 
 ```bash
-node --check jogo/motor.js
-node --check jogo/interface.js
-node --check jogo/cartas.js
-node --check jogo/jogo.js
-node --check data/catalogo.js
-node --test sim/*.test.js
-node sim/simetria.js
-node sim/bateria.js 200
-node teste/empacota.js /tmp/JOGAR.html
+npm run atualizar
 git diff --check
 ```
+
+O CI roda `npm run sync:check`: se uma regra mudar no motor sem atualizar README,
+regras ou o retrato consumido pelo guia, o Pull Request falha. Ele também compara
+o corpo de `teste/JOGAR.html` com um pacote recém-gerado e falha se estiver antigo.
+
+`CLAUDE.md` e `AGENTS.md` repetem o fechamento obrigatório para que Claude Code,
+Codex e outras ferramentas recebam a regra ao abrir o repositório. O template de
+Pull Request deixa o mesmo checklist visível para revisão humana.
 
 Além disso, jogar ao menos uma rodada no celular antes de aprovar alterações de interface, gesto, mapa ou ritmo.
 

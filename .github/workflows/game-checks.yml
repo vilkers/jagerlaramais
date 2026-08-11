@@ -15,6 +15,7 @@ jobs:
           node-version: 22
       - name: Syntax
         run: |
+          node --check data/projeto.js
           node --check data/catalogo.js
           node --check jogo/motor.js
           node --check jogo/interface.js
@@ -22,11 +23,15 @@ jobs:
           node --check jogo/jogo.js
           node --check sim/motor.js
           node --check sim/bateria.js
+          node --check scripts/projeto.js
+          node --check scripts/verifica-pacote.js
           node --check teste/empacota.js
+      - name: Documentation sync
+        run: node scripts/projeto.js --check
       - name: Rules and geometry
         run: |
           node --test sim/*.test.js
           node sim/simetria.js
           node sim/bateria.js 200
       - name: Offline package
-        run: node teste/empacota.js /tmp/JOGAR.html
+        run: node scripts/verifica-pacote.js

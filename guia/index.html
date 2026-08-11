@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>JAGERLARAMAIS — manual de campo</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
@@ -315,7 +316,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v0.4 · protótipo</span>
+    <span class="ver" id="versao-capa">versão atual</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -333,7 +334,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
      text-transform:uppercase;letter-spacing:.04em;text-decoration:none">▶ Jogar agora</a>
   <footer>
     Vilker · Vinicius · Matheus<br>
-    conteúdo aberto a mudança
+    <span id="versao-guia">conteúdo mecânico de teste</span>
   </footer>
 </aside>
 
@@ -345,12 +346,12 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <p class="lede">Cada jogador drafta cinco heróis — um por rota — e comanda o time inteiro. Mapa completo: três rotas, selva, rio, objetivos épicos. Duas pessoas na mesa.</p>
   <dl class="pitch">
     <div><dt>Jogadores</dt><dd>1v1<small>cada um comanda 5 heróis</small></dd></div>
-    <div><dt>Duração</dt><dd>45<small>minutos, ~10 rodadas</small></dd></div>
+    <div><dt>Ritmo atual</dt><dd>22<small>rodadas de mediana na simulação</small></dd></div>
     <div><dt>Por rodada</dt><dd>3d6<small>três ordens, cinco heróis</small></dd></div>
     <div><dt>Vitória</dt><dd>Nexus<small>empurrar rota é o caminho</small></dd></div>
   </dl>
   <div class="nota">
-    <b>A decisão central de cada rodada:</b> você rola três dados e tem cinco heróis. Nunca dá para comandar todo mundo. Quem fica sem ordem farma sozinho, com renda reduzida. É a tradução exata de olhar o minimapa e escolher onde intervir.
+    <b>A decisão central de cada rodada:</b> você rola três dados e tem cinco heróis. Nunca dá para comandar todo mundo. Quem fica sem ordem farma e ganha mais ouro; agir agora custa crescimento. É a tradução exata de olhar o minimapa e escolher onde intervir.
   </div>
 </section>
 
@@ -367,7 +368,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 <section id="turno">
   <p class="eyebrow">03 — Loop</p>
   <h2>A rodada</h2>
-  <p class="lede">Seis passos. Cerca de quatro minutos com dois jogadores. Dez rodadas fecham a partida.</p>
+  <p class="lede">Dois turnos estritamente alternados formam uma rodada: Azul, Carmim, manutenção; então Azul novamente.</p>
   <div class="turno" id="lista-turno"></div>
 </section>
 
@@ -406,11 +407,10 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
     <table>
       <thead><tr><th>Fonte</th><th>Efeito</th></tr></thead>
       <tbody>
-        <tr><td>Sentinela Azul <span style="color:var(--ink-3)">· selva</span></td><td>Re-rolar 1 dado por rodada, durante 3 rodadas</td></tr>
-        <tr><td>Fera Escarlate <span style="color:var(--ink-3)">· selva</span></td><td>+1 de dano em toda alocação, durante 3 rodadas</td></tr>
-        <tr><td>Ampulheta Rachada <span style="color:var(--ink-3)">· item</span></td><td>Re-rolar 1 dado por rodada</td></tr>
-        <tr><td>Itens de assinatura</td><td>Alargam a janela de uma habilidade — <code>4–6</code> vira <code>2–6</code></td></tr>
-        <tr><td>Nível 5</td><td>Ganha o quarto dado</td></tr>
+        <tr><td>Placa <span style="color:var(--ink-3)">· Topo</span></td><td>1 ajusta um dado em ±1; 2 re-rolam um dado</td></tr>
+        <tr><td>Prioridade <span style="color:var(--ink-3)">· Meio</span></td><td>Gasta 1 para rolar um dado de ação extra</td></tr>
+        <tr><td>Retomada</td><td>Entrega 1 ou 2 dados extras para quem está estruturalmente atrás</td></tr>
+        <tr><td>Conversão</td><td>Transforma um dado de ação em movimento do time</td></tr>
       </tbody>
     </table>
   </div>
@@ -423,9 +423,8 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 
   <figure class="mapa-arte">
     <img src="../arte/mapa/mapa.jpg" alt="Mapa ilustrado do Jagerlaramais">
-    <figcaption>O mapa como ele é na ficção: as duas bases nas pontas da diagonal, três estradas
-      ligando-as, selva fechada entre elas, rio cortando o meio. O covil do Dragão fica no quadrante
-      de cima; a cova do Barão, no de baixo. O tabuleiro hexagonal abaixo é a versão jogável disso.</figcaption>
+    <figcaption>Esta arte é provisória. O tabuleiro hexagonal abaixo é gerado do mesmo retrato
+      mecânico usado pelo jogo; o cânone visual futuro vem do laboratório criativo.</figcaption>
   </figure>
 
   <div class="mapa-shell">
@@ -461,7 +460,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 <section id="herois">
   <p class="eyebrow">06 — Draft</p>
   <h2>Heróis</h2>
-  <p class="lede">Dez no protótipo — dois por rota, o mínimo para o draft existir. A meta pede vinte. Nomes e história são autorais; a referência de kit é interna e explícita.</p>
+  <p class="lede">Vinte heróis mecânicos de teste — quatro por posição. Nomes, arte e kits serão migrados para o cânone do laboratório visual somente depois de aprovados.</p>
   <div class="filtros" id="filtros"></div>
   <div class="grade" id="grade-herois"></div>
 </section>
@@ -500,6 +499,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 </main>
 </div>
 
+<script src="../data/retrato.js?v=v15.2"></script>
 <script src="../data/catalogo.js"></script>
 <script src="../arte/imagens.js"></script>
 <script>
@@ -547,29 +547,18 @@ const FICHAS = Object.entries(HEROIS).map(([id,h])=>({
   pas:h.patamar ? TEXTO_PATAMAR : null
 }));
 
-const ITENS = [
-  ["Lâmina do Eclipse",6,"+2 de poder físico","dano"],
-  ["Cetro Cinéreo",6,"+2 de poder mágico; dano em área leva +1","dano"],
-  ["Coração de Basalto",5,"+3 de vida","defesa"],
-  ["Égide do Juramento",5,"+2 de armadura","defesa"],
-  ["Manto de Cinzas",5,"+2 contra dano mágico","defesa"],
-  ["Passos do Vento",4,"+1 casa de passo","mobilidade"],
-  ["Ampulheta Rachada",6,"Re-rolar 1 dado por rodada","dado"],
-  ["Garra do Faminto",7,"Cura 2 sempre que causar dano","sustento"],
-  ["Coroa do Comando",5,"Aliados adjacentes levam +1 de dano nas ordens","suporte"],
-  ["Selo da Ruína",5,"Quem você atinge não cura por 1 rodada","resposta"],
-  ["Cota do Espinho",6,"Devolve 2 de dano a quem atacar de perto","resposta"],
-  ["Véu Prismático",7,"Bloqueia a próxima Ultimate que atingir este herói","resposta"]
-];
+const ITENS = RETRATO_REGRAS.conteudo.itensCatalogo.map(i=>[i.n,i.o,i.d,
+  i.ef.arm||i.ef.vida?"defesa":i.ef.mov||i.ef.agil?"mobilidade":i.ef.poder||i.ef.alc?"dano":"resposta"]);
 
+const RR=RETRATO_REGRAS, ED=RR.epicos.dragao, EB=RR.epicos.barao;
 const MONSTROS = [
-  ["Acampamento Azul","acampamento · renasce a cada 3 rodadas","3 de ouro; roubado pelo rival rende 4"],
-  ["Acampamento Carmim","acampamento · renasce a cada 3 rodadas","3 de ouro; roubado pelo rival rende 4"],
-  ["Acampamento Neutro","acampamento · renasce a cada 3 rodadas","4 de ouro"],
-  ["Dragão","épico · no poço da rodada 5 à 8, volta 3 rodadas depois de cair",
-   "8 de vida; Herança do Dragão dá +1 de Poder em todo o time, para sempre, e acumula"],
-  ["Barão","épico · no poço da rodada 8 em diante, volta em 4",
-   "14 de vida; Fúria do Barão, por 2 rodadas: +2 de Poder e as três ondas avançam sozinhas"],
+  ...RR.mapa.acampamentos.map(c=>[`Acampamento ${c.id[0].toUpperCase()+c.id.slice(1)}`,
+    `fonte de ouro · coleta ao entrar · renasce em ${c.respawn} rodadas`,
+    `${c.ouro} de ouro${c.time>=0?`; roubado pelo rival rende ${c.ouro+1}`:""}`]),
+  ["Dragão",`épico · no poço antes da rodada ${RR.epicos.inicioBarao}, volta ${ED.volta} rodadas depois de cair`,
+   `${ED.vida} de vida; Herança dá +${RR.epicos.poderDragao} de Poder permanente ao time`],
+  ["Barão",`épico · no poço da rodada ${RR.epicos.inicioBarao} em diante, volta em ${EB.volta}`,
+   `${EB.vida} de vida; Fúria por ${RR.epicos.rodadasBarao} rodadas: +${RR.epicos.poderBarao} de Poder e avanço das ondas`],
   ["Arauto","épico · desenhado, ainda sem regra no jogo",
    "Empurra uma rota inteira até a próxima torre"]
 ];
@@ -578,12 +567,11 @@ const MONSTROS = [
    um único poço, que troca de morador na rodada 8. Ver docs/ESTADO.md. */
 
 const TURNO = [
-  ["Manutenção","Ondas de creeps avançam em todas as rotas. Ouro passivo entra. Timers de respawn e objetivos descem 1.","~30s",0],
-  ["Comando Oculto","Os dois jogadores põem a carta da Selva virada para baixo, ao mesmo tempo, em uma das quatro zonas.","~20s",1],
-  ["Ordens","Role 3d6. Cada dado é uma Ordem alocada num herói que aceite aquele valor. Quem não recebe Ordem farma com renda reduzida.","o grosso",1],
-  ["Revelação","As cartas de Selva viram. Emboscadas resolvem antes do combate da rota.","~10s",0],
-  ["Combate","Resolve rota por rota, de cima para baixo. Dano = dado + bônus + poder − armadura. Sem rolagem extra.","~60s",0],
-  ["Loja","Heróis mortos ou na base compram itens com o ouro acumulado.","~20s",0]
+  ["Plano de Caça","Os dois jogadores escolhem em segredo a missão do próprio Caçador.","início",1],
+  ["Turno Azul","Rola movimento e ações, move e usa habilidades. Ao encerrar, revela o plano Carmim.","jogada",1],
+  ["Turno Carmim","Repete o mesmo fluxo. Ao encerrar, revela o plano Azul.","jogada",1],
+  ["Manutenção","Ondas avançam, torres e Nexus recebem cerco, renda entra e escudos expiram.","automático",0],
+  ["Respawn e objetivos","Timers descem, acampamentos reaparecem e o poço atualiza.","automático",0]
 ];
 
 const GLOSS = [
@@ -609,14 +597,15 @@ const GLOSS = [
 ];
 
 /* ==================== MAPA ==================== */
-const COLS=7, LINS=7, R=19;
-const BASE_A=[[0,6],[1,6]], BASE_B=[[6,0],[6,1]];
-const LANE_TOPO=[[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0]];
-let LANE_MEIO=[]; // traçada por geometria mais abaixo — a reta entre as duas bases
-const LANE_BOT =[[2,6],[3,6],[4,6],[5,6],[6,6],[6,5],[6,4],[6,3],[6,2]];
-const RIO=[[1,1],[2,2],[2,3],[3,4],[3,5],[4,6]];
-const CAMPOS=[[1,2],[2,4],[4,2],[5,4]];
-const OBJETIVOS=[[1,1,"BARÃO"],[3,5,"DRAGÃO"]];
+const COLS=RR.mapa.colunas, LINS=RR.mapa.linhas, R=19;
+const BASE_A=RR.mapa.bases[0], BASE_B=RR.mapa.bases[1];
+const LANE_TOPO=RR.mapa.rotas.topo;
+let LANE_MEIO=RR.mapa.rotas.meio;
+const LANE_BOT=RR.mapa.rotas.baixo;
+const RIO=RR.mapa.rio.map(s=>s.split(",").map(Number));
+const CAMPOS=RR.mapa.acampamentos.map(c=>c.pos);
+const OBJETIVOS=[[...RR.mapa.poco,"POÇO"]];
+const CASAS_VALIDAS=new Set(RR.mapa.casas);
 
 const chave=(c,r)=>c+","+r;
 
@@ -642,7 +631,8 @@ function vizinhos(c,r){
 
 /* O Meio é a reta entre as duas bases: em cada linha, a casa mais próxima dela.
    Traçar por geometria em vez de na mão é o que impede o ziguezague. */
-LANE_MEIO=(()=>{
+/* Compatibilidade com retratos antigos que ainda não traziam a rota central. */
+if(!LANE_MEIO.length) LANE_MEIO=(()=>{
   const ocupado=new Set([...BASE_A,...BASE_B,...LANE_TOPO,...LANE_BOT].map(([c,r])=>chave(c,r)));
   const [x1,y1]=centro(...BASE_A[1]), [x2,y2]=centro(...BASE_B[1]);
   const L=Math.hypot(y2-y1,x2-x1);
@@ -669,10 +659,7 @@ LANE_MEIO=(()=>{
 
 /* torres derivadas da própria rota. Índices contados das pontas, nunca por fração —
    com rota curta a fração arredonda duas torres para o mesmo hex. */
-const TORRES=[LANE_TOPO,LANE_MEIO,LANE_BOT].flatMap(l=>{
-  const n=l.length, meio=Math.floor(n/2);
-  return [[...l[1],"A"],[...l[meio-1],"A"],[...l[n-meio],"B"],[...l[n-2],"B"]];
-});
+const TORRES=RR.mapa.torres.map(t=>[...RR.mapa.rotas[t.rota][t.i],t.t===0?"A":"B"]);
 
 const LANE_SET=new Map();
 LANE_TOPO.forEach(([c,r])=>LANE_SET.set(chave(c,r),"topo"));
@@ -709,6 +696,7 @@ function desenha(){
 
   for(let r=0;r<LINS;r++) for(let c=0;c<COLS;c++){
     const k=chave(c,r);
+    if(!CASAS_VALIDAS.has(k))continue;
     let cls="hx ";
     if(BASE_SET.has(k)) cls+="base-"+BASE_SET.get(k);
     else if(LANE_SET.has(k)) cls+="rota";
@@ -767,10 +755,13 @@ function desenha(){
   });
 
   svg.append(gHex,gEst,gMarc,gPec);
+  const b=svg.getBBox();
+  svg.setAttribute("viewBox",`${b.x-7} ${b.y-7} ${b.width+14} ${b.height+14}`);
 }
 
 function podeMover(c,r){
   if(!sel) return false;
+  if(!CASAS_VALIDAS.has(chave(c,r)))return false;
   const [pc,pr]=pos[sel];
   const p=PECAS.find(x=>x.id===sel);
   const passo = (p.rot==="selva"||p.rot==="meio") ? 3 : 2;
@@ -784,6 +775,8 @@ function clicaHex(c,r){
 
 /* ==================== RENDER ==================== */
 const q=s=>document.querySelector(s);
+q("#versao-guia").textContent=`${RR.projeto.versao} · ${RR.projeto.status}`;
+q("#versao-capa").textContent=`${RR.projeto.versao} · protótipo mecânico`;
 
 q("#lista-rotas").innerHTML = Object.entries(ROTAS).map(([k,v])=>{
   const barras=[1,2,3].map(i=>`<i class="${i<=v.atencao?'f':''}"></i>`).join("");

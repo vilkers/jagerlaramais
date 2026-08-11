@@ -1,0 +1,14 @@
+{
+  "name": "jagerlaramais",
+  "private": true,
+  "scripts": {
+    "sync": "node scripts/projeto.js",
+    "sync:check": "node scripts/projeto.js --check",
+    "test:syntax": "node --check data/projeto.js && node --check data/catalogo.js && node --check jogo/motor.js && node --check jogo/interface.js && node --check jogo/cartas.js && node --check jogo/jogo.js && node --check sim/motor.js && node --check scripts/projeto.js && node --check scripts/verifica-pacote.js && node --check teste/empacota.js",
+    "test:rules": "node --test sim/*.test.js && node sim/simetria.js && node sim/bateria.js 200",
+    "test:package": "node scripts/verifica-pacote.js",
+    "test": "npm run test:syntax && npm run sync:check && npm run test:rules && npm run test:package",
+    "build:test": "node teste/empacota.js",
+    "atualizar": "npm run sync && npm run build:test && npm test"
+  }
+}

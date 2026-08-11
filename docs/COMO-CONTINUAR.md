@@ -28,7 +28,7 @@ Veja a tabela de status no `README.md`. Resumindo o que **falta** e vale atacar:
 
 | Prioridade | O que | Por quê |
 |---|---|---|
-| 🔴 1 | **Playtest de confirmação da v15.1** | Confirmar alternância, vários golpes na torre e leitura/expiração do escudo |
+| 🔴 1 | **Playtest de usabilidade da v15.2** | Confirmar alcance, torre, acampamento, painel estável e passagem de turno |
 | 🔴 2 | **Compensar quem abre** | Com elencos trocados, quem jogou primeiro venceu 39,4% (n=2000); medir qualquer proposta antes de entrar |
 | 🟠 3 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
 | 🟡 4 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |

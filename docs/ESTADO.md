@@ -4,7 +4,17 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão de pacote:** v15.1 (pós-playtest, em validação) · **Base anterior:** v15 · **Atualizado em:** 2026-08-11
+<!-- AUTO:RETRATO:INICIO -->
+| Retrato automático | Valor |
+|---|---|
+| Versão | **v15.2** — organização e UX pós-playtest |
+| Modo jogável | **hotseat local para 2 jogadores** · IA desativada |
+| Tabuleiro | **11×11** |
+| Conteúdo de teste | **20 heróis · 22 itens · 46 cartas** |
+| Torres / Nexus | **3 / 3 de vida** · golpe 1 · revide 2 |
+| Poço | Dragão 8 de vida até R8; Barão 14 depois |
+| Acampamentos | **3 fontes de ouro** · coleta ao entrar na casa · respawn 3 |
+<!-- AUTO:RETRATO:FIM -->
 
 ---
 
@@ -13,7 +23,7 @@
 MOBA de tabuleiro 1v1 no mesmo aparelho, onde cada jogador é o técnico de cinco heróis;
 um Dado Mestre move o time inteiro e três dados de ação viram a Força das habilidades.
 
-## Os números que valem hoje
+## Os números detalhados que valem hoje
 
 | | |
 |---|---|
@@ -54,7 +64,7 @@ Ela mede bem **estrutura** (geometria, onda, torre, ritmo) e não mede **escolha
 Prioridade, Placas, itens e cartas. Na medição do poço, o time que levava 62% dos épicos perdia —
 a bateria via o dado gasto e o revide, não via o Poder ganho. Detalhes na v0.5.5 dos patch notes.
 
-**Então o próximo passo da v15.1 é sentar os três e jogar.** A bateria detectou vantagem estrutural do segundo jogador, mas não sabe escolher qual compensação produz a melhor decisão em mesa.
+**O próximo passo da v15.2 é sentar os três e jogar.** A bateria protege o motor; o playtest precisa validar leitura de alcance, torre, acampamentos, painel e passagem de turno.
 A loja entra na mesma lista: a correção da v0.5.7 barateou voltar para comprar, e o agente não faz
 compras, então só playtest diz se o peso ficou certo.
 

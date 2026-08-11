@@ -4,7 +4,11 @@ Um MOBA de tabuleiro para **duas pessoas**. Cada jogador é o **técnico de cinc
 
 Feito por Vilker, Vinicius e Matheus.
 
-> **Estado atual:** v15.1 pós-playtest, em validação. O modo contra IA saiu temporariamente para existir um único motor de partida e a equipe focar na mecânica. Ver `docs/versions/v15.1/README.md`.
+<!-- AUTO:RESUMO:INICIO -->
+> **Estado atual:** v15.2 — organização e UX pós-playtest. hotseat local para 2 jogadores; modo contra IA desativado.
+>
+> **Conteúdo provisório:** Heróis, itens, nomes e mapa atuais são conteúdo mecânico de teste. O cânone visual será integrado a partir de visual-lab quando estiver aprovado.
+<!-- AUTO:RESUMO:FIM -->
 
 ---
 
@@ -38,7 +42,7 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 
 ---
 
-## Estado do desenvolvimento — v15.1
+## Estado do desenvolvimento — v15.2
 
 | Sistema | Status |
 |---|---|
@@ -77,6 +81,8 @@ jogo/motor.js        Estado, geometria, turno, combate e regras.
 jogo/interface.js    Renderização, interação, manual e tutorial.
 jogo/cartas.js       Deck de Comando e efeitos das cartas.
 jogo/jogo.js         Draft, abertura e inicialização hotseat.
+data/projeto.js       Versão, status e fronteira entre protótipo e conteúdo final.
+data/retrato.js       Retrato mecânico gerado; alimenta o guia. Não editar à mão.
 guia/index.html      Manual navegável (regras, heróis, itens, mapa, glossário).
 cartas/index.html    Visualizador das 20 cartas de herói.
 data/catalogo.js     FONTE ÚNICA de conteúdo: heróis, itens, deck, classes.
@@ -86,7 +92,9 @@ arte/cartas/         As 22 artes do Deck de Comando.
 arte/mapa/           O mapa ilustrado.
 arte/monstros/       Barão, Dragão e Arauto.
 docs/                Design, regras e decisões — leia na ordem numerada.
+scripts/projeto.js    Sincroniza README, regras, guia e retrato do motor.
 .claude/agents/      Agentes especializados para continuar o projeto no Claude.
+visual-lab/           Laboratório criativo; futura origem do cânone visual.
 ```
 
 ### Documentos, na ordem
@@ -105,7 +113,9 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 | `docs/ACESSO.md` | Para mandar para quem está entrando agora |
 | `docs/COMO-CONTINUAR.md` | Como usar o Claude neste projeto |
 | `docs/UPDATE-PROTOCOL.md` | **Regra permanente para receber e integrar novas versões** |
+| `docs/ARQUITETURA.md` | Fronteiras do projeto, inventário de sobras e caminho de escala |
 | `docs/versions/v15.1/` | Registro, changelog e arquivos da consolidação pós-playtest |
+| `docs/versions/v15.2/` | Organização do repositório, automação e revisão de UX |
 
 ---
 
@@ -113,11 +123,11 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 **1. Não dá para jogar cada um no seu celular.** O jogo é hotseat — um aparelho, passando a vez. Fazer multiplayer em rede exigiria servidor e sincronização de estado; é um projeto à parte, não um ajuste.
 
-**2. A v15.1 ainda pede confirmação.** Épico, Retomada, feitiços, acampamentos e Plano de Caça chegaram juntos. A simulação serve para detectar quebra, mas não substitui playtest humano dessas decisões.
+**2. A v15.2 ainda pede confirmação no aparelho.** O mapa agora mantém o tamanho quando o comando abre, habilidades mostram alcance e objetivos explicam a interação. Isso precisa de playtest tátil, não só navegador desktop.
 
 **3. A ordem estrita expôs vantagem do segundo jogador.** Na medição intermediária da v15.1, quem começou venceu **39,4%** com os elencos trocados (n=2000). O sinal é forte, mas a regra de compensação deve ser decidida e então validada em 20 mil partidas.
 
-**4. Aparelho pequeno aperta o tabuleiro.** O mapa atual é 11×11 e ainda não foi reavaliado abaixo de 640px de altura. O restante da interface usa alvos de 40–44px; o mapa continua sendo o ponto crítico.
+**4. Aparelho pequeno ainda é o ponto crítico.** O comando deixou de redimensionar o mapa e compacta durante mira/movimento, mas o tabuleiro 11×11 ainda precisa ser testado abaixo de 640px de altura.
 
 **5. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
 
@@ -125,8 +135,8 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 ## Próximos passos, na ordem
 
-1. **Playtest de confirmação da v15.1** — alternância, múltiplos golpes em torre e leitura de escudo.
+1. **Playtest de usabilidade da v15.2** — alcance, torre, coleta de acampamento, painel compacto e encerramento de turno.
 2. **Escolher uma compensação simples para quem abre** e medir com elencos trocados antes de aprovar.
 3. **Highlight do tutorial.**
-4. **Arauto** — o poço já sabe trocar de morador, então entra sem motor novo.
-5. **Decidir os pontos abertos da v15.1** registrados em `docs/versions/v15.1/README.md`.
+4. **Decidir o papel futuro dos monstros de buff** antes de adicionar combate aos acampamentos.
+5. **Migrar o conteúdo aprovado do `visual-lab/`** sem acoplar o cânone visual ao motor.

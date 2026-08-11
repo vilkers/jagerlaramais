@@ -76,6 +76,7 @@ function descreve(h,hb,F){
   if(e.executa) t.push(`executa com ${e.executa} de vida ou menos`);
   if(e.bonusFerido) t.push(`+${e.bonusFerido} em alvo ferido`);
   if(e.semAlcance) t.push("qualquer distância");
+  else if(hb.alvo!=="eu") t.push(`alcance ${alcTotal(h)+(e.alcExtra||0)}`);
   return t.join(" · ")||"—";
 }
 
@@ -201,9 +202,9 @@ G("shX").onclick=fechaSheet; G("veu").onclick=fechaSheet;
 /* ══════════════════ ESTADO DE INTERAÇÃO ══════════════════
    Um modo por vez. Nunca dois gestos disputando o mesmo toque.
    null → só olhando | "mover" → escolhendo casa | "mirar" → escolhendo alvo        */
-let modo=null, habAtual=null, confirmar=null;
+let modo=null, habAtual=null, confirmar=null, previewHab=null;
 
-function limpaModo(){ modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null; calcula(); }
+function limpaModo(){ modo=null; habAtual=null; confirmar=null; previewHab=null; ativo=null; habSel=null; calcula(); }
 function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
@@ -240,6 +241,16 @@ function calcula(){
     alvosEpico=epicosAoAlcance(h,hb,alc);
     alvoNexus=nexusAoAlcance(h,hb,alc);
   }
+}
+function casasDoAlcance(){
+  const i=modo==="mirar"&&habAtual!==null?habAtual:previewHab;
+  if(!selHeroi||i===null||i===undefined)return new Set();
+  const hb=selHeroi.habs[i];
+  if(!hb||hb.alvo==="eu")return new Set([k(...selHeroi.pos)]);
+  const teto=alcTotal(selHeroi)+(hb.ef.alcExtra||0), s=new Set();
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
+    if(noTab(c,r)&&(hb.ef.semAlcance||dist(...selHeroi.pos,c,r)<=teto))s.add(k(c,r));
+  return s;
 }
 /* O épico não tem dono, então não tem a trava da onda que a torre tem: qualquer um
    bate, a qualquer hora, quantas vezes quiser. É de propósito — o último golpe leva
@@ -285,6 +296,55 @@ function nexusAoAlcance(h,hb,alc){
   return (hb.ef.semAlcance||d<=alc) ? lado : null;
 }
 
+function explicaCamp(cp){
+  const dono=cp.t===-1?"neutro":NOMES[cp.t].toLowerCase();
+  const roubo=cp.t>=0?` Se o rival coletar, recebe <b>${cp.ouro+1} de ouro</b>.`:"";
+  abreSheet("Acampamento de ouro",`
+    <div class="man"><section class="destaque"><h4>Não é um alvo de ataque</h4>
+      <p>Este conteúdo ainda é mecânico de teste. Para coletar, entre nesta casa com qualquer herói.
+      O Caçador também cumpre o Plano <b>Farm</b>.</p></section>
+      <section><h4>${cp.id} · ${dono}</h4><p>Vale <b>${cp.ouro} de ouro</b>, some ao ser coletado
+      e renasce em <b>3 rodadas</b>.${roubo}</p></section>
+      ${selHeroi&&selHeroi.t===J.vez&&J.mov.rest?'<button class="grande" id="irCamp">Mostrar movimento</button>':""}</div>`);
+  const b=G("irCamp"); if(b)b.onclick=()=>{fechaSheet();iniciaMover();};
+}
+
+function explicaTorre(tr){
+  const lado=NOMES[tr.t], inimiga=selHeroi&&tr.t!==selHeroi.t;
+  const exposta=torreExposta(tr.rota,tr.t)===tr;
+  let motivo="Selecione um herói seu para conferir alcance e habilidades.";
+  let opcoes=[];
+  if(tr.vida<=0) motivo="Esta torre já caiu.";
+  else if(selHeroi&&!inimiga) motivo="Esta torre pertence ao seu time.";
+  else if(selHeroi&&!exposta) motivo="A torre da frente protege esta. Derrube a torre exposta primeiro.";
+  else if(selHeroi){
+    opcoes=selHeroi.habs.map((hb,i)=>({hb,i,alc:alcTotal(selHeroi)+(hb.ef.alcExtra||0)}))
+      .filter(x=>x.hb.alvo==="in"&&(x.hb.ef.dano||x.hb.ef.danoFixo)
+        &&(x.hb.ef.semAlcance||dist(...selHeroi.pos,...ROTAS[tr.rota][tr.i])<=x.alc));
+    motivo=opcoes.length
+      ? "A torre está no alcance. Escolha uma habilidade ofensiva; ela ficará marcada em vermelho."
+      : "A torre está exposta, mas fora do alcance das habilidades ofensivas deste herói.";
+  }
+  abreSheet(`Torre ${lado}`,`<div class="man">
+    <section class="destaque"><h4>Como atacar</h4><p>${motivo}</p></section>
+    <section><p>Cada golpe causa <b>${DANO_TORRE}</b>. A torre revida <b>${REVIDE_TORRE}</b>
+    e pode receber vários golpes na mesma rodada, desde que outros heróis e dados estejam disponíveis.</p></section>
+    ${opcoes.map(x=>`<button class="opc pode" data-torre-hab="${x.i}">
+      <span class="txt"><span class="t1">${x.hb.n}</span><span class="t2">alcance ${x.alc}${dadoPara(x.hb)===null?" · sem dado compatível":" · pronta para mirar"}</span></span>
+      <span class="mark${dadoPara(x.hb)===null?" trava":""}">F${x.hb.f}</span></button>`).join("")}</div>`);
+  document.querySelectorAll("[data-torre-hab]").forEach(b=>b.onclick=()=>{
+    fechaSheet(); iniciaHab(+b.dataset.torreHab);
+  });
+}
+
+function explicaEpico(ep){
+  const d=EPICO[ep.id];
+  abreSheet(d.n,`<div class="man"><section class="destaque"><h4>Como atacar</h4>
+    <p>Aproxime um herói, escolha uma <b>habilidade ofensiva</b> e toque no ${d.n} quando a mira vermelha aparecer.</p></section>
+    <section><p>Habilidade básica causa <b>${GOLPE_HAB}</b>; Ultimate causa <b>${GOLPE_ULT}</b>.
+    O ${d.n} revida <b>${d.revide}</b> e o time do último golpe recebe <b>${d.pre}</b>.</p></section></div>`);
+}
+
 /* dado que será gasto: o escolhido à mão, senão o menor que atende */
 function dadoPara(hb){
   if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f
@@ -323,11 +383,12 @@ function iniciaHab(i){
   const d=dadoPara(hb);
   if(d===null) return toast("nenhum dado chega a Força "+hb.f,"morte");
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
+  if(modo==="mirar"&&habAtual===i){limpaModo();pinta();return;}
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
   if(!alvos.length&&!alvosTorre.length&&!alvosEpico.length&&alvoNexus===null){
-    limpaModo(); pinta();
-    return toast(hb.alvo==="al"?"nenhum aliado no alcance":"ninguém no alcance","morte");
+    confirmar=null; vibra(8); pinta();
+    return toast(hb.alvo==="al"?"sem aliado — alcance marcado":"sem alvo — alcance marcado","");
   }
   confirmar=null; vibra(8); pinta();
 }
@@ -567,9 +628,11 @@ moveAte=function(c,r){
    15,5 é o teto: os centros vizinhos ficam a sqrt(3)*R ≈ 32,9 um do outro, então
    raio 16,45 já encostaria no vizinho e roubaria o toque dele. */
 const R_TOQUE=15.5;
-const alvoDeToque=(g,x,y,aoTocar)=>{
+const alvoDeToque=(g,x,y,aoTocar,rotulo)=>{
   const c=el("circle",{cx:x,cy:y,r:R_TOQUE,class:"toque"});
   if(aoTocar) c.onclick=aoTocar;
+  if(rotulo){c.setAttribute("role","button");c.setAttribute("tabindex","0");c.setAttribute("aria-label",rotulo);
+    c.onkeydown=e=>{if((e.key==="Enter"||e.key===" ")&&aoTocar){e.preventDefault();aoTocar();}};}
   g.appendChild(c);
   return c;
 };
@@ -577,6 +640,7 @@ function desenhaMapa(){
   svg.textContent="";
   const gH=el("g"),gE=el("g"),gM=el("g"),gP=el("g");
   const moverS=new Set(mover.map(p=>k(...p)));
+  const alcanceS=casasDoAlcance();
 
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
@@ -587,6 +651,7 @@ function desenhaMapa(){
     else if(RIO_S.has(k(c,r)))cls+="rio";
     else cls+="selva";
     if(moverS.has(k(c,r)))cls+=" mover";
+    if(alcanceS.has(k(c,r)))cls+=" alcance";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
     const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
@@ -602,7 +667,14 @@ function desenhaMapa(){
   J.camps.forEach(cp=>{
     const [x,y]=centro(...cp.pos);
     if(cp.ativo){
-      const g=el("g",{class:"camp"+(cp.t===-1?" neutro":"")});
+      const podeColetar=moverS.has(k(...cp.pos));
+      const g=el("g",{class:"camp"+(cp.t===-1?" neutro":"")+(podeColetar?" coletavel":""),
+        role:"button",tabindex:"0"});
+      g.setAttribute("aria-label",`Acampamento ${cp.id}, ${cp.ouro} de ouro. Colete entrando nesta casa.`);
+      const abreCamp=()=>{if(modo==="mover"&&podeColetar){fechaSheet();moveAte(...cp.pos);}else explicaCamp(cp);};
+      g.onclick=abreCamp;
+      g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();abreCamp();}};
+      alvoDeToque(g,x,y);
       g.appendChild(el("circle",{cx:x,cy:y,r:7.2,class:"camp-bg"}));
       g.appendChild(el("circle",{cx:x,cy:y,r:4.4,class:"camp-core"}));
       const tx=el("text",{x:x,y:y+11,class:"camp-txt"}); tx.textContent=cp.t===-1?"NEUTRO":(cp.t===0?"AZUL":"CARMIM"); g.appendChild(tx);
@@ -621,7 +693,9 @@ function desenhaMapa(){
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
     if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);});
+    if(t.vida>0) alvoDeToque(gM,x,y,()=>{
+      vibra(10); mirando?atacaTorre(t):explicaTorre(t);
+    },`Torre ${NOMES[t.t]} da rota ${t.rota}, ${t.vida} de vida`);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
@@ -640,8 +714,11 @@ function desenhaMapa(){
       return gM.appendChild(g);
     }
     const mirando=alvosEpico.includes(ep);
-    const g=el("g",{class:"epico"+(mirando?" alvo":""),role:"img"});
+    const g=el("g",{class:"epico"+(mirando?" alvo":""),role:"button",tabindex:"0"});
     g.setAttribute("aria-label",`${EPICO[ep.id].n}, ${ep.vida} de vida`);
+    const abreEpico=()=>{vibra(10);mirando?atacaEpico(ep):explicaEpico(ep);};
+    g.onclick=abreEpico;
+    g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();abreEpico();}};
     if(mirando) g.appendChild(el("circle",{cx:x,cy:y,r:13.4,class:"mira-torre"}));
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"fundo"}));
     const cid="cl-poco";
@@ -653,7 +730,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando){ g.onclick=()=>{vibra(10);atacaEpico(ep);}; alvoDeToque(g,x,y); }
+    alvoDeToque(g,x,y);
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -663,7 +740,7 @@ function desenhaMapa(){
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
     if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
     gM.appendChild(nx);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);});
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);},`Nexus ${NOMES[t]}`);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -1051,6 +1128,8 @@ function feiticoBt(h,qual){
           <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:"F"+hb.f}</span>
         </button>`;
       }).join("")}`;
+    cmd.classList.add("aberto");
+    cmd.classList.toggle("compacto",modo==="mirar"||modo==="mover"||modo==="lampejo");
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
     G("cmdMover").onclick=iniciaMover;
@@ -1059,11 +1138,18 @@ function feiticoBt(h,qual){
     h.habs.forEach((_,i)=>{
       const b=G("hab"+i); if(!b)return;
       b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
+      const mostra=()=>{previewHab=i;desenhaMapa();};
+      const esconde=()=>{if(modo!=="mirar"){previewHab=null;desenhaMapa();}};
+      b.onpointerenter=mostra; b.onpointerleave=esconde;
+      b.onfocus=mostra; b.onblur=esconde;
       toqueLongo(b,()=>fichaHab(h,i));      // segurar explica, mesmo apagada
     });
   }else{
-    cmd.innerHTML=`<div class="vaziomsg">${texto()}</div>`;
+    cmd.classList.remove("aberto");
+    cmd.classList.remove("compacto");
+    cmd.innerHTML="";
   }
+  G("estadoTurno").innerHTML=texto();
 
   const dLivre = dadoSel!==null && !(J.dados[dadoSel]||{}).usado;
   G("btPlaca").disabled = tm.placas<1||!dLivre;
@@ -1096,8 +1182,7 @@ function texto(){
   if(J.fim!==null)return `<b>${NOMES[J.fim]} venceu.</b>`;
   const livres=J.dados.filter(d=>!d.usado).length;
   if(!livres&&!J.mov.rest) return "Tudo gasto. <b>Encerre o turno.</b>";
-  return `<b>${J.mov.rest}</b> de movimento · <b>${livres}</b> ${livres===1?"ação":"ações"}<br>`+
-         `toque num herói seu para abrir o comando`;
+  return `<b>${J.mov.rest}</b> movimento · <b>${livres}</b> ${livres===1?"ação":"ações"} · toque num herói`;
 }
 
 /* ══════════════════ FLUXO ══════════════════ */
@@ -1262,18 +1347,22 @@ function abreEstruturas(){
 G("btEstr").onclick=()=>{ sheetAberto==="Estruturas"?fechaSheet():abreEstruturas(); };
 G("btLog").onclick=()=>{ sheetAberto==="Histórico"?fechaSheet():abreLog(); };
 G("btAjuda").onclick=()=>{ sheetAberto==="Manual"?fechaSheet():abreManual(); };
+function confirmaFimDoTurno(){
+  fechaSheet(); limpaModo(); selHeroi=null;
+  encerraTurno(); pinta();
+}
 G("btFim").onclick=()=>{
   if(J.fase!=="jogando")return;
   const livres=J.dados.filter(d=>!d.usado).length;
-  if((livres||J.mov.rest)&&!G("btFim").dataset.confirma){
-    G("btFim").dataset.confirma="1";
-    G("btFim").textContent="Sobrou! Encerrar?";
-    setTimeout(()=>{ const b=G("btFim"); if(b){ delete b.dataset.confirma; b.textContent="Encerrar"; } },2600);
-    return toast(`sobrou ${J.mov.rest} de movimento e ${livres} ${livres===1?"ação":"ações"}`,"");
+  if(livres||J.mov.rest){
+    abreSheet("Encerrar turno",`<div class="man"><section class="destaque"><h4>Ainda há recursos</h4>
+      <p>Restam <b>${J.mov.rest} de movimento</b> e <b>${livres} ${livres===1?"ação":"ações"}</b>.
+      Encerrar passa imediatamente para ${NOMES[1-J.vez]}.</p></section>
+      <button class="grande" id="confirmaFim">Encerrar e passar a vez</button></div>`);
+    G("confirmaFim").onclick=confirmaFimDoTurno;
+    return;
   }
-  delete G("btFim").dataset.confirma; G("btFim").textContent="Encerrar";
-  fechaSheet(); limpaModo(); selHeroi=null;
-  encerraTurno(); pinta();
+  confirmaFimDoTurno();
 };
 G("btConv").onclick=()=>{
   if(dadoSel===null||J.dados[dadoSel].usado)return;
