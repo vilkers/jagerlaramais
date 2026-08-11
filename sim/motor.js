@@ -1,11 +1,11 @@
-/* Carrega o jogo inteiro em Node, sem navegador e sem tocar em jogo/jogo.js.
+/* Carrega o jogo inteiro em Node, sem navegador e sem tocar nas fontes.
    Serve para rodar centenas de partidas por segundo e escolher número com dado
    na mão em vez de opinião.
 
-   Como funciona: um DOM falso permissivo, os três scripts avaliados na ordem em
+   Como funciona: um DOM falso permissivo, os scripts avaliados na ordem em
    que o index.html carrega, e as funções de interface trocadas por no-op depois.
 
-   As variantes (`troca`) fazem substituição no TEXTO do jogo.js antes de avaliar.
+   As variantes (`troca`) fazem substituição no TEXTO do motor.js antes de avaliar.
    É proposital: dá para testar mapa 9x9 com 2d10 sem sujar o arquivo que o time
    está editando em paralelo.  */
 
@@ -61,6 +61,9 @@ function contextoDOM() {
 const LEITURA = {
   imagens: fs.readFileSync(path.join(RAIZ, "arte/imagens.js"), "utf8"),
   catalogo: fs.readFileSync(path.join(RAIZ, "data/catalogo.js"), "utf8"),
+  motor: fs.readFileSync(path.join(RAIZ, "jogo/motor.js"), "utf8"),
+  interface: fs.readFileSync(path.join(RAIZ, "jogo/interface.js"), "utf8"),
+  cartas: fs.readFileSync(path.join(RAIZ, "jogo/cartas.js"), "utf8"),
   jogo: fs.readFileSync(path.join(RAIZ, "jogo/jogo.js"), "utf8")
 };
 
@@ -90,6 +93,7 @@ const PONTE = `
   get alvosTorre(){return alvosTorre},
   get alvosEpico(){return alvosEpico},
   get alvoNexus(){return alvoNexus},
+  get POCO(){return POCO},
   get mover(){return mover},
   get maos(){return maos},
   get baralho(){return baralho},
@@ -100,7 +104,10 @@ function carrega(trocas = []) {
   const ctx = vm.createContext(contextoDOM());
   vm.runInContext(LEITURA.imagens, ctx, { filename: "imagens.js" });
   vm.runInContext(LEITURA.catalogo, ctx, { filename: "catalogo.js" });
-  vm.runInContext(aplicaTrocas(LEITURA.jogo, trocas) + PONTE, ctx, { filename: "jogo.js" });
+  vm.runInContext(aplicaTrocas(LEITURA.motor, trocas), ctx, { filename: "motor.js" });
+  vm.runInContext(LEITURA.interface, ctx, { filename: "interface.js" });
+  vm.runInContext(LEITURA.cartas, ctx, { filename: "cartas.js" });
+  vm.runInContext(LEITURA.jogo + PONTE, ctx, { filename: "jogo.js" });
 
   /* interface fora do caminho — o que interessa aqui é a regra */
   const nada = () => {};

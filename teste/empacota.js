@@ -6,13 +6,14 @@
    arquivo é o jeito de jogá-la.
 
    O que ele faz: lê os mesmos arquivos que `jogo/index.html` carrega, embute o
-   CSS e os três scripts, e troca cada caminho de imagem por um data: URI. O
+   CSS e os scripts, e troca cada caminho de imagem por um data: URI. O
    resultado não pede rede para nada.
 
    NÃO edite o .html gerado — ele é saída. Mexa na fonte e rode de novo:
 
      node teste/empacota.js                       → teste/JOGAR.html
-     node teste/empacota.js meu-nome.html         → teste/meu-nome.html            */
+     node teste/empacota.js meu-nome.html         → teste/meu-nome.html
+     node teste/empacota.js /tmp/JOGAR.html       → caminho absoluto (CI)          */
 
 const fs = require("fs");
 const path = require("path");
@@ -20,7 +21,8 @@ const { execSync } = require("child_process");
 
 const RAIZ = path.join(__dirname, "..");
 const ler = p => fs.readFileSync(path.join(RAIZ, p), "utf8");
-const saida = path.join(__dirname, process.argv[2] || "JOGAR.html");
+const destino = process.argv[2] || "JOGAR.html";
+const saida = path.isAbsolute(destino) ? destino : path.join(__dirname, destino);
 
 const TIPO = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
                ".webp": "image/webp", ".svg": "image/svg+xml" };
@@ -58,8 +60,9 @@ let html = ler("jogo/index.html");
 html = html.replace(/<link rel="stylesheet" href="estilo\.css">/,
   `<style>\n${ler("jogo/estilo.css")}\n</style>`);
 html = html.replace(
-  /<script src="\.\.\/arte\/imagens\.js"><\/script>\s*<script src="\.\.\/data\/catalogo\.js"><\/script>\s*<script src="jogo\.js"><\/script>/,
-  [imagensEmbutidas, ler("data/catalogo.js"), ler("jogo/jogo.js")]
+  /<script src="\.\.\/arte\/imagens\.js"><\/script>\s*<script src="\.\.\/data\/catalogo\.js"><\/script>\s*<script src="motor\.js"><\/script>\s*<script src="interface\.js"><\/script>\s*<script src="cartas\.js"><\/script>\s*<script src="jogo\.js"><\/script>/,
+  [imagensEmbutidas, ler("data/catalogo.js"), ler("jogo/motor.js"),
+    ler("jogo/interface.js"), ler("jogo/cartas.js"), ler("jogo/jogo.js")]
     .map(s => `<script>\n${s}\n</script>`).join("\n"));
 
 /* Carimbo do commit de ORIGEM — o estado da fonte no momento de gerar. Por

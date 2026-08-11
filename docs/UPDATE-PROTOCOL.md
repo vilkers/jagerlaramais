@@ -17,7 +17,10 @@ Nenhuma contribuição entra por substituição silenciosa. Toda atualização d
 
 - `jogo/index.html` é apenas a estrutura da tela.
 - `jogo/estilo.css` contém o visual.
-- `jogo/jogo.js` contém motor e interface.
+- `jogo/motor.js` contém estado, geometria e regras.
+- `jogo/interface.js` contém renderização e interação.
+- `jogo/cartas.js` contém o Deck de Comando.
+- `jogo/jogo.js` contém draft, abertura e inicialização.
 - `data/catalogo.js` é a fonte única de conteúdo.
 - `teste/JOGAR.html` é um pacote autocontido gerado por `node teste/empacota.js`.
 
@@ -40,15 +43,19 @@ Nunca editar ou publicar um arquivo autocontido de 3 MB como se fosse a fonte do
 ## Validação mínima
 
 ```bash
+node --check jogo/motor.js
+node --check jogo/interface.js
+node --check jogo/cartas.js
 node --check jogo/jogo.js
 node --check data/catalogo.js
+node --test sim/*.test.js
 node sim/simetria.js
 node sim/bateria.js 200
-node teste/empacota.js
+node teste/empacota.js /tmp/JOGAR.html
 git diff --check
 ```
 
-Além disso, jogar ao menos uma rodada no celular antes de aprovar alterações de interface, gesto, mapa, IA ou ritmo.
+Além disso, jogar ao menos uma rodada no celular antes de aprovar alterações de interface, gesto, mapa ou ritmo.
 
 ## Preservação
 

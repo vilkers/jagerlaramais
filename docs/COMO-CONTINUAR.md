@@ -28,11 +28,12 @@ Veja a tabela de status no `README.md`. Resumindo o que **falta** e vale atacar:
 
 | Prioridade | O que | Por quê |
 |---|---|---|
-| 🔴 1 | **Playtest humano da v15** | Feitiços, IA, acampamentos, Plano de Caça e novos números do Poço chegaram juntos |
-| 🟠 2 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
-| 🟡 3 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
-| 🟡 4 | Decidir pendências da v15 | Vida dos épicos, escudo persistente e regras cumulativas não vieram justificadas |
-| 🟡 5 | Buffs de acampamento | A v15 tem acampamentos de ouro, mas não os buffs antes desenhados |
+| 🔴 1 | **Playtest de confirmação da v15.1** | Confirmar alternância, vários golpes na torre e leitura/expiração do escudo |
+| 🔴 2 | **Compensar quem abre** | Com elencos trocados, quem jogou primeiro venceu 39,4% (n=2000); medir qualquer proposta antes de entrar |
+| 🟠 3 | Highlight estilo LoL no tutorial | Ele explica, mas não aponta para onde tocar |
+| 🟡 4 | Arauto no tabuleiro | Tem arte e o poço já troca de morador — entra sem motor novo |
+| 🟡 5 | Decidir pendências da v15 | Vida dos épicos e regras cumulativas não vieram justificadas |
+| 🟡 6 | Buffs de acampamento | A v15 tem acampamentos de ouro, mas não os buffs antes desenhados |
 
 > **Cuidado com `sim/bateria.js`.** Ela mede estrutura (geometria, onda, torre, ritmo) muito bem e
 > é **cega a qualquer mecânica de escolha** — épico, Retomada, Prioridade, Placas, itens, cartas.
@@ -82,22 +83,19 @@ Estão no `CLAUDE.md` da raiz, que o Claude lê automaticamente:
 
 ## Como o jogo está montado por dentro
 
-Um arquivo, três camadas, nesta ordem:
+As fontes do jogo são separadas por responsabilidade e carregadas nesta ordem:
 
 ```
 jogo/index.html      HUD · mapa (SVG) · painel de comando · bottom sheet
 jogo/estilo.css      CSS mobile-first, tokens em :root
-jogo/jogo.js
-    ├── CATÁLOGO     lê data/catalogo.js — este arquivo não guarda conteúdo
-    ├── GEOMETRIA    grid hexagonal, rotas, torres
-    ├── ESTADO       novo(), o objeto J com a partida inteira
-    ├── TURNO        fase oculta → turno → revelação → fim de rodada
-    ├── AÇÕES        alocaDado, moveAte, usaHab, aplicaDano
-    ├── DECK/DRAFT   compra, jogaCarta, iniciaDraft
-    └── UI           pinta(), desenhaMapa(), telas
+data/catalogo.js     heróis, itens, deck, classes e texto de conteúdo
+jogo/motor.js        geometria, estado, turno, movimento e combate
+jogo/interface.js    renderização, interação, manual e tutorial
+jogo/cartas.js       Deck de Comando e resolução das cartas
+jogo/jogo.js         draft, abertura e inicialização hotseat
 ```
 
-**A separação que importa:** o *motor de regras* (catálogo → ações) é estável e não deve mudar quando você mexe na aparência. A *camada de UI* (`pinta`, `desenhaMapa`, telas) já foi reescrita duas vezes sem quebrar o motor. Mantenha assim.
+**A separação que importa:** o motor não conhece oponentes diferentes. Hotseat é o fluxo atual; um futuro bot deve apenas escolher ações pela mesma interface pública, sem copiar regra ou criar outra versão do jogo.
 
 Na v0.4.1 o arquivo único virou três, para que visual e motor possam ser mexidos em paralelo — por duas pessoas ou por duas IAs. Ver `docs/ECOSSISTEMA.md`.
 

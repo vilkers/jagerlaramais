@@ -6,7 +6,7 @@ Vilker, Vinicius e Matheus, cada um com a sua versão, e um jogo oficial que jun
 
 ## Regra permanente a partir da v15
 
-**Não substituir `jogo/index.html` diretamente na `main`.** O arquivo de 3 MB usado para teste é gerado; ele não é a fonte do jogo. Mudanças definitivas entram em `jogo/index.html`, `jogo/estilo.css`, `jogo/jogo.js` e `data/catalogo.js`, cada uma no lugar correto.
+**Não substituir `jogo/index.html` diretamente na `main`.** O arquivo de 3 MB usado para teste é gerado; ele não é a fonte do jogo. Mudanças definitivas entram nos arquivos de `jogo/` e em `data/catalogo.js`, cada uma no lugar correto.
 
 Toda contribuição usa branch + Pull Request e recebe um registro em `docs/versions/vNN/`. O checklist completo está em `docs/UPDATE-PROTOCOL.md`.
 
@@ -81,13 +81,16 @@ Isso evita 90% dos conflitos.
 **1. Conteúdo só em `data/catalogo.js`.** Herói, item e carta vivem lá. Nunca escreva carta direto
 no HTML — foi exatamente esse erro que criou três catálogos divergentes até a v0.3.
 
-**2. Uma pessoa por arquivo, no mesmo dia.** O jogo foi separado em três arquivos exatamente para
-isso: dá para mexer no visual e no motor ao mesmo tempo, sem se atropelar.
+**2. Uma pessoa por arquivo, no mesmo dia.** O jogo foi separado por responsabilidade exatamente para
+isso: dá para mexer no visual, na interface, nas regras e nas cartas em paralelo, sem se atropelar.
 
 | Área | Arquivo | Quem mexe aqui pode quebrar regra? |
 |---|---|---|
 | Conteúdo (heróis, itens, cartas) | `data/catalogo.js` | sim — número é regra |
-| Regras, motor e interface | `jogo/jogo.js` | sim |
+| Regras e estado | `jogo/motor.js` | sim |
+| Interface e interação | `jogo/interface.js` | sim |
+| Deck de Comando | `jogo/cartas.js` | sim |
+| Draft e abertura | `jogo/jogo.js` | sim |
 | Aparência do jogo | `jogo/estilo.css` | **não** — mexa à vontade |
 | Estrutura da tela | `jogo/index.html` | só se apagar um `id` |
 | Manual | `guia/index.html` | não |
@@ -143,13 +146,13 @@ editados ao mesmo tempo.** Quem arbitra é o Git, não o assistente.
 | | Claude Code | ChatGPT (ou outra IA sem acesso ao repositório) |
 |---|---|---|
 | **Boa em** | ler o repositório inteiro, rodar o jogo, testar por script, mexer em várias telas de uma vez | reformar um arquivo fechado: CSS, layout, tipografia, texto de carta |
-| **Dê a ela** | `jogo/jogo.js` · `data/catalogo.js` · regra, balanceamento, bug | `jogo/estilo.css` · `guia/index.html` · `cartas/index.html` |
+| **Dê a ela** | `jogo/motor.js` · `jogo/interface.js` · `jogo/cartas.js` · `data/catalogo.js` · regra, balanceamento, bug | `jogo/estilo.css` · `guia/index.html` · `cartas/index.html` |
 | **Por quê** | precisa ver o efeito da regra no jogo todo | é upgrade visual, não depende de entender a regra |
 
 ### O protocolo, em quatro passos
 
 1. **`git pull` antes de começar.** Sempre. É o que evita quase todo conflito.
-2. **Uma frente por vez em cada arquivo.** Visual no `estilo.css`, regra no `jogo.js`. Nunca os dois
+2. **Uma frente por vez em cada arquivo.** Visual no `estilo.css`, regra no `motor.js`. Nunca os dois
    no mesmo arquivo no mesmo dia.
 3. **Commit pequeno e frequente**, com uma frase dizendo o que mudou.
 4. **Terminou uma frente?** Escreva no `docs/patch-notes.md` e atualize `docs/ESTADO.md`.

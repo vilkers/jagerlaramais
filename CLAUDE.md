@@ -56,11 +56,11 @@ Agentes globais úteis: `@designer` (layout/tipografia), `@criativo` (QA de iden
 
 ## Estado atual
 
-v15 em integração e playtest: draft, IA, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**,
+v15.1 pós-playtest, em validação: draft hotseat, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**,
 22 itens, tutorial, três acampamentos, Plano de Caça, feitiço compartilhado e objetivos épicos.
 
 **Leia `docs/ESTADO.md` primeiro** — é o retrato do presente e foi feito para gastar pouco contexto.
 Histórico em `docs/patch-notes.md`. Desenvolvimento em grupo em `docs/ECOSSISTEMA.md`.
-Registro da integração atual em `docs/versions/v15/README.md`.
+Registro da integração atual em `docs/versions/v15.1/README.md`.
 
-Falta: playtest da v15, decisão sobre os números não documentados, Arauto e highlight do tutorial.
+Falta: playtest de confirmação da v15.1, decisão sobre os números não documentados, Arauto e highlight do tutorial.

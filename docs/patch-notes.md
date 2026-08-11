@@ -16,6 +16,36 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v15.1 — consolidação pós-playtest · 2026-08-11
+
+> **Em validação.** Corrige os bugs encontrados no primeiro playtest da v15 e reduz a superfície do jogo antes de evoluir novas mecânicas.
+
+### O que mudou
+
+- A ordem passa de iniciativa alternada por rodada para uma sequência estrita: **Azul → Carmim → Azul → Carmim**. Isso elimina a jogada dupla na virada da rodada.
+- A trava de **um golpe de herói por torre por rodada** saiu. A mesma torre pode receber vários golpes na rodada, cada um ainda causando **1** e consumindo sua própria ação.
+- Escudos voltam a expirar no fim da rodada. O dano absorvido agora aparece separado do dano que atravessou para a vida.
+- O modo contra IA saiu temporariamente da abertura, do draft e do fluxo de turno. A simulação automática permanece como ferramenta de desenvolvimento e usa o mesmo motor da partida hotseat.
+- O Plano de Caça em Farm continua dando **+1 ouro**; a interface que dizia **+3** foi corrigida.
+- A coordenada documentada do Poço no mapa 11×11 foi corrigida de **[4,4] para [8,8]**.
+
+### Organização
+
+- O antigo `jogo/jogo.js` monolítico foi dividido em `motor.js`, `interface.js`, `cartas.js` e `jogo.js`, carregados nessa ordem.
+- O empacotador e a simulação passaram a consumir essas mesmas quatro fontes.
+- Entraram testes de regressão para ordem de turnos, múltiplos golpes em torre, escudo e recompensa do Dragão.
+- A variante `acao=N` da bateria voltou a alterar todas as rolagens de ação.
+
+### Por quê
+
+O playtest mostrou que manter um fluxo separado para IA multiplicava os pontos de falha antes de a mecânica principal estar estável. Uma futura IA deve escolher ações sobre o mesmo motor, sem copiar turno, draft ou regra.
+
+### O que ainda exige validação
+
+Repetir o playtest focando na alternância, na velocidade de queda das torres com ataques múltiplos e na leitura visual do escudo.
+
+Uma medição intermediária com elencos trocados na metade deu **39,4% de vitórias para quem abre** (z=-9,48, n=2000). O segundo jogador tem vantagem estrutural por agir por último antes da apuração de ondas, Placas e Prioridade. A compensação ainda não foi escolhida; qualquer proposta deve passar por playtest e depois pela bateria de 20 mil.
+
 ## v15 — feitiços, IA, acampamentos e reconciliação das fontes · 2026-08-11
 
 > **Em teste. Não aprovado.** Integra uma contribuição externa cumulativa sobre a base v0.6.2.

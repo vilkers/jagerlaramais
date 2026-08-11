@@ -87,7 +87,10 @@ Ela não lê os seus arquivos sozinha. Cole **um arquivo por conversa** e diga o
 | Quer mexer em | Cole |
 |---|---|
 | Aparência do jogo | `jogo/estilo.css` |
-| Regras, motor, interface | `jogo/jogo.js` |
+| Regras, turno e combate | `jogo/motor.js` |
+| Interface e interação | `jogo/interface.js` |
+| Deck de Comando | `jogo/cartas.js` |
+| Draft e abertura | `jogo/jogo.js` |
 | Herói, item, carta | `data/catalogo.js` |
 | Manual | `guia/index.html` |
 

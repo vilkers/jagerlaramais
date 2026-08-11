@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras completas
 
-Pacote v15 · atualizado em 2026-08-11 · para quem nunca jogou. Leia na ordem.
+Pacote v15.1 · atualizado em 2026-08-11 · para quem nunca jogou. Leia na ordem.
 
 ---
 
@@ -68,15 +68,17 @@ Agir custa dinheiro. Toda rodada você decide: intervir agora, ou ficar rico e i
 ### 1 · Plano de Caça
 Os dois jogadores, **ao mesmo tempo e em segredo**, escolhem uma missão para o próprio **Caçador**: Topo, Meio, Baixo ou Farm. A ficha não teleporta o herói; ele precisa andar usando o Dado Mestre.
 
-### 2 · Turno do primeiro jogador
+### 2 · Turno do jogador Azul
 Rola 3d6. Aloca. Age. Encerra.
 **No fim deste turno, a carta do Caçador do OUTRO jogador é revelada** e verifica se o plano foi cumprido.
 
-### 3 · Turno do segundo jogador
+### 3 · Turno do jogador Carmim
 Mesma coisa.
 **No fim deste turno, a carta do Caçador do PRIMEIRO jogador é revelada** e resolve.
 
 > Por que assim: você esconde o plano antes de saber o que o adversário vai fazer, e ele só é conferido depois que o adversário já se comprometeu.
+
+> A ordem é estrita durante a partida: **Azul, Carmim, Azul, Carmim**. A virada de rodada nunca dá dois turnos seguidos ao mesmo jogador.
 
 ### 4 · Ondas
 Em cada rota, a **Frente de Onda** desliza 1 casa para o lado de quem tem mais heróis vivos naquela rota. Empate: não anda.
@@ -114,6 +116,8 @@ DANO = FORÇA + PODER do herói − ARMADURA do alvo   (mínimo 1)
 - Alcance 3 → até 3 casas de distância (à distância)
 
 **Crítico:** se o dado alocado era um **6 natural**, a habilidade dispara o efeito extra escrito na carta.
+
+**Escudo:** absorve dano antes da vida. O que sobrar atravessa normalmente, e todo escudo restante expira no fim da rodada.
 
 **Morte:** vida em 0 o herói sai do mapa e volta à base depois de **2 rodadas** (3 se estava com o dobro de ouro do adversário — quem está na frente demora mais para voltar). Quem matou ganha **4 de ouro**.
 
@@ -191,6 +195,7 @@ Três rotas ligam as duas bases. Selva nos dois quadrantes, rio na diagonal.
 
 **Torres** — duas por rota, de cada lado. Cada uma tem **3 de vida**.
 A Frente de Onda encostada numa torre causa **1 de dano por rodada**. Heróis também podem atacá-la.
+Cada golpe de herói causa 1, e a mesma torre pode receber vários golpes na rodada enquanto houver dados e heróis aptos.
 
 **Nexus** — quando as **duas torres** de uma rota caem, aquela rota fica aberta e a Frente de Onda passa a bater direto no Nexus. O Nexus tem **3 de vida**.
 

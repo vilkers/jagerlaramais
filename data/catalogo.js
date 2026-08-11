@@ -7,7 +7,7 @@
    o draft demorar. Ver docs/patch-notes.md.
 
    Efeitos de herói e item usam SOMENTE o vocabulário que o motor já executa
-   (ver jogo/index.html → usaHab e bonus).
+   (ver jogo/motor.js → usaHab e bonus).
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════ OS 10 ORIGINAIS ═══════════

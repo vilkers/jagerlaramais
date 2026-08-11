@@ -27,10 +27,11 @@
 
    Variantes disponíveis:
      comp=N      ouro extra por herói para o SEGUNDO jogador (compensação)
-     mapa=N      lado do tabuleiro (8 hoje; 9 dá rota de 14, 11 dá rota de 18)
+     mapa=N      lado do tabuleiro (11 hoje)
      torre=N     vida da torre
      mov=EXPR    fórmula do Dado Mestre (ex.: mov=2d10, mov=1d20, mov=1d6)
      acao=N      faces do dado de ação (6 hoje, 8 na proposta do Matheus)
+     alterna=on  variante histórica: alterna quem começa cada rodada e cria jogada dupla na virada
      epico=off   o poço nunca abre — nem Dragão nem Barão descem
      retomada=off  desliga o freio de bola de neve (nada de dado extra por atraso)
      revide=off  o morador do poço não cobra pedágio de quem bate nele
@@ -70,10 +71,10 @@ if (opcoes.alterna) trocas.push([/J\.rodada\+\+; reg\("r",/,
                                  `J.primeiro=1-J.primeiro; J.rodada++; reg("r",`]);
 if (opcoes.mapa)  trocas.push([/^const N=\d+;$/m, `const N=${+opcoes.mapa};`]);
 if (opcoes.torre) trocas.push([/const VIDA_TORRE=\d+/, `const VIDA_TORRE=${+opcoes.torre}`]);
-if (opcoes.mov)   trocas.push([/const m=1\+Math\.floor\(Math\.random\(\)\*6\)\+extra;/,
-                               `const m=${rolagem(opcoes.mov)}+extra;`]);
-if (opcoes.acao)  trocas.push([/J\.dados=\[0,1,2\]\.map\(\(\)=>\(\{v:1\+Math\.floor\(Math\.random\(\)\*6\),usado:0\}\)\);/,
-                               `J.dados=[0,1,2].map(()=>({v:1+Math.floor(Math.random()*${+opcoes.acao}),usado:0}));`]);
+if (opcoes.mov)   trocas.push([/const rolaMovimento=\(\)=>1\+Math\.floor\(Math\.random\(\)\*6\);/,
+                               `const rolaMovimento=()=>${rolagem(opcoes.mov)};`]);
+if (opcoes.acao)  trocas.push([/const FACES_ACAO=6;/,
+                               `const FACES_ACAO=${+opcoes.acao};`]);
 
 /* épico e retomada saem por troca de texto para que a medição "sem" seja o build
    antigo de verdade, e não o novo com o efeito zerado por estado. */

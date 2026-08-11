@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão de pacote:** v15 (em teste, não aprovada) · **Base anterior:** v0.6.2 · **Atualizado em:** 2026-08-11
+**Versão de pacote:** v15.1 (pós-playtest, em validação) · **Base anterior:** v15 · **Atualizado em:** 2026-08-11
 
 ---
 
@@ -22,13 +22,14 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação; Retomada pode acrescentar **1 ou 2 dados de ação** |
-| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
+| Vida de torre | **3** — a onda tira 1/rodada e cada golpe de herói tira 1. Uma torre pode receber vários golpes na mesma rodada, limitada pelos dados e heróis disponíveis |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
-| Poço épico | casa **[4,4]** · Dragão (**8 de vida**) até a rodada 8, Barão (**14**) depois · básica tira 1, Ultimate tira 2 |
-| Vantagem de quem começa | **Última medição válida: 55,5% na v0.6.2** (z=15,41, n=20000). A v15 ainda não foi medida em amostra adequada |
-| Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
+| Poço épico | casa **[8,8]** no tabuleiro 11×11 · Dragão (**8 de vida**) até a rodada 8, Barão (**14**) depois · básica tira 1, Ultimate tira 2 |
+| Ordem dos turnos | **AZUL → CARMIM → AZUL → CARMIM**, sem repetir jogador na virada da rodada |
+| Vantagem de quem começa | **39,4% na v15.1** com elencos trocados (z=-9,48, n=2000). Sinal intermediário forte de vantagem do segundo; compensação ainda não escolhida |
+| Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em `jogo/motor.js` |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | **Base v0.6.2: 19 rodadas** (mediana, n=20000). A v15 ainda precisa de nova medição e playtest |
+| Duração de uma partida | **v15.1: 22 rodadas** de mediana no diagnóstico intermediário (n=2000). Ainda precisa de playtest e medição final |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
@@ -38,7 +39,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de ação ·
 Caçador com comando oculto · Placas do Topo · Prioridade do Meio · loja e itens ·
 **poço épico com Dragão e Barão** · **Retomada aplicada** · **Lampejo/Retorno** ·
-**três acampamentos de ouro** · **Plano de Caça** · **partida contra IA com draft** ·
+**três acampamentos de ouro** · **Plano de Caça** · **turnos estritamente alternados** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
 guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·
 **arrastar o herói para andar** · **segurar a habilidade abre a ficha dela** · **placar no fim**.
@@ -53,7 +54,7 @@ Ela mede bem **estrutura** (geometria, onda, torre, ritmo) e não mede **escolha
 Prioridade, Placas, itens e cartas. Na medição do poço, o time que levava 62% dos épicos perdia —
 a bateria via o dado gasto e o revide, não via o Poder ganho. Detalhes na v0.5.5 dos patch notes.
 
-**Então o próximo passo da v15 é sentar os três e jogar**, não aceitar os números do smoke test como balanço.
+**Então o próximo passo da v15.1 é sentar os três e jogar.** A bateria detectou vantagem estrutural do segundo jogador, mas não sabe escolher qual compensação produz a melhor decisão em mesa.
 A loja entra na mesma lista: a correção da v0.5.7 barateou voltar para comprar, e o agente não faz
 compras, então só playtest diz se o peso ficou certo.
 
@@ -71,6 +72,7 @@ colide com medição já registrada.
 | **Buffs de acampamento** | A v15 tem três acampamentos de ouro, mas ainda não tem os buffs Azul/Vermelho antes descritos no guia. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
+| **Partida contra computador** | Foi retirada da v15.1. Quando voltar, deve usar o mesmo motor e fluxo do hotseat; muda apenas quem escolhe a ação. |
 | **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
 
 ## Onde as coisas moram
@@ -87,7 +89,10 @@ sim/motor.js         Carrega o jogo em Node com DOM falso.
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
 jogo/index.html      Só a estrutura da tela. O pacote autocontido fica em teste/JOGAR.html.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.
-jogo/jogo.js         Motor de regras + interface.
+jogo/motor.js        Estado, geometria, turno, combate e regras.
+jogo/interface.js    Renderização, interação, manual e tutorial.
+jogo/cartas.js       Deck de Comando e efeitos das cartas.
+jogo/jogo.js         Draft, abertura e inicialização hotseat.
 guia/index.html      Manual navegável. Lê do catálogo.
 cartas/index.html    Visualizador das 20 cartas. Lê do catálogo.
 arte/imagens.js      Índices de arte (ARTE, ARTE_CARTA, ARTE_ITEM, ARTE_MAPA, ARTE_MONSTRO).
@@ -122,10 +127,8 @@ que produziu o "52,4%" da v0.5.4 — o número real da mesma build é 50,5%.
 encolher e o mapa se redimensionar — com o dedo encostado. Medido: a casa sob o dedo pulava de
 `[0,5]` para `[0,7]`. Realce durante gesto se faz direto no DOM; repinta só no fim. Ver v0.5.8.
 
-**5. O tabuleiro não cabe direito abaixo de 640px de altura.** Em 8×8 dava hexágono de ~28px, contra
-os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-
-ampliar. Nesse tamanho a lista de comando mostra uma linha por vez e rola. Ver v0.5.6.
-**Em 9×9 (v0.6) o aperto é maior** — o hexágono encolhe de novo. Ainda não reavaliado em tela pequena.
+**5. O tabuleiro atual 11×11 ainda não foi reavaliado abaixo de 640px de altura.** O mapa era o ponto
+crítico já em versões menores; a solução pode exigir menos hexágonos ou deslocar-e-ampliar, não só CSS.
 
 ## Como testar rápido
 

@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 0441a90 2026-08-11
+     commit d14ed87 2026-08-11
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -170,41 +170,6 @@ button:disabled{cursor:not-allowed}
 .tst.gank{border-color:var(--carmim);color:var(--carmim-2)}
 @keyframes tin{from{opacity:0;transform:translateY(-14px) scale(.9)}to{opacity:1;transform:none}}
 @keyframes tout{to{opacity:0;transform:translateY(-10px)}}
-
-/* ── narração da IA ──
-   O toast do centro é para EVENTO: torre caiu, alguém morreu, o Barão trocou de dono.
-   Coisa que para o jogo. O passo a passo da IA não é evento — é o adversário
-   pensando alto, e chegava em rajada de seis ou sete por turno bem em cima do
-   tabuleiro, que é justamente o que o jogador está tentando ler naquele momento.
-   Desceu para o canto, ficou pequeno e cinza: quem quiser acompanhar acompanha,
-   quem não quiser lê o mapa. Três linhas no máximo — o resto está no Histórico. */
-#iaFala{position:absolute;right:7px;bottom:7px;z-index:8;display:flex;flex-direction:column;
-  align-items:flex-end;gap:3px;pointer-events:none;max-width:60%}
-.iaL{font-family:var(--ui);font-size:11px;line-height:1.3;padding:3px 8px;border-radius:7px;
-  background:rgba(11,18,15,.82);border:1px solid var(--line-soft);color:var(--ink-3);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
-  animation:iaIn .2s ease-out, iaOut .4s ease-in 1.5s forwards}
-/* três cores, três pesos de notícia: cinza = andou, latão = usou habilidade,
-   carmim = aconteceu alguma coisa (morte, gank, torre). */
-.iaL.viva{color:var(--brass);border-color:var(--brass-dim)}
-/* o que ANTES ia para o meio da tela: morte, gank, torre caída. Continua sendo o
-   que mais importa do turno da IA, então continua destacado — só que no canto. */
-.iaL.evento{color:var(--carmim-2);border-color:var(--carmim);font-family:var(--display);
-  text-transform:uppercase;letter-spacing:.03em;font-size:12px}
-
-/* Pular o turno da IA. O ritmo lento é para ENTENDER, e entender é opcional: na
-   décima partida ninguém quer ver o Grumo andar uma casa por vez. O botão não muda
-   nada do que a IA faz — só tira as pausas e as linhas de passo a passo, deixando
-   os eventos. Vive no canto oposto da narração para os dois nunca se cobrirem. */
-#btPularIA{position:absolute;left:7px;bottom:7px;z-index:9;display:none;
-  font-family:var(--ui);font-size:11px;padding:6px 11px;border-radius:8px;
-  border:1px solid var(--line);background:rgba(11,18,15,.9);color:var(--ink-2);
-  backdrop-filter:blur(4px)}
-#btPularIA.on{display:block}
-#btPularIA:active{color:var(--ink);border-color:var(--brass-dim)}
-#btPularIA.correndo{color:var(--ink-3);border-color:var(--line-soft)}
-@keyframes iaIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
-@keyframes iaOut{to{opacity:0}}
 
 /* ══════════ PLACAR DE ESTRUTURAS (gaveta) ══════════
    Vive na gaveta, aberta pelo ⌂ do cabeçalho — com o tabuleiro em 11×11 quem
@@ -635,8 +600,6 @@ button:disabled{cursor:not-allowed}
     <svg id="mapa" viewBox="0 0 300 286" role="img" aria-label="Tabuleiro"></svg>
     <div id="fx"></div>
     <div id="toast"></div>
-    <div id="iaFala"></div>
-    <button id="btPularIA">▸▸ pular vez da IA</button>
     <div id="tut"></div>
   </div>
 
@@ -689,7 +652,7 @@ const ARTE_MONSTRO = {"barao":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQABLAEsAA
    o draft demorar. Ver docs/patch-notes.md.
 
    Efeitos de herói e item usam SOMENTE o vocabulário que o motor já executa
-   (ver jogo/index.html → usaHab e bonus).
+   (ver jogo/motor.js → usaHab e bonus).
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════ OS 10 ORIGINAIS ═══════════
@@ -984,10 +947,9 @@ if(typeof module!=="undefined")
 
 </script>
 <script>
-/* JAGERLARAMAIS — motor de regras e interface.
-   Ordem interna: CATÁLOGO → GEOMETRIA → ESTADO → TURNO → AÇÕES → DECK/DRAFT → UI.
-   Conteúdo (heróis, itens, cartas) NÃO mora aqui — mora em data/catalogo.js.
-   Aparência não mora aqui — mora em estilo.css. */
+/* JAGERLARAMAIS — motor de regras.
+   Estado, geometria, turno e ações. Não desenha tela e não conhece o modo contra IA.
+   Conteúdo mora em data/catalogo.js; apresentação mora em interface.js. */
 
 /* ---------- CATÁLOGO ---------- */
 const POS={
@@ -1001,6 +963,9 @@ const CATALOGO = Object.assign({}, typeof HEROIS!=="undefined" ? HEROIS : {});
 /* times padrão — sobrescritos pelo draft */
 let TIMES=[["vharn","nyx","solenne","vesper","mirrha"],["kaross","grumo","zhet","cael","torvald"]];
 const NOMES=["AZUL","CARMIM"];
+const FACES_ACAO=6;
+const rolaAcao=()=>1+Math.floor(Math.random()*FACES_ACAO);
+const rolaMovimento=()=>1+Math.floor(Math.random()*6);
 const ROTA_ORDEM=["topo","selva","meio","adc","sup"];
 const porRota=r=>Object.keys(CATALOGO).filter(id=>CATALOGO[id].pos===r);
 
@@ -1304,7 +1269,6 @@ const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver ata
 /* ---------- ESTADO ---------- */
 let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
     alvoNexus=null,mover=[],lojaHeroi=null;
-let aiMode=false, simMode=false;
 
 function novo(){
   J={
@@ -1322,7 +1286,7 @@ function novo(){
     })),
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
-    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
+    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
     camps:[
@@ -1364,10 +1328,6 @@ const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
 /* ---------- FASE OCULTA ---------- */
 function faseOculta(){
   J.fase="oculto";
-  if(simMode){
-    J.times.forEach((tm,t)=>{ tm.caca=["selva","topo","meio","baixo"][Math.floor(Math.random()*4)]; tm.cacaRevelada=null; });
-    J.fase="jogando"; J.vez=J.primeiro; iniciaTurno(); return;
-  }
   perguntaCaca(0,()=>perguntaCaca(1,()=>{
     fecha(); J.fase="jogando"; J.vez=J.primeiro; iniciaTurno();
   }));
@@ -1416,13 +1376,13 @@ function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
   const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
   tm.retomada=atraso(t);
-  const m=1+Math.floor(Math.random()*6)+extra;
+  const m=rolaMovimento()+extra;
   J.mov={v:m,rest:m};
   /* RETOMADA aplicada: o freio da bola de neve vira DADO, que era a intenção
      declarada na seção RETOMADA. Antes `tm.retomada` era calculado e desenhado
      no HUD, mas a mão era sempre de 3 — o freio nunca chegava à mesa. */
   J.dados=Array.from({length:3+tm.retomada},(_,i)=>
-    ({v:1+Math.floor(Math.random()*6),usado:0,...(i>2?{extra:1}:{})}));
+    ({v:rolaAcao(),usado:0,...(i>2?{extra:1}:{})}));
 
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
   reg(t?"c":"a",`${NOMES[t]} rola — movimento ${m} · ações ${J.dados.map(d=>d.v).join(" · ")}`);
@@ -1545,17 +1505,17 @@ function fimDaRodada(){
   });
   todos().forEach(h=>{                            // respawn e limpeza
     if(h.morto){ h.morto--; if(!h.morto){ h.vida=h.vidaMax; h.pos=[...BASE[h.t][0]]; reg("b",`${h.n} voltou`);} }
-    h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0;  h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
+    h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0; h.esc=0;
+    h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
   });
   desempilha();
-  J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
   J.nexusBatido=[0,0];                            // e o Nexus também, um golpe por rodada
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
   if(J.fim!==null){ pinta(); return telaFim(); }
-  /* a iniciativa alterna. Antes `primeiro` era 0 e nunca mudava: o mesmo time
-     jogava primeiro nas ~12 rodadas seguidas, e isso valia 60,3% de vitórias.
-     Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
-  J.primeiro=1-J.primeiro;
+  /* Turnos seguem em sequência contínua: AZUL → CARMIM → AZUL → CARMIM.
+     Alternar a iniciativa por rodada criava a fronteira 1–2 | 2–1, percebida no
+     playtest como turnos repetidos do mesmo lado. O impacto de balanceamento
+     desta regra precisa ser medido novamente antes de a versão ser aprovada. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
   atualizaAcampamentos();
   const p=J.poco;                                 // o poço reabre, com o morador da vez
@@ -1623,7 +1583,7 @@ function lampejaAte(c,r){
   coletaAcampamento(h);
   reg(J.vez?"c":"a",`LAMPEJO — ${h.n} salta ${dist(...de,c,r)} `
      +`${dist(...de,c,r)>1?"casas":"casa"} · feitiço do time gasto`);
-  if(!souIA()) toast("lampejo","gank");
+  toast("lampejo","gank");
   vibra([10,30,10]);
   modo=null; calcula(); pinta(); animaMovimento(h,de);
 }
@@ -1646,7 +1606,7 @@ function usaRetorno(){
   desempilha();
   reg(J.vez?"c":"a",`RETORNO — ${h.n} volta à base`
      +(h.vida>antes?` e recupera ${h.vida-antes}`:"")+` · feitiço do time gasto`);
-  if(!souIA()) toast("retorno","");
+  toast("retorno","");
   vibra([14,40,14]);
   limpaModo(); pinta(); animaMovimento(h,de);
 }
@@ -1788,13 +1748,18 @@ function usaPlaca(delta){
 function rerola(){
   const tm=J.times[J.vez];
   if(tm.placas<2||dadoSel===null||J.dados[dadoSel].usado)return;
-  tm.placas-=2; J.dados[dadoSel].v=1+Math.floor(Math.random()*6);
+  tm.placas-=2; J.dados[dadoSel].v=rolaAcao();
   reg("b",`${NOMES[J.vez]} gasta 2 placas: re-rola para ${J.dados[dadoSel].v}`);
   pinta();
 }
 
 
 /* abreLoja mora na seção FICHAS / LOJA / LOG — é a versão em sheet, que roda. */
+
+</script>
+<script>
+/* JAGERLARAMAIS — interface e interação.
+   Renderização do mapa, gestos, painéis, tutorial e fluxo visual da partida. */
 
 /* ══════════════════ BASE VISUAL ══════════════════ */
 const NS="http://www.w3.org/2000/svg";
@@ -1890,39 +1855,7 @@ function fx(pos,txt,tipo){
   G("fx").appendChild(d);
   setTimeout(()=>d.remove(),1050);
 }
-/* A IA descobre o que dá para fazer CHAMANDO iniciaHab em cada habilidade de cada
-   herói e vendo o que sobra mirado — ou seja, ela erra de propósito, dezenas de vezes
-   por turno. Cada erro desses disparava o mesmo aviso que o jogador humano recebe, e
-   a tela virava uma cascata de "ninguém no alcance" durante a vez do adversário.
-   O aviso é certo; o público é que estava errado. `sondando` cala a UI enquanto a IA
-   está só tateando — as mensagens que ela emite de propósito ficam fora da sonda. */
-let sondando=false;
-/* True durante TODO o turno da máquina — não só enquanto `J.vez` aponta para ela.
-   O buraco anterior estava no fecho: `encerraTurno` e `fimDaRodada` rodam de dentro
-   do turno da IA mas já com a vez virada, e era de lá que saíam justamente as
-   mensagens que insistiam em aparecer no meio da tela (o gank do Plano de Caça, a
-   torre que a onda derrubou, quem caiu na virada). `iaRodando` só é desligado
-   depois disso tudo, então é ele quem marca a fronteira certa. */
-const souIA=()=>aiMode&&J&&(iaRodando||J.vez===1);
-/* narração da IA — canto inferior direito, fora do caminho do tabuleiro */
-function falaIA(txt,cls){
-  const cx=G("iaFala"); if(!cx)return;
-  /* pulando: o passo a passo perde a função (ninguém lê seis linhas em meio segundo),
-     mas o evento não — é ele o "resultado" que o botão promete mostrar. */
-  if(pularIA&&cls!=="evento")return;
-  const d=document.createElement("div");
-  d.className="iaL"+(cls?" "+cls:""); d.textContent=txt;
-  cx.appendChild(d);
-  while(cx.children.length>3) cx.firstChild.remove();
-  setTimeout(()=>{ if(d.parentNode) d.remove(); },pularIA?2600:1900);
-}
 function toast(txt,tipo){
-  if(sondando)return;
-  /* Nada da vez da IA aparece no meio da tela. Antes só a narração descia para o
-     canto, e "GANK NO TOPO" continuava cobrindo o tabuleiro — mas quem dá o gank é
-     ela, então a mensagem é dela também. O meio da tela volta a ser exclusivo do
-     que VOCÊ faz; a vez do adversário inteira mora no rodapé. */
-  if(souIA()) return falaIA(txt,(tipo==="morte"||tipo==="gank")?"evento":"viva");
   const d=document.createElement("div");
   d.className="tst"+(tipo?" "+tipo:""); d.textContent=txt;
   G("toast").appendChild(d);
@@ -1944,7 +1877,9 @@ function revela(snap){
     const dv=h.vida-s.v;
     if(dv<0){ fx(h.pos,dv,"dano"); tremer(h); bateu=true; }
     else if(dv>0) fx(h.pos,"+"+dv,"cura");
-    if(h.esc>s.e) fx(h.pos,"⛨"+(h.esc-s.e),"esc");
+    const de=h.esc-s.e;
+    if(de>0) fx(h.pos,"⛨+"+de,"esc");
+    else if(de<0){ fx(h.pos,"⛨"+de,"esc"); tremer(h); bateu=true; }
     if(h.morto&&!s.m){ fx(h.pos,"☠","morte"); toast(h.n+" caiu","morte"); vibra([35,55,35]); }
   });
   if(bateu) vibra(18);
@@ -2090,7 +2025,7 @@ function torreExposta(rota,t){
 function torresAoAlcance(h,hb,alc){
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
   return J.torres.filter(tr=>{
-    if(tr.t===h.t||tr.vida<=0||tr.batida) return false;
+    if(tr.t===h.t||tr.vida<=0) return false;
     if(torreExposta(tr.rota,tr.t)!==tr) return false;
     return hb.ef.semAlcance||dist(...h.pos,...ROTAS[tr.rota][tr.i])<=alc;
   });
@@ -2171,15 +2106,15 @@ function confirmaHab(alvo){
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
-/* o golpe na torre não passa por usaHab: torre não tem armadura, escudo nem status.
-   Dano fixo, um por rodada, e o revide é o preço de encostar. */
+/* O golpe na torre não passa por usaHab: torre não tem armadura, escudo nem status.
+   Cada dado ofensivo disponível pode causar um golpe; não há trava por torre. */
 function atacaTorre(tr){
   if(!selHeroi||habAtual===null)return;
   const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
   if(di===null)return;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
-  tr.vida-=DANO_TORRE; tr.batida=1;
+  tr.vida-=DANO_TORRE;
   agendaAnim(()=>animaAtaque(h,ROTAS[tr.rota][tr.i]));
   reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} `+
       `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
@@ -2505,7 +2440,7 @@ function desenhaMapa(){
     const foco=tutFoco==="peca:"+h.id;
     const g=el("g",{class:"peca t"+h.t+(ehSel?" sel":"")+(ehAlvo?" alvo":"")+(foco?" foco":""),
       tabindex:"0",role:"button","data-peca":h.t+"-"+h.id});
-    g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida`);
+    g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida${h.esc?`, ${h.esc} de escudo`:""}`);
     alvoDeToque(g,x,y);                       // primeiro filho: o alvo vale o hexágono
     if(ehAlvo) g.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira"}));
     g.appendChild(el("circle",{cx:x,cy:y,r:9.6,class:"fundo"}));
@@ -2550,7 +2485,7 @@ function abreCarta(h){
       <div class="arte"><img src="${RETRATO(h.id)}" alt=""><div class="grad"></div>
         <div class="id"><div class="nm">${h.n}</div><div class="ep">${P.n} · ${NOMES[h.t]}</div></div></div>
       <div class="faixa">
-        <div><div class="k">Vida</div><div class="v">${Math.max(0,h.vida)}/${h.vidaMax}</div></div>
+        <div><div class="k">Vida</div><div class="v">${Math.max(0,h.vida)}/${h.vidaMax}${h.esc?` +⛨${h.esc}`:""}</div></div>
         <div><div class="k">Poder</div><div class="v">${poderTotal(h)}</div></div>
         <div><div class="k">Armad.</div><div class="v">${armTotal(h)}</div></div>
         <div><div class="k">Alcance</div><div class="v">${alcTotal(h)}</div></div>
@@ -2586,7 +2521,7 @@ function fichaHTML(h,meu){
         ${meu&&!h.agiu&&!h.morto&&J.fase==="jogando"?'<span class="farm">FARM +3</span>':""}</div>
       <div class="vb"><i style="width:${pc}%"></i><i class="esc" style="width:${esc}%"></i></div>
       <div class="l3"><span>♥ <b>${Math.max(0,h.vida)}</b>/${h.vidaMax}</span>
-        <span>⚔ <b>${poderTotal(h)}</b></span><span>⛨ <b>${armTotal(h)}</b></span>
+        <span>⚔ <b>${poderTotal(h)}</b></span><span>⛨ <b>${armTotal(h)}</b>${h.esc?` + <b>${h.esc}</b> escudo`:""}</span>
         <span>◈ <b>${h.ouro}</b></span></div>
       ${h.itens.length?`<div class="itens">${h.itens.map(i=>
         `<img src="${RETRATO_ITEM(i)}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
@@ -2675,7 +2610,7 @@ function abreManual(){
       <p>O Retorno é <b>interrompido por inimigo colado</b>. Quem foi pego não escapa de graça.</p></section>
     <section class="destaque"><h4>3 · Quem não age, enriquece</h4>
       <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p></section>
-    <section class="destaque"><h4>Escudo persistente</h4><p>Escudo não expira no fim da rodada. Ele permanece no herói até absorver dano suficiente para chegar a 0.</p></section><section><h4>Combate</h4>
+    <section class="destaque"><h4>Escudo temporário</h4><p>Escudo absorve dano antes da vida e expira no fim da rodada. A ficha mostra separadamente quanto foi absorvido e quanto atravessou.</p></section><section><h4>Combate</h4>
       <p>Sem rolagem extra — o dado já foi rolado.</p>
       <table><tr><td>Dano</td><td>Força + Poder − Armadura</td></tr>
       <tr><td>Dado 6 natural</td><td>Crítico</td></tr>
@@ -2692,7 +2627,7 @@ function abreManual(){
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
       <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada, e o golpe de herói tira <b>1</b> — qualquer habilidade ofensiva, inclusive a Ultimate. Torre não é poço: quem quer derrubar mais rápido junta heróis, não gasta a Ultimate.</p>
-      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
+      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. A torre <b>revida 2</b> e pode receber vários golpes na rodada, desde que você tenha dados e heróis aptos para atacar.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
@@ -2767,11 +2702,6 @@ function aplicaFoco(){
 /* ══════════════════ RENDER ══════════════════ */
 let assinaturaDados="";
 function pinta(){
-  /* Durante a sondagem a IA abre e fecha a ficha de cada habilidade de cada herói
-     dezenas de vezes por turno, e isso piscava na tela como se ela estivesse
-     folheando as cartas na sua frente. Não é jogada, é raciocínio — e raciocínio
-     não se mostra. O que se mostra é para onde ela andou e o que ela fez. */
-  if(sondando)return;
   const tm=J.times[J.vez];
   G("rod").textContent="R"+J.rodada;
   G("faixa").className="faixa t"+J.vez;
@@ -2850,12 +2780,7 @@ function feiticoBt(h,qual){
 
 /* painel de comando — a peça central da correção de jogabilidade */
   const cmd=G("comando");
-  /* e o painel de comando não abre no herói da IA: durante a vez dela o painel diz
-     de quem é a vez e mais nada. */
-  if(aiMode&&iaRodando){
-    cmd.innerHTML=`<div class="vaziomsg">Vez de <b>${NOMES[J.vez]}</b><br>`
-      +`acompanhe pelo tabuleiro e pelo canto</div>`;
-  }else if(selHeroi&&!selHeroi.morto){
+  if(selHeroi&&!selHeroi.morto){
     const h=selHeroi;
     const podeMover=J.mov.rest>0&&!h.preso;
     cmd.innerHTML=`
@@ -2863,7 +2788,7 @@ function feiticoBt(h,qual){
         <img src="${RETRATO(h.id)}" alt="">
         <div><div class="nm">${h.n}</div>
           <div class="st"><span>♥ <b>${Math.max(0,h.vida)}</b></span><span>⚔ <b>${poderTotal(h)}</b></span>
-            <span>⛨ <b>${armTotal(h)}</b></span><span>◈ <b>${h.ouro}</b></span></div></div>
+            <span>⛨ <b>${armTotal(h)}</b>${h.esc?` +${h.esc}`:""}</span><span>◈ <b>${h.ouro}</b></span></div></div>
         <div class="dir"><button class="cmd-x carta" id="cmdCarta">carta</button>
           <button class="cmd-x" id="cmdX">✕</button></div>
       </div>
@@ -2935,143 +2860,8 @@ function texto(){
          `toque num herói seu para abrir o comando`;
 }
 
-/* ══════════════════ IA TÁTICA ══════════════════ */
-function iaEscolheAlvo(h){
-  if(alvoNexus!==null)return {tipo:"nexus",v:alvoNexus};
-  if(alvosTorre.length)return {tipo:"torre",v:alvosTorre.sort((a,b)=>a.vida-b.vida)[0]};
-  if(alvosEpico.length)return {tipo:"epico",v:alvosEpico[0]};
-  const inimigos=alvos.filter(x=>x.t!==h.t&&!x.morto);
-  if(inimigos.length)return {tipo:"heroi",v:inimigos.sort((a,b)=>a.vida-b.vida)[0]};
-  return null;
-}
-/* 650ms era o tempo de ver que algo mexeu, não de entender o quê. Uma jogada da IA
-   é herói + habilidade + alvo + resultado: quatro leituras. 1200 dá para acompanhar
-   sem virar espera, e quem já entendeu tem o botão de pular. */
-const RITMO_IA=1200;
-let iaRodando=false, pularIA=false;
-async function iaExecutaTurno(){
-  if(iaRodando||(!aiMode&&!simMode)||J.fim!==null||J.fase!=="jogando"||(aiMode&&J.vez!==1))return;
-  iaRodando=true; pularIA=false;
-  const bp=G("btPularIA");
-  if(bp&&aiMode){ bp.classList.add("on"); bp.classList.remove("correndo");
-    bp.textContent="▸▸ pular vez da IA"; }
-  const lado=J.vez, passos=new Map();
-  const pausa=ms=>new Promise(r=>setTimeout(r,ms));
-  falaIA("vez da IA","viva");
-
-  let guard=0;
-  while(guard++<45&&J.fim===null&&J.vez===lado){
-    pinta();
-    await pausa(pularIA?0:(aiMode?RITMO_IA:0));
-
-    const vivosAI=vivos(lado);
-
-    /* Feitiço de emergência. A IA não sabe engajar com Lampejo — sabe só fugir, e só
-       quando está de fato morrendo. É pouco de propósito: uma IA que lampeja para
-       cima acerta por acidente e o jogador aprende a regra errada. Fugir ela acerta
-       sempre, e é o que faz o humano sentir que os dois botões são do jogo, não dele.
-       As duas condições são exclusivas: Lampejo é para inimigo colado, Retorno é
-       justamente para quando NÃO há ninguém colado (com inimigo ao lado ele é
-       interrompido, mesma regra do jogador). */
-    const colado=h=>vizinhos(...h.pos).some(([vc,vr])=>{const o=em(vc,vr);return o&&o.t!==lado;});
-    const machucado=h=>h.vida<=Math.ceil(h.vidaMax/3);
-    const longeDeInimigo=p=>Math.min(...J.times[1-lado].herois.filter(o=>!o.morto)
-      .map(o=>dist(...p,...o.pos)),99);
-
-    const saltador=temFeitico(lado)&&vivosAI.find(h=>machucado(h)&&colado(h));
-    if(saltador){
-      limpaModo(); selHeroi=saltador; modo="lampejo"; calcula();
-      const destino=mover.slice().sort((a,b)=>longeDeInimigo(b)-longeDeInimigo(a))[0];
-      if(destino){
-        if(aiMode) falaIA(`${saltador.n} lampeja`,"viva");
-        lampejaAte(...destino); continue;
-      }
-      limpaModo();
-    }
-    const voltador=temFeitico(lado)&&vivosAI.find(h=>machucado(h)&&!colado(h)&&!naBase(h));
-    if(voltador){
-      limpaModo(); selHeroi=voltador;
-      if(aiMode) falaIA(`${voltador.n} volta à base`,"viva");
-      usaRetorno(); continue;
-    }
-
-    let melhor=null;
-    sondando=true;
-    try{
-      for(const h of vivosAI){
-        if(h.agiu)continue;
-        for(let i=0;i<h.habs.length;i++){
-          const hb=h.habs[i], d=dadoPara(hb); if(d===null)continue;
-          selHeroi=h; limpaModo(); selHeroi=h; iniciaHab(i);
-          const alvo=iaEscolheAlvo(h);
-          if(alvo){ melhor={h,i,alvo,dv:J.dados[d].v}; break; }
-          /* aqui a sonda acaba e a jogada começa: habilidade de alvo "eu" ainda
-             pode bater em área (Avalanche, Chuva de Ferro) e portanto ainda pode
-             matar alguém — e "X caiu" é justamente o aviso que não pode sumir. */
-          if(hb.alvo==="eu"&&confirmar===i){
-            sondando=false; confirmaHab(h); melhor={feito:1}; break; }
-          limpaModo();
-        }
-        if(melhor)break;
-      }
-    } finally { sondando=false; }
-
-    if(melhor&&!melhor.feito){
-      selHeroi=melhor.h;
-      if(aiMode) falaIA(`${melhor.h.n} usa ${melhor.h.habs[melhor.i].n}`,"viva");
-      if(melhor.alvo.tipo==="nexus")atacaNexus(melhor.alvo.v);
-      else if(melhor.alvo.tipo==="torre")atacaTorre(melhor.alvo.v);
-      else if(melhor.alvo.tipo==="epico")atacaEpico(melhor.alvo.v);
-      else confirmaHab(melhor.alvo.v);
-      continue;
-    }
-
-    if(J.mov.rest>0){
-      const inimigos=J.times[1-lado].herois.filter(o=>!o.morto);
-      const candidatos=vivosAI.filter(h=>!h.preso).sort((a,b)=>(passos.get(a.id)||0)-(passos.get(b.id)||0));
-      let moveu=false;
-      for(const h of candidatos){
-        const alvo=inimigos.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
-        const camps=J.camps.filter(c=>c.ativo&&(c.t===lado||c.t===-1));
-        const obj=camps.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
-        const papel=CATALOGO[h.id].pos;
-        let destino = papel==="selva"&&obj ? obj.pos : (alvo?alvo.pos:null);
-        if(!destino)continue;
-        selHeroi=h; modo="mover"; calcula();
-        const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
-          .sort((a,b)=>dist(...a,...destino)-dist(...b,...destino))[0];
-        if(umPasso){
-          if(aiMode) falaIA(`${h.n} anda`);
-          moveAte(...umPasso);
-          passos.set(h.id,(passos.get(h.id)||0)+1);
-          moveu=true; break;
-        }
-      }
-      if(moveu)continue;
-    }
-    break;
-  }
-
-  limpaModo(); selHeroi=null;
-  pinta();
-  if(bp) bp.classList.remove("on");
-  if(J.fim===null){
-    if(aiMode){
-      falaIA("encerrou o turno","viva");
-      await pausa(pularIA?0:900);
-    }
-    encerraTurno();
-  }
-  iaRodando=false; pularIA=false;
-}
-
 /* ══════════════════ FLUXO ══════════════════ */
 function perguntaCaca(t,depois){
-  if(aiMode&&t===1){
-    const op=["selva","topo","meio","baixo"];
-    J.times[t].caca=op[Math.floor(Math.random()*op.length)]; J.times[t].cacaRevelada=null;
-    return depois();
-  }
   const cac=J.times[t].herois[1];
   abre(`
     <span class="et">Comando oculto · em segredo</span>
@@ -3079,7 +2869,7 @@ function perguntaCaca(t,depois){
     <p>Para onde vai <b>${cac.n}</b>, seu Caçador?<br>
     A escolha fica virada para baixo e só é revelada no fim do turno do adversário.</p>
     <div class="zonas">
-      <button class="zona" data-z="selva"><span class="zn">Farm</span><span class="zd">+3 de ouro · seguro</span></button>
+      <button class="zona" data-z="selva"><span class="zn">Farm</span><span class="zd">colete um acampamento · bônus +1</span></button>
       <button class="zona" data-z="topo"><span class="zn">Topo</span><span class="zd">gank · +2 de Força</span></button>
       <button class="zona" data-z="meio"><span class="zn">Meio</span><span class="zd">gank · +2 de Força</span></button>
       <button class="zona" data-z="baixo"><span class="zn">Baixo</span><span class="zd">gank · +2 de Força</span></button>
@@ -3097,12 +2887,6 @@ iniciaTurno=function(){
   _iniciaTurno();
   limpaModo(); selHeroi=null;
   const nova=compra(J.vez);
-  if(simMode || (aiMode&&J.vez===1)){
-    if(aiMode&&J.vez===1) J.times[1].caca=J.times[1].caca||["selva","topo","meio","baixo"][Math.floor(Math.random()*4)];
-    pinta();
-    iaExecutaTurno();
-    return;
-  }
   abre(`<span class="et">Passe o aparelho</span><h2 class="t${J.vez}">${NOMES[J.vez]}</h2>
     <p>É a sua vez. Ninguém mais deve estar olhando.</p>
     ${nova?`<span class="et" style="display:block;margin-bottom:2px">Você comprou</span>
@@ -3187,7 +2971,7 @@ function usaPrioridade(){
   const tm=J.times[J.vez];
   if(!tm.prio||J.fase!=="jogando")return;
   tm.prio--;
-  const v=1+Math.floor(Math.random()*6);
+  const v=rolaAcao();
   J.dados.push({v,usado:0,extra:1});
   reg("b",`PRIORIDADE — ${NOMES[J.vez]} rola um dado a mais: ${v}`);
   toast("dado extra: "+v,""); vibra(14); pinta();
@@ -3196,12 +2980,6 @@ function usaPrioridade(){
 /* ══════════════════ BOTÕES ══════════════════ */
 G("btTime").onclick=()=>{ sheetAberto==="Time"?fechaSheet():abreTime(); };
 G("btPrio").onclick=()=>usaPrioridade();
-G("btPularIA").onclick=()=>{
-  if(pularIA)return;
-  pularIA=true;
-  const b=G("btPularIA");
-  b.classList.add("correndo"); b.textContent="resolvendo…";
-};
 G("btLoja").onclick=()=>{ sheetAberto&&sheetAberto.startsWith("Loja")?fechaSheet():abreLoja(); };
 G("btCartas").onclick=()=>{ sheetAberto==="Cartas"?fechaSheet():abreMao(); };
 /* Estruturas: uma linha por rota, dos dois lados, com a vida em bolinha e a
@@ -3220,7 +2998,7 @@ function abreEstruturas(){
         if(x.vida<=0) return `<span class="tw caiu" title="passo ${x.i}">✕</span>`;
         const eu=x===exp;
         return `<span class="tw${eu?" exposta":""}" title="passo ${x.i}">`+
-               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}${x.batida?'<em class="ja">batida</em>':""}</span>`;
+               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}</span>`;
       }).join("");
       return `<div class="er${caiu?" aberta":""}">
         <b>${nome.toUpperCase()}</b>
@@ -3236,8 +3014,9 @@ function abreEstruturas(){
   };
   abreSheet("Estruturas",
     `<div id="estruturas">${lado(0)}${lado(1)}</div>
-     <p class="est-nota">A torre marcada <b>alvo</b> é a única da rota que aceita golpe de herói
-     agora — a de trás só depois que ela cair. O <b>Nexus</b> só fica exposto quando uma rota
+     <p class="est-nota">A torre marcada <b>alvo</b> é a única da rota que pode ser atingida
+     agora — a de trás só depois que ela cair. O alvo atual aceita vários golpes na rodada.
+     O <b>Nexus</b> só fica exposto quando uma rota
      inteira daquele lado cai, e aguenta um golpe de herói por rodada.</p>`);
 }
 G("btEstr").onclick=()=>{ sheetAberto==="Estruturas"?fechaSheet():abreEstruturas(); };
@@ -3268,6 +3047,11 @@ G("btRerol").onclick=()=>{ rerola(); toast("dado re-rolado",""); vibra(10); };
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ if(sheetAberto)return fechaSheet(); return cancela(); }
 });
+
+</script>
+<script>
+/* JAGERLARAMAIS — Deck de Comando.
+   Compra, mão, descarte e efeitos das cartas durante a partida. */
 
 /* ══════════════════ DECK DE COMANDO ══════════════════ */
 const CARTA=typeof DECK!=="undefined"?Object.fromEntries(DECK.map(c=>[c.id,c])):{};
@@ -3360,13 +3144,13 @@ function jogaCarta(id){
   if(!podeJogar(id)) return toast("não dá para jogar agora","morte");
   let msg=c.n;
 
-  if(ef.rerolar){ J.dados[dadoSel].v=1+Math.floor(Math.random()*6); msg+=` → ${J.dados[dadoSel].v}`; }
+  if(ef.rerolar){ J.dados[dadoSel].v=rolaAcao(); msg+=` → ${J.dados[dadoSel].v}`; }
   if(ef.ajustar){ const d=J.dados[dadoSel]; d.v=Math.min(6,d.v+1); msg+=` → ${d.v}`; }
   if(ef.dadoParaMov){ const d=J.dados[dadoSel]; d.usado=1;
     J.mov.rest+=d.v*2; J.mov.v+=d.v*2; dadoSel=null; msg+=` → +${d.v*2} de movimento`; }
   if(ef.movExtra){ J.mov.rest+=ef.movExtra; J.mov.v+=ef.movExtra; }
   if(ef.moverReacao){ J.mov.rest+=1; J.mov.v+=1; }
-  if(ef.dadoExtra){ const v=1+Math.floor(Math.random()*6);
+  if(ef.dadoExtra){ const v=rolaAcao();
     J.dados.push({v,usado:0,extra:1}); msg+=` → dado ${v}`; }
   if(ef.reativar){ h.agiu=0; msg+=` → ${h.n} pode agir de novo`; }
   if(ef.buffPoder){ aplicaBuff(h,"poder",ef.buffPoder); msg+=` → ${h.n} +${ef.buffPoder} de Poder`; }
@@ -3419,63 +3203,16 @@ function abreMao(){
   G("shCorpo").querySelectorAll(".ct").forEach(b=>b.onclick=()=>jogaCarta(b.dataset.c));
 }
 
+</script>
+<script>
+/* JAGERLARAMAIS — entrada da aplicação.
+   Draft, abertura e inicialização da partida hotseat. */
+
 /* ══════════════════ DRAFT ══════════════════ */
 let dr=null;
 function iniciaDraft(depois){
   dr={fase:"ban", passo:0, bans:[], times:[[],[]], aoFim:depois};
   telaDraft();
-}
-
-function draftTurnoAtual(){
-  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
-    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
-     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
-  if(dr.fase==="ban") return dr.passo;
-  const et=ORDEM[Math.floor(dr.passo/2)];
-  return dr.passo%2===0 ? et.primeiro : 1-et.primeiro;
-}
-function draftEscolhaIA(){
-  if(!aiMode || draftTurnoAtual()!==1)return false;
-  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
-    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
-     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
-
-  let legais=[];
-  if(dr.fase==="ban"){
-    const rotasBanidas=dr.bans.map(id=>CATALOGO[id].pos);
-    legais=Object.keys(CATALOGO).filter(id=>!dr.bans.includes(id)&&!rotasBanidas.includes(CATALOGO[id].pos));
-  } else {
-    const et=ORDEM[Math.floor(dr.passo/2)], rota=et.rota;
-    legais=Object.keys(CATALOGO).filter(id=>
-      CATALOGO[id].pos===rota &&
-      !dr.bans.includes(id) &&
-      !dr.times[0].includes(id) &&
-      !dr.times[1].includes(id));
-  }
-  if(!legais.length)return false;
-
-  /* IA prefere, entre opções legais, mais vida+poder+armadura; pequeno ruído evita draft sempre idêntico. */
-  legais.sort((a,b)=>{
-    const A=CATALOGO[a], B=CATALOGO[b];
-    const sa=A.vida+A.poder*2+A.arm*1.5+Math.random()*2;
-    const sb=B.vida+B.poder*2+B.arm*1.5+Math.random()*2;
-    return sb-sa;
-  });
-  const id=legais[0];
-
-  setTimeout(()=>{
-    if(dr.fase==="ban"){
-      dr.bans.push(id); dr.passo++;
-      if(dr.passo>=2){dr.fase="pick";dr.passo=0;}
-    } else {
-      const et=ORDEM[Math.floor(dr.passo/2)];
-      const t=dr.passo%2===0?et.primeiro:1-et.primeiro;
-      dr.times[t].push(id); dr.passo++;
-      if(dr.passo>=10){ fecha(); return dr.aoFim(dr.times); }
-    }
-    telaDraft();
-  },500);
-  return true;
 }
 
 function telaDraft(){
@@ -3521,10 +3258,6 @@ function telaDraft(){
           `<span class="dr-chip t${x}"><img src="${RETRATO(id)}" alt="">${CATALOGO[id].n}</span>`).join("")).join("")}
       </div></div>`);
   }
-  if(draftEscolhaIA()){
-    document.querySelectorAll(".dr-h").forEach(b=>b.disabled=true);
-    return;
-  }
   document.querySelectorAll(".dr-h").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id; vibra(10);
     if(dr.fase==="ban"){
@@ -3557,23 +3290,12 @@ function telaAbertura(){
     <p>Cada um comanda <b>cinco heróis</b> — no mesmo aparelho.</p>
     <button class="grande" id="ok">Jogar o tutorial</button>
     <button class="grande" id="btDraft">Partida com draft</button>
-    <button class="grande" id="btIA" style="background:#315B52">Jogar contra a IA · com Draft</button>
     <button class="grande" id="btDireto"
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
-  G("btIA").onclick=()=>{
-    aiMode=true; simMode=false;
-    iniciaDraft(times=>{ TIMES=times; partida(false); });
-  };
-  G("btDireto").onclick=()=>{aiMode=false;comeca(false,false);};
+  G("btDireto").onclick=()=>comeca(false,false);
 }
-globalThis.__JAGER_AI__={
-  start:()=>{ aiMode=false; simMode=true; TIMES=[["vharn","nyx","solenne","vesper","mirrha"],["vharn","nyx","solenne","vesper","mirrha"]]; baralho=typeof montaDeck!=="undefined"?montaDeck():[]; cemiterio=[]; maos=[[],[]]; descontos=[0,0]; novo(); },
-  startHuman:()=>{ aiMode=true; simMode=false; baralho=typeof montaDeck!=="undefined"?montaDeck():[]; cemiterio=[]; maos=[[],[]]; descontos=[0,0]; novo(); },
-  turn:()=>iaExecutaTurno(),
-  get state(){return J}
-};
 telaAbertura();
 
 </script>

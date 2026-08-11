@@ -4,7 +4,7 @@ Um MOBA de tabuleiro para **duas pessoas**. Cada jogador é o **técnico de cinc
 
 Feito por Vilker, Vinicius e Matheus.
 
-> **Estado atual:** pacote v15 integrado nas fontes em 2026-08-11. A versão está jogável, mas as mudanças cumulativas ainda aguardam revisão e playtest. Ver `docs/versions/v15/README.md`.
+> **Estado atual:** v15.1 pós-playtest, em validação. O modo contra IA saiu temporariamente para existir um único motor de partida e a equipe focar na mecânica. Ver `docs/versions/v15.1/README.md`.
 
 ---
 
@@ -16,10 +16,9 @@ Não precisa instalar nada, não tem build, não tem servidor. É HTML/CSS/JS pu
 Na abertura você escolhe:
 - **Tutorial** — 9 passos que ensinam jogando
 - **Partida com draft** — ban e escolha de heróis antes de começar
-- **Jogar contra a IA** — draft e turnos automatizados, em teste
 - **Partida rápida** — times pré-montados
 
-> ⚠️ Contra outra pessoa, o jogo é _hotseat_: os dois jogam no MESMO aparelho, passando o celular a cada turno. A IA permite jogar sozinho, mas ainda não existe multiplayer em rede.
+> ⚠️ O jogo é _hotseat_: os dois jogam no MESMO aparelho, passando o celular a cada turno. Ainda não existe multiplayer em rede.
 
 **Guia completo:** abra `guia/index.html` — o manual em formato de livro navegável.
 **As cartas:** abra `cartas/index.html` — os 20 heróis em formato de carta.
@@ -39,7 +38,7 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 
 ---
 
-## Estado do desenvolvimento — v15
+## Estado do desenvolvimento — v15.1
 
 | Sistema | Status |
 |---|---|
@@ -55,16 +54,15 @@ Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só 
 | Pool de heróis | ✅ **20 heróis, 4 por rota** |
 | Arte dos heróis | ✅ **20 de 20** |
 | Mapa ilustrado | ✅ no guia, seção 05 |
-| Poço épico (Dragão e Barão) | ✅ **funcionando** — casa [4,4], muda de morador na rodada 8 |
+| Poço épico (Dragão e Barão) | ✅ **funcionando** — casa [8,8] no tabuleiro 11×11, muda de morador na rodada 8 |
 | Comeback / freio de bola de neve | ✅ **Retomada** — dado extra para quem está atrás |
 | Feitiço compartilhado | ✅ **Lampejo ou Retorno**, recarga de 3 rodadas |
 | Acampamentos | ✅ **3 acampamentos de ouro**, respawn de 3 rodadas |
-| Partida contra IA | ✅ draft e turno automatizados, em teste |
 | Arauto no tabuleiro | ❌ tem arte, não tem regra |
 | Highlight estilo LoL no tutorial | ❌ não existe |
 | Multiplayer em rede | ❌ não existe |
 
-A última base medida fechava em **19 rodadas de mediana**. A v15 ainda precisa de nova medição e playtest.
+A v15.1 fechou em **22 rodadas de mediana** no diagnóstico intermediário (n=2000). Com os elencos trocados na metade da amostra, quem jogou primeiro venceu **39,4%**: há vantagem estrutural do segundo jogador a resolver, mas a compensação ainda não foi escolhida.
 
 Detalhe do que mudou: `docs/patch-notes.md`. Retrato do presente: `docs/ESTADO.md`.
 
@@ -75,7 +73,10 @@ Detalhe do que mudou: `docs/patch-notes.md`. Retrato do presente: `docs/ESTADO.m
 ```
 jogo/index.html      A estrutura da tela. Abre com duplo clique.
 jogo/estilo.css      Toda a aparência — mexer aqui não quebra regra.
-jogo/jogo.js         Motor de regras e interface.
+jogo/motor.js        Estado, geometria, turno, combate e regras.
+jogo/interface.js    Renderização, interação, manual e tutorial.
+jogo/cartas.js       Deck de Comando e efeitos das cartas.
+jogo/jogo.js         Draft, abertura e inicialização hotseat.
 guia/index.html      Manual navegável (regras, heróis, itens, mapa, glossário).
 cartas/index.html    Visualizador das 20 cartas de herói.
 data/catalogo.js     FONTE ÚNICA de conteúdo: heróis, itens, deck, classes.
@@ -104,7 +105,7 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 | `docs/ACESSO.md` | Para mandar para quem está entrando agora |
 | `docs/COMO-CONTINUAR.md` | Como usar o Claude neste projeto |
 | `docs/UPDATE-PROTOCOL.md` | **Regra permanente para receber e integrar novas versões** |
-| `docs/versions/v15/` | Registro, changelog e arquivos da integração atual |
+| `docs/versions/v15.1/` | Registro, changelog e arquivos da consolidação pós-playtest |
 
 ---
 
@@ -112,11 +113,11 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 **1. Não dá para jogar cada um no seu celular.** O jogo é hotseat — um aparelho, passando a vez. Fazer multiplayer em rede exigiria servidor e sincronização de estado; é um projeto à parte, não um ajuste.
 
-**2. A v15 não está validada.** Épico, Retomada, feitiços, acampamentos, Plano de Caça e IA chegaram juntos. A simulação serve para detectar quebra, mas não substitui playtest humano dessas decisões.
+**2. A v15.1 ainda pede confirmação.** Épico, Retomada, feitiços, acampamentos e Plano de Caça chegaram juntos. A simulação serve para detectar quebra, mas não substitui playtest humano dessas decisões.
 
-**3. A última base medida com amostra adequada foi a v0.6.2:** quem começa ganhou **55,5%** (n=20000). A v15 mudou várias regras depois dessa medição; nenhum percentual novo deve ser tratado como aprovado antes de repetir a bateria completa.
+**3. A ordem estrita expôs vantagem do segundo jogador.** Na medição intermediária da v15.1, quem começou venceu **39,4%** com os elencos trocados (n=2000). O sinal é forte, mas a regra de compensação deve ser decidida e então validada em 20 mil partidas.
 
-**4. Aparelho pequeno aperta o tabuleiro.** Abaixo de 640px de altura o 8×8 dá hexágono de ~28px, contra os 44 de referência de toque. Todo o resto da tela está em 40–44px desde a v0.5.6; o mapa é o único que não alcança, e não é conserto de CSS.
+**4. Aparelho pequeno aperta o tabuleiro.** O mapa atual é 11×11 e ainda não foi reavaliado abaixo de 640px de altura. O restante da interface usa alvos de 40–44px; o mapa continua sendo o ponto crítico.
 
 **5. O tutorial explica, mas não aponta.** Falta o highlight estilo LoL: escurecer a tela e iluminar só a região da vez.
 
@@ -124,7 +125,8 @@ docs/                Design, regras e decisões — leia na ordem numerada.
 
 ## Próximos passos, na ordem
 
-1. **Playtest de verdade da v15** com as três pessoas — épico, Retomada, feitiços, acampamentos, Plano de Caça e IA.
-2. **Highlight do tutorial.**
-3. **Arauto** — o poço já sabe trocar de morador, então entra sem motor novo.
-4. **Decidir os pontos abertos da v15** registrados em `docs/versions/v15/README.md`.
+1. **Playtest de confirmação da v15.1** — alternância, múltiplos golpes em torre e leitura de escudo.
+2. **Escolher uma compensação simples para quem abre** e medir com elencos trocados antes de aprovar.
+3. **Highlight do tutorial.**
+4. **Arauto** — o poço já sabe trocar de morador, então entra sem motor novo.
+5. **Decidir os pontos abertos da v15.1** registrados em `docs/versions/v15.1/README.md`.

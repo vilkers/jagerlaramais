@@ -1,0 +1,32 @@
+name: Game checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax
+        run: |
+          node --check data/catalogo.js
+          node --check jogo/motor.js
+          node --check jogo/interface.js
+          node --check jogo/cartas.js
+          node --check jogo/jogo.js
+          node --check sim/motor.js
+          node --check sim/bateria.js
+          node --check teste/empacota.js
+      - name: Rules and geometry
+        run: |
+          node --test sim/*.test.js
+          node sim/simetria.js
+          node sim/bateria.js 200
+      - name: Offline package
+        run: node teste/empacota.js /tmp/JOGAR.html
