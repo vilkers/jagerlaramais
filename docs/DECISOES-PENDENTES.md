@@ -1,4 +1,4 @@
-# DECISÕES PENDENTES — o que a v16 mediu e não decidiu
+# DECISÕES PENDENTES — o que foi medido e não decidido
 
 > Este arquivo existe porque a revisão da v15 pediu explicitamente para separar
 > **bug confirmado** (corrigir) de **ideia para discussão** (não implementar sem
@@ -29,8 +29,8 @@ neutralizado o problema; era ruído. Com 1500 partidas o desequilíbrio continua
 um pouco pior. **Meça sempre com n ≥ 1500** — abaixo disso o ruído desta métrica
 chega a inverter o sinal.
 
-Quem começa agora **perde** 4,4 pontos. O resultado é estatisticamente forte
-(z=−4,78), não ruído.
+Quem começa **perde 8 pontos** na medição mais recente. O resultado é forte
+(z=−6,2), não ruído — e é o único item desta lista que **piorou** entre versões.
 
 **Por que provavelmente** — hipótese, não medição: o segundo jogador sempre tem
 a última palavra da rodada. `fimDaRodada` roda imediatamente depois do turno
@@ -46,7 +46,7 @@ exato do desequilíbrio na mão de gente que joga bem só sai em playtest humano
 **Decisão a tomar:** se compensar, compensar **quem começa**, não quem joga em
 segundo. Opções, da mais simples para a mais invasiva:
 
-- **a)** não compensar — 45,6% pode ser aceitável, e quem escolhe começar passa
+- **a)** não compensar — 42% pode ser aceitável, e quem escolhe começar passa
   a ser uma decisão de draft em vez de um presente;
 - **b)** trocar a ordem: quem **não** escolheu o lado começa;
 - **c)** dar ao primeiro jogador +1 de movimento na rodada 1 apenas;
@@ -58,38 +58,16 @@ linha.
 
 ---
 
-## 2. Três Ultimates continuam piores que a própria básica
+## 2. ~~Três Ultimates piores que a própria básica~~ — RESOLVIDO na v19
 
-A fórmula foi corrigida na v16: a Ultimate converte o dado em **1,5×**. Isso
-resolveu 13 dos 16 heróis que causam dano.
+Ficava aqui a recomendação de fazer `danoFixo` **ignorar armadura**. Foi o que
+entrou, junto com os números: Julgamento 8 → 11, Ato Final 7 → 10, Sentença
+6 → 10.
 
-Sobraram três, e o motivo é que suas Ultimates usam `danoFixo`, que ignora o
-dado **e** o Poder do herói:
-
-| Herói | Básica com dado 6 | Ultimate | Diferença |
-|---|---|---|---|
-| Solenne | 9 (Feixe) | 8 (Julgamento, F6, `danoFixo:8`) | −1 |
-| Corvo | 9 (Tiro Marcado) | 7 (Ato Final, F5, `danoFixo:7`) | −2 |
-| Cael | 9 (Cobrança) | 6 (Sentença, F5, `danoFixo:6`) | −3 |
-
-Pior: como `danoFixo` ignora o Poder, essas três **pioram ao longo da partida** —
-itens e Herança do Dragão sobem a básica e não sobem a Ultimate.
-
-Não mexi nos números porque trocar o dano de três heróis é balanceamento, não
-correção de fórmula, e o relatório pede para não fazer mudança silenciosa de
-balanceamento. Opções:
-
-- **a)** `danoFixo` vira **piso**, não valor fixo: a Ultimate causa o maior entre
-  o número fixo e a fórmula normal. Uma linha, resolve os três de vez, mas
-  aproxima as três de "só mais dano" e apaga a identidade de rajada;
-- **b)** `danoFixo` passa a **ignorar armadura**. Aí ela é mesmo uma função
-  diferente ("dano garantido") em vez de uma versão pior — mais fiel à fantasia,
-  e mais forte contra tanque, que é onde ela deveria brilhar;
-- **c)** subir os três números no catálogo (8→12, 7→11, 6→11) e deixar a
-  mecânica como está.
-
-**Recomendo (b).** É a que dá à Ultimate um papel próprio em vez de um número
-maior, que é literalmente o que a PARTE 9 do relatório pediu.
+Medido depois, com dado 6, contra alvo de 0 e de 3 de armadura: **zero** dos 16
+heróis com dano tem básica alcançando a própria Ultimate. Contra 3 de armadura a
+Ultimate da Solenne faz 11 contra 6 da básica — que era exatamente o papel que
+faltava a ela.
 
 ---
 
@@ -139,110 +117,73 @@ Opções:
 
 ---
 
-## 5. Gasto de ouro no fim da partida (PARTE 6 / Fase 5)
+## 5. ~~Gasto de ouro no fim da partida~~ — IMPLEMENTADO na v18
 
-Encanamento pronto, regra não escolhida — como o relatório pediu.
+Dois gastos, os dois só na base:
 
-Em `jogo/jogo.js` existe a lista `GASTOS`, hoje **vazia**. Enquanto estiver
-vazia, nada muda no jogo e a prateleira nem aparece na loja. Cada entrada tem a
-forma:
-
-```js
-{id:"cura", n:"Bandagem", o:3, d:"Cura 4 agora.",
- pode:h => h.vida < h.vidaMax, faz:h => { h.vida = Math.min(h.vidaMax, h.vida+4); }}
-```
-
-`pode` decide se o botão fica ativo, `faz` aplica o efeito. Preço, botão, log e
-registro já funcionam.
-
-Candidatos discutidos, em ordem de "menos regra nova":
-
-| Gasto | Preço sugerido | Por que é bom | Risco |
-|---|---|---|---|
-| Cura na base | 3 | usa conceito que já existe | pouco interessante |
-| Ward | 4 | vira decisão de mapa | depende da PARTE 9 (visão) |
-| Re-rolar um dado | 4 | ataca o azar direto, decisão clara | pode virar compra obrigatória |
-| Comprar uma carta | 5 | reaproveita o Deck de Comando inteiro | mão máxima 3 limita |
-
-**Recomendo escolher no máximo dois**, e que um deles seja o de re-rolar: é o
-único que transforma ouro em **agência** em vez de em estatística.
-
----
-
-## 6. Jungle e visão (PARTES 7, 8 e 9) — proposta, nada implementado
-
-O relatório foi explícito: *"Não implementar uma reformulação grande sem validar
-primeiro a proposta."* Então aqui está só a proposta.
-
-### O que existe hoje
-
-O Caçador escolhe secretamente uma de 5 fichas (TOPO/MEIO/BAIXO/FARM). Na
-revelação, se ele **chegou** à rota declarada, ganha +2 de Força na próxima
-habilidade ofensiva. Ward revela qual ficha o adversário escolheu.
-
-O problema é que a informação é abstrata: o jogador descobre uma **decisão numa
-interface**, não uma **posição no mapa**. E o Caçador nunca some de verdade — a
-peça dele está lá, visível, o tempo todo.
-
-### Proposta: "em rotação"
-
-Uma mecânica, não cinco:
-
-1. No seu turno, o Caçador pode gastar **uma ação** para entrar **em rotação**.
-   A peça sai do mapa e vira um marcador na sua base — o adversário vê que ele
-   está em rotação, mas não para onde.
-2. Você escolhe secretamente **uma entrada de selva** (são poucas e fixas — 4 no
-   mapa atual, uma por quadrante).
-3. **Ele reaparece no seu próximo turno**, naquela entrada. Um turno inteiro de
-   ausência é o custo, e é o que impede que pareça teleporte: ninguém atravessa o
-   mapa de graça, ele atravessa gastando tempo.
-4. Se a entrada escolhida estiver **sob visão inimiga** quando ele chegar, a
-   chegada é revelada antes de ele agir.
-
-Isso preserva o que era bom ("onde está o Jungle?"), remove a ficha abstrata, e o
-deslocamento tem custo, tempo e um contra-jogo — a Ward.
-
-### Visão: o mínimo que funciona no 11×11
-
-O mapa é compacto, então visão por lane inteira não serve (quase sempre há
-alguém em cada lane e a névoa nunca faria nada). Proposta em raios pequenos:
-
-| Fonte | Raio | Motivo |
+| Gasto | Preço | O que faz |
 |---|---|---|
-| Herói | 2 | enxerga o vizinho do vizinho — o suficiente para não andar cego |
-| Torre viva | 2 | é o que cria a "área segura" atrás dela |
-| Ward | 3 | tem que valer mais que um herói parado, senão ninguém posta |
-| Acampamento seu | 1 | migalha de informação, mas justifica passar lá |
+| **Reforço** | 6, **+2 a cada compra do mesmo herói** | +1 de Poder permanente |
+| **Requisição** | 5 | compra 1 carta do baralho |
 
-Mais a regra que a revisão já propôs: **atrás da sua torre exterior, na sua
-metade, visão total** — território controlado não se vigia.
+O preço subindo do Reforço é o que impede o ouro tardio de virar renda infinita:
+cada ponto custa mais que o anterior. A Requisição foi a recomendação original —
+transforma ouro em **opção** em vez de estatística, e reaproveita o Deck de
+Comando em vez de inventar sistema novo. A IA usa os dois ao fechar o inventário.
 
-**Custo real de implementar:** o motor hoje desenha tudo sempre. Névoa exige uma
-camada de visibilidade em `desenhaMapa`, e a IA precisa decidir se joga com
-informação completa (trapaça) ou limitada (mais trabalho, mais justo). **Estimo
-que seja a maior mudança de todas as pendentes** — maior que todas as correções
-da v16 somadas. Vale fazer, mas como versão própria, não junto de outra coisa.
-
-**Ordem sugerida:** rotação do Jungle primeiro (barata, resolve a fantasia), e
-só depois visão — porque a rotação já melhora sozinha, e a visão fica muito
-melhor se a rotação já existir para ela interagir.
+**Ainda em aberto:** o problema tem dois lados e só mexi num. A **renda nunca
+para** (3 de ouro por herói por rodada só de não agir), então o ouro volta a
+sobrar mesmo com onde gastar. Se depois de jogar ainda sobrar montanha de ouro,
+o ajuste é na renda, não em mais gastos.
 
 ---
 
-## 7. Dragão e Barão criam dilema? (PARTE 12)
+## 6. ~~Jungle e visão~~ — IMPLEMENTADO na v19, e a proposta daqui foi DESCARTADA
 
-**Não dá para responder com a bateria atual**, e é honesto dizer isso em vez de
-inventar um número.
+Registro do erro, porque ele custou uma versão inteira.
 
-Medido em 3000 partidas: **0,01 Dragões e 0 Barões por partida**. O agente
-aleatório simplesmente nunca derruba o poço. Isso não quer dizer que o objetivo
-seja fraco — quer dizer que o instrumento não alcança essa pergunta, exatamente
-como o cabeçalho de `sim/bateria.js` já avisava para épico, Retomada e itens.
+Este item propunha uma **rotação**: o Caçador gastaria uma ação, **sairia do
+tabuleiro**, escolheria uma de quatro entradas de selva e reapareceria lá no
+turno seguinte. Foi implementado na v18 — e estava errado. A correção veio do
+Vinicius: *"o que eu tinha pensado é que ele iria para a região escolhida, porém
+seu oponente só poderia vê-lo no mato se tiver alguém no mato"*.
 
-A v16 melhorou um lado disso: a IA agora **procura** o épico (`iaObjetivos`), o
-que faz do modo contra IA um instrumento melhor que a bateria para esta pergunta.
-A resposta real vem de playtest humano, com a pergunta certa na mão: *"você
-largou a pressão de torre para disputar? por quê?"*
+A diferença é a coisa toda. Na minha versão a peça **deixava de existir**; na
+certa ela **continua em algum lugar real** e o que muda é quem enxerga. A
+segunda não precisa de entradas fixas, não precisa de temporizador, não tem o
+problema do teleporte — e é uma regra em vez de três.
+
+O que entrou na v19: **rota, rio e base todo mundo vê; o mato você só enxerga se
+tiver alguém dentro.** Duas regiões, enxergadas em separado. Ward acende as
+duas. Emboscada (+2 de Força) para quem ataca do mato sem ter sido visto. A IA
+obedece à mesma névoa.
+
+**Lição:** os raios de visão por unidade que este item propunha (herói 3, creep
+2, torre 3, ward 3) nunca foram testados e provavelmente não são necessários. A
+visão por **presença na região** custa uma peça em vez de um número, e num mapa
+11×11 é a que gera decisão.
+
+---
+
+## 7. Dragão e Barão — RESPONDIDO, e o preço estava errado
+
+O item dizia que a bateria não conseguia responder se os épicos criavam dilema.
+Agora consegue, e a resposta foi útil.
+
+Quando a IA ganhou avaliação (v17), ela **parou de bater no poço**. Fui checar e
+ela estava certa: a 1–2 de dano por ação e 3 dados por turno, o Dragão custava
+**~2,7 turnos do time inteiro** e o Barão **~4,7** — contra uma torre que custa 3
+golpes e leva direto à vitória. Não havia dilema nenhum; contestar era
+matematicamente um mau negócio.
+
+Corrigido na v18: **Dragão 8 → 4, Barão 14 → 6**. Medido em 1500 partidas:
+**0,66 Dragões por partida** contra 0,01 antes, e golpes de herói no poço de 0,1
+para 2,8.
+
+**Ainda em aberto:** o Barão continua raro (0,05 por partida). Ele desce só a
+partir da rodada 8 e custa 3 Ultimates; pode ser que a janela seja curta demais,
+ou que 6 de vida ainda seja caro para o que ele entrega (2 rodadas de Fúria).
+Precisa de playtest humano antes de mexer de novo.
 
 ---
 
