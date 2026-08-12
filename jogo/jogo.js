@@ -441,12 +441,40 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    definição de dilema. O revide não mudou: encostar continua custando. */
 const EPICO={
   dragao:{n:"Dragão", vida:4, revide:1, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:6, revide:2, volta:4, pre:"a Fúria do Barão"}
+  barao: {n:"Barão",  vida:4, revide:2, volta:4, pre:"a Fúria do Barão"}
 };
-const R_DRAGAO=5, R_BARAO=8;          /* rodada em que cada morador passa a descer */
+/* Rodadas medidas em sim/epicos.js, 600 partidas por variante:
+     · Barão na 8 dava ao Dragão só 3 rodadas de janela — ele caía em 1,3%;
+     · Barão na 12 devolve 7 rodadas ao Dragão e ainda deixa ~10 de Barão numa
+       partida de 22 rodadas medianas. */
+const R_DRAGAO=5, R_BARAO=12;
 const morador=r=>r>=R_BARAO?"barao":"dragao";
 const DRAGAO_PODER=1;      /* por Dragão levado, permanente e acumulativo */
-const BARAO_PODER=2;       /* enquanto a Fúria durar */
+/* ---------- A DÁDIVA DO BARÃO ----------
+   Antes o Barão dava sempre a mesma coisa: +2 de Poder no time e as ondas
+   andando sozinhas. Prêmio fixo produz estratégia fixa — levou o Barão, faz o
+   mesmo de sempre. Agora quem fecha ESCOLHE uma de três, e as três empurram a
+   partida em direções diferentes.
+
+   Nenhuma delas dá Poder bruto, de propósito: o Barão deixou de ser "seu time
+   bate mais forte" e virou PRESSÃO DE MAPA. É o que o torna útil para quem está
+   atrás — não porque o jogo entregue vantagem a quem perde, mas porque a
+   recompensa converte um objetivo conquistado em avanço de território, que é a
+   moeda de quem precisa virar. A virada continua tendo de ser ganha. */
+const DADIVAS=[
+  {id:"ondas", n:"Ondas de Ferro", ico:"◆◆",
+   d:"As suas três ondas avançam sozinhas, mesmo sem herói nas rotas.",
+   porque:"Pressiona o mapa inteiro enquanto o time faz outra coisa."},
+  {id:"egide", n:"Égide do Barão", ico:"⛨",
+   d:"Todos os seus heróis ganham 4 de escudo no início de cada turno seu.",
+   porque:"Compra as brigas que você não podia comprar."},
+  {id:"ariete", n:"Aríete", ico:"⌂",
+   d:"Os seus golpes de herói em torre e Nexus causam 2 em vez de 1.",
+   porque:"Dobra a velocidade de derrubar estrutura."}
+];
+const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
+const BARAO_ESCUDO=4;
+const BARAO_ARIETE=1;      /* dano somado ao golpe em estrutura */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
 const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
 
@@ -460,7 +488,7 @@ function novo(){
     rodada:1, vez:0, primeiro:0, fase:"oculto", fim:null,
     times:[0,1].map(t=>({
       placas:0, prio:0, prioGuardada:0, ward:0,
-      dragoes:0, baroes:0, barao:0, retomada:0,
+      dragoes:0, baroes:0, barao:0, dadiva:null, retomada:0,
       feitico:1, feiticoCd:0,
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
@@ -594,6 +622,9 @@ function expiraDoTime(t){
 function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
   expiraDoTime(t);
+  /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
+     mesmo instante em que é reposto */
+  if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
   const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
   tm.retomada=atraso(t);
   const m=1+Math.floor(Math.random()*6)+extra;
@@ -658,7 +689,7 @@ function rotaDaPos(h){
 function fimDaRodada(){
   /* a Fúria do Barão empurra as três rotas sozinha, mesmo sem herói nenhum nelas.
      É o que faz do Barão um relógio: dois times parados param de empatar. */
-  const furia=J.times.map(tm=>tm.barao>0?1:0);
+  const furia=J.times.map(tm=>(tm.barao>0&&tm.dadiva==="ondas")?1:0);
   Object.entries(ROTAS).forEach(([nome,l])=>{     // ondas: a torre viva trava o avanço
     const n0=vivos(0).filter(h=>rotaDaPos(h)===nome).length;
     const n1=vivos(1).filter(h=>rotaDaPos(h)===nome).length;
@@ -680,17 +711,17 @@ function fimDaRodada(){
     const lado = f<=0 ? 0 : (f>=l.length-1 ? 1 : null);
     if(lado===null) return;
     if(J.torres.some(x=>x.rota===nome&&x.t===lado&&x.vida>0)) return;
-    J.nexus[lado]--;
+    J.nexus[lado]--;      /* a onda tira 1: o Aríete é bônus de GOLPE DE HERÓI */
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
     if(J.nexus[lado]<=0) encerraPartida(1-lado,`Nexus ${NOMES[lado]} destruído pela onda do ${nome}.`);
   });
-  [0,1].forEach(t=>{                              // a Fúria expira e devolve o Poder
+  [0,1].forEach(t=>{                              // a dádiva do Barão expira
     const tm=J.times[t];
     if(!tm.barao)return;
     tm.barao--;
     if(!tm.barao){
-      tm.herois.forEach(h=>h.extraPoder-=BARAO_PODER);
-      reg("b",`a Fúria do Barão abandona o ${NOMES[t]}`);
+      reg("b",`${DADIVA[tm.dadiva]?DADIVA[tm.dadiva].n:"a dádiva"} abandona o ${NOMES[t]}`);
+      tm.dadiva=null;
     }
   });
   todos().forEach(h=>{                            // renda: quem não agiu, farma
@@ -736,9 +767,25 @@ function fimDaRodada(){
      docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
   atualizaAcampamentos();
-  const p=J.poco;                                 // o poço reabre, com o morador da vez
-  if(p.vida<=0&&J.rodada>=p.volta){
-    p.id=morador(J.rodada);
+  /* O poço reabre com o morador da vez — e o BARÃO NÃO ESPERA VAGA.
+     Até a v19 a troca só acontecia com o poço vazio (`p.vida<=0`), e a
+     consequência, medida em 800 partidas, era que o Barão aparecia em apenas
+     55% delas: se ninguém matasse o Dragão, ele ficava sentado no poço a
+     partida inteira e o Barão nunca descia. A chegada do objetivo mais
+     importante do jogo dependia de alguém ter fechado o anterior.
+     Agora, na rodada do Barão, ele toma o lugar mesmo com o Dragão vivo — que é
+     o que dá ao Dragão um prazo ("mate antes da rodada 8 ou perca a chance") e
+     garante que o fim de partida sempre tenha um objetivo grande na mesa. */
+  const p=J.poco;
+  const vez=morador(J.rodada);
+  const trocaForcada = p.vida>0 && p.id!==vez;
+  if(trocaForcada){
+    const d=EPICO[vez];
+    reg("b",`o ${EPICO[p.id].n} abandonou o poço — ${d.n} desceu no lugar`);
+    p.id=vez; p.vidaMax=d.vida; p.vida=d.vida;
+    reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
+  } else if(p.vida<=0&&J.rodada>=p.volta){
+    p.id=vez;
     const d=EPICO[p.id];
     p.vidaMax=d.vida; p.vida=d.vida;
     reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
@@ -1463,11 +1510,12 @@ function atacaTorre(tr){
   if(di===null)return;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
-  tr.vida-=DANO_TORRE;
+  const somaAriete=(J.times[h.t].barao>0&&J.times[h.t].dadiva==="ariete")?BARAO_ARIETE:0;
+  tr.vida-=DANO_TORRE+somaAriete;
   agendaAnim(()=>animaAtaque(h,ROTAS[tr.rota][tr.i]));
-  reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} `+
+  reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n}${somaAriete?" (ARÍETE)":""} `+
       `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
-  fx(ROTAS[tr.rota][tr.i],"-"+DANO_TORRE,"dano");
+  fx(ROTAS[tr.rota][tr.i],"-"+(DANO_TORRE+somaAriete),"dano");
 
   if(tr.vida<=0){
     reg("b",`TORRE CAIU — ${tr.rota}, lado ${NOMES[tr.t]}`);
@@ -1493,11 +1541,12 @@ function atacaNexus(lado){
   if(di===null)return;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(18);
 
-  J.nexus[lado]--;
+  const ariete=(J.times[h.t].barao>0&&J.times[h.t].dadiva==="ariete")?BARAO_ARIETE:0;
+  J.nexus[lado]-=1+ariete;
   agendaAnim(()=>animaAtaque(h,BASE[lado][0]));
   reg(J.vez?"c":"a",`${h.n} golpeia o NEXUS ${NOMES[lado]} com ${hb.n} `+
       `(${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS})`);
-  fx(BASE[lado][0],"-1","dano");
+  fx(BASE[lado][0],"-"+(1+ariete),"dano");
 
   if(J.nexus[lado]<=0){
     reg("b",`NEXUS ${NOMES[lado]} DESTRUÍDO`);
@@ -1556,12 +1605,54 @@ function levaEpico(ep,t){
     reg("b",`${NOMES[t]} levou o Dragão — Herança do Dragão ${tm.dragoes}`
            +` (+${DRAGAO_PODER} de Poder no time, para sempre)`);
   }else{
-    if(!tm.barao) tm.herois.forEach(h=>h.extraPoder+=BARAO_PODER);
-    tm.barao=BARAO_RODADAS; tm.baroes++;
-    reg("b",`${NOMES[t]} levou o Barão — Fúria por ${BARAO_RODADAS} rodadas`
-           +` (+${BARAO_PODER} de Poder e as ondas avançam sozinhas)`);
+    tm.baroes++;
+    reg("b",`${NOMES[t]} levou o Barão — escolha a dádiva`);
+    escolheDadiva(t);
   }
   toast(EPICO[ep.id].n.toUpperCase()+" É DO "+NOMES[t],"gank"); vibra([40,60,40,60,80]);
+}
+
+/* Aplica a dádiva escolhida. `tm.barao` conta as rodadas que faltam e
+   `tm.dadiva` diz qual efeito está de pé — os dois expiram juntos. */
+function aplicaDadiva(t,id){
+  const tm=J.times[t], d=DADIVA[id];
+  if(!d)return;
+  tm.dadiva=id; tm.barao=BARAO_RODADAS;
+  reg(t?"c":"a",`${NOMES[t]} escolheu ${d.n} — ${BARAO_RODADAS} rodadas`);
+  toast(d.n.toUpperCase(),"gank"); vibra([40,60,40,60,80]);
+  if(id==="egide") daEgide(t);      // o primeiro escudo sai na hora, não no turno seguinte
+  calcula(); pinta();
+}
+function daEgide(t){
+  J.times[t].herois.filter(h=>!h.morto).forEach(h=>{
+    h.esc+=BARAO_ESCUDO; fx(h.pos,"⛨"+BARAO_ESCUDO,"esc");
+  });
+}
+function escolheDadiva(t){
+  /* a IA decide sozinha; o humano escolhe na tela */
+  if(simMode||(aiMode&&t===1)) return aplicaDadiva(t,iaEscolheDadiva(t));
+  const bts=DADIVAS.map(d=>
+    `<button class="grande dadiva" data-d="${d.id}" style="font-size:15px;padding:12px 14px;text-align:left">
+       <b style="font-size:17px">${d.ico} ${d.n}</b><br>
+       <span style="font-size:13.5px;opacity:.85">${d.d}</span><br>
+       <span style="font-size:12px;color:var(--brass)">${d.porque}</span>
+     </button>`).join("");
+  abre(`<span class="et">Barão derrubado</span>
+    <h2 class="t${t}">${NOMES[t]} escolhe</h2>
+    <p>Uma das três, por <b>${BARAO_RODADAS} rodadas</b>.</p>${bts}`);
+  G("telacx").querySelectorAll(".dadiva").forEach(b=>b.onclick=()=>{
+    fecha(); aplicaDadiva(t,b.dataset.d);
+  });
+}
+/* A IA escolhe pela situação, não por gosto: se está atrás em torre, quer
+   derrubar estrutura; se está apanhando, quer escudo; senão, empurra o mapa. */
+function iaEscolheDadiva(t){
+  const minhasCaidas=J.torres.filter(x=>x.t===t&&x.vida<=0).length;
+  const delasCaidas=J.torres.filter(x=>x.t!==t&&x.vida<=0).length;
+  const machucado=vivos(t).filter(h=>h.vida<=h.vidaMax*.5).length;
+  if(minhasCaidas>delasCaidas) return "ariete";   // atrás: precisa virar território
+  if(machucado>=2) return "egide";
+  return "ondas";
 }
 
 /* ══════════════════ ARRASTAR PARA MOVER ══════════════════ */

@@ -109,6 +109,7 @@ const PONTE = `
   precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
+  get DADIVAS(){return DADIVAS},     get BARAO_RODADAS(){return BARAO_RODADAS},
   get COLS(){return COLS},           get LINS(){return LINS},
   get VIDA_TORRE(){return VIDA_TORRE}, get VIDA_NEXUS(){return VIDA_NEXUS},
   dist:(...a)=>dist(...a), vizinhos:(...a)=>vizinhos(...a),

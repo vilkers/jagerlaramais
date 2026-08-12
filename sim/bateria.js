@@ -91,8 +91,8 @@ if (opcoes.revide === "off")
 /* presença, não verdade: heranca=0 é a variante mais interessante das duas */
 if (opcoes.heranca !== undefined)
   trocas.push([/const DRAGAO_PODER=\d+/, `const DRAGAO_PODER=${+opcoes.heranca}`]);
-if (opcoes.furia !== undefined)
-  trocas.push([/const BARAO_PODER=\d+/, `const BARAO_PODER=${+opcoes.furia}`]);
+if (opcoes.escudobarao !== undefined)
+  trocas.push([/const BARAO_ESCUDO=\d+/, `const BARAO_ESCUDO=${+opcoes.escudobarao}`]);
 if (opcoes.ondas === "off") trocas.push([/d\+=furia\[0\]-furia\[1\];/, ""]);
 
 const rotulo = Object.keys(opcoes).length

@@ -818,6 +818,115 @@ teste("a IA não mira quem ela não pode ver", () => {
   eq(lista.length, 0, "a IA montou jogada contra um herói invisível");
 });
 
+
+/* ═══════════════ v20 — a dádiva do Barão ═══════════════ */
+
+teste("o Barão toma o poço na rodada dele mesmo com o Dragão vivo", () => {
+  const c = cena();
+  const g = c.g;
+  g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 4;
+  g.J.rodada = 12; g.J.vez = 1;
+  g.fimDaRodada();
+  eq(g.J.poco.id, "barao", "o Dragão vivo continuou segurando o poço na rodada do Barão");
+  eq(g.J.poco.vida, g.EPICO.barao.vida, "o Barão desceu sem vida cheia");
+});
+
+teste("as três dádivas existem e são distintas", () => {
+  const c = cena();
+  const ids = c.g.DADIVAS.map(d => d.id);
+  eq(ids.length, 3, "deveriam ser três dádivas");
+  eq(new Set(ids).size, 3, "há dádivas repetidas");
+  ["ondas", "egide", "ariete"].forEach(x =>
+    ok(ids.includes(x), `falta a dádiva ${x}`));
+});
+
+teste("Ondas de Ferro empurra as rotas sem herói nelas", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  /* ninguém em rota nenhuma: sem a dádiva, as frentes não andam */
+  g.J.times.forEach(t => t.herois.forEach(h => c.poe(h, g.BASE[h.t][0])));
+  g.desempilha();
+  const antes = { ...g.J.frentes };
+  g.fimDaRodada();
+  const semDadiva = JSON.stringify(g.J.frentes) === JSON.stringify(antes);
+  ok(semDadiva, "as frentes andaram sozinhas sem ninguém ter a dádiva");
+
+  g.aplicaDadiva(0, "ondas");
+  const antes2 = { ...g.J.frentes };
+  g.fimDaRodada();
+  ok(JSON.stringify(g.J.frentes) !== JSON.stringify(antes2),
+     "Ondas de Ferro não empurrou nada");
+});
+
+teste("Égide dá escudo agora e repõe no início do próximo turno do dono", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.esc = 0;
+  g.aplicaDadiva(0, "egide");
+  ok(h.esc > 0, "a Égide não deu escudo na hora");
+  const primeiro = h.esc;
+
+  g.encerraTurno();                    // turno do adversário
+  eq(h.esc, primeiro, "o escudo da Égide evaporou antes da vez do adversário");
+  g.encerraTurno();                    // volta a vez do dono: expira e repõe
+  ok(h.esc > 0, "a Égide não repôs o escudo no turno seguinte do dono");
+});
+
+teste("Aríete dobra o golpe de herói em torre, e a onda continua tirando 1", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = encostaNaTorre(c, a);
+  const vida0 = tr.vida;
+
+  c.mira(a, 0); c.g.atacaTorre(tr);
+  const semDadiva = vida0 - tr.vida;
+  eq(semDadiva, 1, "o golpe base na torre deixou de ser 1");
+
+  tr.vida = vida0; a.agiu = 0;
+  g.aplicaDadiva(0, "ariete");
+  c.mira(a, 0); c.g.atacaTorre(tr);
+  eq(vida0 - tr.vida, 2, "o Aríete não dobrou o golpe na torre");
+});
+
+teste("a dádiva expira e some do time", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  g.aplicaDadiva(0, "ariete");
+  eq(g.J.times[0].dadiva, "ariete", "a dádiva não foi registrada");
+  for (let i = 0; i < 4; i++) g.fimDaRodada();
+  eq(g.J.times[0].dadiva, null, "a dádiva não expirou");
+  eq(g.J.times[0].barao, 0, "o contador de rodadas não zerou");
+});
+
+teste("o Barão não dá mais Poder bruto — a recompensa virou pressão de mapa", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  const poder0 = g.poderTotal(h);
+  ["ondas", "egide", "ariete"].forEach(id => {
+    g.J.times[0].barao = 0; g.J.times[0].dadiva = null;
+    g.aplicaDadiva(0, id);
+    eq(g.poderTotal(h), poder0, `a dádiva ${id} mexeu no Poder do herói`);
+  });
+});
+
+teste("a IA escolhe Aríete quando está atrás em torres", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  /* time 1 perdeu duas torres, o adversário nenhuma */
+  g.J.torres.filter(x => x.t === 1).slice(0, 2).forEach(x => x.vida = 0);
+  eq(g.iaEscolheDadiva(1), "ariete", "atrás em torres, a IA deveria querer derrubar estrutura");
+});
+
+teste("a IA escolhe Égide quando o time está machucado", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  g.J.times[1].herois.slice(0, 3).forEach(h => { h.vida = Math.ceil(h.vidaMax * 0.3); });
+  eq(g.iaEscolheDadiva(1), "egide", "com metade do time ferida, a IA deveria querer escudo");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {
