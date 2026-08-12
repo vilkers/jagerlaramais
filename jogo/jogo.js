@@ -339,18 +339,38 @@ const POCO_K=k(...POCO);
      só no neutro, e mexer nos outros dois seria mudar o mapa sem motivo. O
      `gira` aqui é a garantia de que continuam espelhos se alguém editar um. */
 const _distBase=(p,t)=>Math.min(...BASE[t].map(([c,r])=>dist(c,r,...p)));
-const CAMP_NEUTRO=(()=>{
+/* Duas casas neutras possíveis, uma de cada lado da selva, e a partida sorteia
+   qual usa. Antes era uma só, sempre no mesmo mato — "o acampamento neutro tá
+   sempre aparecendo no mato da direita". Uma posição fixa vira rota decorada: na
+   terceira partida todo mundo já sabe o caminho e o objetivo deixa de ser
+   disputa. Alternando, a primeira decisão da partida volta a ser uma pergunta.
+
+   As duas continuam equidistantes das bases — a justiça não é sorteada, só o
+   lado é. `CAMP_NEUTRO_LADOS` guarda as duas; `sorteiaNeutro()` escolhe. */
+const CAMP_NEUTRO_LADOS=(()=>{
   const meio=[(COLS-1)/2,(LINS-1)/2];
-  let melhor=null,nota=null;
+  const justas=[];
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     const p=[c,r];
     if(!noTab(c,r)||k(c,r)===POCO_K||BASE_S.has(k(c,r))||LANE.has(k(c,r)))continue;
-    if(_distBase(p,0)!==_distBase(p,1))continue;              // justiça primeiro
-    const n=[dist(...p,...meio),-_distBase(p,0)];             // central, e não colado nas bases
-    if(!melhor||n[0]<nota[0]||(n[0]===nota[0]&&n[1]<nota[1])){melhor=p;nota=n;}
+    if(_distBase(p,0)!==_distBase(p,1))continue;
+    if(dist(...p,...meio)>4)continue;                 // perto do centro, disputável
+    justas.push(p);
   }
-  return melhor||[6,4];
+  if(justas.length<2) return [justas[0]||[6,4],justas[0]||[6,4]];
+  /* as duas mais distantes ENTRE SI são naturalmente uma de cada lado */
+  let par=[justas[0],justas[1]], melhor=-1;
+  for(let i=0;i<justas.length;i++)for(let j=i+1;j<justas.length;j++){
+    const d=dist(...justas[i],...justas[j]);
+    if(d>melhor){melhor=d;par=[justas[i],justas[j]];}
+  }
+  return par;
 })();
+let CAMP_NEUTRO=CAMP_NEUTRO_LADOS[0];
+function sorteiaNeutro(){
+  CAMP_NEUTRO=CAMP_NEUTRO_LADOS[Math.floor(Math.random()*CAMP_NEUTRO_LADOS.length)];
+  return CAMP_NEUTRO;
+}
 const CAMP_AZUL=[3,4];
 const CAMP_CARMIM=gira(...CAMP_AZUL);
 
@@ -397,7 +417,7 @@ function novo(){
     camps:[
       {id:"azul",  t: 0,pos:[...CAMP_AZUL],  ouro:3,respawn:0,ativo:1},
       {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
-      {id:"neutro",t:-1,pos:[...CAMP_NEUTRO],ouro:4,respawn:0,ativo:1}
+      {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
     ],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
@@ -1208,6 +1228,18 @@ function abre(html,aoOk){
   const b=G("ok"); if(b&&aoOk)b.onclick=aoOk;
 }
 function fecha(){ G("tela").classList.remove("on"); }
+/* Confirmação com explicação. Recurso que some sem o jogador entender o que
+   comprou é recurso que ele para de usar — foi o caso da Prioridade, gasta por
+   engano e sem nunca dizer o que ia acontecer. */
+function confirma(titulo,texto,aoSim){
+  abre(`<span class="et">${titulo}</span>
+    <p style="text-align:left;line-height:1.6">${texto}</p>
+    <button class="grande" id="ok">Confirmar</button>
+    <button class="grande" id="btNao"
+      style="background:none;border:1px solid var(--line);color:var(--ink-2)">Cancelar</button>`,
+    ()=>{ fecha(); aoSim(); });
+  const n=G("btNao"); if(n) n.onclick=()=>fecha();
+}
 
 let sheetAberto=null;
 function abreSheet(tit,html){
@@ -1858,11 +1890,29 @@ function abreLog(){
       pode:h=>h.vida<h.vidaMax, faz:h=>{h.vida=Math.min(h.vidaMax,h.vida+4);}}
 
    `pode` decide se o botão fica ativo; `faz` aplica o efeito. Nada mais. */
-const GASTOS=[];
+const GASTOS=[
+  /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói
+     (6, 8, 10, 12…), então ele nunca vira renda infinita: cada ponto de Poder
+     custa mais que o anterior, e a certa altura vale mais gastar em outra coisa.
+     É o que impede que "ouro sobrando" vire "ouro que ganha a partida sozinho". */
+  {id:"reforco", n:"Reforço", d:"+1 de Poder permanente neste herói.",
+   o:h=>6+2*(h.reforcos||0),
+   pode:h=>h.morto||naBase(h),
+   faz:h=>{ h.reforcos=(h.reforcos||0)+1; h.extraPoder+=1; }},
+
+  /* REQUISIÇÃO — ouro vira OPÇÃO, não estatística. Reaproveita o Deck de Comando
+     inteiro em vez de inventar um sistema novo, e a mão máxima de 3 já é o freio:
+     não dá para estocar. Era a recomendação registrada em DECISOES-PENDENTES. */
+  {id:"requisicao", n:"Requisição", d:"Compre 1 carta do baralho.",
+   o:()=>5,
+   pode:h=>(h.morto||naBase(h))&&maos[h.t].length<3&&(baralho.length||cemiterio.length),
+   faz:(h,t)=>{ compra(t); }}
+];
+const precoGasto=(g,h)=> typeof g.o==="function" ? g.o(h) : g.o;
 function gastosDisponiveis(h){ return GASTOS.filter(g=>!g.pode||g.pode(h)); }
 function usaGasto(id,h,t){
   const g=GASTOS.find(x=>x.id===id); if(!g)return false;
-  const preco=g.o;
+  const preco=precoGasto(g,h);
   if(h.ouro<preco||(g.pode&&!g.pode(h)))return false;
   h.ouro-=preco; g.faz(h,t);
   reg(t?"c":"a",`${h.n} gasta ${preco} de ouro em ${g.n}`);
@@ -1898,10 +1948,11 @@ function abreLoja(){
   const gastos=gastosDisponiveis(quem);
   const prat2 = !gastos.length ? "" :
     `<div class="secao-loja">Gastar ouro</div><div class="prat">${gastos.map(g=>{
-      const pode=quem.ouro>=g.o;
+      const preco=precoGasto(g,quem), pode=quem.ouro>=preco;
+      const jaFez = g.id==="reforco"&&quem.reforcos ? ` · ${quem.reforcos}º` : "";
       return `<button class="itC${pode?"":" off"}" data-g="${g.id}" ${pode?"":"disabled"}>
-        <span class="iN">${g.n}</span><span class="iD">${g.d}</span>
-        <span class="iO">${g.o} ◈</span></button>`;}).join("")}</div>`;
+        <span class="iN">${g.n}${jaFez}</span><span class="iD">${g.d}</span>
+        <span class="iO">${preco} ◈</span></button>`;}).join("")}</div>`;
 
   abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>${prat2}`);
   G("shCorpo").querySelectorAll(".abaH").forEach(b=>b.onclick=()=>{
@@ -2202,13 +2253,129 @@ function texto(){
 }
 
 /* ══════════════════ IA TÁTICA ══════════════════ */
-function iaEscolheAlvo(h){
-  if(alvoNexus!==null)return {tipo:"nexus",v:alvoNexus};
-  if(alvosTorre.length)return {tipo:"torre",v:alvosTorre.sort((a,b)=>a.vida-b.vida)[0]};
-  if(alvosEpico.length)return {tipo:"epico",v:alvosEpico[0]};
-  const inimigos=alvos.filter(x=>x.t!==h.t&&!x.morto);
-  if(inimigos.length)return {tipo:"heroi",v:inimigos.sort((a,b)=>a.vida-b.vida)[0]};
-  return null;
+/* A IA da v15 e da v16 era GULOSA: varria heróis e habilidades na ordem do
+   catálogo e executava a PRIMEIRA jogada válida que encontrasse, com uma escada
+   fixa de prioridade (Nexus > torre > épico > herói). Isso produz exatamente o
+   que o playtest descreveu — "sem noção de urgência, sem avaliação, sem
+   estratégia": ela batia num herói de passagem com a Ultimate enquanto o Barão
+   morria ao lado, e gastava o golpe que mataria alguém num alvo cheio de vida.
+
+   Aqui a escada vira NOTA. Toda jogada possível (herói × habilidade × alvo) é
+   enumerada e pontuada, e a IA executa a de maior nota. Continua sendo
+   heurística — não há busca, não há profundidade — mas passa a comparar antes de
+   agir, que é a diferença entre reagir e decidir.
+
+   As notas estão numa escala só, e a ordem de grandeza é a intenção:
+     1000  ganhar a partida agora
+      300  matar um herói / levar o épico
+      100  derrubar uma torre
+       10  dano comum
+   Assim "matar" nunca perde para "bater mais forte em quem não morre", que era o
+   erro mais visível da versão anterior. */
+
+/* Dano que este golpe realmente tira, já contando armadura e escudo do alvo — a
+   IA precisa saber se MATA, e `poderTotal - armadura` sem escudo mentia. */
+function iaDanoReal(h,hb,slot,F,alvo){
+  const ef=hb.ef;
+  if(!ef.dano&&!ef.danoFixo)return 0;
+  const poder=poderTotal(h)+(h.recarga||0)+dupla(h);
+  let bruto = ef.danoFixo ? ef.danoFixo : Math.round(F*ef.dano*escalaDe(slot))+poder;
+  if(ef.extra)bruto+=ef.extra;
+  if(ef.bonusFerido&&alvo&&alvo.vida<=alvo.vidaMax/2)bruto+=ef.bonusFerido;
+  if(!alvo)return bruto;
+  const d=Math.max(1,bruto+(alvo.marca||0)-armTotal(alvo));
+  return Math.max(0,d-(alvo.esc||0));
+}
+/* o quanto vale tirar este herói do tabuleiro: quem está atrás na vida morre
+   mais fácil, e atirador/mago pesam mais que tanque porque é deles o dano */
+const IA_VALOR_ROTA={adc:1.35,meio:1.25,selva:1.1,sup:1.0,topo:.95};
+function iaValorHeroi(o){ return (IA_VALOR_ROTA[CATALOGO[o.id].pos]||1)*(1+(o.itens?o.itens.length:0)*.12); }
+
+/* Enumera e pontua. Não executa nada: devolve a lista ordenada. */
+function iaJogadas(t){
+  const saida=[], salvoSel=selHeroi, salvoModo=modo, salvoHab=habAtual;
+  const ep=J.poco, epVivo=ep.vida>0;
+  sondando=true;
+  try{
+    for(const h of vivos(t)){
+      if(h.agiu)continue;
+      for(let i=0;i<h.habs.length;i++){
+        const hb=h.habs[i], di=dadoPara(hb);
+        if(di===null)continue;
+        const F=J.dados[di].v;
+        limpaModo(); selHeroi=h; iniciaHab(i);
+
+        /* NEXUS — acaba a partida. Nada compete. */
+        if(alvoNexus!==null)
+          saida.push({h,i,tipo:"nexus",v:alvoNexus,nota:1000});
+
+        /* ÉPICO — o prêmio é do último golpe, então o que vale é MATAR, não
+           arranhar. Bater sem levar só entrega vida de graça ao adversário e
+           ainda cobra revide: por isso só pontua alto quando fecha, ou quando o
+           poço já está tão baixo que a próxima rodada decide. */
+        if(epVivo&&alvosEpico.includes(ep)){
+          const golpe=i===2?GOLPE_ULT:GOLPE_HAB;
+          const fecha=ep.vida<=golpe;
+          const revideMata=EPICO[ep.id].revide>=h.vida;
+          let nota = fecha ? 320 : (ep.vida<=golpe*2 ? 90 : 22);
+          if(ep.id==="barao") nota*=1.4;            /* Fúria decide partida */
+          if(revideMata) nota=fecha?nota:5;         /* não morre para arranhar */
+          saida.push({h,i,tipo:"epico",v:ep,nota});
+        }
+
+        /* TORRE — objetivo de verdade, mas o revide de 2 é real. */
+        alvosTorre.forEach(tr=>{
+          const cai=tr.vida<=DANO_TORRE;
+          let nota = cai?150:55;
+          if(REVIDE_TORRE>=h.vida&&!cai) nota=4;    /* não se mata por 1 de torre */
+          saida.push({h,i,tipo:"torre",v:tr,nota});
+        });
+
+        /* HERÓI — matar vale muito mais que machucar. */
+        alvos.filter(o=>o.t!==h.t&&!o.morto).forEach(o=>{
+          const d=iaDanoReal(h,hb,i,F,o);
+          const mata=d>=o.vida||(hb.ef.executa&&o.vida<=hb.ef.executa);
+          let nota = mata ? 300*iaValorHeroi(o)
+                          : 10*Math.min(d,o.vida)*iaValorHeroi(o)/Math.max(1,o.vidaMax/6);
+          if(!mata&&i===2) nota*=.55;               /* não queima Ultimate sem fechar */
+          saida.push({h,i,tipo:"heroi",v:o,nota});
+        });
+
+        /* HABILIDADE EM SI MESMO — escudo, área, cura. Vale quando há inimigo
+           por perto para a área pegar, ou quando o herói está apanhando. */
+        if(hb.alvo==="eu"&&confirmar===i){
+          const ef=hb.ef;
+          const perto=inimigosNosHex(vizinhos(...h.pos),h).length;
+          let nota=0;
+          if(ef.danoVizinhos||ef.danoRaio) nota=28*perto;
+          if(ef.escudo) nota=(h.vida<h.vidaMax*.6?45:12)+(perto?18:0);
+          if(ef.cura&&h.vida<h.vidaMax*.7) nota=38;
+          if(ef.ward) nota=8;
+          if(ef.intocavel&&h.vida<=h.vidaMax*.35) nota=50;
+          if(nota>0) saida.push({h,i,tipo:"eu",v:h,nota});
+        }
+        limpaModo();
+      }
+    }
+  } finally {
+    sondando=false;
+    limpaModo(); selHeroi=salvoSel; modo=salvoModo; habAtual=salvoHab;
+  }
+  return saida.sort((a,b)=>b.nota-a.nota);
+}
+
+/* Executa a melhor jogada. `minimo` é o piso de nota: com ele a IA prefere
+   guardar o dado (e convertê-lo em movimento) a gastar num golpe inútil. */
+function iaMelhorJogada(t,minimo){
+  const lista=iaJogadas(t);
+  const j=lista[0];
+  if(!j||j.nota<(minimo||0))return null;
+  limpaModo(); selHeroi=j.h; iniciaHab(j.i);
+  if(j.tipo==="nexus")      atacaNexus(j.v);
+  else if(j.tipo==="torre") atacaTorre(j.v);
+  else if(j.tipo==="epico") atacaEpico(j.v);
+  else                      confirmaHab(j.v);
+  return j;
 }
 /* ---------- IA: HEURÍSTICAS ----------
    A IA da v15 só sabia uma coisa: procurar alvo ao alcance e, se não achasse,
@@ -2237,6 +2404,17 @@ function iaCompra(t){
       if(descontos[t]) descontos[t]=0;
       if(it.ef.vida){ h.vidaMax+=it.ef.vida; h.vida+=it.ef.vida; }
       reg(t?"c":"a",`${h.n} compra ${it.n} (−${preco} de ouro)`);
+      comprou=true;
+    }
+    /* inventário cheio: o ouro vai para os gastos tardios, senão a IA acumula
+       uma montanha de ouro morto exatamente como o jogador reclamou de acumular */
+    let guarda=0;
+    while(guarda++<4){
+      const g=gastosDisponiveis(h)
+        .filter(x=>h.ouro>=precoGasto(x,h))
+        .sort((a,b)=>precoGasto(b,h)-precoGasto(a,h))[0];
+      if(!g)break;
+      if(!usaGasto(g.id,h,t))break;
       comprou=true;
     }
   });
@@ -2273,20 +2451,57 @@ function iaJogaCartas(t){
    Barão ao Dragão — mas NÃO abandona a rota por ele: quem vai é quem já está
    perto, e é por isso que a decisão continua sendo de posicionamento. */
 function iaObjetivos(t){
-  const ep=J.poco;
-  if(ep.vida<=0) return false;
-  for(const h of vivos(t)){
-    if(h.agiu)continue;
-    for(let i=0;i<h.habs.length;i++){
-      const hb=h.habs[i];
-      if(dadoPara(hb)===null)continue;
-      const salvo=selHeroi;
-      limpaModo(); selHeroi=h; iniciaHab(i);
-      if(alvosEpico.includes(ep)){ atacaEpico(ep); return true; }
-      limpaModo(); selHeroi=salvo;
-    }
-  }
-  return false;
+  if(J.poco.vida<=0) return false;
+  const j=iaJogadas(t).find(x=>x.tipo==="epico");
+  if(!j) return false;
+  limpaModo(); selHeroi=j.h; iniciaHab(j.i); atacaEpico(j.v);
+  return true;
+}
+
+/* ---------- IA: PARA ONDE ANDAR ----------
+   "Fica andando sem objetivo nenhum pois ainda tem dado de movimento" — o relato
+   do playtest, e era literal: o laço gastava movimento enquanto sobrasse, um
+   passo por herói, na direção do inimigo mais próximo. Andar era o que a IA fazia
+   quando não sabia o que fazer.
+
+   Agora cada herói tem um DESTINO com motivo, e — o mais importante — a IA só
+   anda se o passo aproximar de algo. Movimento que não serve a nada fica no
+   bolso, que é o que um jogador faz.
+
+   A ordem dos motivos é a estratégia da IA inteira, e está escrita aqui de
+   propósito, para poder ser discutida sem ler código:
+     1. herói muito ferido volta para a base (não morrer é o primeiro objetivo);
+     2. poço aberto e perto puxa quem está por perto — mas só quem está perto,
+        senão o objetivo deixa de ser dilema e vira convocação geral;
+     3. acampamento livre ao alcance é ouro de graça no caminho;
+     4. inimigo matável perto: fecha a distância para o golpe;
+     5. torre exposta da rota: pressão, que é como a partida realmente avança;
+     6. sem nada disso, fica onde está. */
+function iaDestino(h,t){
+  const inimigos=J.times[1-t].herois.filter(o=>!o.morto);
+  const ferido=h.vida<=Math.ceil(h.vidaMax*.3);
+  if(ferido&&!naBase(h)) return {p:BASE[t][0],motivo:"recua"};
+
+  if(J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
+
+  /* acampamento: qualquer herói pega, não só o caçador — era a queixa de "toda
+     partida eu pego os acampamentos sozinho". O caçador continua com prioridade
+     por chegar antes, mas o campo não fica mais parado a partida inteira. */
+  const camps=J.camps.filter(c=>c.ativo&&(c.t===t||c.t===-1));
+  const camp=camps.slice().sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+  const raioCamp=CATALOGO[h.id].pos==="selva"?9:3;
+  if(camp&&dist(...h.pos,...camp.pos)<=raioCamp) return {p:camp.pos,motivo:"farma"};
+
+  const presa=inimigos.filter(o=>o.vida<=o.vidaMax*.5)
+    .sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+  if(presa&&dist(...h.pos,...presa.pos)<=5) return {p:presa.pos,motivo:"caça"};
+
+  const rota=CATALOGO[h.id].pos, nome={topo:"topo",meio:"meio",adc:"baixo",sup:"baixo"}[rota];
+  const tr=nome?torreExposta(nome,1-t):null;
+  if(tr) return {p:ROTAS[tr.rota][tr.i],motivo:"pressiona"};
+
+  const alvo=inimigos.sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+  return alvo?{p:alvo.pos,motivo:"avança"}:null;
 }
 
 /* ALCANCE. O buraco mais visível da IA da v15: com duas ações e o inimigo a três
@@ -2351,8 +2566,14 @@ async function iaExecutaTurno(){
 
   let guard=0;
   while(guard++<45&&J.fim===null&&J.vez===lado){
-    pinta();
-    await pausa(pularIA?0:(aiMode?RITMO_IA:0));
+    /* Pular era "acelerar": o laço seguia pintando e cedendo a cada passo, e o
+       jogador via a vez da IA passar rápido em vez de já ver o resultado. Com o
+       pulo ligado, nada de tela até o fim — a IA resolve o turno inteiro e o
+       mapa aparece uma vez, já no estado final. */
+    if(!pularIA){
+      pinta();
+      await pausa(aiMode?RITMO_IA:0);
+    }
 
     const vivosAI=vivos(lado);
 
@@ -2385,75 +2606,48 @@ async function iaExecutaTurno(){
       usaRetorno(); continue;
     }
 
-    /* O poço aberto passa na frente da sonda genérica: a sonda escolhe pelo
-       primeiro alvo que aparece, e com isso a IA batia num herói de passagem
-       enquanto o Barão descia ao lado dela. */
-    if(iaObjetivos(lado)){ if(aiMode) falaIA("disputa o objetivo","viva"); continue; }
-
-    let melhor=null;
-    sondando=true;
-    try{
-      for(const h of vivosAI){
-        if(h.agiu)continue;
-        for(let i=0;i<h.habs.length;i++){
-          const hb=h.habs[i], d=dadoPara(hb); if(d===null)continue;
-          selHeroi=h; limpaModo(); selHeroi=h; iniciaHab(i);
-          const alvo=iaEscolheAlvo(h);
-          if(alvo){ melhor={h,i,alvo,dv:J.dados[d].v}; break; }
-          /* aqui a sonda acaba e a jogada começa: habilidade de alvo "eu" ainda
-             pode bater em área (Avalanche, Chuva de Ferro) e portanto ainda pode
-             matar alguém — e "X caiu" é justamente o aviso que não pode sumir. */
-          if(hb.alvo==="eu"&&confirmar===i){
-            sondando=false; confirmaHab(h); melhor={feito:1}; break; }
-          limpaModo();
-        }
-        if(melhor)break;
+    /* A JOGADA. Uma chamada: enumera tudo, pontua, executa a melhor.
+       O piso de 15 é o que separa "jogada" de "gastar dado": abaixo disso a IA
+       prefere guardar a ação — e o fim do laço a converte em movimento, que
+       quase sempre vale mais que um arranhão. */
+    const jogada = iaMelhorJogada(lado, 15);
+    if(jogada){
+      if(aiMode){
+        const alvoTxt = jogada.tipo==="nexus" ? "no NEXUS"
+                      : jogada.tipo==="torre" ? "na torre"
+                      : jogada.tipo==="epico" ? `no ${EPICO[J.poco.id].n}`
+                      : jogada.tipo==="eu"    ? "" : `em ${jogada.v.n}`;
+        falaIA(`${jogada.h.n} usa ${jogada.h.habs[jogada.i].n} ${alvoTxt}`.trim(),"viva");
       }
-    } finally { sondando=false; }
-
-    if(melhor&&!melhor.feito){
-      selHeroi=melhor.h;
-      if(aiMode) falaIA(`${melhor.h.n} usa ${melhor.h.habs[melhor.i].n}`,"viva");
-      if(melhor.alvo.tipo==="nexus")atacaNexus(melhor.alvo.v);
-      else if(melhor.alvo.tipo==="torre")atacaTorre(melhor.alvo.v);
-      else if(melhor.alvo.tipo==="epico")atacaEpico(melhor.alvo.v);
-      else confirmaHab(melhor.alvo.v);
       continue;
     }
 
+    /* MOVIMENTO COM MOTIVO. Só anda quem tem para onde ir e cujo passo aproxima.
+       Sem a checagem de aproximação a IA gastava o Dado Mestre inteiro andando em
+       volta de si mesma sempre que não achava alvo. */
     if(J.mov.rest>0){
-      const inimigos=J.times[1-lado].herois.filter(o=>!o.morto);
-      const candidatos=vivosAI.filter(h=>!h.preso).sort((a,b)=>(passos.get(a.id)||0)-(passos.get(b.id)||0));
+      const candidatos=vivosAI.filter(h=>!h.preso)
+        .sort((a,b)=>(passos.get(a.id)||0)-(passos.get(b.id)||0));
       let moveu=false;
       for(const h of candidatos){
-        const alvo=inimigos.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
-        const camps=J.camps.filter(c=>c.ativo&&(c.t===lado||c.t===-1));
-        const obj=camps.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
-        const papel=CATALOGO[h.id].pos;
-        let destino = papel==="selva"&&obj ? obj.pos : (alvo?alvo.pos:null);
-        /* O poço aberto puxa quem já está por perto. Sem isto a IA "considerava" o
-           épico só quando ele caía no colo dela: medido numa partida IA×IA
-           completa, ela batia no poço UMA vez e levava zero Dragões. O raio de 4
-           é o que mantém a decisão local — quem está do outro lado do mapa não
-           larga a rota, que é justamente o dilema que o objetivo deve criar. */
-        if(J.poco.vida>0 && dist(...h.pos,...POCO)<=4) destino=POCO;
-        if(!destino)continue;
+        const dest=iaDestino(h,lado);
+        if(!dest)continue;
+        const agora=dist(...h.pos,...dest.p);
+        if(agora===0)continue;
         selHeroi=h; modo="mover"; calcula();
         const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
-          .sort((a,b)=>dist(...a,...destino)-dist(...b,...destino))[0];
-        if(umPasso){
-          if(aiMode) falaIA(`${h.n} anda`);
+          .sort((a,b)=>dist(...a,...dest.p)-dist(...b,...dest.p))[0];
+        if(umPasso&&dist(...umPasso,...dest.p)<agora){
+          if(aiMode) falaIA(`${h.n} ${dest.motivo}`);
           moveAte(...umPasso);
           passos.set(h.id,(passos.get(h.id)||0)+1);
           moveu=true; break;
         }
+        limpaModo();
       }
       if(moveu)continue;
     }
 
-    /* Ninguém ao alcance e sem movimento: em vez de encerrar com dado na mão, vira
-       ação em movimento e tenta de novo. É a sequência "converter → andar → bater"
-       que o relatório pediu, montada por repetição do laço em vez de busca. */
     if(iaPlanejaAlcance(lado)){ if(aiMode) falaIA("vira ação em movimento"); continue; }
     break;
   }
@@ -2533,11 +2727,20 @@ function telaFim(){
   const linha=(rot,a,b)=>`<tr><th>${rot}</th>
     <td class="${a>=b?"mais":""}">${a}</td><td class="${b>=a?"mais":""}">${b}</td></tr>`;
   const gf=J.golpeFinal;
+  /* Com autor: o rosto de quem fechou. Sem autor — o Nexus caiu pela onda, que é
+     como a maioria das partidas termina — o crédito é do time, e a tela mostra os
+     cinco juntos. Antes esse caso não mostrava nada e o fim ficava sem imagem
+     justamente na partida mais comum. */
   const heroi = gf ? `
     <div class="golpe-final t${gf.t}">
       <img src="${RETRATO(gf.id)}" alt="">
       <div><span class="gf-n">${gf.n}</span><span class="gf-d">destruiu o Nexus</span></div>
-    </div>` : "";
+    </div>`
+  : `<div class="time-vitoria t${v}">
+      <div class="tv-fila">${J.times[v].herois.map(h=>
+        `<figure><img src="${RETRATO(h.id)}" alt=""><figcaption>${h.n}</figcaption></figure>`).join("")}</div>
+      <span class="gf-d">as cinco peças derrubaram o Nexus</span>
+    </div>`;
   abre(`<span class="et">Fim de partida · rodada ${J.rodada}</span>
     <h2 class="t${v}">${NOMES[v]} venceu</h2>
     ${heroi}
@@ -2609,11 +2812,21 @@ const torresDerrubadas=t=>J.torres.filter(x=>x.t===1-t&&x.vida<=0).length;
 function usaPrioridade(){
   const tm=J.times[J.vez];
   if(!tm.prio||J.fase!=="jogando")return;
-  tm.prio--;
-  const v=1+Math.floor(Math.random()*6);
-  J.dados.push({v,usado:0,extra:1});
-  reg("b",`PRIORIDADE — ${NOMES[J.vez]} rola um dado a mais: ${v}`);
-  toast("dado extra: "+v,""); vibra(14); pinta();
+  confirma("Usar prioridade",
+    `Você gasta <b style="color:var(--brass)">1 carga de Prioridade</b> e rola
+     <b style="color:var(--brass)">um dado de ação a mais</b> agora, neste turno.
+     <br><br>O dado sai aleatório, de 1 a 6 — pode vir baixo. Ele entra na mesa
+     como qualquer outro: dá para gastar numa habilidade, virar movimento ou
+     ajustar com placa.
+     <br><br>Você tem <b>${tm.prio}</b> ${tm.prio===1?"carga":"cargas"}.
+     A carga não volta, e sobra para as próximas rodadas se você não usar.`,
+    ()=>{
+      tm.prio--;
+      const v=1+Math.floor(Math.random()*6);
+      J.dados.push({v,usado:0,extra:1});
+      reg("b",`PRIORIDADE — ${NOMES[J.vez]} rola um dado a mais: ${v}`);
+      toast("dado extra: "+v,""); vibra(14); pinta();
+    });
 }
 
 /* ══════════════════ BOTÕES ══════════════════ */

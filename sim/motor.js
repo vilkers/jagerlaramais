@@ -101,6 +101,8 @@ const PONTE = `
      então sem estes getters um teste não consegue nem achar um herói. */
   get CATALOGO(){return CATALOGO},   get ITENS(){return ITENS},
   get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
+  get CAMP_NEUTRO_LADOS(){return CAMP_NEUTRO_LADOS}, get GASTOS(){return GASTOS},
+  precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
   get COLS(){return COLS},           get LINS(){return LINS},

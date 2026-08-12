@@ -450,6 +450,164 @@ teste("o acampamento neutro fica à mesma distância dos dois lados", () => {
   eq(d0, d1, `acampamento neutro a ${d0} do Azul e ${d1} do Carmim`);
 });
 
+
+/* ═══════════════ v17 — IA que avalia em vez de pegar a primeira ═══════════════ */
+
+teste("a IA prefere MATAR a bater mais forte em quem não morre", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const g = c.g;
+  const atacante = c.heroi(1, "topo");
+  const quaseMorto = c.heroi(0, "adc"), cheio = c.heroi(0, "topo");
+  quaseMorto.vida = 1; quaseMorto.arm = 0; quaseMorto.esc = 0;
+  cheio.vida = cheio.vidaMax;
+  /* os dois colados no atacante: a versão gulosa pegava o primeiro da lista */
+  const viz = g.vizinhos(...atacante.pos).filter(v => g.noTab(...v) && !g.em(...v));
+  c.poe(cheio, viz[0]); c.poe(quaseMorto, viz[1]);
+
+  const lista = g.iaJogadas(1);
+  const topo = lista[0];
+  ok(topo, "a IA não achou jogada nenhuma");
+  eq(topo.tipo, "heroi", "a melhor jogada deveria ser num herói");
+  eq(topo.v.id, quaseMorto.id, "a IA escolheu o alvo cheio de vida em vez do abatível");
+});
+
+teste("a IA não queima a Ultimate num alvo que ela não mata", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const g = c.g;
+  const h = c.heroi(1, "topo"), alvo = c.heroi(0, "topo");
+  alvo.vida = alvo.vidaMax = 40;                 // ninguém mata isso num golpe
+  c.poe(alvo, g.vizinhos(...h.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  const lista = g.iaJogadas(1).filter(j => j.h.id === h.id && j.tipo === "heroi");
+  ok(lista.length >= 2, "esperava mais de uma habilidade disponível");
+  const ult = lista.find(j => j.i === 2), basica = lista.find(j => j.i === 0);
+  if (ult && basica) ok(basica.nota >= ult.nota,
+    `a Ultimate (${ult.nota.toFixed(1)}) ficou acima da básica (${basica.nota.toFixed(1)}) sem matar`);
+});
+
+teste("a IA não arranha o épico quando o revide a mataria", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const g = c.g;
+  g.J.poco.vida = g.J.poco.vidaMax = 14; g.J.poco.id = "barao";
+  const h = c.heroi(1, "selva");
+  h.vida = 1;                                    // o revide do Barão é 2
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  const j = g.iaJogadas(1).filter(x => x.tipo === "epico" && x.h.id === h.id)[0];
+  if (j) ok(j.nota <= 10, `nota ${j.nota} alta demais para um golpe que mata o próprio herói`);
+});
+
+teste("a IA não gasta movimento sem ter para onde ir", () => {
+  const c = cena().mov(6).vez(1);
+  const g = c.g;
+  /* tudo resolvido: sem poço, sem acampamento, inimigos mortos, torres de pé */
+  g.J.poco.vida = 0;
+  g.J.camps.forEach(cp => { cp.ativo = 0; cp.respawn = 9; });
+  g.J.times[0].herois.forEach(h => { h.morto = 2; });
+  const h = c.heroi(1, "topo");
+  const d = g.iaDestino(h, 1);
+  /* sem inimigo vivo e sem objetivo, resta a pressão de torre — mas nunca "nada" */
+  if (d) ok(d.motivo === "pressiona" || d.motivo === "recua",
+    `destino sem propósito claro: ${d.motivo}`);
+});
+
+teste("a IA manda qualquer herói ao acampamento perto, não só o caçador", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  g.J.poco.vida = 0;
+  const camp = g.J.camps.find(cp => cp.t === 1 && cp.ativo);
+  ok(camp, "sem acampamento do time 1");
+  const h = c.heroi(1, "topo");                  // o TOPO, não o caçador
+  const perto = g.vizinhos(...camp.pos).find(v => g.noTab(...v) && !g.em(...v));
+  c.poe(h, perto);
+  const d = g.iaDestino(h, 1);
+  ok(d && d.motivo === "farma", `o topo colado no acampamento foi para "${d && d.motivo}"`);
+});
+
+/* ═══════════════ v17 — acampamento neutro alterna de lado ═══════════════ */
+
+teste("o acampamento neutro tem dois lados possíveis, os dois justos", () => {
+  const c = cena();
+  const g = c.g;
+  const lados = g.CAMP_NEUTRO_LADOS;
+  eq(lados.length, 2, "deveria haver duas posições possíveis");
+  const daBase = (p, t) => Math.min(...g.BASE[t].map(([col, r]) => g.dist(col, r, ...p)));
+  lados.forEach(p => eq(daBase(p, 0), daBase(p, 1),
+    `posição ${JSON.stringify(p)} não é equidistante`));
+  ok(g.dist(...lados[0], ...lados[1]) >= 4,
+     "as duas posições estão no mesmo canto — não é alternar lado");
+});
+
+teste("partidas diferentes sorteiam lados diferentes do acampamento neutro", () => {
+  const c = cena();
+  const vistos = new Set();
+  for (let i = 0; i < 60; i++) { c.g.novo(); vistos.add(JSON.stringify(c.g.J.camps.find(x => x.t === -1).pos)); }
+  ok(vistos.size === 2, `em 60 partidas só apareceram ${vistos.size} posição(ões)`);
+});
+
+/* ═══════════════ v17 — gasto de ouro tardio ═══════════════ */
+
+teste("Reforço dá Poder permanente e encarece a cada compra", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.pos = [...g.BASE[0][0]]; h.ouro = 40; h.itens = ["eclipse", "basalto", "egide"];
+  const poder0 = g.poderTotal(h);
+  const reforco = g.GASTOS.find(x => x.id === "reforco");
+  ok(reforco, "não existe o gasto Reforço");
+
+  const p1 = g.precoGasto(reforco, h);
+  ok(g.usaGasto("reforco", h, 0), "primeira compra falhou");
+  eq(g.poderTotal(h), poder0 + 1, "Reforço não deu Poder");
+  const p2 = g.precoGasto(reforco, h);
+  ok(p2 > p1, `o preço não subiu (${p1} → ${p2})`);
+  ok(g.usaGasto("reforco", h, 0), "segunda compra falhou");
+  eq(g.poderTotal(h), poder0 + 2, "a segunda compra não somou");
+  ok(g.precoGasto(reforco, h) > p2, "o preço parou de subir");
+});
+
+teste("Requisição troca ouro por carta", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.pos = [...g.BASE[0][0]]; h.ouro = 20;
+  g.maos[0] = [];
+  /* `novo()` não monta o baralho — quem monta é `partida()`. Sem carta no
+     baralho a Requisição fica indisponível de propósito, então o teste precisa
+     encher a mesa antes de cobrar o comportamento. */
+  g.baralho.push("furia", "talha", "pilhagem");
+  ok(g.usaGasto("requisicao", h, 0), "Requisição falhou");
+  eq(g.maos[0].length, 1, "não entrou carta na mão");
+  ok(h.ouro < 20, "não cobrou ouro");
+});
+
+teste("gasto tardio só existe na base, e a mão cheia bloqueia a Requisição", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.ouro = 40;
+  /* longe da base: nada disponível */
+  const longe = g.BASE[1][0];
+  c.poe(h, longe);
+  eq(g.gastosDisponiveis(h).length, 0, "gasto disponível fora da base");
+  /* na base com a mão cheia: Reforço sim, Requisição não */
+  h.pos = [...g.BASE[0][0]];
+  g.baralho.push("furia", "talha");
+  g.maos[0] = ["furia", "muralha", "talha"];
+  const ids = g.gastosDisponiveis(h).map(x => x.id);
+  ok(ids.includes("reforco"), "Reforço deveria estar disponível na base");
+  ok(!ids.includes("requisicao"), "Requisição disponível com a mão cheia");
+});
+
+teste("a IA gasta o ouro que sobra depois de fechar os itens", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  const h = c.heroi(1, "topo");
+  h.pos = [...g.BASE[1][0]];
+  h.itens = ["eclipse", "basalto", "egide"];
+  h.ouro = 30;
+  g.iaCompra(1);
+  ok(h.ouro < 30, "a IA ficou sentada em 30 de ouro com o inventário cheio");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

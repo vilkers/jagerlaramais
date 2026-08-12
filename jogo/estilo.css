@@ -502,6 +502,28 @@ button:disabled{cursor:not-allowed}
   color:var(--brass)}
 @keyframes gfIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
 
+/* ── vitória sem autor: o time inteiro ──
+   Cinco rostos numa fila que cabe em 320px de largura, então retrato pequeno e
+   nome embaixo. Entram em cascata, da esquerda para a direita. */
+.time-vitoria{margin:16px 0 4px;padding:13px 11px;border:1px solid var(--line);
+  border-radius:12px;background:linear-gradient(90deg,var(--brass-glow),transparent);
+  display:flex;flex-direction:column;align-items:center;gap:9px}
+.time-vitoria.t0{border-left:3px solid var(--azul-2)}
+.time-vitoria.t1{border-left:3px solid var(--carmim-2)}
+.tv-fila{display:flex;gap:7px;justify-content:center;width:100%}
+.tv-fila figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:0;flex:1;animation:gfIn .4s cubic-bezier(.2,.9,.3,1.2) both}
+.tv-fila figure:nth-child(1){animation-delay:.20s} .tv-fila figure:nth-child(2){animation-delay:.28s}
+.tv-fila figure:nth-child(3){animation-delay:.36s} .tv-fila figure:nth-child(4){animation-delay:.44s}
+.tv-fila figure:nth-child(5){animation-delay:.52s}
+.tv-fila img{width:100%;max-width:48px;aspect-ratio:1;border-radius:50%;object-fit:cover;
+  object-position:50% 18%;border:2px solid var(--brass);background:var(--ground)}
+.time-vitoria.t0 .tv-fila img{border-color:var(--azul-2)}
+.time-vitoria.t1 .tv-fila img{border-color:var(--carmim-2)}
+.tv-fila figcaption{font-family:var(--display);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.02em;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:100%}
+
 /* separador de prateleira na loja — só aparece quando há gasto tardio ativo */
 .secao-loja{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--ink-3);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line-soft)}
