@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 4ae955d 2026-08-12
+     commit 21aceb3 2026-08-12
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -492,6 +492,28 @@ button:disabled{cursor:not-allowed}
 .placar tbody th{text-align:left;font-weight:400;color:var(--ink-3);font-size:13px}
 .placar td{font-family:var(--mono);color:var(--ink-3)}
 .placar td.mais{color:var(--brass)}
+
+/* ── o herói do golpe final ──
+   O rosto tem que ser grande o bastante para ser reconhecido de relance: a tela
+   de vitória é vista por dois segundos, e a pergunta é "quem fechou?". */
+.golpe-final{display:flex;align-items:center;gap:13px;margin:16px 0 4px;padding:11px 13px;
+  border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:12px;
+  background:linear-gradient(90deg,var(--brass-glow),transparent);text-align:left;
+  animation:gfIn .45s cubic-bezier(.2,.9,.3,1.2) both .25s}
+.golpe-final img{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:50% 18%;
+  border:2px solid var(--brass);flex:none;background:var(--ground)}
+.golpe-final.t0{border-left-color:var(--azul-2)} .golpe-final.t0 img{border-color:var(--azul-2)}
+.golpe-final.t1{border-left-color:var(--carmim-2)} .golpe-final.t1 img{border-color:var(--carmim-2)}
+.golpe-final div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gf-n{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.02em;
+  line-height:1.05;color:var(--ink)}
+.gf-d{font-family:var(--carto);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--brass)}
+@keyframes gfIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
+
+/* separador de prateleira na loja — só aparece quando há gasto tardio ativo */
+.secao-loja{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-3);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line-soft)}
 
 /* ══════════ CARTA GRANDE ══════════ */
 .carta-g{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--ground-3);
@@ -1032,6 +1054,23 @@ const naBase=h=>BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
    compra, o item grátis e o texto do botão. Bastava um deles ficar para trás
    para o Relicário "não funcionar", que foi exatamente o relato da v15. */
 const capacidade=h=>h.slots||3;
+
+/* ---------- ESCALA DA ULTIMATE ----------
+   Medido no catálogo da v15: em 15 dos 16 heróis que causam dano, a habilidade
+   BÁSICA com um dado 6 batia mais forte que a própria Ultimate. Nyx e Cael por
+   3 pontos. A causa é a fórmula, não os números dos heróis: dano era
+   `round(Força × dano) + Poder` para os três slots iguais, e como quase toda
+   básica e quase toda Ultimate têm `dano:1`, as duas rendiam exatamente o mesmo
+   com o mesmo dado — só que a básica aceita QUALQUER dado e a Ultimate exige 5+.
+   Mesmo dano e mais exigência: a Ultimate era estritamente pior.
+
+   A correção é uma linha de regra, não vinte de balanceamento: a Ultimate
+   converte o dado em metade a mais de dano. É fácil de dizer na mesa ("a
+   Ultimate rende 1,5× o dado"), preserva a identidade de cada herói e não mexe
+   em nenhum número do catálogo — Ultimate de utilidade continua valendo pelo que
+   faz, e Ultimate ofensiva volta a ser um pico. */
+const ESCALA_ULT=1.5;
+const escalaDe=slot=>slot===2?ESCALA_ULT:1;
 const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
@@ -1290,6 +1329,38 @@ const POCO=(N===8?[4,4]:(()=>{
 })());
 const POCO_K=k(...POCO);
 
+/* ---------- ACAMPAMENTOS ----------
+   As três posições eram fixas no código: [3,4], [7,6] e [6,4]. Medido no
+   tabuleiro 11×11 da v15, o acampamento NEUTRO ficava a 8 da base Azul e a 5 da
+   base Carmim — três hexágonos de vantagem geográfica para um lado num objetivo
+   que o nome diz ser de ninguém. Não era escolha de design: era um número que
+   sobreviveu ao tabuleiro crescer de 8×8 para 11×11.
+
+   Agora as três são DERIVADAS, pelo mesmo princípio que já escolhe o poço épico:
+   o mapa muda de tamanho e elas se recolocam sozinhas.
+
+   · neutro — entre as casas equidistantes das duas bases, a mais central e fora
+     das rotas. Empate exato por construção, e o desempate é a acessibilidade.
+   · azul/carmim — ficam onde estavam, [3,4] e [7,6]. Foram medidos e já eram
+     espelho um do outro (6 da própria base, 8 da adversária): o defeito estava
+     só no neutro, e mexer nos outros dois seria mudar o mapa sem motivo. O
+     `gira` aqui é a garantia de que continuam espelhos se alguém editar um. */
+const _distBase=(p,t)=>Math.min(...BASE[t].map(([c,r])=>dist(c,r,...p)));
+const CAMP_NEUTRO=(()=>{
+  const meio=[(COLS-1)/2,(LINS-1)/2];
+  let melhor=null,nota=null;
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    const p=[c,r];
+    if(!noTab(c,r)||k(c,r)===POCO_K||BASE_S.has(k(c,r))||LANE.has(k(c,r)))continue;
+    if(_distBase(p,0)!==_distBase(p,1))continue;              // justiça primeiro
+    const n=[dist(...p,...meio),-_distBase(p,0)];             // central, e não colado nas bases
+    if(!melhor||n[0]<nota[0]||(n[0]===nota[0]&&n[1]<nota[1])){melhor=p;nota=n;}
+  }
+  return melhor||[6,4];
+})();
+const CAMP_AZUL=[3,4];
+const CAMP_CARMIM=gira(...CAMP_AZUL);
+
 /* Dragão compõe, Barão vira a mesa — a distinção do MOBA, ver docs/00-anatomia-moba.md.
    `volta` é quantas rodadas depois de morrer o poço reabre. `revide` é o preço de
    encostar, como na torre.
@@ -1331,9 +1402,9 @@ function novo(){
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
     camps:[
-      {id:"azul",t:0,pos:[3,4],ouro:3,respawn:0,ativo:1},
-      {id:"carmim",t:1,pos:[7,6],ouro:3,respawn:0,ativo:1},
-      {id:"neutro",t:-1,pos:[6,4],ouro:4,respawn:0,ativo:1}
+      {id:"azul",  t: 0,pos:[...CAMP_AZUL],  ouro:3,respawn:0,ativo:1},
+      {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
+      {id:"neutro",t:-1,pos:[...CAMP_NEUTRO],ouro:4,respawn:0,ativo:1}
     ],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
@@ -1743,7 +1814,7 @@ function usaHab(alvo){
     }
   }
   const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h)+bonusGank;
-  const base=(mult)=>Math.round(F*mult)+poder;
+  const base=(mult)=>Math.round(F*mult*escalaDe(habSel))+poder;
 
   if(ef.doar){
     J.dados.push({v:F,usado:0,extra:1,doado:1,dono:alvo.id});
@@ -1783,7 +1854,7 @@ function usaHab(alvo){
     const raio=[];
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
       if(noTab(c,r)&&dist(...h.pos,c,r)<=ef.danoRaio) raio.push([c,r]);
-    inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,F+poder,hb.n));
+    inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,Math.round(F*escalaDe(habSel))+poder,hb.n));
   }
   if(ef.prendeVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
     .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});   /* prender só vale em herói */
@@ -1974,11 +2045,14 @@ const svgIco=(d,cls="")=>`<svg viewBox="0 0 24 24" class="${cls}"><path d="${d}"
 /* descrição legível do efeito — o jogador nunca precisa decorar */
 function descreve(h,hb,F){
   const e=hb.ef, p=poderTotal(h);
+  /* a mesma escala do motor: se a ficha prometer menos do que sai, o jogador
+     aprende a não confiar na ficha */
+  const esc=escalaDe(h.habs.indexOf(hb));
   const t=[];
   if(e.danoFixo) t.push(`${e.danoFixo} de dano`);
   else if(e.dano){
-    const base=F!=null?Math.round(F*e.dano)+p+(e.extra||0):null;
-    t.push(base!=null?`~${base} de dano`:`Força + ${p} de dano`);
+    const base=F!=null?Math.round(F*e.dano*esc)+p+(e.extra||0):null;
+    t.push(base!=null?`~${base} de dano`:(esc>1?`Força × ${esc} + ${p} de dano`:`Força + ${p} de dano`));
   }
   if(e.area) t.push("respinga nos vizinhos");
   if(e.danoVizinhos) t.push("dano em todos os vizinhos");
@@ -2536,9 +2610,20 @@ moveAte=function(c,r){
    Este círculo invisível leva o alvo até a borda do hexágono sem mudar nada do desenho.
    15,5 é o teto: os centros vizinhos ficam a sqrt(3)*R ≈ 32,9 um do outro, então
    raio 16,45 já encostaria no vizinho e roubaria o toque dele. */
+/* Alvo de toque. Herói e estrutura podem dividir o MESMO hexágono — um inimigo
+   parado em cima da própria torre é jogada normal — e aí duas miras se sobrepõem
+   no mesmo ponto. O relato da v15 foi não conseguir mirar a Ultimate no herói
+   que estava sobre a torre.
+
+   A regra passa a ser explícita em vez de depender da ordem de desenho: quem
+   ocupa o hexágono (herói, morador do poço) tem o alvo GRANDE; a estrutura, que
+   é o cenário do hexágono, tem o alvo menor. Assim o toque no meio da casa é
+   sempre da criatura, e a estrutura continua alcançável pela borda — e pelo
+   painel de comando, que nunca dependeu do mapa. */
 const R_TOQUE=15.5;
-const alvoDeToque=(g,x,y,aoTocar)=>{
-  const c=el("circle",{cx:x,cy:y,r:R_TOQUE,class:"toque"});
+const R_TOQUE_ESTRUTURA=9;
+const alvoDeToque=(g,x,y,aoTocar,raio)=>{
+  const c=el("circle",{cx:x,cy:y,r:raio||R_TOQUE,class:"toque"});
   if(aoTocar) c.onclick=aoTocar;
   g.appendChild(c);
   return c;
@@ -2591,7 +2676,7 @@ function desenhaMapa(){
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
     if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);});
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
@@ -2633,7 +2718,7 @@ function desenhaMapa(){
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
     if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
     gM.appendChild(nx);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);});
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);},R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -2760,6 +2845,38 @@ function abreLog(){
   abreSheet("Histórico",
     `<div class="linhas">${J.log.slice(0,70).map(l=>`<div class="${l.cls}">${l.txt}</div>`).join("")}</div>`);
 }
+/* ---------- GASTO DE OURO TARDIO (gold sink) ----------
+   O problema medido: com os três slots cheios, o ouro do herói para de comprar
+   qualquer coisa. Numa partida de ~22 rodadas isso acontece bem antes do fim, e
+   a renda de 1–3 por rodada vira número decorativo — recurso morto, e com ele
+   morre a decisão "farmo ou pressiono?" justamente na fase em que ela deveria
+   pesar mais.
+
+   Aqui está só o ENCANAMENTO, de propósito. A regra final é decisão do grupo
+   (consumível? cura? ward? re-rolagem? melhoria de item?), e o relatório foi
+   explícito em não inventar um sistema grande sozinho. Com a lista vazia nada
+   muda no jogo e a prateleira nem aparece.
+
+   Para ativar um gasto, basta uma entrada aqui — a loja, o preço, o botão e o
+   registro no log já funcionam. Candidatos discutidos estão em
+   docs/DECISOES-PENDENTES.md, item 5. Exemplo da forma:
+
+     {id:"cura", n:"Bandagem", o:3, d:"Cura 4 agora.",
+      pode:h=>h.vida<h.vidaMax, faz:h=>{h.vida=Math.min(h.vidaMax,h.vida+4);}}
+
+   `pode` decide se o botão fica ativo; `faz` aplica o efeito. Nada mais. */
+const GASTOS=[];
+function gastosDisponiveis(h){ return GASTOS.filter(g=>!g.pode||g.pode(h)); }
+function usaGasto(id,h,t){
+  const g=GASTOS.find(x=>x.id===id); if(!g)return false;
+  const preco=g.o;
+  if(h.ouro<preco||(g.pode&&!g.pode(h)))return false;
+  h.ouro-=preco; g.faz(h,t);
+  reg(t?"c":"a",`${h.n} gasta ${preco} de ouro em ${g.n}`);
+  toast(g.n,""); vibra(12);
+  return true;
+}
+
 function abreLoja(){
   const t=J.vez, tm=J.times[t];
   /* morto está na base esperando respawn — é a janela de compra clássica de MOBA.
@@ -2784,9 +2901,20 @@ function abreLoja(){
       <span class="iD">${it.d}</span>
       <span class="iO">${tem?"comprado":cheio?capacidade(quem)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
   }).join("");
-  abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>`);
+  /* a prateleira de gasto tardio só existe se houver regra aprovada para ela */
+  const gastos=gastosDisponiveis(quem);
+  const prat2 = !gastos.length ? "" :
+    `<div class="secao-loja">Gastar ouro</div><div class="prat">${gastos.map(g=>{
+      const pode=quem.ouro>=g.o;
+      return `<button class="itC${pode?"":" off"}" data-g="${g.id}" ${pode?"":"disabled"}>
+        <span class="iN">${g.n}</span><span class="iD">${g.d}</span>
+        <span class="iO">${g.o} ◈</span></button>`;}).join("")}</div>`;
+
+  abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>${prat2}`);
   G("shCorpo").querySelectorAll(".abaH").forEach(b=>b.onclick=()=>{
     lojaHeroi=tm.herois.find(h=>h.id===b.dataset.h); abreLoja(); });
+  G("shCorpo").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
+    if(usaGasto(b.dataset.g,quem,t)){ abreLoja(); pinta(); } });
   G("shCorpo").querySelectorAll(".itC").forEach(b=>b.onclick=()=>{
     const it=ITEM[b.dataset.i];
     const preco=Math.max(0,it.o-descontos[t]);
@@ -3089,6 +3217,124 @@ function iaEscolheAlvo(h){
   if(inimigos.length)return {tipo:"heroi",v:inimigos.sort((a,b)=>a.vida-b.vida)[0]};
   return null;
 }
+/* ---------- IA: HEURÍSTICAS ----------
+   A IA da v15 só sabia uma coisa: procurar alvo ao alcance e, se não achasse,
+   andar um passo. O playtest listou o que faltava, e cada item virou uma função
+   pequena aqui embaixo. São heurísticas de propósito — a alternativa é uma busca
+   que ninguém consegue manter e que joga bem sem nunca parecer que está pensando.
+
+   Cada uma devolve `true` se fez alguma coisa, e o laço do turno tenta de novo.
+   Todas são chamáveis de fora, o que é o que deixa sim/testes.js verificar cada
+   comportamento isoladamente em vez de olhar uma partida inteira e torcer.   */
+
+/* LOJA. Ouro parado não ganha partida. Compra o item mais caro que cabe, porque
+   os caros são os que mudam o combate — e só quando o herói está na base ou
+   morto, que é a mesma regra do humano. */
+function iaCompra(t){
+  let comprou=false;
+  J.times[t].herois.forEach(h=>{
+    if(!(h.morto||naBase(h)))return;
+    while(!inventarioCheio(h)){
+      const opc=ITENS.filter(i=>!h.itens.includes(i.id)
+        && h.ouro>=Math.max(0,i.o-descontos[t]));
+      if(!opc.length)break;
+      const it=opc.sort((a,b)=>b.o-a.o)[0];
+      const preco=Math.max(0,it.o-descontos[t]);
+      h.ouro-=preco; h.itens.push(it.id);
+      if(descontos[t]) descontos[t]=0;
+      if(it.ef.vida){ h.vidaMax+=it.ef.vida; h.vida+=it.ef.vida; }
+      reg(t?"c":"a",`${h.n} compra ${it.n} (−${preco} de ouro)`);
+      comprou=true;
+    }
+  });
+  return comprou;
+}
+
+/* CARTAS. Sem ler o texto: a família da carta já diz o bastante para uma decisão
+   boa o suficiente. O que importa é que a IA gaste a mão — segurar carta até o
+   fim da partida é o erro que o jogador percebe na hora. */
+const PRIORIDADE_CARTA=["item","economia","buff","tempo","dado","mapa","reacao"];
+function iaJogaCartas(t){
+  let jogou=false;
+  for(let volta=0;volta<3;volta++){
+    const mao=maos[t].slice()
+      .sort((a,b)=>PRIORIDADE_CARTA.indexOf(CARTA[a].fam)-PRIORIDADE_CARTA.indexOf(CARTA[b].fam));
+    /* cartas que pedem herói recebem o melhor candidato antes da checagem */
+    const alvo=J.times[t].herois.filter(h=>!h.morto)
+      .sort((a,b)=>(b.vida/b.vidaMax)-(a.vida/a.vidaMax))[0];
+    const id=mao.find(x=>{
+      const salvo=selHeroi; selHeroi=alvo;
+      const pode=podeJogar(x); selHeroi=salvo; return pode;
+    });
+    if(!id)break;
+    selHeroi=alvo; jogaCarta(id); jogou=true;
+    /* Forja abre escolha; a IA pega a primeira e segue */
+    if(escolhaItem) confirmaEscolhaItem(escolhaItem.opcoes[0]);
+    if(modo==="recuo"){ if(mover.length) recuaAte(...mover[0]); modo=null; }
+  }
+  return jogou;
+}
+
+/* OBJETIVOS. O dilema que o épico deveria criar só existe se os dois lados o
+   virem. A IA bate no poço quando ele está aberto e alguém alcança, e prefere o
+   Barão ao Dragão — mas NÃO abandona a rota por ele: quem vai é quem já está
+   perto, e é por isso que a decisão continua sendo de posicionamento. */
+function iaObjetivos(t){
+  const ep=J.poco;
+  if(ep.vida<=0) return false;
+  for(const h of vivos(t)){
+    if(h.agiu)continue;
+    for(let i=0;i<h.habs.length;i++){
+      const hb=h.habs[i];
+      if(dadoPara(hb)===null)continue;
+      const salvo=selHeroi;
+      limpaModo(); selHeroi=h; iniciaHab(i);
+      if(alvosEpico.includes(ep)){ atacaEpico(ep); return true; }
+      limpaModo(); selHeroi=salvo;
+    }
+  }
+  return false;
+}
+
+/* ALCANCE. O buraco mais visível da IA da v15: com duas ações e o inimigo a três
+   casas ela ficava parada, porque só sabia procurar alvo dentro do alcance atual
+   e andar um passo por vez com o Dado Mestre. Aqui ela faz a conta que o jogador
+   faz sem pensar — "gasto uma ação virando movimento, chego, e ataco com a
+   outra" — e só gasta o dado se a conta realmente fechar. */
+function iaPlanejaAlcance(t){
+  const livres=J.dados.map((d,i)=>({d,i})).filter(x=>!x.d.usado);
+  if(livres.length<2 && !(livres.length===1&&J.mov.rest>0)) return false;
+
+  const inimigos=J.times[1-t].herois.filter(o=>!o.morto);
+  const epAberto=J.poco.vida>0?[{pos:POCO}]:[];
+  const cobicados=[...inimigos,...epAberto];
+  if(!cobicados.length) return false;
+
+  /* de quanto movimento eu precisaria para alguém encostar em alguém? */
+  let melhor=null;
+  for(const h of vivos(t)){
+    if(h.agiu||h.preso)continue;
+    const alc=alcTotal(h);
+    for(const alvo of cobicados){
+      const falta=dist(...h.pos,...alvo.pos)-alc;
+      if(falta<=0||falta>6)continue;
+      if(!melhor||falta<melhor.falta) melhor={h,alvo,falta};
+    }
+  }
+  if(!melhor) return false;
+  if(J.mov.rest>=melhor.falta) return false;      // já dá para chegar andando
+
+  /* converte o MENOR dado que ainda resolve — o grande fica para a habilidade */
+  const precisa=melhor.falta-J.mov.rest;
+  const serve=livres.filter(x=>x.d.v>=precisa).sort((a,b)=>a.d.v-b.d.v)[0]
+           || livres.slice().sort((a,b)=>b.d.v-a.d.v)[0];
+  if(!serve) return false;
+  /* não queima a última ação se ela é a única que ainda ataca */
+  if(livres.length===1&&J.dados.filter(d=>!d.usado).length===1&&melhor.falta>serve.d.v) return false;
+  converteDado(serve.i);
+  return true;
+}
+
 /* 650ms era o tempo de ver que algo mexeu, não de entender o quê. Uma jogada da IA
    é herói + habilidade + alvo + resultado: quatro leituras. 1200 dá para acompanhar
    sem virar espera, e quem já entendeu tem o botão de pular. */
@@ -3103,6 +3349,12 @@ async function iaExecutaTurno(){
   const lado=J.vez, passos=new Map();
   const pausa=ms=>new Promise(r=>setTimeout(r,ms));
   falaIA("vez da IA","viva");
+
+  /* Antes do primeiro movimento: gastar ouro e gastar mão. Ficam fora do laço
+     porque nenhuma das duas depende de posição — e dentro dele virariam ruído
+     visual, uma fala de IA por carta. */
+  if(iaCompra(lado)&&aiMode) falaIA("comprou item");
+  if(iaJogaCartas(lado)&&aiMode) falaIA("jogou carta");
 
   let guard=0;
   while(guard++<45&&J.fim===null&&J.vez===lado){
@@ -3139,6 +3391,11 @@ async function iaExecutaTurno(){
       if(aiMode) falaIA(`${voltador.n} volta à base`,"viva");
       usaRetorno(); continue;
     }
+
+    /* O poço aberto passa na frente da sonda genérica: a sonda escolhe pelo
+       primeiro alvo que aparece, e com isso a IA batia num herói de passagem
+       enquanto o Barão descia ao lado dela. */
+    if(iaObjetivos(lado)){ if(aiMode) falaIA("disputa o objetivo","viva"); continue; }
 
     let melhor=null;
     sondando=true;
@@ -3194,6 +3451,11 @@ async function iaExecutaTurno(){
       }
       if(moveu)continue;
     }
+
+    /* Ninguém ao alcance e sem movimento: em vez de encerrar com dado na mão, vira
+       ação em movimento e tenta de novo. É a sequência "converter → andar → bater"
+       que o relatório pediu, montada por repetição do laço em vez de busca. */
+    if(iaPlanejaAlcance(lado)){ if(aiMode) falaIA("vira ação em movimento"); continue; }
     break;
   }
 
@@ -3262,12 +3524,24 @@ iniciaTurno=function(){
 /* A tela existia e só dizia quem venceu. Agora mostra o placar dos dois lados e o
    motivo — que hoje é sempre o Nexus, mas `J.motivoFim` já está plumbado para o dia
    em que o limite de rodadas entrar (ver docs/REVISAO-EXTERNA.md, item 3.3). */
+/* A tela de vitória é o último quadro que o jogador leva da partida, e a v15
+   terminava com uma linha de texto. O que o relatório pediu (PARTE 19) é que ela
+   seja um pequeno momento: quem venceu, e sobretudo QUEM DEU O GOLPE — com o
+   rosto na tela. `J.golpeFinal` é gravado em `encerraPartida`; quando o Nexus cai
+   pela onda não há autor, e aí o bloco do herói simplesmente não aparece. */
 function telaFim(){
   const v=J.fim, p=1-v;
   const linha=(rot,a,b)=>`<tr><th>${rot}</th>
     <td class="${a>=b?"mais":""}">${a}</td><td class="${b>=a?"mais":""}">${b}</td></tr>`;
+  const gf=J.golpeFinal;
+  const heroi = gf ? `
+    <div class="golpe-final t${gf.t}">
+      <img src="${RETRATO(gf.id)}" alt="">
+      <div><span class="gf-n">${gf.n}</span><span class="gf-d">destruiu o Nexus</span></div>
+    </div>` : "";
   abre(`<span class="et">Fim de partida · rodada ${J.rodada}</span>
     <h2 class="t${v}">${NOMES[v]} venceu</h2>
+    ${heroi}
     <p>${J.motivoFim||`Nexus ${NOMES[p]} destruído.`}</p>
     <table class="placar">
       <thead><tr><th></th><th class="t${v}">${NOMES[v]}</th><th class="t${p}">${NOMES[p]}</th></tr></thead>
@@ -3277,7 +3551,11 @@ function telaFim(){
         ${linha("Ouro acumulado",ouroDoTime(v),ouroDoTime(p))}
       </tbody>
     </table>
-    <button class="grande" id="ok">Nova partida</button>`,()=>{fecha();partida(false);});
+    <button class="grande" id="ok">Nova partida</button>
+    <button class="grande" id="btMenu"
+      style="background:none;border:1px solid var(--line);color:var(--ink-2)">Voltar ao menu</button>`,
+    ()=>{fecha();partida(false);});
+  const bm=G("btMenu"); if(bm) bm.onclick=()=>{ fecha(); telaAbertura(); };
   vibra([60,80,60,80,120]);
 }
 /* ══════════════════ FICHA DA HABILIDADE ══════════════════ */

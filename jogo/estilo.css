@@ -484,6 +484,28 @@ button:disabled{cursor:not-allowed}
 .placar td{font-family:var(--mono);color:var(--ink-3)}
 .placar td.mais{color:var(--brass)}
 
+/* ── o herói do golpe final ──
+   O rosto tem que ser grande o bastante para ser reconhecido de relance: a tela
+   de vitória é vista por dois segundos, e a pergunta é "quem fechou?". */
+.golpe-final{display:flex;align-items:center;gap:13px;margin:16px 0 4px;padding:11px 13px;
+  border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:12px;
+  background:linear-gradient(90deg,var(--brass-glow),transparent);text-align:left;
+  animation:gfIn .45s cubic-bezier(.2,.9,.3,1.2) both .25s}
+.golpe-final img{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:50% 18%;
+  border:2px solid var(--brass);flex:none;background:var(--ground)}
+.golpe-final.t0{border-left-color:var(--azul-2)} .golpe-final.t0 img{border-color:var(--azul-2)}
+.golpe-final.t1{border-left-color:var(--carmim-2)} .golpe-final.t1 img{border-color:var(--carmim-2)}
+.golpe-final div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gf-n{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.02em;
+  line-height:1.05;color:var(--ink)}
+.gf-d{font-family:var(--carto);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--brass)}
+@keyframes gfIn{from{opacity:0;transform:translateY(10px) scale(.94)}to{opacity:1;transform:none}}
+
+/* separador de prateleira na loja — só aparece quando há gasto tardio ativo */
+.secao-loja{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-3);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line-soft)}
+
 /* ══════════ CARTA GRANDE ══════════ */
 .carta-g{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--ground-3);
   border-top:3px solid var(--pos)}

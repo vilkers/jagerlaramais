@@ -100,6 +100,7 @@ const PONTE = `
   /* geometria e catálogo — \`const\` de script não vira propriedade do global,
      então sem estes getters um teste não consegue nem achar um herói. */
   get CATALOGO(){return CATALOGO},   get ITENS(){return ITENS},
+  get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
   get COLS(){return COLS},           get LINS(){return LINS},
@@ -121,7 +122,7 @@ function carrega(trocas = []) {
   const nada = () => {};
   ctx.pinta = nada; ctx.desenhaMapa = nada; ctx.toast = nada; ctx.fx = nada;
   ctx.tremer = nada; ctx.vibra = nada; ctx.animaMovimento = nada; ctx.aplicaFoco = nada;
-  ctx.checaTut = nada;
+  ctx.checaTut = nada; ctx.falaIA = nada; ctx.abreSheet = nada; ctx.fechaSheet = nada;
 
   /* `abre` guarda o callback em vez de disparar: a tela de fim de partida chama
      partida() de novo, e auto-executar isso iniciaria uma partida infinita. */
