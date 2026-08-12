@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v18 (IA avaliadora + rotação do Caçador) · **Atualizado em:** 2026-08-12
+**Versão:** v19 (névoa no mato) · **Atualizado em:** 2026-08-12
 
 > Decisões medidas e **não** tomadas estão em `docs/DECISOES-PENDENTES.md`.
 > Antes de mudar número, leia lá — várias já têm medição pronta esperando escolha.
@@ -32,7 +32,8 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe, sem trava, só depois que uma rota inteira cai |
 | Poço épico | casa **[8,8]** (derivada) · Dragão (**4** de vida) até a rodada 8, Barão (**6**) depois · básica tira 1, Ultimate tira 2, respingo de área tira 1 |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
-| Caçador | **Rotação**: gasta 1 ação, sai do mapa, volta no próprio turno seguinte por 1 de **4 entradas de selva**, com +2 de Força. Ward revela a saída |
+| Visão | rota, rio e base **sempre visíveis**; o **mato** só se você tiver alguém dentro. Duas regiões (cima/baixo), enxergadas em separado. Ward acende as duas |
+| Emboscada | atacar vindo do mato **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia |
 | Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta. Só na base |
 | Vantagem de quem começa | **43,3%** (z=−2,31, n=300) — **o sinal está invertido desde a v16**: quem começa está em DESVANTAGEM. Sem compensação definida. Ver DECISOES-PENDENTES item 1 |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
@@ -45,7 +46,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 ## O que funciona
 
 Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de ação ·
-Caçador com **rotação oculta** · Placas do Topo · Prioridade do Meio · loja e itens ·
+Caçador que **some no mato** · Placas do Topo · Prioridade do Meio · loja e itens ·
 **poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
 guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·

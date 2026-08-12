@@ -78,6 +78,10 @@ button:disabled{cursor:not-allowed}
 #mapa{width:100%;height:100%;display:block}
 #mapa .hx{stroke:var(--line-soft);stroke-width:.9}
 #mapa .hx.selva{fill:var(--selva)}
+/* mato sem visão. Escuro o bastante para ler como "não sei o que tem aqui",
+   claro o bastante para o jogador ainda enxergar o formato do mapa e planejar
+   caminho por dentro dele. */
+#mapa .hx.cego{fill:#070C0A;stroke:#121B16}
 #mapa .hx.rota{fill:var(--rota)}
 #mapa .hx.rio{fill:var(--rio)}
 #mapa .hx.base0{fill:var(--azul);fill-opacity:.28}

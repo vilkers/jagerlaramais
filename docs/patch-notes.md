@@ -16,6 +16,57 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v19 — névoa no mato: o Caçador some sem sair do tabuleiro · 2026-08-12
+
+Corrige o rumo da v18. A rotação tirava o Caçador do tabuleiro, e não era isso
+que o projeto queria: a peça tem que continuar em algum lugar real — o que muda é
+quem consegue vê-la.
+
+### O que mudou
+
+**A regra, em uma frase: rota, rio e base todo mundo vê; o mato você só enxerga
+se tiver alguém dentro.** Duas regiões — mato de cima e mato de baixo — que se
+enxergam separadamente. Um herói na selva desaparece do mapa do adversário que
+não tem ninguém lá. Ele continua andando, farmando e empurrando rota
+normalmente; o oponente é que parou de ver. Ao pisar numa rota, reaparece.
+
+**Por que presença e não raio de visão.** O mapa é 11×11 e quase sempre há um
+herói em cada rota. Névoa por raio revelaria o tabuleiro quase inteiro o tempo
+todo — muita regra para nenhum efeito. Amarrada à presença, a informação passa a
+custar **uma peça**, e isso é decisão: mando alguém vigiar o mato ou ele rende
+mais pressionando a rota?
+
+**Emboscada substitui o Plano de Caça.** Quem ataca vindo do mato sem ter sido
+visto ganha **+2 de Força** no golpe. O bônus deixou de ser prêmio por cumprir
+uma ficha declarada e virou consequência de posição.
+
+**A IA obedece à mesma névoa.** Toda leitura de herói inimigo passa por
+`iaInimigosVisiveis`, que aplica exatamente a regra do jogador. Ela às vezes anda
+para dentro de uma emboscada — é o preço de jogar limpo, e é o que acontece com o
+humano. *Sem isso a névoa seria uma regra que só um dos dois obedece.*
+
+**Na tela.** O mato sem visão fica visivelmente mais escuro, e o HUD diz o estado
+da informação ("mato todo sem visão", "sem visão no mato de cima", "2 no mato,
+sem ser visto"). O poço épico fica fora da névoa: é objetivo compartilhado e o
+relógio da partida precisa ser legível para os dois.
+
+**Ward** acende os dois matos de uma vez, enquanto posta.
+
+**Removido:** a rotação da v18 (sair do tabuleiro, as quatro entradas de selva, a
+emergência no turno seguinte) e o que restava do Plano de Caça.
+
+### O que isso quebra
+
+- **Quem começa voltou a 50,0%** (n=250) — a névoa parece ter neutralizado a
+  desvantagem de 43–45% que existia desde a v16. Efeito colateral não previsto,
+  e a melhor notícia da versão. *Confirmar com amostra maior.*
+- O mapa fica bem mais escuro no começo da partida, quando os dois times estão
+  nas rotas e ninguém tem olhos no mato.
+- Quem jogava contando as peças inimigas no tabuleiro precisa reaprender: agora
+  a contagem pode mentir.
+- Um herói escondido ainda **pressiona rota**, então a onda avançando é uma
+  pista de que tem alguém ali. É informação de graça, e é de propósito.
+
 ## v18 — a IA que avalia, e o Caçador que some de verdade · 2026-08-12
 
 ### O que mudou

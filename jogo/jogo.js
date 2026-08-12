@@ -371,51 +371,52 @@ function sorteiaNeutro(){
   CAMP_NEUTRO=CAMP_NEUTRO_LADOS[Math.floor(Math.random()*CAMP_NEUTRO_LADOS.length)];
   return CAMP_NEUTRO;
 }
-/* ---------- ENTRADAS DE SELVA ----------
-   Os pontos por onde o Caçador reaparece depois de uma rotação. Precisam ser
-   POUCOS e FIXOS: é o que transforma "onde ele está?" numa pergunta com um
-   número pequeno de respostas, em vez de um palpite sobre 116 casas — o
-   adversário consegue cobrir uma, não todas, e é aí que mora a decisão.
+/* ---------- REGIÕES DE SELVA E VISÃO ----------
+   A névoa do JagerLaramais é de propósito PEQUENA: vale só para o mato, e a
+   pergunta que ela responde é uma só — "onde está o Caçador inimigo?".
 
-   São casas de selva coladas num corredor de rota (é de lá que a ameaça sai),
-   espalhadas pelo mapa, e espelhadas de duas em duas: o que vale para um lado
-   vale para o outro. */
-const ENTRADAS_SELVA=(()=>{
-  const cand=[];
+   A regra em uma frase: **rota, rio e base todo mundo vê; o mato você só
+   enxerga se tiver alguém dentro dele.** Um herói parado na selva de cima só
+   aparece para o adversário que também tenha alguém na selva de cima.
+
+   Por que assim, e não o sistema completo de MOBA com raios por unidade: o mapa
+   tem 11×11 e quase sempre há um herói em cada rota. Névoa por raio, aqui,
+   revelaria o tabuleiro inteiro quase o tempo todo — muita regra para nenhum
+   efeito. Amarrando a visão à PRESENÇA na região, a informação passa a custar
+   uma peça, que é uma decisão de verdade: mando alguém vigiar o mato ou deixo
+   ele pressionando a rota?
+
+   Duas regiões, cima e baixo, separadas pela rota do meio. É o que faz "o mato
+   de cima" e "o mato de baixo" serem coisas diferentes de se disputar. */
+const SELVA_REGIAO=(()=>{
+  const mapa=new Map();
+  const perto=(p,l)=>Math.min(...l.map(q=>dist(...p,...q)));
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;
-    if(LANE.has(k(c,r))||BASE_S.has(k(c,r))||k(c,r)===POCO_K)continue;
-    if(!vizinhos(c,r).some(v=>LANE.has(k(...v))))continue;   // dá para a rota
-    cand.push([c,r]);
+    /* rota, base e rio são território aberto: sempre visíveis */
+    if(LANE.has(k(c,r))||BASE_S.has(k(c,r))||RIO_S.has(k(c,r))){ mapa.set(k(c,r),null); continue; }
+    mapa.set(k(c,r), perto([c,r],L_TOPO)<=perto([c,r],L_BOT) ? "cima" : "baixo");
   }
-  /* escolhe as mais afastadas entre si, e cada escolha entra com o seu espelho */
-  const valida=p=>cand.some(q=>k(...q)===k(...p));
-  const escolhidas=[];
-  const longe=p=>escolhidas.length?Math.min(...escolhidas.map(q=>dist(...p,...q))):99;
-  while(escolhidas.length<4&&cand.length){
-    /* só serve o ponto cujo ESPELHO também é entrada válida — senão um lado
-       ganha uma porta que o outro não tem. Foi o que aconteceu na primeira
-       versão: o espelho entrava sem revalidar e caiu em cima do poço épico. */
-    const p=cand.slice()
-      .filter(q=>valida(gira(...q))&&k(...gira(...q))!==k(...q))
-      .sort((a,b)=>longe(b)-longe(a))[0];
-    if(!p)break;
-    const esp=gira(...p);
-    escolhidas.push(p,esp);
-    for(let i=cand.length-1;i>=0;i--)
-      if(escolhidas.some(q=>dist(...cand[i],...q)<2)) cand.splice(i,1);
-  }
-  return escolhidas.slice(0,4);
+  return mapa;
 })();
-const ENTRADA_NOME=p=>{
-  /* nome legível pela rota mais próxima, que é como o jogador pensa no mapa */
-  let melhor="selva", md=1e9;
-  Object.entries(ROTAS).forEach(([nome,l])=>l.forEach(q=>{
-    const d=dist(...p,...q); if(d<md){md=d;melhor=nome;}
-  }));
-  const lado = _distBase(p,0)<_distBase(p,1) ? NOMES[0] : NOMES[1];
-  return `${melhor} · lado ${lado}`;
-};
+const regiaoDe=(c,r)=>SELVA_REGIAO.get(k(c,r))||null;
+
+/* O time `t` enxerga a região? Basta ter um herói vivo dentro dela. A Ward
+   funciona como um olho a mais: enquanto posta, revela as duas. */
+function enxergaRegiao(t,reg){
+  if(!reg)return true;                              // território aberto
+  if(J.times[t].ward)return true;
+  return J.times[t].herois.some(h=>!h.morto&&regiaoDe(...h.pos)===reg);
+}
+/* O herói `h` é visível para o time `t`? */
+function visivelPara(h,t){
+  if(h.t===t||h.morto)return true;                  // os seus você sempre vê
+  return enxergaRegiao(t,regiaoDe(...h.pos));
+}
+/* Escondido AGORA: está no mato e o adversário não tem olhos lá. É a condição
+   que dá o bônus de emboscada — o gank deixou de ser uma ficha declarada e
+   passou a ser consequência de posição. */
+const escondido=h=>!h.morto&&!visivelPara(h,1-h.t);
 
 const CAMP_AZUL=[3,4];
 const CAMP_CARMIM=gira(...CAMP_AZUL);
@@ -464,8 +465,7 @@ function novo(){
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
-          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0,
-          oculto:0, rotando:null};
+          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -496,7 +496,7 @@ function novo(){
 }
 function desempilha(){                     // dois heróis nunca no mesmo hex
   const usados=new Set();
-  todos().filter(h=>!h.oculto).forEach(h=>{
+  todos().forEach(h=>{
     while(usados.has(k(...h.pos))){
       const v=vizinhos(...h.pos).find(p=>!usados.has(k(...p)));
       if(!v)break; h.pos=v;
@@ -506,9 +506,11 @@ function desempilha(){                     // dois heróis nunca no mesmo hex
 }
 const todos=()=>J.times.flatMap(t=>t.herois);
 const vivos=t=>J.times[t].herois.filter(h=>!h.morto);
-/* `oculto` é o Caçador em rotação: continua vivo e continua seu, mas saiu do
-   tabuleiro. Não ocupa casa, não é alvo, não segura rota e não aparece no mapa. */
-const em=(c,r)=>todos().find(h=>!h.morto&&!h.oculto&&h.pos[0]===c&&h.pos[1]===r);
+/* Escondido NÃO é ausente. O herói no mato ocupa a casa, bloqueia passagem,
+   pressiona a rota e coleta acampamento normalmente — o adversário só não o VÊ.
+   É a diferença entre a névoa desta versão e a rotação da v18, que tirava a peça
+   do tabuleiro: aqui o Caçador nunca deixa de estar em algum lugar real. */
+const em=(c,r)=>todos().find(h=>!h.morto&&h.pos[0]===c&&h.pos[1]===r);
 const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
 
 /* ---------- FASE OCULTA ---------- */
@@ -578,7 +580,6 @@ const atraso=t=>{ const d=perigo(t)-perigo(1-t); return d>=4?2:d>=2?1:0; };
    A regra vale para escudo, intocável, buff, prisão e a ação do herói. Uma regra
    só, e o texto da carta pode dizer a mesma frase para todos. */
 function expiraDoTime(t){
-  J.times[t].herois.forEach(h=>emergeDaRotacao(h));
   J.times[t].herois.forEach(h=>{
     if(h.esc){ h.esc=0; }
     h.intoc=0; h.veuAtivo=0;
@@ -636,7 +637,6 @@ function encerraTurno(){
 }
 /* ---------- FIM DE RODADA ---------- */
 function rotaDaPos(h){
-  if(h.oculto) return null;                    // quem está em rotação não pressiona rota
   let melhor=null, md=1e9, idx=-1;
   Object.entries(ROTAS).forEach(([nome,l])=>{
     l.forEach((p,i)=>{
@@ -758,68 +758,6 @@ function moveAte(c,r){
     `${h.n} anda ${d} ${d>1?"casas":"casa"}${ehAgil(h)&&d>0?" (ágil)":""} — movimento restante ${J.mov.rest}`);
   calcula(); pinta();
 }
-/* ---------- ROTAÇÃO DO CAÇADOR ----------
-   A fantasia que as versões antigas tinham e a v15 perdeu: "onde está o Jungle
-   inimigo?". Antes isso era uma FICHA — o jogador escolhia entre cinco opções
-   numa tela e a Ward revelava qual. Informação abstrata, numa interface, sobre
-   uma peça que continuava visível no tabuleiro o tempo todo.
-
-   Agora é posição de verdade. O Caçador gasta uma ação para entrar em ROTAÇÃO:
-   sai do tabuleiro, escolhe em segredo uma das quatro entradas de selva, e
-   reaparece lá no INÍCIO DO SEU PRÓXIMO TURNO. O turno inteiro fora é o que
-   impede de parecer teleporte — ele não atravessa o mapa de graça, atravessa
-   pagando tempo, e enquanto está fora não segura rota nenhuma.
-
-   O prêmio é o mesmo gank de antes (+2 de Força no primeiro golpe ofensivo
-   depois de emergir), e o contra-jogo agora é espacial: a Ward mostra POR ONDE
-   ele vai sair, e quatro entradas é um número que dá para cobrir uma e torcer. */
-const ehCacador=h=>CATALOGO[h.id].pos==="selva";
-function podeRotacionar(h){
-  return h&&ehCacador(h)&&!h.morto&&!h.oculto&&!h.preso
-      &&h.t===J.vez&&!h.agiu&&J.fase==="jogando"&&dadoPara({f:1})!==null;
-}
-function abreRotacao(h){
-  if(!podeRotacionar(h))return;
-  const bts=ENTRADAS_SELVA.map((p,i)=>
-    `<button class="grande" data-e="${i}" style="font-size:15px;padding:13px">
-       ${ENTRADA_NOME(p).toUpperCase()}</button>`).join("");
-  abre(`<span class="et">Rotação do Caçador</span>
-    <h2 style="font-size:26px">${h.n} some do mapa</h2>
-    <p style="text-align:left;line-height:1.6">Escolha <b>em segredo</b> por onde ele volta.
-      Ele reaparece lá <b>no início do seu próximo turno</b> e o primeiro golpe
-      ofensivo dele sai com <b style="color:var(--brass)">+2 de Força</b>.
-      <br><br>Enquanto estiver fora ele <b>não pode ser atacado</b>, mas também
-      <b>não segura rota nenhuma</b> — a onda anda sem ele.
-      <br><br>Uma <b>Ward</b> inimiga revela a saída escolhida.</p>
-    ${bts}`);
-  G("telacx").querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>{
-    fecha(); entraEmRotacao(h,ENTRADAS_SELVA[+b.dataset.e]);
-  });
-}
-function entraEmRotacao(h,entrada){
-  if(!podeRotacionar(h))return;
-  const di=dadoPara({f:1});
-  if(di===null)return;
-  J.dados[di].usado=1; h.agiu=1; dadoSel=null;
-  h.oculto=1; h.rotando={entrada:[...entrada]};
-  reg(h.t?"c":"a",`${h.n} entrou em ROTAÇÃO — saiu do tabuleiro`);
-  /* o adversário com Ward vê a saída; sem Ward, só sabe que ele sumiu */
-  if(J.times[1-h.t].ward)
-    reg("b",`WARD — ${h.n} vai sair em ${ENTRADA_NOME(entrada).toUpperCase()}`);
-  toast("EM ROTAÇÃO","gank"); vibra([20,40,20]);
-  limpaModo(); selHeroi=null; calcula(); pinta();
-}
-/* chamada no início do turno do dono, por expiraDoTime */
-function emergeDaRotacao(h){
-  if(!h.rotando)return;
-  let p=h.rotando.entrada;
-  /* casa ocupada: sai na vizinha livre mais próxima — nunca fica preso fora */
-  if(em(...p)) p=vizinhos(...p).find(v=>noTab(...v)&&!em(...v))||p;
-  h.pos=[...p]; h.oculto=0; h.rotando=null; h.gankPlano=1;
-  reg(h.t?"c":"a",`${h.n} EMERGIU em ${ENTRADA_NOME(p).toUpperCase()} — próximo golpe ofensivo com +2 de Força`);
-  toast(`${h.n} EMERGIU`,"gank"); vibra([30,50,30]);
-}
-
 /* ---------- FEITIÇOS DE INVOCADOR ---------- */
 /* UMA carga por time, não uma por herói. A primeira versão deu Lampejo e Retorno a
    cada um dos cinco, com recarga própria: vinte contadores girando na mesa, e o
@@ -916,9 +854,13 @@ function usaHab(alvo){
   let txt=`${h.n} usa ${hb.n} (Força ${F})`;
 
   let bonusGank=0;
-  if(h.gankPlano && (ef.dano||ef.danoFixo||ef.danoVizinhos||ef.danoRaio)){
-    bonusGank=2; h.gankPlano=null;
-    reg("b",`GANK! ${h.n} saiu da rotação: +2 de Força`);
+  /* EMBOSCADA. O bônus de gank deixou de ser prêmio por cumprir uma ficha
+     declarada e virou consequência de posição: quem ataca vindo do mato, sem o
+     adversário ter olhos ali, bate mais forte. A regra se explica sozinha na
+     mesa e recompensa exatamente o que a névoa passou a permitir. */
+  if(h.emboscada && (ef.dano||ef.danoFixo||ef.danoVizinhos||ef.danoRaio)){
+    bonusGank=2;
+    reg("b",`EMBOSCADA! ${h.n} atacou do mato sem ser visto: +2 de Força`);
   }
   const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h)+bonusGank;
   const base=(mult)=>Math.round(F*mult*escalaDe(habSel))+poder;
@@ -940,9 +882,10 @@ function usaHab(alvo){
     /* Ward não revela mais uma ficha escolhida numa tela: revela POSIÇÃO. Se o
        Caçador inimigo estiver em rotação agora, ela diz por onde ele vai sair —
        e fica posta, revelando as próximas rotações enquanto durar. */
-    const inimigo=J.times[1-h.t].herois.find(x=>x.rotando);
-    txt+=inimigo?` — WARD: ${inimigo.n} sai em ${ENTRADA_NOME(inimigo.rotando.entrada).toUpperCase()}`
-                :" — ward posta: a próxima rotação inimiga será revelada";
+    const escondidos=J.times[1-h.t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
+    txt+=escondidos.length
+      ? ` — WARD revela o mato: ${escondidos.map(x=>`${x.n} (${regiaoDe(...x.pos)})`).join(", ")}`
+      : " — ward posta: o mato inteiro fica à vista";
   }
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
   if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
@@ -974,6 +917,7 @@ function usaHab(alvo){
   if(ef.empurrar&&alvo&&!alvo.morto) desloca(alvo,h.pos,1,ef.empurrar);
   if(critico) reg("b","CRÍTICO — dado 6 natural");
 
+  h.emboscada=0;
   ativo=null; habSel=null; calcula(); pinta();
 }
 function dupla(h){                                   /* atirador perto do suporte */
@@ -1388,7 +1332,7 @@ function calcula(){
     const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
     alvos=todos().filter(o=>{
       if(o.morto)return false;
-      if(o.oculto)return false;                 // em rotação: fora do tabuleiro
+      if(!visivelPara(o,h.t))return false;      // escondido no mato: não é alvo
       if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
       if(hb.alvo==="al"&&(o.t!==h.t||o===h))return false;
             if(hb.alvo==="eu")return o===h;
@@ -1496,6 +1440,7 @@ function confirmaHab(alvo){
   if(di===null)return;
   const d=J.dados[di];
   d.usado=1; selHeroi.agiu=1;
+  selHeroi.emboscada=escondido(selHeroi)?1:0;
   ativo={h:selHeroi,forca:d.v,seis:d.v===6};
   habSel=habAtual;
   reg(J.vez?"c":"a",`${selHeroi.n} usa ${hb.n} com o dado ${d.v}`);
@@ -1767,6 +1712,13 @@ function desenhaMapa(){
     else if(LANE.has(k(c,r)))cls+="rota";
     else if(RIO_S.has(k(c,r)))cls+="rio";
     else cls+="selva";
+    /* mato sem visão fica visivelmente mais escuro: é a única forma de o jogador
+       saber que aquele pedaço do mapa pode ter alguém dentro. Sem isso a névoa
+       seria invisível — e névoa que não se vê é só herói sumindo sem explicação. */
+    /* o poço fica de fora: é objetivo compartilhado, e a vida do morador tem de
+       ser legível para os dois lados o tempo todo — esconder o relógio da
+       partida não é tensão, é confusão. */
+    if(k(c,r)!==POCO_K&&regiaoDe(c,r)&&!enxergaRegiao(J.vez,regiaoDe(c,r))) cls+=" cego";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
@@ -1855,7 +1807,9 @@ function desenhaMapa(){
   rot("MEIO",...centro(3,2));
 
   const alvoS=new Set(alvos.map(o=>o.id+o.t));
-  todos().filter(h=>!h.morto&&!h.oculto).forEach(h=>{   // em rotação = fora do mapa
+  /* Quem o jogador da vez não enxerga simplesmente não aparece. É aqui que a
+     névoa vira jogo: o mato deixa de ser cenário e vira lugar onde cabe alguém. */
+  todos().filter(h=>!h.morto&&visivelPara(h,J.vez)).forEach(h=>{
     const[x,y]=centro(...h.pos);
     const ehAlvo=alvoS.has(h.id+h.t), ehSel=selHeroi===h;
     const foco=tutFoco==="peca:"+h.id;
@@ -1930,7 +1884,7 @@ function fichaHTML(h,meu){
     h.morto?`<span class="selo-est mal">volta em ${h.morto}</span>`:"",
     h.preso?'<span class="selo-est mal">preso</span>':"",
     h.intoc?'<span class="selo-est">intocável</span>':"",
-    h.oculto?'<span class="selo-est">em rotação</span>':"",
+    escondido(h)?'<span class="selo-est">escondido</span>':"",
     h.recarga?'<span class="selo-est">carregado</span>':"",
     h.marca?'<span class="selo-est mal">marcado</span>':"",
     h.pat?`<span class="selo-est">patamar ${h.pat}</span>`:""
@@ -2119,9 +2073,10 @@ function abreManual(){
       <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>14 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
       <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section><h4>Rotação do Caçador</h4>
-<p>O Caçador pode gastar uma ação para entrar em <b>ROTAÇÃO</b>: ele <b>sai do tabuleiro</b> e você escolhe em segredo por qual das <b>quatro entradas de selva</b> ele volta. Ele reaparece lá <b>no início do seu próximo turno</b>, e o primeiro golpe ofensivo dele sai com <b>+2 de Força</b>.</p>
-      <p>Enquanto está fora, ele <b>não pode ser atacado</b> — mas também <b>não segura rota nenhuma</b>, e a onda anda sem ele. Um turno inteiro fora do mapa é o preço de aparecer onde ninguém esperava.</p>
-      <p><b>Ward</b> é a resposta: com uma posta, você vê por onde o Caçador inimigo vai sair. São quatro entradas — dá para cobrir uma e torcer.</p></section>
+<p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
+      <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
+      <p>Quem ataca <b>saindo do mato sem ter sido visto</b> ganha <b>+2 de Força</b> no golpe. É a <b>Emboscada</b>, e é o motivo de valer a pena a espera.</p>
+      <p>A resposta é <b>presença</b>: mande alguém para o mato e ele acende. Uma <b>Ward</b> acende os dois de uma vez. A pergunta que o jogo faz o tempo todo é essa — vale uma peça vigiando o mato, ou ela faz mais pressionando a rota?</p></section>
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
@@ -2199,14 +2154,14 @@ function pinta(){
   G("quem").textContent=NOMES[J.vez];
 
   const ouro=tm.herois.reduce((a,h)=>a+h.ouro,0);
-  /* o aviso do HUD passa a ser sobre POSIÇÃO: quem está fora do mapa agora */
-  const meuRot=J.times[J.vez].herois.find(x=>x.rotando);
-  const eleRot=J.times[1-J.vez].herois.find(x=>x.rotando);
-  const cacaTxt = meuRot ? `${meuRot.n} em rotação`
-      : eleRot ? (J.times[J.vez].ward
-          ? `ward: ${eleRot.n} sai em ${ENTRADA_NOME(eleRot.rotando.entrada)}`
-          : `caçador inimigo sumiu`)
-      : null;
+  /* O aviso do HUD é sobre INFORMAÇÃO: quantos dos meus estão escondidos, e
+     quais matos eu consigo enxergar. Sem isso a névoa vira só heróis sumindo. */
+  const meusEscondidos=J.times[J.vez].herois.filter(h=>escondido(h)).length;
+  const cego=["cima","baixo"].filter(r=>!enxergaRegiao(J.vez,r));
+  const cacaTxt = meusEscondidos ? `${meusEscondidos} no mato, sem ser visto`
+      : cego.length===2 ? "mato todo sem visão"
+      : cego.length ? `sem visão no mato de ${cego[0]}`
+      : "mato todo à vista";
   G("pills").innerHTML=
     `<span>◈ <b>${ouro}</b></span>`+
     `<span class="${tm.placas?"on":""}">⬢ <b>${tm.placas}</b></span>`+
@@ -2255,23 +2210,6 @@ function pinta(){
   /* Um botão de feitiço lê igual a uma habilidade: nome, uma linha de regra, e o
    número da direita. Só que o número é a recarga, não a Força — por isso a classe
    `trava`, a mesma que a habilidade sem dado usa. Estado é o único idioma da UI. */
-/* Botão de rotação — só existe para o Caçador, e só no painel dele. Fica visível
-   mesmo quando não dá para usar, com o motivo escrito: é a única forma de o
-   jogador descobrir que a mecânica existe sem ler manual. */
-function rotacaoBt(h){
-  if(!ehCacador(h))return "";
-  const pode=podeRotacionar(h);
-  const linha = h.rotando ? "já está em rotação"
-    : h.agiu ? "já agiu nesta rodada"
-    : h.preso ? "preso nesta rodada"
-    : dadoPara({f:1})===null ? "sem dado de ação livre"
-    : "sai do mapa e volta no seu próximo turno · +2 de Força no golpe";
-  return `<button class="opc${pode?" pode":" naoPode"}" id="cmdRot" ${pode?"":"disabled"}>
-    <span class="ico">${svgIco(ICO.oculto)}</span>
-    <span class="txt"><span class="t1">Rotação</span><span class="t2">${linha}</span></span>
-    <span class="mark${pode?"":" trava"}">◈</span>
-  </button>`;
-}
 function feiticoBt(h,qual){
   const lampejo = qual==="lampejo";
   const cd = J.times[h.t].feitico ? 0 : J.times[h.t].feiticoCd;
@@ -2320,7 +2258,6 @@ function feiticoBt(h,qual){
       </button>
       ${feiticoBt(h,"lampejo")}
       ${feiticoBt(h,"retorno")}
-      ${rotacaoBt(h)}
       ${h.habs.map((hb,i)=>{
         const di=dadoPara(hb), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
@@ -2336,7 +2273,6 @@ function feiticoBt(h,qual){
     G("cmdMover").onclick=iniciaMover;
     G("cmdLampejo").onclick=iniciaLampejo;
     G("cmdRetorno").onclick=usaRetorno;
-    const bRot=G("cmdRot"); if(bRot) bRot.onclick=()=>abreRotacao(selHeroi);
     h.habs.forEach((_,i)=>{
       const b=G("hab"+i); if(!b)return;
       b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
@@ -2419,6 +2355,15 @@ function iaDanoReal(h,hb,slot,F,alvo){
    mais fácil, e atirador/mago pesam mais que tanque porque é deles o dano */
 const IA_VALOR_ROTA={adc:1.35,meio:1.25,selva:1.1,sup:1.0,topo:.95};
 function iaValorHeroi(o){ return (IA_VALOR_ROTA[CATALOGO[o.id].pos]||1)*(1+(o.itens?o.itens.length:0)*.12); }
+
+/* A IA NÃO TRAPACEIA. Toda leitura de herói inimigo passa por aqui, e aqui
+   aplica-se a mesma regra de visão do jogador humano: quem está no mato sem que
+   o time tenha olhos lá simplesmente não existe para a decisão. Sem isto a névoa
+   seria uma regra que só o jogador obedece, e o modo contra IA viraria mentira.
+
+   Consequência aceita: a IA às vezes anda para dentro de uma emboscada. É o
+   preço de jogar limpo, e é exatamente o que acontece com o humano. */
+const iaInimigosVisiveis=t=>J.times[1-t].herois.filter(o=>!o.morto&&visivelPara(o,t));
 
 /* Enumera e pontua. Não executa nada: devolve a lista ordenada. */
 function iaJogadas(t){
@@ -2607,7 +2552,7 @@ function iaObjetivos(t){
      5. torre exposta da rota: pressão, que é como a partida realmente avança;
      6. sem nada disso, fica onde está. */
 function iaDestino(h,t){
-  const inimigos=J.times[1-t].herois.filter(o=>!o.morto);
+  const inimigos=iaInimigosVisiveis(t);
   const ferido=h.vida<=Math.ceil(h.vidaMax*.3);
   if(ferido&&!naBase(h)) return {p:BASE[t][0],motivo:"recua"};
 
@@ -2633,27 +2578,6 @@ function iaDestino(h,t){
   return alvo?{p:alvo.pos,motivo:"avança"}:null;
 }
 
-/* ROTAÇÃO. A IA só rotaciona quando a rotação PAGA: existe um inimigo ferido
-   que ela não alcança hoje e alguma entrada de selva o coloca ao alcance amanhã.
-   Sem essa checagem ela sumiria do mapa por hábito, e sumir de graça é dar um
-   turno inteiro ao adversário. */
-function iaRotaciona(t){
-  const cac=vivos(t).find(h=>ehCacador(h)&&podeRotacionar(h));
-  if(!cac)return false;
-  const presas=J.times[1-t].herois.filter(o=>!o.morto&&!o.oculto&&o.vida<=o.vidaMax*.65);
-  if(!presas.length)return false;
-  const daqui=Math.min(...presas.map(o=>dist(...cac.pos,...o.pos)));
-  if(daqui<=2)return false;                    // já está em cima: rotacionar é perder tempo
-  let melhor=null,md=1e9;
-  ENTRADAS_SELVA.forEach(p=>{
-    const d=Math.min(...presas.map(o=>dist(...p,...o.pos)));
-    if(d<md){md=d;melhor=p;}
-  });
-  if(!melhor||md>=daqui)return false;          // nenhuma entrada aproxima
-  entraEmRotacao(cac,melhor);
-  return true;
-}
-
 /* ALCANCE. O buraco mais visível da IA da v15: com duas ações e o inimigo a três
    casas ela ficava parada, porque só sabia procurar alvo dentro do alcance atual
    e andar um passo por vez com o Dado Mestre. Aqui ela faz a conta que o jogador
@@ -2663,7 +2587,7 @@ function iaPlanejaAlcance(t){
   const livres=J.dados.map((d,i)=>({d,i})).filter(x=>!x.d.usado);
   if(livres.length<2 && !(livres.length===1&&J.mov.rest>0)) return false;
 
-  const inimigos=J.times[1-t].herois.filter(o=>!o.morto);
+  const inimigos=iaInimigosVisiveis(t);
   const epAberto=J.poco.vida>0?[{pos:POCO}]:[];
   const cobicados=[...inimigos,...epAberto];
   if(!cobicados.length) return false;
@@ -2760,8 +2684,6 @@ async function iaExecutaTurno(){
        O piso de 15 é o que separa "jogada" de "gastar dado": abaixo disso a IA
        prefere guardar a ação — e o fim do laço a converte em movimento, que
        quase sempre vale mais que um arranhão. */
-    if(iaRotaciona(lado)){ if(aiMode) falaIA("o Caçador sumiu do mapa","viva"); continue; }
-
     const jogada = iaMelhorJogada(lado, 15);
     if(jogada){
       if(aiMode){
@@ -3141,13 +3063,12 @@ function jogaCarta(id){
   if(ef.slotExtra){ h.slots=capacidade(h)+1; msg+=` → ${h.n} tem ${h.slots} slots`; }
   if(ef.recall){ h.pos=[...BASE[t][0]]; desempilha(); msg+=` → ${h.n} volta à base`; }
   if(ef.ward){ J.times[t].ward=1;
-    const inimigo=J.times[1-t].herois.find(x=>x.rotando);
-    msg+=inimigo?` → ${inimigo.n} sai em ${ENTRADA_NOME(inimigo.rotando.entrada).toUpperCase()}`
-                :" → ward posta"; }
+    const nomato=J.times[1-t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
+    msg+=nomato.length?` → no mato: ${nomato.map(x=>x.n).join(", ")}`:" → ward posta"; }
   if(ef.revelarCaca){
-    const inimigo=J.times[1-t].herois.find(x=>x.rotando);
-    msg+=inimigo?` → ${inimigo.n} sai em ${ENTRADA_NOME(inimigo.rotando.entrada).toUpperCase()}`
-                :" → nenhum Caçador em rotação agora"; }
+    const nomato=J.times[1-t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
+    msg+=nomato.length?` → no mato: ${nomato.map(x=>`${x.n} (${regiaoDe(...x.pos)})`).join(", ")}`
+                      :" → ninguém escondido no mato"; }
   if(ef.empurrarOnda){
     const rota=["topo","meio","baixo"][Math.floor(Math.random()*3)];
     J.frentes[rota]=limitaFrente(rota, J.frentes[rota]+(t===0?1:-1));

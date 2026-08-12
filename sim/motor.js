@@ -102,8 +102,10 @@ const PONTE = `
   get CATALOGO(){return CATALOGO},   get ITENS(){return ITENS},
   get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
   get CAMP_NEUTRO_LADOS(){return CAMP_NEUTRO_LADOS}, get GASTOS(){return GASTOS},
-  get ENTRADAS_SELVA(){return ENTRADAS_SELVA}, ENTRADA_NOME:p=>ENTRADA_NOME(p),
-  ehCacador:h=>ehCacador(h), podeRotacionar:h=>podeRotacionar(h),
+  regiaoDe:(...a)=>regiaoDe(...a), visivelPara:(h,t)=>visivelPara(h,t),
+  escondido:h=>escondido(h), enxergaRegiao:(t,r)=>enxergaRegiao(t,r),
+  iaInimigosVisiveis:t=>iaInimigosVisiveis(t),
+  desempilha:()=>desempilha(),
   precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
@@ -135,9 +137,10 @@ function carrega(trocas = []) {
 
   const ponte = ctx.__ponte;
 
-  /* A fase de comando oculto (as cinco fichas do Caçador) saiu na v18: a
-     ocultação virou a ROTAÇÃO, que acontece dentro do turno e custa uma ação.
-     Não há mais nada para o harness responder antes do primeiro turno. */
+  /* A fase de comando oculto (as cinco fichas do Caçador) saiu na v19: esconder
+     o Caçador virou consequência de POSIÇÃO — ele fica invisível enquanto está
+     no mato e o adversário não tem ninguém lá. Não há mais nada para o harness
+     responder antes do primeiro turno. */
 
   /* uma fachada só: estado mutável vem da ponte, o resto do global do script */
   return new Proxy({}, {

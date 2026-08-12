@@ -609,116 +609,213 @@ teste("a IA gasta o ouro que sobra depois de fechar os itens", () => {
 });
 
 
-/* ═══════════════ v18 — Jungle em rotação (as 5 fichas saíram) ═══════════════ */
+/* ═══════════════ v19 — névoa no mato (as 5 fichas saíram) ═══════════════ */
 
-teste("as entradas de selva são poucas, fixas e espelhadas", () => {
+/* acha uma casa de selva da região pedida, livre */
+function casaDeSelva(g, reg, ocupadas = []) {
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++) {
+    if (!g.noTab(c, r) || g.regiaoDe(c, r) !== reg) continue;
+    if (g.em(c, r) || ocupadas.some(p => p[0] === c && p[1] === r)) continue;
+    return [c, r];
+  }
+  return null;
+}
+
+teste("o mapa tem duas regiões de mato, cima e baixo", () => {
   const c = cena();
   const g = c.g;
-  const E = g.ENTRADAS_SELVA;
-  eq(E.length, 4, "deveriam ser quatro entradas");
-  E.forEach(p => {
-    ok(g.noTab(...p), `entrada ${JSON.stringify(p)} fora do tabuleiro`);
-    ok(g.k(...p) !== g.k(...g.POCO), "uma entrada caiu em cima do poço épico");
-  });
-  /* justiça: para cada entrada perto do Azul existe a espelhada perto do Carmim */
-  const daBase = (p, t) => Math.min(...g.BASE[t].map(([col, r]) => g.dist(col, r, ...p)));
-  const perfil = E.map(p => [daBase(p, 0), daBase(p, 1)].join("-")).sort();
-  const espelho = E.map(p => [daBase(p, 1), daBase(p, 0)].join("-")).sort();
-  eq(perfil.join(","), espelho.join(","), "as entradas não são simétricas entre os times");
+  const cont = { cima: 0, baixo: 0, aberto: 0 };
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) {
+    if (!g.noTab(col, r)) continue;
+    const reg = g.regiaoDe(col, r);
+    cont[reg || "aberto"]++;
+  }
+  ok(cont.cima > 4, `mato de cima pequeno demais: ${cont.cima}`);
+  ok(cont.baixo > 4, `mato de baixo pequeno demais: ${cont.baixo}`);
+  /* as duas regiões têm que ser parecidas em tamanho, senão um lado esconde mais */
+  ok(Math.abs(cont.cima - cont.baixo) <= 2,
+     `matos desiguais: cima ${cont.cima}, baixo ${cont.baixo}`);
 });
 
-teste("o Caçador entra em rotação, some do mapa e não pode ser atacado", () => {
+teste("rota, base e rio são sempre visíveis", () => {
+  const c = cena();
+  const g = c.g;
+  const h = c.heroi(1, "topo");
+  /* tira todo mundo do time 0 do mato para garantir que não há olhos lá */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+  c.poe(h, g.ROTAS.topo[3]);
+  eq(g.regiaoDe(...h.pos), null, "casa de rota classificada como mato");
+  ok(g.visivelPara(h, 0), "herói na rota ficou invisível");
+});
+
+teste("herói no mato some para quem não tem ninguém no mato", () => {
+  const c = cena();
+  const g = c.g;
+  const cac = c.heroi(1, "selva");
+  const p = casaDeSelva(g, "cima");
+  ok(p, "não achei casa de mato de cima");
+  c.poe(cac, p);
+  /* time 0 inteiro fora do mato */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  g.J.times[0].ward = 0;
+  ok(!g.visivelPara(cac, 0), "o Caçador no mato continuou visível sem olhos lá");
+  ok(g.escondido(cac), "escondido() não reconheceu a situação");
+  ok(g.visivelPara(cac, 1), "o dono deixou de ver o próprio herói");
+});
+
+teste("basta um herói na mesma região para enxergar o mato", () => {
+  const c = cena();
+  const g = c.g;
+  const cac = c.heroi(1, "selva"), olheiro = c.heroi(0, "topo");
+  const p = casaDeSelva(g, "cima");
+  c.poe(cac, p);
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  ok(!g.visivelPara(cac, 0), "deveria estar escondido antes do olheiro entrar");
+
+  const q = casaDeSelva(g, "cima", [p]);
+  c.poe(olheiro, q);
+  ok(g.visivelPara(cac, 0), "com um herói no mesmo mato, ainda não enxerga");
+});
+
+teste("olho no mato de cima não revela o mato de baixo", () => {
+  const c = cena();
+  const g = c.g;
+  const cac = c.heroi(1, "selva"), olheiro = c.heroi(0, "topo");
+  const baixo = casaDeSelva(g, "baixo");
+  const cima = casaDeSelva(g, "cima");
+  ok(baixo && cima, "não achei as duas regiões");
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  c.poe(cac, baixo); c.poe(olheiro, cima);
+  g.J.times[0].ward = 0;
+  ok(!g.visivelPara(cac, 0), "o olheiro no mato de cima revelou o mato de baixo");
+});
+
+teste("quem está escondido não pode ser alvo", () => {
   const c = cena().dados(6, 6, 6).mov(0).vez(0);
   const g = c.g;
-  const cac = c.heroi(0, "selva"), inimigo = c.heroi(1, "topo");
-  ok(g.ehCacador(cac), "o herói de selva não é reconhecido como Caçador");
-  c.poe(inimigo, g.vizinhos(...cac.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  const cac = c.heroi(1, "selva"), atacante = c.heroi(0, "topo");
+  const p = casaDeSelva(g, "cima");
+  c.poe(cac, p);
+  /* atacante colado nele, mas sem estar no mato: perto e cego */
+  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.regiaoDe(...v));
+  ok(viz, "não achei casa aberta colada no mato");
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  c.poe(atacante, viz);
+  g.J.times[0].ward = 0;
 
-  ok(g.podeRotacionar(cac), "não dá para rotacionar com dado livre e sem ter agido");
-  g.entraEmRotacao(cac, g.ENTRADAS_SELVA[0]);
-  eq(cac.oculto, 1, "o Caçador não ficou oculto");
-  ok(cac.rotando, "não guardou a entrada escolhida");
-  eq(g.em(...cac.pos), undefined, "o Caçador oculto ainda ocupa a casa");
-
-  /* o inimigo mira: o Caçador não pode estar na lista */
-  g.J.vez = 1; g.J.dados = [{ v: 6, usado: 0 }];
-  g.limpaModo(); g.selHeroi = inimigo; g.iniciaHab(0);
-  ok(!g.alvos.includes(cac), "herói em rotação continuou alvejável");
+  g.limpaModo(); g.selHeroi = atacante; g.iniciaHab(0);
+  ok(!g.alvos.includes(cac), "dá para atacar quem você não enxerga");
 });
 
-teste("quem está em rotação não segura rota", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+teste("Ward acende o mato inteiro", () => {
+  const c = cena();
   const g = c.g;
-  const cac = c.heroi(0, "selva");
-  /* põe o caçador em cima de uma rota, onde ele PRESSIONARIA */
-  c.poe(cac, g.ROTAS.meio[Math.floor(g.ROTAS.meio.length / 2)]);
-  g.entraEmRotacao(cac, g.ENTRADAS_SELVA[0]);
-  eq(g.rotaDaPos(cac), null, "o Caçador oculto ainda conta presença na rota");
+  const cac = c.heroi(1, "selva");
+  c.poe(cac, casaDeSelva(g, "baixo"));
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  g.J.times[0].ward = 0;
+  ok(!g.visivelPara(cac, 0), "deveria estar escondido sem ward");
+  g.J.times[0].ward = 1;
+  ok(g.visivelPara(cac, 0), "com ward posta o mato continuou escuro");
 });
 
-teste("o Caçador emerge na entrada escolhida no início do próprio turno", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+teste("atacar vindo do mato sem ser visto vale +2 de Força", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(1);
   const g = c.g;
-  const cac = c.heroi(0, "selva");
-  const entrada = g.ENTRADAS_SELVA[2];
-  g.entraEmRotacao(cac, entrada);
+  const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
+  alvo.vida = alvo.vidaMax = 80; alvo.arm = 0; alvo.esc = 0;
 
-  g.encerraTurno();                       // passa a vez ao adversário
-  eq(cac.oculto, 1, "emergiu cedo demais, ainda no turno do adversário");
-  eq(g.J.vez, 1, "a vez não passou");
-
-  g.encerraTurno();                       // fim da rodada → volta a vez do dono
-  eq(cac.oculto, 0, "não emergiu no início do próprio turno");
-  eq(g.k(...cac.pos), g.k(...entrada), "emergiu na casa errada");
-  ok(cac.gankPlano, "emergiu sem o bônus de gank");
-});
-
-teste("o golpe depois da rotação sai com +2 de Força", () => {
-  const c = cena().dados(4, 4, 4).mov(0).vez(0);
-  const g = c.g;
-  const cac = c.heroi(0, "selva"), alvo = c.heroi(1, "topo");
-  alvo.vida = alvo.vidaMax = 60; alvo.arm = 0; alvo.esc = 0;
-
-  /* mesma cena duas vezes: sem gank e com gank, e a diferença tem que ser 2 */
+  /* cena 1: o atacante está na ROTA, à vista — sem bônus */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  g.desempilha();
+  c.poe(cac, g.ROTAS.topo[4]);
   c.poe(alvo, g.vizinhos(...cac.pos).find(v => g.noTab(...v) && !g.em(...v)));
   const v0 = alvo.vida;
   c.usa(cac, 0, alvo);
-  const semGank = v0 - alvo.vida;
+  const aberto = v0 - alvo.vida;
 
-  cac.agiu = 0; cac.gankPlano = 1;
+  /* cena 2: o mesmo golpe, agora saindo do mato sem olhos inimigos */
+  const p = casaDeSelva(g, "cima");
+  c.poe(cac, p);
+  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v));
+  c.poe(alvo, viz);
+  g.J.times[0].herois.filter(x => x !== alvo).forEach(x => c.poe(x, g.BASE[0][0]));
+  g.J.times[0].ward = 0;
+  ok(g.escondido(cac), "o cenário 2 não deixou o atacante escondido");
+  cac.agiu = 0;
   const v1 = alvo.vida;
   c.usa(cac, 0, alvo);
-  const comGank = v1 - alvo.vida;
+  const emboscada = v1 - alvo.vida;
 
-  eq(comGank - semGank, 2, "o bônus de gank não valeu +2 de Força");
-  ok(!cac.gankPlano, "o bônus não foi consumido");
+  eq(emboscada - aberto, 2, "a emboscada não valeu +2 de Força");
 });
 
-teste("Ward revela por onde o Caçador inimigo vai sair", () => {
+teste("o bônus de emboscada não repete no golpe seguinte à vista", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(1);
+  const g = c.g;
+  const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
+  alvo.vida = alvo.vidaMax = 80; alvo.arm = 0; alvo.esc = 0;
+  const p = casaDeSelva(g, "cima");
+  c.poe(cac, p);
+  c.poe(alvo, g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v)));
+  g.J.times[0].herois.filter(x => x !== alvo).forEach(x => c.poe(x, g.BASE[0][0]));
+  g.J.times[0].ward = 0;
+
+  const v0 = alvo.vida;
+  c.usa(cac, 0, alvo);
+  const primeiro = v0 - alvo.vida;
+  eq(cac.emboscada, 0, "a marca de emboscada ficou pendurada no herói");
+
+  /* agora o inimigo entra no mato e o vê: o mesmo golpe sai menor */
+  c.poe(alvo, casaDeSelva(g, "cima", [p]));
+  ok(!g.escondido(cac), "o atacante deveria estar visível agora");
+  cac.agiu = 0;
+  const v1 = alvo.vida;
+  c.usa(cac, 0, alvo);
+  eq(primeiro - (v1 - alvo.vida), 2, "o bônus não sumiu quando o atacante ficou visível");
+});
+
+/* ═══════════════ v19 — a IA obedece à mesma névoa ═══════════════ */
+
+teste("a IA não enxerga herói escondido no mato", () => {
   const c = cena().dados(6, 6, 6).mov(0).vez(1);
   const g = c.g;
-  const cacInimigo = c.heroi(1, "selva");
-  const entrada = g.ENTRADAS_SELVA[1];
-  g.entraEmRotacao(cacInimigo, entrada);
+  const escondidoH = c.heroi(0, "selva");
+  const p = casaDeSelva(g, "cima");
+  c.poe(escondidoH, p);
+  /* o time 1 inteiro fora do mato */
+  g.J.times[1].herois.forEach(x => c.poe(x, g.ROTAS.meio[6]));
+  g.desempilha();
+  g.J.times[1].ward = 0;
 
-  /* o time 0 tem ward posta: o log tem que dizer a saída */
-  g.J.times[0].ward = 1;
-  g.J.vez = 1;
-  const cac2 = c.heroi(1, "sup");
-  g.J.times[1].herois.forEach(h => { if (h.rotando) return; h.agiu = 0; });
-  /* a revelação acontece na entrada em rotação; repete com ward já posta */
-  const outro = g.J.times[1].herois.find(h => g.ehCacador(h));
-  outro.oculto = 0; outro.rotando = null; outro.agiu = 0;
-  g.J.dados = [{ v: 6, usado: 0 }];
-  g.entraEmRotacao(outro, entrada);
-  const achou = g.J.log.some(l => /WARD/.test(l.txt) && new RegExp(g.ENTRADA_NOME(entrada).split(" ")[0], "i").test(l.txt));
-  ok(achou, "com ward posta, a saída do Caçador não foi revelada no log");
+  const vistos = g.iaInimigosVisiveis(1);
+  ok(!vistos.includes(escondidoH), "a IA está trapaceando: enxergou quem está no mato");
+  const outros = g.J.times[0].herois.filter(x => !x.morto && !g.regiaoDe(...x.pos));
+  ok(vistos.length === outros.length, "a IA viu mais heróis do que a regra permite");
 });
 
-teste("não existe mais fase de comando oculto antes do primeiro turno", () => {
-  const c = cena();
-  eq(c.g.J.fase, "jogando", "a partida ainda começa numa fase que não é jogar");
-  ok(c.g.J.times[0].caca === undefined, "o campo das 5 fichas continua no estado");
+teste("a IA não mira quem ela não pode ver", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const g = c.g;
+  const presa = c.heroi(0, "selva");
+  presa.vida = 1;                                   // alvo dos sonhos, se ela visse
+  const p = casaDeSelva(g, "cima");
+  c.poe(presa, p);
+  const atacante = c.heroi(1, "topo");
+  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.regiaoDe(...v));
+  ok(viz, "não achei casa aberta colada no mato");
+  g.J.times[1].herois.forEach(x => c.poe(x, g.ROTAS.meio[6]));
+  g.desempilha();
+  c.poe(atacante, viz);
+  g.J.times[1].ward = 0;
+
+  const lista = g.iaJogadas(1).filter(j => j.tipo === "heroi" && j.v === presa);
+  eq(lista.length, 0, "a IA montou jogada contra um herói invisível");
 });
 
 /* ---------- resumo ---------- */
