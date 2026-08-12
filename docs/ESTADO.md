@@ -35,7 +35,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Visão | rota, rio e base **sempre visíveis**; o **mato** só se você tiver alguém dentro. Duas regiões (cima/baixo), enxergadas em separado. Ward acende as duas |
 | Emboscada | atacar vindo do mato **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia |
 | Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta. Só na base |
-| Vantagem de quem começa | **43,3%** (z=−2,31, n=300) — **o sinal está invertido desde a v16**: quem começa está em DESVANTAGEM. Sem compensação definida. Ver DECISOES-PENDENTES item 1 |
+| Vantagem de quem começa | **42,0%** (z=−6,2, n=1500) — **o sinal está invertido desde a v16**: quem começa está em DESVANTAGEM, e a névoa da v19 não corrigiu. Sem compensação definida. Ver DECISOES-PENDENTES item 1. **Meça sempre com n≥1500**: com n=250 o ruído chega a inverter o resultado |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | **~22 rodadas** (mediana medida: 22, n=3000) |

@@ -21,7 +21,13 @@ turnos, isso deixou de ser verdade.
 | Build | Ordem real | Vitórias de quem começa | n |
 |---|---|---|---|
 | v15 (iniciativa alternando) | A C \| C A \| A C | 50,5% (z=0,14) | 200 |
-| **v16 (alternância limpa)** | A → C → A → C | **45,6% (z=−4,78)** | **3000** |
+| v16 (alternância limpa) | A → C → A → C | 45,6% (z=−4,78) | 3000 |
+| **v19 (com névoa no mato)** | A → C → A → C | **42,0% (z=−6,2)** | **1500** |
+
+**A névoa não corrigiu.** Uma medição de n=250 na v19 deu 50,0% e parecia ter
+neutralizado o problema; era ruído. Com 1500 partidas o desequilíbrio continua, e
+um pouco pior. **Meça sempre com n ≥ 1500** — abaixo disso o ruído desta métrica
+chega a inverter o sinal.
 
 Quem começa agora **perde** 4,4 pontos. O resultado é estatisticamente forte
 (z=−4,78), não ruído.

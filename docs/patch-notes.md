@@ -57,9 +57,12 @@ emergência no turno seguinte) e o que restava do Plano de Caça.
 
 ### O que isso quebra
 
-- **Quem começa voltou a 50,0%** (n=250) — a névoa parece ter neutralizado a
-  desvantagem de 43–45% que existia desde a v16. Efeito colateral não previsto,
-  e a melhor notícia da versão. *Confirmar com amostra maior.*
+- **Quem começa continua em desvantagem: 42,0%** (n=1500, z=−6,2). Uma medição
+  intermediária de n=250 deu 50,0% e chegou a ser comemorada como efeito
+  colateral da névoa; era ruído. Com amostra grande o desequilíbrio segue igual
+  ao da v16, e a névoa **não** o corrige. Continua pendente — ver
+  `docs/DECISOES-PENDENTES.md` item 1. *Lição registrada: 250 partidas não bastam
+  para essa medição; use 1500 ou mais.*
 - O mapa fica bem mais escuro no começo da partida, quando os dois times estão
   nas rotas e ninguém tem olhos no mato.
 - Quem jogava contando as peças inimigas no tabuleiro precisa reaprender: agora
