@@ -4,7 +4,10 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v0.6.2 (em teste, não aprovada) · **Atualizado em:** 2026-08-10
+**Versão:** v16 (correções do playtest da v15) · **Atualizado em:** 2026-08-12
+
+> Decisões medidas e **não** tomadas estão em `docs/DECISOES-PENDENTES.md`.
+> Antes de mudar número, leia lá — várias já têm medição pronta esperando escolha.
 
 ---
 
@@ -21,14 +24,18 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
-| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** |
-| Vida de torre | **3** — a onda tira 1/rodada, o herói tira 1 (uma vez por rodada). O herói bate na **torre exposta** da rota, sem depender da onda |
-| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1/rodada, só depois que uma rota inteira cai |
-| Poço épico | casa **[4,4]** · Dragão (3 de vida) até a rodada 8, Barão (5) depois |
-| Vantagem de quem começa | **55,5%** (z=15,41, n=20000) — era **53,5%** na v0.5.8 e chegou a **57,1%** na v0.6.1. O tabuleiro 11×11 devolveu 1,6 ponto, mas ainda sobra +2,0 sobre a base e não há freio |
+| Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
+| Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
+| Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
+| Escala de dano | básica `round(Força × dano) + Poder` · **Ultimate `round(Força × dano × 1,5) + Poder`** |
+| Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
+| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe, sem trava, só depois que uma rota inteira cai |
+| Poço épico | casa **[8,8]** (derivada) · Dragão (8 de vida) até a rodada 8, Barão (14) depois · básica tira 1, Ultimate tira 2, respingo de área tira 1 |
+| Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro [6,7], a 7 das duas bases** (derivado) |
+| Vantagem de quem começa | **45,6%** (z=−4,78, n=3000) — **o sinal inverteu na v16**. Com a alternância limpa, quem começa está em DESVANTAGEM. Ver DECISOES-PENDENTES item 1 |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | **~19 rodadas** (mediana medida: 19, n=20000) — eram 15 em 9×9. O tabuleiro maior alongou a partida |
+| Duração de uma partida | **~22 rodadas** (mediana medida: 22, n=3000) |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
@@ -40,7 +47,21 @@ Caçador com comando oculto · Placas do Topo · Prioridade do Meio · loja e it
 **poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
 guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·
-**arrastar o herói para andar** · **segurar a habilidade abre a ficha dela** · **placar no fim**.
+**arrastar o herói para andar** · **segurar a habilidade abre a ficha dela** ·
+**tela de vitória com o herói do golpe final** · **IA que compra, joga carta, disputa objetivo
+e converte ação em movimento**.
+
+## Como verificar que nada quebrou
+
+```
+node sim/testes.js        # 24 testes de regressão — um por bug já relatado
+node sim/bateria.js 400   # medição estrutural (mapa, torre, onda, ordem)
+node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
+```
+
+**Regra do projeto desde a v16:** bug relatado vira teste em `sim/testes.js`
+**antes** de virar correção. Se o teste não falha antes do conserto, ele não está
+testando o bug.
 
 ## O que precisa de playtest humano, não de simulação
 

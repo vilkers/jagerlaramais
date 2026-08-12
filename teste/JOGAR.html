@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 21aceb3 2026-08-12
+     commit 5158bd1 2026-08-12
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -943,7 +943,7 @@ const DECK = [
 
  /* REAÇÃO — no turno do adversário */
  {id:"recuo",    n:"Recuo",            fam:"reacao",   copias:2, quando:"reacao",
-  d:"Mova um herói seu 1 casa.",                                 ef:{moverReacao:1}},
+  d:"Escolha uma casa vizinha: seu herói recua 1, de graça.",     ef:{moverReacao:1}},
  {id:"anteparo", n:"Anteparo",         fam:"reacao",   copias:2, quando:"reacao",
   d:"Anule 3 de dano de um golpe.",                              ef:{anularDano:3}},
  {id:"contra",   n:"Contra-emboscada", fam:"reacao",   copias:2, quando:"reacao",
@@ -965,21 +965,23 @@ const DECK = [
  {id:"heranca",  n:"Herança",          fam:"economia", copias:1, quando:"turno",
   d:"Recupere uma carta do cemitério.",                          ef:{doCemiterio:1}},
 
- /* BUFF — reforço temporário, dura até o fim da rodada */
+ /* BUFF — reforço temporário, dura até o início do seu próximo turno.
+    Mudou na v16: "até o fim da rodada" dava ao segundo jogador uma janela
+    menor que a do primeiro. Ver docs/patch-notes.md. */
  {id:"furia",    n:"Fúria",            fam:"buff",     copias:3, quando:"turno",
-  d:"Um herói seu ganha +3 de Poder até o fim da rodada.",        ef:{buffPoder:3}},
+  d:"Um herói seu ganha +3 de Poder até o seu próximo turno.",     ef:{buffPoder:3}},
  {id:"muralha",  n:"Pele de Pedra",    fam:"buff",     copias:3, quando:"turno",
-  d:"Um herói seu ganha +3 de Armadura até o fim da rodada.",     ef:{buffArm:3}},
+  d:"Um herói seu ganha +3 de Armadura até o seu próximo turno.",  ef:{buffArm:3}},
  {id:"talha",    n:"Talha Rúnica",     fam:"buff",     copias:2, quando:"turno",
   d:"Um herói seu ganha 5 de escudo.",                            ef:{buffEscudo:5}},
  {id:"passolev", n:"Passo Leve",       fam:"buff",     copias:2, quando:"turno",
-  d:"Um herói seu fica Ágil até o fim da rodada.",                ef:{buffAgil:1}},
+  d:"Um herói seu fica Ágil até o seu próximo turno.",             ef:{buffAgil:1}},
 
  /* ITEM — equipamento sem passar pela loja */
  {id:"achado",   n:"Achado de Guerra", fam:"item",     copias:3, quando:"turno",
   d:"Um herói na base equipa um item de até 6 de ouro, de graça.", ef:{itemGratis:6}},
  {id:"forja",    n:"Forja de Campo",   fam:"item",     copias:2, quando:"turno",
-  d:"Um herói equipa um item de até 5 de ouro onde estiver.",      ef:{itemGratis:5,ondeEstiver:1}},
+  d:"Escolha 1 de 3 itens de até 5 de ouro, onde estiver.",         ef:{itemGratis:5,ondeEstiver:1}},
  {id:"relicario",n:"Relicário",        fam:"item",     copias:1, quando:"turno",
   d:"Um herói ganha um 4º slot de item nesta partida.",            ef:{slotExtra:1}}
 ];
@@ -2948,7 +2950,7 @@ function abreManual(){
       <p>O Retorno é <b>interrompido por inimigo colado</b>. Quem foi pego não escapa de graça.</p></section>
     <section class="destaque"><h4>3 · Quem não age, enriquece</h4>
       <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p></section>
-    <section class="destaque"><h4>Escudo persistente</h4><p>Escudo não expira no fim da rodada. Ele permanece no herói até absorver dano suficiente para chegar a 0.</p></section><section><h4>Combate</h4>
+    <section class="destaque"><h4>Escudo dura um turno adversário</h4><p>Escudo, buff e <b>intocável</b> valem <b>até o início do seu próximo turno</b> — ou seja, exatamente uma vez de o adversário poder bater neles. Antes o escudo não expirava nunca e empilhava até o herói virar intocável de fato; e "até o fim da rodada" dava menos janela a quem jogava em segundo. Agora os dois lados têm a mesma.</p></section><section><h4>Combate</h4>
       <p>Sem rolagem extra — o dado já foi rolado.</p>
       <table><tr><td>Dano</td><td>Força + Poder − Armadura</td></tr>
       <tr><td>Dado 6 natural</td><td>Crítico</td></tr>
@@ -3438,6 +3440,12 @@ async function iaExecutaTurno(){
         const obj=camps.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
         const papel=CATALOGO[h.id].pos;
         let destino = papel==="selva"&&obj ? obj.pos : (alvo?alvo.pos:null);
+        /* O poço aberto puxa quem já está por perto. Sem isto a IA "considerava" o
+           épico só quando ele caía no colo dela: medido numa partida IA×IA
+           completa, ela batia no poço UMA vez e levava zero Dragões. O raio de 4
+           é o que mantém a decisão local — quem está do outro lado do mapa não
+           larga a rota, que é justamente o dilema que o objetivo deve criar. */
+        if(J.poco.vida>0 && dist(...h.pos,...POCO)<=4) destino=POCO;
         if(!destino)continue;
         selHeroi=h; modo="mover"; calcula();
         const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
@@ -3517,7 +3525,7 @@ iniciaTurno=function(){
     <button class="grande" id="ok">Começar meu turno</button>`,()=>{ fecha(); pinta(); });
 };
 
-/* buffs do deck duram até o fim da rodada */
+/* buffs do deck duram até o início do próximo turno do dono — ver expiraDoTime */
 /* limpaBuffs() era chamada aqui, no fim da rodada, e zerava o buff dos DOIS
    times de uma vez. Agora cada time perde o seu no início do próprio turno
    (expiraDoTime), que é o que dá a mesma janela de exposição aos dois lados. */
@@ -3739,7 +3747,7 @@ function faceCarta(id){
 let baralho=[], cemiterio=[], maos=[[],[]], descontos=[0,0];
 
 /* Buffs temporários escrevem nos campos que o motor já soma (extraPoder, arm, agil)
-   e guardam o quanto aplicaram, para devolver no fim da rodada.
+   e guardam o quanto aplicaram, para devolver no início do próximo turno do dono.
    poderTotal/armTotal/ehAgil são const no motor — não dá para envolvê-las. */
 function aplicaBuff(h,campo,v){
   if(campo==="poder"){ h.extraPoder+=v; h.buffP=(h.buffP||0)+v; }

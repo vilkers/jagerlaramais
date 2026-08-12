@@ -16,6 +16,118 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v16 — a revisão dos nove bugs · 2026-08-12
+
+Primeira versão depois do playtest da v15. Nove bugs relatados, cinco causas
+reais. Detalhe de cada decisão que ficou em aberto: `docs/DECISOES-PENDENTES.md`.
+
+### O que mudou
+
+**Estrutura do repositório (nenhuma regra afetada).**
+A v15 chegou como um arquivo único de 3,3 MB em `jogo/index.html`. Isso deixou
+`jogo/jogo.js`, `jogo/estilo.css` e `data/catalogo.js` órfãos e defasados em ~730
+linhas, quebrou `teste/empacota.js` em silêncio (não casava mais as tags, não
+substituía nada e saía com código 0) e fez `sim/motor.js` medir o motor da v0.6.2
+achando que media o da v15. O monolito foi desmontado de volta nas fontes.
+Verificado: regerar produz arquivo idêntico ao da v15, token a token.
+
+**Fim de partida.** `J.fim = 1 - lado` combinado com testes escritos `if(J.fim)`.
+Quando o AZUL (time 0) derrubava o Nexus, `J.fim` valia **zero** — falso em
+JavaScript. A partida continuava, o CARMIM jogava o turno inteiro, e se ele
+derrubasse o Nexus no contragolpe levava a partida que já tinha perdido. Agora
+existe porta única, `encerraPartida()`, que congela `J.fase="fim"` na hora.
+
+**Escudo.** `esc` não expirava em lugar nenhum — só era zerado ao morrer. Muralha
+do Vharn (escudo 6 + Força) empilhava até **12 por uso**, rodada após rodada, e o
+herói virava intocável de fato. Agora todo efeito temporário expira no início do
+próximo turno do dono.
+
+**Duração de efeito: "até o fim da rodada" → "até o início do seu próximo
+turno".** Vale para escudo, intocável, buff de Poder, buff de Armadura, Ágil e
+prisão. Com a regra antiga, o escudo de quem jogava em **segundo** nascia e morria
+dentro do próprio turno, sem o adversário nunca ter tido chance de bater nele.
+Agora os dois lados têm exatamente um turno adversário de exposição.
+
+**Área e o Dragão.** Os três efeitos de área (`area`, `danoVizinhos`, `danoRaio`)
+liam `em()`, que só conhece herói. O Cerco do Torvald com o Dragão no hexágono
+vizinho não tirava um ponto dele. Agora existe `inimigosNosHex()`, um lugar só
+para "o que dá para acertar aqui", e os três passam por ele. Respingo no morador
+do poço vale **1 golpe** (mesmo valor de habilidade básica).
+
+**Torre e Nexus: trava de um golpe por rodada REMOVIDA.** Era invisível — quem
+gastava o dado doado pelo Suporte para bater de novo via a ação sumir sem
+explicação. O teto agora é dado na mesa e herói que ainda não agiu; o revide de
+**2** continua sendo o pedágio. *Consequência de balanceamento: derrubar torre com
+o time inteiro ficou mais rápido. Não medido ainda em playtest humano.*
+
+**Escala da Ultimate: dado × 1,0 → dado × 1,5.** Medido no catálogo: em **15 dos
+16** heróis que causam dano, a básica com um dado 6 batia mais que a própria
+Ultimate — Nyx e Cael por 3 pontos. A causa era a fórmula, não os números: as
+duas rendiam `round(Força × dano) + Poder`, e como quase toda básica e quase toda
+Ultimate têm `dano:1`, davam o mesmo resultado com o mesmo dado — só que a básica
+aceita qualquer dado e a Ultimate exige 5+. Nenhum número do catálogo foi mexido.
+Resolve 13 dos 16; Solenne, Corvo e Cael usam `danoFixo` e continuam pendentes.
+
+**Turnos: A C | C A → A → C → A → C.** A iniciativa alternava a cada rodada desde
+a v0.5 para diluir a vantagem de quem começa, e o efeito colateral era cada
+jogador jogar **dois turnos seguidos** na virada da rodada. *Consequência medida:
+quem começa passou de 50,5% para **45,6%** de vitórias (n=3000, z=−4,78) — o sinal
+inverteu, e quem começa agora está em desvantagem. Ver DECISOES-PENDENTES item 1.*
+
+**Acampamento neutro: [6,4] → [6,7].** Estava a **8** da base Azul e **5** da
+Carmim — três hexágonos de vantagem geográfica num objetivo neutro. Não era
+design: era um número que sobreviveu ao tabuleiro crescer de 8×8 para 11×11.
+Agora a posição é derivada (equidistante das bases, a mais central fora das
+rotas): **7 e 7**. Os acampamentos de time ficaram em [3,4] e [7,6] — foram
+medidos e já eram espelho um do outro (6 da própria base, 8 da adversária).
+
+**Recuo.** `ef.moverReacao` somava +1 em `J.mov`, que pertence a quem está na vez
+— jogada como reação, a carta **dava movimento ao adversário** e o herói não saía
+do lugar. Agora destaca as casas vizinhas e anda exatamente 1, sem custo.
+
+**Forja de Campo.** Sorteava um item e equipava sozinha; a carta era um dado
+disfarçado. Agora sorteia **3** e o jogador escolhe **1**.
+
+**Relicário / quarto slot.** `h.slots||3` estava copiado em quatro lugares. Virou
+`capacidade(h)`, uma pergunta só.
+
+**Quarto dado.** A conversão em movimento virou função com nome (`converteDado`),
+a IA sabe usá-la, e existe `dadoSemUso()` para a tela avisar quando é a única
+saída restante.
+
+**IA.** Quatro heurísticas novas: `iaCompra` (compra item), `iaJogaCartas` (gasta
+a mão), `iaObjetivos` (disputa o poço antes de procurar herói de passagem) e
+`iaPlanejaAlcance` (converte ação em movimento para alcançar e atacar — com duas
+ações e o inimigo a três casas, ela ficava parada).
+
+**Tela de vitória.** Mostra o rosto do herói que deu o golpe final e tem saída
+para o menu.
+
+**Ferramentas.** `sim/testes.js`: 24 testes de regressão, um por sintoma
+relatado. Regra nova do projeto: **bug relatado vira teste antes de virar
+correção**.
+
+### Por quê
+
+Sete dos nove bugs vinham de cinco causas estruturais, não de sete descuidos: um
+zero tratado como falso, um efeito sem prazo de validade, uma função de consulta
+que só conhecia um tipo de entidade, uma trava sem feedback e um estado copiado
+em quatro lugares. Corrigir a causa era mais barato que corrigir os sintomas — e
+é o que o relatório de revisão pediu explicitamente.
+
+### O que isso quebra
+
+- **Quem começa perde 4,4 pontos de vitória.** Efeito direto da alternância
+  limpa. Precisa de decisão do grupo antes de virar número final.
+- **Torre cai mais rápido** com time agrupado, agora que não há trava por rodada.
+  Não medido em playtest humano.
+- **Ultimate ficou mais forte** em 13 heróis. É a intenção, mas desloca a curva
+  de dano da partida inteira para cima.
+- Escudos e buffs duram menos em termos absolutos que antes em alguns casos —
+  quem jogava em primeiro perdeu um pedaço de janela que tinha de graça.
+- `docs/ESTADO.md` foi atualizado; medições antigas de `patch-notes` anteriores à
+  v16 foram feitas contra o motor da v0.6.2 via `sim/`, e não contra a v15.
+
 ## v0.6.2 — selva de verdade, e o placar vira gaveta · 2026-08-10
 
 > **Em teste. Não aprovado.** Muda tamanho do tabuleiro.

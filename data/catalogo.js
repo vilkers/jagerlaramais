@@ -240,7 +240,7 @@ const DECK = [
 
  /* REAÇÃO — no turno do adversário */
  {id:"recuo",    n:"Recuo",            fam:"reacao",   copias:2, quando:"reacao",
-  d:"Mova um herói seu 1 casa.",                                 ef:{moverReacao:1}},
+  d:"Escolha uma casa vizinha: seu herói recua 1, de graça.",     ef:{moverReacao:1}},
  {id:"anteparo", n:"Anteparo",         fam:"reacao",   copias:2, quando:"reacao",
   d:"Anule 3 de dano de um golpe.",                              ef:{anularDano:3}},
  {id:"contra",   n:"Contra-emboscada", fam:"reacao",   copias:2, quando:"reacao",
@@ -262,21 +262,23 @@ const DECK = [
  {id:"heranca",  n:"Herança",          fam:"economia", copias:1, quando:"turno",
   d:"Recupere uma carta do cemitério.",                          ef:{doCemiterio:1}},
 
- /* BUFF — reforço temporário, dura até o fim da rodada */
+ /* BUFF — reforço temporário, dura até o início do seu próximo turno.
+    Mudou na v16: "até o fim da rodada" dava ao segundo jogador uma janela
+    menor que a do primeiro. Ver docs/patch-notes.md. */
  {id:"furia",    n:"Fúria",            fam:"buff",     copias:3, quando:"turno",
-  d:"Um herói seu ganha +3 de Poder até o fim da rodada.",        ef:{buffPoder:3}},
+  d:"Um herói seu ganha +3 de Poder até o seu próximo turno.",     ef:{buffPoder:3}},
  {id:"muralha",  n:"Pele de Pedra",    fam:"buff",     copias:3, quando:"turno",
-  d:"Um herói seu ganha +3 de Armadura até o fim da rodada.",     ef:{buffArm:3}},
+  d:"Um herói seu ganha +3 de Armadura até o seu próximo turno.",  ef:{buffArm:3}},
  {id:"talha",    n:"Talha Rúnica",     fam:"buff",     copias:2, quando:"turno",
   d:"Um herói seu ganha 5 de escudo.",                            ef:{buffEscudo:5}},
  {id:"passolev", n:"Passo Leve",       fam:"buff",     copias:2, quando:"turno",
-  d:"Um herói seu fica Ágil até o fim da rodada.",                ef:{buffAgil:1}},
+  d:"Um herói seu fica Ágil até o seu próximo turno.",             ef:{buffAgil:1}},
 
  /* ITEM — equipamento sem passar pela loja */
  {id:"achado",   n:"Achado de Guerra", fam:"item",     copias:3, quando:"turno",
   d:"Um herói na base equipa um item de até 6 de ouro, de graça.", ef:{itemGratis:6}},
  {id:"forja",    n:"Forja de Campo",   fam:"item",     copias:2, quando:"turno",
-  d:"Um herói equipa um item de até 5 de ouro onde estiver.",      ef:{itemGratis:5,ondeEstiver:1}},
+  d:"Escolha 1 de 3 itens de até 5 de ouro, onde estiver.",         ef:{itemGratis:5,ondeEstiver:1}},
  {id:"relicario",n:"Relicário",        fam:"item",     copias:1, quando:"turno",
   d:"Um herói ganha um 4º slot de item nesta partida.",            ef:{slotExtra:1}}
 ];

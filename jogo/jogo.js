@@ -1941,7 +1941,7 @@ function abreManual(){
       <p>O Retorno é <b>interrompido por inimigo colado</b>. Quem foi pego não escapa de graça.</p></section>
     <section class="destaque"><h4>3 · Quem não age, enriquece</h4>
       <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p></section>
-    <section class="destaque"><h4>Escudo persistente</h4><p>Escudo não expira no fim da rodada. Ele permanece no herói até absorver dano suficiente para chegar a 0.</p></section><section><h4>Combate</h4>
+    <section class="destaque"><h4>Escudo dura um turno adversário</h4><p>Escudo, buff e <b>intocável</b> valem <b>até o início do seu próximo turno</b> — ou seja, exatamente uma vez de o adversário poder bater neles. Antes o escudo não expirava nunca e empilhava até o herói virar intocável de fato; e "até o fim da rodada" dava menos janela a quem jogava em segundo. Agora os dois lados têm a mesma.</p></section><section><h4>Combate</h4>
       <p>Sem rolagem extra — o dado já foi rolado.</p>
       <table><tr><td>Dano</td><td>Força + Poder − Armadura</td></tr>
       <tr><td>Dado 6 natural</td><td>Crítico</td></tr>
@@ -2431,6 +2431,12 @@ async function iaExecutaTurno(){
         const obj=camps.slice().sort((u,v)=>dist(...h.pos,...u.pos)-dist(...h.pos,...v.pos))[0];
         const papel=CATALOGO[h.id].pos;
         let destino = papel==="selva"&&obj ? obj.pos : (alvo?alvo.pos:null);
+        /* O poço aberto puxa quem já está por perto. Sem isto a IA "considerava" o
+           épico só quando ele caía no colo dela: medido numa partida IA×IA
+           completa, ela batia no poço UMA vez e levava zero Dragões. O raio de 4
+           é o que mantém a decisão local — quem está do outro lado do mapa não
+           larga a rota, que é justamente o dilema que o objetivo deve criar. */
+        if(J.poco.vida>0 && dist(...h.pos,...POCO)<=4) destino=POCO;
         if(!destino)continue;
         selHeroi=h; modo="mover"; calcula();
         const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
@@ -2510,7 +2516,7 @@ iniciaTurno=function(){
     <button class="grande" id="ok">Começar meu turno</button>`,()=>{ fecha(); pinta(); });
 };
 
-/* buffs do deck duram até o fim da rodada */
+/* buffs do deck duram até o início do próximo turno do dono — ver expiraDoTime */
 /* limpaBuffs() era chamada aqui, no fim da rodada, e zerava o buff dos DOIS
    times de uma vez. Agora cada time perde o seu no início do próprio turno
    (expiraDoTime), que é o que dá a mesma janela de exposição aos dois lados. */
@@ -2732,7 +2738,7 @@ function faceCarta(id){
 let baralho=[], cemiterio=[], maos=[[],[]], descontos=[0,0];
 
 /* Buffs temporários escrevem nos campos que o motor já soma (extraPoder, arm, agil)
-   e guardam o quanto aplicaram, para devolver no fim da rodada.
+   e guardam o quanto aplicaram, para devolver no início do próximo turno do dono.
    poderTotal/armTotal/ehAgil são const no motor — não dá para envolvê-las. */
 function aplicaBuff(h,campo,v){
   if(campo==="poder"){ h.extraPoder+=v; h.buffP=(h.buffP||0)+v; }
