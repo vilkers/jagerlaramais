@@ -10,51 +10,31 @@
 
 ---
 
-## 1. Vantagem de quem começa — **o sinal inverteu**
+## 1. ~~Vantagem de quem começa~~ — CORRIGIDO na v20, com 1,4 ponto de sobra
 
-**Isto muda a pergunta da PARTE 3 do relatório.**
+| Build | Vitórias de quem começa | n |
+|---|---|---|
+| v15 (iniciativa alternando) | 50,5% | 200 |
+| v16 (alternância limpa) | 45,6% | 3000 |
+| v19 (com névoa) | 42,0% | 1500 |
+| **v20** | **48,6%** | **6000** |
 
-A revisão parte de "ser o primeiro jogador oferece vantagem" e pede uma
-compensação pequena para o **segundo**. Depois da correção da alternância de
-turnos, isso deixou de ser verdade.
+A causa não era falta de bônus: era **assimetria de informação**. A onda avançava
+comparando presença de rota no fim da RODADA, depois de o segundo jogador já ter
+se posicionado. Congelar a presença de cada time no fim do próprio turno levou
+42,0% → 46,8%; o **Primeiro Passo** (+1 de movimento na rodada 1 para quem
+começa) fechou o resto.
 
-| Build | Ordem real | Vitórias de quem começa | n |
-|---|---|---|---|
-| v15 (iniciativa alternando) | A C \| C A \| A C | 50,5% (z=0,14) | 200 |
-| v16 (alternância limpa) | A → C → A → C | 45,6% (z=−4,78) | 3000 |
-| **v19 (com névoa no mato)** | A → C → A → C | **42,0% (z=−6,2)** | **1500** |
+**O que sobra:** 1,4 ponto. Cada execução individual cai dentro do ruído
+(|z| < 2), mas as três somadas ainda pendem para o segundo jogador. Pode ser
+aceitável — a maioria dos jogos assimétricos convive com isso. **Decisão do
+grupo:** parar aqui, ou tentar fechar o último ponto e meio depois do playtest
+humano, que é onde o desequilíbrio realmente se sente.
 
-**A névoa não corrigiu.** Uma medição de n=250 na v19 deu 50,0% e parecia ter
-neutralizado o problema; era ruído. Com 1500 partidas o desequilíbrio continua, e
-um pouco pior. **Meça sempre com n ≥ 1500** — abaixo disso o ruído desta métrica
-chega a inverter o sinal.
-
-Quem começa **perde 8 pontos** na medição mais recente. O resultado é forte
-(z=−6,2), não ruído — e é o único item desta lista que **piorou** entre versões.
-
-**Por que provavelmente** — hipótese, não medição: o segundo jogador sempre tem
-a última palavra da rodada. `fimDaRodada` roda imediatamente depois do turno
-dele, e é lá que a onda avança, que a renda é paga (`agiu ? 1 : 3`) e que Placas
-e Prioridade olham quem domina cada rota. O posicionamento que esses três
-cheques enxergam é sempre o mais recente do segundo jogador.
-
-**Ressalva importante:** o agente da bateria joga quase ao acaso. Ele mede bem
-estrutura (mapa, torre, onda, ordem) e é cego para agência (item, carta,
-Prioridade, épico). Esta medição é de estrutura, então vale — mas o tamanho
-exato do desequilíbrio na mão de gente que joga bem só sai em playtest humano.
-
-**Decisão a tomar:** se compensar, compensar **quem começa**, não quem joga em
-segundo. Opções, da mais simples para a mais invasiva:
-
-- **a)** não compensar — 42% pode ser aceitável, e quem escolhe começar passa
-  a ser uma decisão de draft em vez de um presente;
-- **b)** trocar a ordem: quem **não** escolheu o lado começa;
-- **c)** dar ao primeiro jogador +1 de movimento na rodada 1 apenas;
-- **d)** voltar a alternar a iniciativa — desfaz a correção de leitura da PARTE 2.
-
-`sim/bateria.js` já aceita `comp=N` (ouro extra por herói). Hoje ele beneficia o
-**segundo**; medir a opção certa exige inverter o alvo dessa variante — uma
-linha.
+**Aviso de método:** esta métrica precisa de **n ≥ 2000** por execução, rodada
+duas ou três vezes. Já fui enganado duas vezes — por n=250 (deu 50% quando o real
+era 43%) e por um harness que deixava a IA rodar só na primeira partida da
+bateria, fazendo o mesmo build render 47,6% e 50,4%.
 
 ---
 

@@ -16,6 +16,100 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v20 — ordem equilibrada, Barão com escolha, e ouro com prazo · 2026-08-12
+
+Três frentes pedidas no playtest, medidas uma de cada vez.
+
+### 1 · Equilíbrio de ordem — de 42,0% para 48,6%
+
+O problema era **assimetria de informação**, não falta de bônus: a onda avançava
+comparando presença de rota **no fim da rodada**, ou seja, depois que o segundo
+jogador já tinha se posicionado. Ele via o adversário e respondia; o primeiro
+jogava às cegas.
+
+**A presença de cada time passa a ser congelada no fim do próprio turno.** Os
+dois declaram posição sem ver a resposta do outro. Sozinha, essa mudança levou
+42,0% → 46,8%.
+
+**Primeiro Passo:** quem começa a partida rola **+1 no Dado Mestre na rodada 1**,
+e só nela. Fecha o resto: **48,6%** (n=6000, três execuções de 2000 — 48,9 · 48,1
+· 48,8).
+
+Testadas e descartadas, uma por vez: **+1 de movimento toda rodada** dá 59,7% —
+vira vantagem, não compensação; **+2 na rodada 1** empata com +1, porque na
+primeira rodada não há o que fazer com tanto movimento.
+
+### 2 · Leva de Ferro — o gasto que encarece com o relógio
+
+Terceiro gasto tardio, ao lado de Reforço e Requisição: **a sua onda de uma rota
+avança 1 casa**. O preço começa em **4** e sobe **1 a cada três rodadas, até 12**.
+
+Os outros dois encarecem conforme *você* compra; este encarece conforme a
+*partida* anda — de propósito, porque ele compra território, que é a coisa cujo
+valor mais muda com o tempo. A curva cruza a renda de um herói parado (3 por
+rodada) por volta da rodada 12, que é quando o Barão desce e o mapa passa a valer
+mais que o cofre.
+
+A IA passou a distribuir o gasto em vez de despejar tudo no Reforço — comprar
+sempre o mais caro fazia dela refém do único item que encarece a cada compra.
+
+### 3 · Barão — o defeito, o preço e a dádiva
+
+**Medição primeiro** (`sim/epicos.js`, novo). No build v19, 800 partidas:
+
+| | aparece | atacado | morto | vitória de quem leva |
+|---|---|---|---|---|
+| Dragão | 100% (r5) | 90,8% | 64,6% | 53,4% |
+| Barão | **55%** (r17) | 28,4% | **6,8%** | 60,0% |
+
+O Barão tinha dois problemas, e o primeiro era um **defeito**: o poço só trocava
+de morador quando estava vazio. Se ninguém matasse o Dragão, ele ficava sentado
+lá a partida inteira e o Barão nunca descia — daí os 55%, quase exatamente a taxa
+em que o Dragão morre. **Agora o Barão toma o poço na rodada dele**, Dragão vivo
+ou não, o que de quebra dá ao Dragão um prazo.
+
+**Timing e preço, medidos um de cada vez:** Barão na rodada 8 deixava o Dragão
+com 3 rodadas de janela (caía em 1,3%); na **12** ele recupera 7. Vida do Barão
+**6 → 4**.
+
+**Dádiva de escolha.** O prêmio era sempre o mesmo (+2 de Poder e ondas
+andando), e prêmio fixo produz estratégia fixa. Quem fecha agora escolhe **uma de
+três**:
+
+- **Ondas de Ferro** — as três ondas avançam sozinhas;
+- **Égide do Barão** — 4 de escudo no time no início de cada turno seu;
+- **Aríete** — golpes de herói em torre e Nexus causam 2 em vez de 1.
+
+Nenhuma dá Poder bruto. O Barão deixou de ser "seu time bate mais forte" e virou
+**pressão de mapa** — que é o que o torna útil para quem está atrás sem o jogo
+entregar vantagem a quem perde. A virada continua tendo de ser ganha.
+
+Resultado (1500 partidas): Barão aparece em **97,8%**, atacado em **80,8%**,
+morto em **47,7%**, e a vitória de quem leva caiu de **70,3% para 51,3%** — o
+objetivo parou de ganhar a partida sozinho.
+
+### Correção no instrumento de medida
+
+`sim/motor.js` passou a neutralizar `iaExecutaTurno`. Em `simMode` o motor
+disparava a IA a cada turno; ela é `async`, o `setTimeout` do harness nunca chama
+o callback, e ela travava no primeiro `await` **deixando `iaRodando` preso em
+true**. Efeito: a IA comprava na primeira partida da bateria e em nenhuma das
+seguintes, e o resultado do run inteiro dependia do jogo nº 1. O mesmo build deu
+**47,6% e 50,4%** em execuções diferentes — 3 pontos que não eram do jogo.
+Depois do conserto, três execuções seguidas variam 0,8 ponto.
+
+*Toda medição anterior à v20 que use a bateria carrega esse viés.*
+
+### O que isso quebra
+
+- O **Dragão** paga o prazo: morto em 18,7% contra 64,6% antes. Boa parte é
+  artefato do agente aleatório, que é lento e precisa de ~10 rodadas para fechar
+  qualquer coisa — mas o número precisa de playtest humano antes de mexer de novo.
+- Quem contava com o Barão como pico de Poder precisa reaprender: agora ele dá
+  território, escudo ou aríete, e nada de dano.
+- Sobrou **1,4 ponto** de desvantagem para quem começa. Cada execução individual
+  cai dentro do ruído, mas as três somadas ainda pendem para o segundo.
+
 ## v19 — névoa no mato: o Caçador some sem sair do tabuleiro · 2026-08-12
 
 Corrige o rumo da v18. A rotação tirava o Caçador do tabuleiro, e não era isso

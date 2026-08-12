@@ -99,11 +99,31 @@ const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ")
   : "build atual";
 
-/* compensação para o SEGUNDO jogador, aplicada depois que a partida monta.
-   Não passa por troca de texto: é estado, não regra escrita no arquivo. */
+/* ---------- COMPENSAÇÃO DE ORDEM ----------
+   A revisão original supunha que quem COMEÇA leva vantagem, e `comp=N` dava ouro
+   ao segundo. A medição inverteu isso: desde que a alternância de iniciativa
+   saiu (v16), quem começa fica em torno de 42%. As variantes abaixo testam
+   compensar o PRIMEIRO, uma de cada vez.
+
+     comp=N       ouro por herói para o SEGUNDO   (a hipótese antiga)
+     comp1=N      ouro por herói para o PRIMEIRO
+     mov1=N       +N no Dado Mestre do PRIMEIRO, toda rodada
+     mov1r1=N     +N no Dado Mestre do PRIMEIRO, só na rodada 1
+     dado1=N      +N dados de ação para o PRIMEIRO, só na rodada 1            */
+if (opcoes.mov1) trocas.push([/const m=1\+Math\.floor\(Math\.random\(\)\*6\)\+extra;/,
+  `const m=1+Math.floor(Math.random()*6)+extra+(t===J.primeiro?${+opcoes.mov1}:0);`]);
+if (opcoes.mov1r1) trocas.push([/const m=1\+Math\.floor\(Math\.random\(\)\*6\)\+extra;/,
+  `const m=1+Math.floor(Math.random()*6)+extra+((t===J.primeiro&&J.rodada===1)?${+opcoes.mov1r1}:0);`]);
+if (opcoes.dado1) trocas.push([/J\.dados=Array\.from\(\{length:3\+tm\.retomada\}/,
+  `J.dados=Array.from({length:3+tm.retomada+((t===J.primeiro&&J.rodada===1)?${+opcoes.dado1}:0)}`]);
+
 const comp = opcoes.comp ? +opcoes.comp : 0;
-const aoIniciar = comp
-  ? g => g.J.times[1].herois.forEach(h => { h.ouro += comp; })
+const comp1 = opcoes.comp1 ? +opcoes.comp1 : 0;
+const aoIniciar = (comp || comp1)
+  ? g => {
+      if (comp)  g.J.times[1].herois.forEach(h => { h.ouro += comp; });
+      if (comp1) g.J.times[0].herois.forEach(h => { h.ouro += comp1; });
+    }
   : null;
 
 const ctx = carrega(trocas);

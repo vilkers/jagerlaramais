@@ -927,6 +927,98 @@ teste("a IA escolhe Égide quando o time está machucado", () => {
   eq(g.iaEscolheDadiva(1), "egide", "com metade do time ferida, a IA deveria querer escudo");
 });
 
+
+/* ═══════════════ v20 — equilíbrio de ordem ═══════════════ */
+
+teste("a presença de rota é congelada no fim do turno de cada time", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "meio");
+  /* time 0 põe alguém no meio e encerra: a presença dele fica registrada */
+  c.poe(h, g.ROTAS.meio[Math.floor(g.ROTAS.meio.length / 2)]);
+  const nomeRota = g.rotaDaPos(h);
+  ok(nomeRota, "o herói não ficou numa rota");
+  g.encerraTurno();
+  eq(g.J.presenca[0][nomeRota], 1, "a presença do time 0 não foi congelada");
+
+  /* agora o time 0 sai da rota — a contagem congelada NÃO pode mudar */
+  c.poe(h, g.BASE[0][0]);
+  eq(g.J.presenca[0][nomeRota], 1,
+     "a presença mudou depois de congelada — o segundo jogador voltaria a ter a última palavra");
+});
+
+teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
+  const c = cena();
+  const g = c.g;
+  const primeiro = g.J.primeiro;
+
+  /* roda muitos turnos e compara a média do Dado Mestre na rodada 1 */
+  let somaPrim = 0, somaSeg = 0, n = 400;
+  for (let i = 0; i < n; i++) {
+    g.novo();
+    g.J.vez = primeiro; g.J.rodada = 1; g.iniciaTurno();
+    somaPrim += g.J.mov.v;
+    g.J.vez = 1 - primeiro; g.J.rodada = 1; g.iniciaTurno();
+    somaSeg += g.J.mov.v;
+  }
+  const dif = (somaPrim - somaSeg) / n;
+  ok(dif > 0.6 && dif < 1.4,
+     `a diferença média na rodada 1 deveria ser ~1, veio ${dif.toFixed(2)}`);
+
+  /* na rodada 2 os dois rolam igual */
+  let d2Prim = 0, d2Seg = 0;
+  for (let i = 0; i < n; i++) {
+    g.novo();
+    g.J.rodada = 2;
+    g.J.vez = primeiro; g.iniciaTurno(); d2Prim += g.J.mov.v;
+    g.J.vez = 1 - primeiro; g.iniciaTurno(); d2Seg += g.J.mov.v;
+  }
+  const dif2 = Math.abs(d2Prim - d2Seg) / n;
+  ok(dif2 < 0.35, `na rodada 2 não deveria haver bônus, diferença média ${dif2.toFixed(2)}`);
+});
+
+
+/* ═══════════════ v20 — gasto que encarece com o relógio ═══════════════ */
+
+teste("Leva de Ferro fica mais cara conforme a partida anda", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const leva = g.GASTOS.find(x => x.id === "leva");
+  ok(leva, "não existe o gasto Leva de Ferro");
+  g.J.rodada = 1;  const p1 = g.precoGasto(leva, c.heroi(0, "topo"));
+  g.J.rodada = 10; const p10 = g.precoGasto(leva, c.heroi(0, "topo"));
+  g.J.rodada = 30; const p30 = g.precoGasto(leva, c.heroi(0, "topo"));
+  ok(p10 > p1, `o preço não subiu da rodada 1 (${p1}) para a 10 (${p10})`);
+  ok(p30 > p10, `o preço parou de subir entre a 10 (${p10}) e a 30 (${p30})`);
+  ok(p30 <= 12, `o preço passou do teto: ${p30}`);
+});
+
+teste("Leva de Ferro empurra a onda da rota escolhida na direção certa", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const antes = g.J.frentes.topo;
+  g.empurraOnda(0, "topo");
+  ok(g.J.frentes.topo > antes, "a onda do time 0 deveria avançar para índice maior");
+
+  const antes1 = g.J.frentes.meio;
+  g.empurraOnda(1, "meio");
+  ok(g.J.frentes.meio < antes1, "a onda do time 1 deveria avançar para índice menor");
+});
+
+teste("a IA compra a Leva e escolhe rota sem travar em tela", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  const h = c.heroi(1, "topo");
+  h.pos = [...g.BASE[1][0]];
+  h.itens = ["eclipse", "basalto", "egide"];
+  h.ouro = 60;
+  const frentes0 = JSON.stringify(g.J.frentes);
+  g.iaCompra(1);
+  ok(h.ouro < 60, "a IA não gastou nada com o inventário cheio");
+  ok(JSON.stringify(g.J.frentes) !== frentes0,
+     "a IA comprou a Leva mas nenhuma onda andou — provável trava na escolha de rota");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

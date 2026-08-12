@@ -131,6 +131,21 @@ function carrega(trocas = []) {
   ctx.tremer = nada; ctx.vibra = nada; ctx.animaMovimento = nada; ctx.aplicaFoco = nada;
   ctx.checaTut = nada; ctx.falaIA = nada; ctx.abreSheet = nada; ctx.fechaSheet = nada;
 
+  /* iaExecutaTurno FORA do caminho — e este é o ponto mais importante do
+     harness. Em `simMode` o motor dispara a IA a cada turno; ela é `async` e o
+     `setTimeout` daqui nunca chama o callback, então ela roda o começo do turno
+     (comprar item, jogar carta) e TRAVA no primeiro `await`, deixando
+     `iaRodando` preso em true para sempre.
+
+     O efeito era medição não estacionária: a IA comprava na PRIMEIRA partida da
+     bateria e em nenhuma das seguintes, e o resultado do run inteiro dependia do
+     que tivesse acontecido no jogo nº 1. Medido: o mesmo build deu 47,6% e 50,4%
+     em execuções diferentes — 3 pontos de diferença que não eram do jogo.
+
+     Quem quiser medir a IA de verdade usa o navegador (ver o teste de fumaça):
+     lá o setTimeout existe e ela termina o turno. */
+  ctx.iaExecutaTurno = nada;
+
   /* `abre` guarda o callback em vez de disparar: a tela de fim de partida chama
      partida() de novo, e auto-executar isso iniciaria uma partida infinita. */
   ctx.abre = (html, ok) => { ctx.__pendente = ok || null; };

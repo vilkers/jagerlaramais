@@ -498,6 +498,7 @@ function novo(){
     })),
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
+    presenca:[{},{}],
     torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
@@ -627,7 +628,17 @@ function iniciaTurno(){
   if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
   const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
   tm.retomada=atraso(t);
-  const m=1+Math.floor(Math.random()*6)+extra;
+  /* PRIMEIRO PASSO. Quem começa a partida rola +1 no Dado Mestre na rodada 1, e
+     só nela. É o resto da compensação de ordem, medida em 3000 partidas por
+     variante:
+       · 42,0% antes de qualquer correção;
+       · 46,8% só com a presença congelada (ver encerraTurno);
+       · 49,7% (z=−0,29) somando este +1.
+     Testadas e descartadas: +1 de movimento TODA rodada dá 59,7% — vira
+     vantagem em vez de compensação; e +2 na rodada 1 empata com +1, porque na
+     primeira rodada não há o que fazer com tanto movimento. */
+  const primeiroPasso = (t===J.primeiro && J.rodada===1) ? 1 : 0;
+  const m=1+Math.floor(Math.random()*6)+extra+primeiroPasso;
   J.mov={v:m,rest:m};
   /* RETOMADA aplicada: o freio da bola de neve vira DADO, que era a intenção
      declarada na seção RETOMADA. Antes `tm.retomada` era calculado e desenhado
@@ -637,6 +648,7 @@ function iniciaTurno(){
   
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
   reg(t?"c":"a",`${NOMES[t]} rola — movimento ${m} · ações ${J.dados.map(d=>d.v).join(" · ")}`);
+  if(primeiroPasso) reg("b",`PRIMEIRO PASSO — ${NOMES[t]} começa a partida e rola +1 de movimento`);
   if(tm.retomada) reg("b",`RETOMADA — ${NOMES[t]} está atrás e rola ${tm.retomada} dado${tm.retomada>1?"s":""} a mais`);
   pinta();
 }
@@ -663,6 +675,15 @@ function encerraPartida(vencedor,motivo,autor){
 }
 function encerraTurno(){
   if(J.fim!==null)return;
+  /* PRESENÇA CONGELADA. A onda avança comparando quantos heróis cada time tem
+     em cada rota, e essa contagem acontecia no fim da RODADA — ou seja, depois
+     que o segundo jogador já tinha mexido. Ele via o posicionamento do
+     adversário e respondia; o primeiro jogava às cegas. Medido: quem começa
+     ganhava 43,9%.
+     Agora cada time é contado ao fim do PRÓPRIO turno. Os dois declaram
+     posição sem ver a resposta do outro, que é a mesma informação para os dois. */
+  J.presenca[J.vez]=Object.fromEntries(Object.keys(ROTAS).map(nome=>
+    [nome, vivos(J.vez).filter(h=>rotaDaPos(h)===nome).length]));
   if(J.vez===J.primeiro){ J.vez=1-J.vez; iniciaTurno(); }
   else fimDaRodada();
 }
@@ -691,8 +712,7 @@ function fimDaRodada(){
      É o que faz do Barão um relógio: dois times parados param de empatar. */
   const furia=J.times.map(tm=>(tm.barao>0&&tm.dadiva==="ondas")?1:0);
   Object.entries(ROTAS).forEach(([nome,l])=>{     // ondas: a torre viva trava o avanço
-    const n0=vivos(0).filter(h=>rotaDaPos(h)===nome).length;
-    const n1=vivos(1).filter(h=>rotaDaPos(h)===nome).length;
+    const n0=J.presenca[0][nome]||0, n1=J.presenca[1][nome]||0;
     let d=0;
     if(n0>n1) d=1; else if(n1>n0) d=-1;
     d+=furia[0]-furia[1];
@@ -2040,21 +2060,36 @@ function abreLog(){
 const GASTOS=[
   /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói
      (6, 8, 10, 12…), então ele nunca vira renda infinita: cada ponto de Poder
-     custa mais que o anterior, e a certa altura vale mais gastar em outra coisa.
-     É o que impede que "ouro sobrando" vire "ouro que ganha a partida sozinho". */
+     custa mais que o anterior, e a certa altura vale mais gastar em outra coisa. */
   {id:"reforco", n:"Reforço", d:"+1 de Poder permanente neste herói.",
    o:h=>6+2*(h.reforcos||0),
    pode:h=>h.morto||naBase(h),
    faz:h=>{ h.reforcos=(h.reforcos||0)+1; h.extraPoder+=1; }},
 
   /* REQUISIÇÃO — ouro vira OPÇÃO, não estatística. Reaproveita o Deck de Comando
-     inteiro em vez de inventar um sistema novo, e a mão máxima de 3 já é o freio:
-     não dá para estocar. Era a recomendação registrada em DECISOES-PENDENTES. */
+     inteiro em vez de inventar um sistema novo, e a mão máxima de 3 já é o freio. */
   {id:"requisicao", n:"Requisição", d:"Compre 1 carta do baralho.",
    o:()=>5,
    pode:h=>(h.morto||naBase(h))&&maos[h.t].length<3&&(baralho.length||cemiterio.length),
-   faz:(h,t)=>{ compra(t); }}
+   faz:(h,t)=>{ compra(t); }},
+
+  /* LEVA DE FERRO — o gasto que encarece com o RELÓGIO, não com o uso.
+     Os outros dois sobem de preço conforme VOCÊ compra; este sobe conforme a
+     PARTIDA anda, e é de propósito: ele compra território, que é a coisa cujo
+     valor mais muda com o tempo. Cedo, empurrar uma rota é barato e vale pouco
+     (a torre está cheia, a onda longe). Tarde, é caro e pode fechar a partida.
+     O preço acompanhar a rodada é o que impede que o ouro parado do fim vire
+     uma alavanca melhor do que o ouro gasto no começo. */
+  {id:"leva", n:"Leva de Ferro", d:"A sua onda de uma rota avança 1 casa agora.",
+   o:()=>PRECO_LEVA(),
+   pode:h=>h.morto||naBase(h),
+   faz:(h,t)=>{ abreEscolhaRota(t); }}
 ];
+/* 4 na rodada 1, subindo 1 a cada três rodadas, teto 12 — a curva foi escolhida
+   para cruzar a renda de um herói (3 por rodada parado) por volta da rodada 12,
+   que é quando o Barão desce e o mapa passa a valer mais que o cofre. */
+const PRECO_LEVA=()=>Math.min(12, 4+Math.floor((J.rodada-1)/3));
+
 const precoGasto=(g,h)=> typeof g.o==="function" ? g.o(h) : g.o;
 function gastosDisponiveis(h){ return GASTOS.filter(g=>!g.pode||g.pode(h)); }
 function usaGasto(id,h,t){
@@ -2065,6 +2100,38 @@ function usaGasto(id,h,t){
   reg(t?"c":"a",`${h.n} gasta ${preco} de ouro em ${g.n}`);
   toast(g.n,""); vibra(12);
   return true;
+}
+
+/* Escolha da rota para a Leva de Ferro. Fica fora de `usaGasto` porque é a única
+   compra que precisa de um segundo toque — e o ouro já saiu quando esta tela
+   abre, então não há caminho de desistir sem cobrar. */
+function empurraOnda(t,nome){
+  J.frentes[nome]=limitaFrente(nome, J.frentes[nome]+(t===0?1:-1));
+  reg(t?"c":"a",`LEVA DE FERRO — a onda do ${nome} avança`);
+}
+function abreEscolhaRota(t){
+  /* a IA escolhe sozinha: empurra onde a própria onda está mais atrasada.
+     Sem isto ela abriria uma tela de escolha e ficaria parada nela. */
+  if(simMode||(aiMode&&t===1)){
+    const nome=Object.keys(ROTAS).sort((a,b)=>
+      (t===0?J.frentes[a]-J.frentes[b]:J.frentes[b]-J.frentes[a]))[0];
+    return empurraOnda(t,nome);
+  }
+  const nomes=Object.keys(ROTAS);
+  const bts=nomes.map(nome=>{
+    const f=J.frentes[nome], l=ROTAS[nome];
+    const perto = f<=1 ? "encostada na base inimiga" : f>=l.length-2 ? "encostada na sua base" : "no vão";
+    return `<button class="grande rotaLeva" data-r="${nome}" style="font-size:15px;padding:12px">
+      ${nome.toUpperCase()}<br><span style="font-size:12.5px;opacity:.8">onda ${perto}</span></button>`;
+  }).join("");
+  abre(`<span class="et">Leva de Ferro</span><h2 class="t${t}">Qual rota?</h2>
+    <p>A sua onda avança <b>1 casa</b> nesta rota.</p>${bts}`);
+  G("telacx").querySelectorAll(".rotaLeva").forEach(b=>b.onclick=()=>{
+    fecha();
+    empurraOnda(t,b.dataset.r);
+    toast("onda avança","gank"); vibra(14);
+    calcula(); pinta();
+  });
 }
 
 function abreLoja(){
@@ -2571,16 +2638,21 @@ function iaCompra(t){
       reg(t?"c":"a",`${h.n} compra ${it.n} (−${preco} de ouro)`);
       comprou=true;
     }
-    /* inventário cheio: o ouro vai para os gastos tardios, senão a IA acumula
-       uma montanha de ouro morto exatamente como o jogador reclamou de acumular */
-    let guarda=0;
-    while(guarda++<4){
-      const g=gastosDisponiveis(h)
-        .filter(x=>h.ouro>=precoGasto(x,h))
-        .sort((a,b)=>precoGasto(b,h)-precoGasto(a,h))[0];
-      if(!g)break;
-      if(!usaGasto(g.id,h,t))break;
-      comprou=true;
+    /* Inventário cheio: o ouro vai para os gastos tardios, senão a IA acumula
+       uma montanha de ouro morto — exatamente a queixa do playtest.
+
+       A ordem NÃO é por preço. Comprar sempre o mais caro fazia ela despejar
+       tudo em Reforço, que encarece a cada compra e portanto continuava sendo o
+       mais caro: um monopólio disfarçado de heurística. Agora ela passa uma vez
+       por cada tipo, na ordem em que eles resolvem problemas diferentes —
+       território, opção, e só então estatística. */
+    const ORDEM_GASTO=["leva","requisicao","reforco"];
+    for(let volta=0;volta<2;volta++){
+      for(const id of ORDEM_GASTO){
+        const g=gastosDisponiveis(h).find(x=>x.id===id);
+        if(!g||h.ouro<precoGasto(g,h))continue;
+        if(usaGasto(g.id,h,t)) comprou=true;
+      }
     }
   });
   return comprou;

@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v19 (névoa no mato) · **Atualizado em:** 2026-08-12
+**Versão:** v20 (ordem equilibrada + dádiva do Barão) · **Atualizado em:** 2026-08-12
 
 > Decisões medidas e **não** tomadas estão em `docs/DECISOES-PENDENTES.md`.
 > Antes de mudar número, leia lá — várias já têm medição pronta esperando escolha.
@@ -30,12 +30,13 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Escala de dano | básica `round(Força × dano) + Poder` · **Ultimate `round(Força × dano × 1,5) + Poder`** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe, sem trava, só depois que uma rota inteira cai |
-| Poço épico | casa **[8,8]** (derivada) · Dragão (**4** de vida) até a rodada 8, Barão (**6**) depois · básica tira 1, Ultimate tira 2, respingo de área tira 1 |
+| Poço épico | casa **[8,8]** (derivada) · Dragão (4 de vida) até a rodada 12, **Barão (4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1 |
+| Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | rota, rio e base **sempre visíveis**; o **mato** só se você tiver alguém dentro. Duas regiões (cima/baixo), enxergadas em separado. Ward acende as duas |
 | Emboscada | atacar vindo do mato **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia |
-| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta. Só na base |
-| Vantagem de quem começa | **42,0%** (z=−6,2, n=1500) — **o sinal está invertido desde a v16**: quem começa está em DESVANTAGEM, e a névoa da v19 não corrigiu. Sem compensação definida. Ver DECISOES-PENDENTES item 1. **Meça sempre com n≥1500**: com n=250 o ruído chega a inverter o resultado |
+| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1. Só na base |
+| Vantagem de quem começa | **48,6%** (n=6000, três execuções de 2000). Era 42,0% na v19. Corrigido por **presença congelada no fim do turno de cada time** + **Primeiro Passo** (+1 de movimento na rodada 1 para quem começa). Sobra 1,4 ponto |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Duração de uma partida | **~22 rodadas** (mediana medida: 22, n=3000) |
@@ -57,10 +58,16 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 24 testes de regressão — um por bug já relatado
-node sim/bateria.js 400   # medição estrutural (mapa, torre, onda, ordem)
+node sim/testes.js        # 60 testes de regressão — um por bug já relatado
+node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
+node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
 ```
+
+**Sobre tamanho de amostra:** a taxa de "quem começa" precisa de **n ≥ 2000** por
+execução, e vale rodar duas ou três vezes. Já fui enganado por n=250 (deu 50%
+quando o real era 43%) e por um harness instável (o mesmo build dando 47,6% e
+50,4%).
 
 **Regra do projeto desde a v16:** bug relatado vira teste em `sim/testes.js`
 **antes** de virar correção. Se o teste não falha antes do conserto, ele não está
