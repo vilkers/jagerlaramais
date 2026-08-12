@@ -42,6 +42,12 @@ const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
    — medido, a loja abria dizendo "Loja fechada" na rodada 1 de toda partida.
    Efeito colateral assumido: voltar para comprar ficou mais barato. */
 const naBase=h=>BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
+/* Quantos itens este herói carrega. Três é o padrão; o Relicário dá um quarto.
+   Existia como `h.slots||3` copiado em quatro lugares — a loja, a checagem de
+   compra, o item grátis e o texto do botão. Bastava um deles ficar para trás
+   para o Relicário "não funcionar", que foi exatamente o relato da v15. */
+const capacidade=h=>h.slots||3;
+const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
   return J.times[h.t].herois.some(o=>o!==h&&!o.morto&&(o.itens||[]).some(i=>ITEM[i].ef.aura)
@@ -336,7 +342,7 @@ function novo(){
     })),
     dados:[], mov:{v:0,rest:0},
     frentes:{topo:centroRota("topo"),meio:centroRota("meio"),baixo:centroRota("baixo")},
-    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE,batida:0})),
+    torres:TORRES_DEF.map(d=>({...d,vida:VIDA_TORRE})),
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
     camps:[
@@ -344,7 +350,7 @@ function novo(){
       {id:"carmim",t:1,pos:[7,6],ouro:3,respawn:0,ativo:1},
       {id:"neutro",t:-1,pos:[6,4],ouro:4,respawn:0,ativo:1}
     ],
-    nexus:[VIDA_NEXUS,VIDA_NEXUS], nexusBatido:[0,0], motivoFim:null, log:[]
+    nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
   const DE_ROTA={topo:"topo",meio:"meio",adc:"baixo",sup:"baixo"};
@@ -425,9 +431,39 @@ const PESO_TORRE=2;                    /* torre caída vale por dois hexágonos 
 const perigo=t=>PESO_TORRE*torresPerdidas(t)+invasao(t);
 const atraso=t=>{ const d=perigo(t)-perigo(1-t); return d>=4?2:d>=2?1:0; };
 
-/* ---------- TURNO ---------- */
+/* ---------- TURNO ----------
+   EXPIRAÇÃO. Todo efeito temporário de um herói morre no INÍCIO do próximo turno
+   do dono — nunca no fim da rodada. São dois problemas resolvidos pela mesma
+   regra:
+
+   · escudo não expirava em lugar nenhum. `esc` só era zerado ao morrer, então
+     Muralha do Vharn (escudo 6 + Força, até 12 por uso) empilhava rodada após
+     rodada e o herói virava intocável de fato. Era o "escudo que dá
+     invulnerabilidade" do relatório — não era bug de absorção, era ausência de
+     prazo de validade.
+   · o que expirava, expirava na hora errada. "até o fim da rodada" pune quem
+     joga em segundo: o escudo dele nascia e morria dentro do próprio turno, sem
+     o adversário nunca ter tido a chance de bater nele. "Até o início do seu
+     próximo turno" dá a mesma janela real aos dois lados — sempre exatamente um
+     turno adversário de exposição, seja você o primeiro ou o segundo.
+
+   A regra vale para escudo, intocável, buff, prisão e a ação do herói. Uma regra
+   só, e o texto da carta pode dizer a mesma frase para todos. */
+function expiraDoTime(t){
+  J.times[t].herois.forEach(h=>{
+    if(h.esc){ h.esc=0; }
+    h.intoc=0; h.veuAtivo=0;
+    h.agiu=0;
+    h.preso=Math.max(0,h.preso-1);
+    h.semCura=Math.max(0,h.semCura-1);
+    if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
+    if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
+    if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
+  });
+}
 function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
+  expiraDoTime(t);
   const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
   tm.retomada=atraso(t);
   const m=1+Math.floor(Math.random()*6)+extra;
@@ -443,10 +479,31 @@ function iniciaTurno(){
   if(tm.retomada) reg("b",`RETOMADA — ${NOMES[t]} está atrás e rola ${tm.retomada} dado${tm.retomada>1?"s":""} a mais`);
   pinta();
 }
+/* ---------- FIM DE PARTIDA ----------
+   PORTA ÚNICA. Antes cada fonte de vitória escrevia `J.fim` por conta própria e
+   torcia para alguém reparar, e havia dois jeitos de a partida não acabar:
+
+     · `J.fim=1-lado`. Quando o AZUL (time 0) derrubava o Nexus, `J.fim` valia
+       ZERO — e todo teste do motor era `if(J.fim)`, que é falso para zero. O
+       AZUL literalmente não conseguia ganhar na hora: a partida seguia, o CARMIM
+       jogava seu turno inteiro, e se ele derrubasse o Nexus no contragolpe o
+       `J.fim` era sobrescrito para 1 e ele levava a partida que já tinha perdido.
+     · mesmo com o time certo, nada congelava: quem venceu no meio da rodada
+       continuava recebendo cliques até `fimDaRodada` reparar no assunto.
+
+   Agora quem derruba o Nexus chama isto, e isto trava a fase. `J.fase==="fim"`
+   é a trava que `pinta`, `escolheHeroi`, `iniciaHab` e a IA já respeitavam. */
+function encerraPartida(vencedor,motivo,autor){
+  if(J.fim!==null) return;                 // primeiro golpe vence; contragolpe não conta
+  J.fim=vencedor; J.motivoFim=motivo; J.fase="fim";
+  if(autor) J.golpeFinal={id:autor.id,n:autor.n,t:autor.t};
+  reg("b",`FIM — ${NOMES[vencedor]} venceu. ${motivo}`);
+  pinta(); telaFim();
+}
 function encerraTurno(){
   const advers=1-J.vez;
   revelaCaca(advers);
-  if(J.fim)return;
+  if(J.fim!==null)return;
   if(J.vez===J.primeiro){ J.vez=1-J.vez; iniciaTurno(); }
   else fimDaRodada();
 }
@@ -521,7 +578,7 @@ function fimDaRodada(){
     if(J.torres.some(x=>x.rota===nome&&x.t===lado&&x.vida>0)) return;
     J.nexus[lado]--;
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
-    if(J.nexus[lado]<=0){ J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído.`; }
+    if(J.nexus[lado]<=0) encerraPartida(1-lado,`Nexus ${NOMES[lado]} destruído pela onda do ${nome}.`);
   });
   [0,1].forEach(t=>{                              // a Fúria expira e devolve o Poder
     const tm=J.times[t];
@@ -558,18 +615,21 @@ function fimDaRodada(){
       reg(t?"c":"a",`${meu.n} domina o meio — prioridade (+1 dado na próxima rodada)`); }
   });
   todos().forEach(h=>{                            // respawn e limpeza
-    if(h.morto){ h.morto--; if(!h.morto){ h.vida=h.vidaMax; h.pos=[...BASE[h.t][0]]; reg("b",`${h.n} voltou`);} }
-    h.agiu=0; h.preso=Math.max(0,h.preso-1); h.intoc=0;  h.veuAtivo=0; h.semCura=Math.max(0,h.semCura-1);
-  });
+    if(h.morto){ h.morto--; if(!h.morto){ h.vida=h.vidaMax; h.esc=0; h.pos=[...BASE[h.t][0]]; reg("b",`${h.n} voltou`);} }
+  });   /* escudo, buff, prisão e ação expiram em expiraDoTime, no início do turno do dono */
   desempilha();
-  J.torres.forEach(t=>t.batida=0);                // torre volta a aceitar golpe de herói
-  J.nexusBatido=[0,0];                            // e o Nexus também, um golpe por rodada
   J.times.forEach(t=>{t.caca=null;t.cacaRevelada=null;t.ward=0;});
-  if(J.fim!==null){ pinta(); return telaFim(); }
-  /* a iniciativa alterna. Antes `primeiro` era 0 e nunca mudava: o mesmo time
-     jogava primeiro nas ~12 rodadas seguidas, e isso valia 60,3% de vitórias.
-     Alternando cai para 56,8% (3000 partidas por medição, ver sim/). */
-  J.primeiro=1-J.primeiro;
+  if(J.fim!==null) return;      // encerraPartida já pintou e abriu a tela de vitória
+  /* A iniciativa NÃO alterna mais entre rodadas. Ela alternava desde a v0.5 para
+     diluir a vantagem de quem começa (60,3% → 56,8%, 3000 partidas), mas o preço
+     era a sequência que o playtest da v15 reportou: com `primeiro` girando, a
+     ordem real vira A C | C A | A C — cada jogador joga DOIS turnos seguidos na
+     virada da rodada, e a partida fica ilegível.
+
+     Agora quem começa começa a partida inteira, e a rodada é sempre um turno de
+     cada: A → C → A → C. A vantagem de quem começa volta a existir sem freio, e
+     é medida em `node sim/bateria.js` — a compensação é decisão do grupo (ver
+     docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
   atualizaAcampamentos();
   const p=J.poco;                                 // o poço reabre, com o morador da vez
@@ -726,18 +786,22 @@ function usaHab(alvo){
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
     else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5);
-    if(ef.area) vizinhos(...alvo.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
-      .forEach(o=>aplicaDano(h,o,Math.round(d/2)));
+    if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
+      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
     h.recarga=0;
   }else reg(J.vez?"c":"a",txt);
 
-  if(ef.danoVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
-    .forEach(o=>aplicaDano(h,o,base(ef.danoVizinhos)));
-  if(ef.danoRaio) todos().filter(o=>!o.morto&&o.t!==h.t&&dist(...h.pos,...o.pos)<=ef.danoRaio)
-    .forEach(o=>aplicaDano(h,o,F+poder));
+  if(ef.danoVizinhos) inimigosNosHex(vizinhos(...h.pos),h)
+    .forEach(o=>danoEmEntidade(h,o,base(ef.danoVizinhos),hb.n));
+  if(ef.danoRaio){
+    const raio=[];
+    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
+      if(noTab(c,r)&&dist(...h.pos,c,r)<=ef.danoRaio) raio.push([c,r]);
+    inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,F+poder,hb.n));
+  }
   if(ef.prendeVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
-    .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});
+    .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});   /* prender só vale em herói */
   if(ef.prende&&alvo){ alvo.preso=2; reg("b",`${alvo.n} está preso`); }
   if(ef.puxar&&alvo&&!alvo.morto) desloca(alvo,h.pos,-1,ef.puxar);
   if(ef.empurrar&&alvo&&!alvo.morto) desloca(alvo,h.pos,1,ef.empurrar);
@@ -764,6 +828,35 @@ function desloca(alvo,de,dir,n=1){
     alvo.pos=passo[0];
   }
 }
+/* ---------- QUEM ESTÁ NUM HEXÁGONO ----------
+   `em(c,r)` responde só "que HERÓI está aqui". Os três efeitos de área do jogo
+   (respingo, dano nos vizinhos, dano em raio) foram escritos em cima dela, e por
+   isso enxergavam um mapa só de heróis: o Cerco do Torvald com o Dragão colado
+   não tirava um ponto do Dragão, porque o Dragão não é herói.
+
+   Estas duas funções são o lugar único onde se pergunta "o que dá para acertar
+   aqui". Quem for adicionar creep ou monstro de acampamento como alvo mexe aqui
+   e os três efeitos passam a acertar de graça.
+
+   Estrutura (torre e Nexus) NÃO entra: ela tem porta própria — alvo mirado, dano
+   fixo, revide — e deixar respingo derrubar torre mudaria o ritmo de cerco sem
+   ninguém ter pedido. */
+const epicoNoHex=(c,r)=> (J.poco.vida>0 && k(c,r)===POCO_K) ? J.poco : null;
+const ehEpico=o=> o===J.poco;
+function inimigosNosHex(hexes,h){
+  const fora=[];
+  hexes.forEach(([c,r])=>{
+    const o=em(c,r);          if(o&&o.t!==h.t&&!o.morto) fora.push(o);
+    const ep=epicoNoHex(c,r); if(ep) fora.push(ep);
+  });
+  return fora;
+}
+/* dano que não sabe de antemão se bate em herói ou em morador do poço.
+   O poço não tem armadura nem escudo: ele conta GOLPES, então respingo vale 1. */
+function danoEmEntidade(quem,alvo,bruto,txt,ehUlt){
+  if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,GOLPE_HAB,txt?` com ${txt}`:" de raspão");
+  aplicaDano(quem,alvo,bruto,txt,ehUlt);
+}
 function aplicaDano(quem,alvo,bruto,txt,ehUlt){
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
   if(ehUlt&&bonus(alvo,"veu")&&!alvo.veuAtivo){
@@ -787,6 +880,41 @@ function mata(alvo,quem){
   alvo.vida=0; alvo.morto=2; alvo.esc=0; alvo.intoc=0;
   quem.ouro+=4;
   reg("b",`☠ ${alvo.n} morreu — ${quem.n} leva 4 de ouro`);
+}
+
+/* conclui o Recuo: anda a casa escolhida sem tocar no Dado Mestre */
+function recuaAte(c,r){
+  if(modo!=="recuo"||!selHeroi)return;
+  if(!mover.some(p=>p[0]===c&&p[1]===r))return;
+  const h=selHeroi, de=[...h.pos];
+  h.pos=[c,r];
+  animaMovimento(h,de);
+  coletaAcampamento(h);
+  reg(J.vez?"c":"a",`${h.n} recua uma casa`);
+  modo=null; mover=[]; calcula(); pinta();
+}
+
+/* ---------- CONVERSÃO ----------
+   Todo dado tem saída. Era o buraco do "quarto dado inutilizável": um herói só
+   age uma vez por turno, então quando a Retomada, a Prioridade ou a carta
+   Adiantar davam o 4º dado e já não sobrava herói livre — ou os que sobravam não
+   tinham ninguém no alcance — o dado ficava na mesa sem uso e sem explicação.
+   A conversão já existia como clique num botão anônimo; agora é função com nome,
+   a IA sabe usá-la, e `pinta` avisa quando é a única saída que resta. */
+function converteDado(i){
+  const idx = i==null?dadoSel:i;
+  if(idx===null||idx===undefined||!J.dados[idx]||J.dados[idx].usado)return false;
+  const d=J.dados[idx]; d.usado=1; J.mov.rest+=d.v; J.mov.v+=d.v;
+  reg(J.vez?"c":"a",`${NOMES[J.vez]} vira a ação ${d.v} em movimento (total ${J.mov.rest})`);
+  toast("+"+d.v+" de movimento",""); vibra(12);
+  dadoSel=null; calcula(); pinta();
+  return true;
+}
+/* um dado que nenhum herói livre consegue pagar não é decisão, é lixo na mesa */
+function dadoSemUso(i){
+  const d=J.dados[i]; if(!d||d.usado)return false;
+  return !J.times[J.vez].herois.some(h=>!h.morto&&!h.agiu
+    &&(!d.dono||d.dono===h.id)&&h.habs.some(hb=>d.v>=hb.f));
 }
 
 /* ---------- PLACAS ---------- */
@@ -975,7 +1103,7 @@ const _revelaCaca=revelaCaca;
 revelaCaca=function(t){
   const z=J.times[t].caca, s=fotografa();
   _revelaCaca(t);
-  if(z&&z!=="selva"&&!J.fim) toast("GANK NO "+z.toUpperCase(),"gank");
+  if(z&&z!=="selva"&&J.fim===null) toast("GANK NO "+z.toUpperCase(),"gank");
   revela(s);
 };
 
@@ -1066,6 +1194,12 @@ function calcula(){
       if(d>0&&d<=LAMPEJO_ALC) mover.push([c,r]);
     }
   }
+  /* Recuo: uma casa, de graça, ignorando movimento restante e prisão — é uma
+     carta de reação, e o ponto dela é justamente escapar de onde você travou. */
+  if(modo==="recuo"&&selHeroi&&!selHeroi.morto){
+    mover=vizinhos(...selHeroi.pos).filter(([c,r])=>noTab(c,r)&&!em(c,r)
+      &&BASE_S.get(k(c,r))!==1-selHeroi.t);
+  }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
     const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
     alvos=todos().filter(o=>{
@@ -1104,7 +1238,7 @@ function torreExposta(rota,t){
 function torresAoAlcance(h,hb,alc){
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
   return J.torres.filter(tr=>{
-    if(tr.t===h.t||tr.vida<=0||tr.batida) return false;
+    if(tr.t===h.t||tr.vida<=0) return false;
     if(torreExposta(tr.rota,tr.t)!==tr) return false;
     return hb.ef.semAlcance||dist(...h.pos,...ROTAS[tr.rota][tr.i])<=alc;
   });
@@ -1118,7 +1252,7 @@ const rotaAberta=t=>Object.keys(ROTAS).some(nome=>
 function nexusAoAlcance(h,hb,alc){
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return null;
   const lado=1-h.t;
-  if(J.nexus[lado]<=0||J.nexusBatido[lado]) return null;
+  if(J.nexus[lado]<=0) return null;
   if(!rotaAberta(lado)) return null;
   const d=Math.min(...BASE[lado].map(([c,r])=>dist(...h.pos,c,r)));
   return (hb.ef.semAlcance||d<=alc) ? lado : null;
@@ -1186,14 +1320,20 @@ function confirmaHab(alvo){
   calcula(); pinta();
 }
 /* o golpe na torre não passa por usaHab: torre não tem armadura, escudo nem status.
-   Dano fixo, um por rodada, e o revide é o preço de encostar. */
+   Dano fixo e o revide é o preço de encostar.
+
+   A trava de "um golpe por rodada" saiu na v16. Ela era invisível e enganava:
+   o jogador que gastava o dado doado pelo Suporte para bater de novo na mesma
+   torre via a ação sumir sem explicação nenhuma na tela. A estrutura agora é
+   como qualquer alvo — se sobra recurso, dá para bater de novo, e o teto vira o
+   que sempre deveria ter sido: dado na mesa e herói que ainda não agiu. */
 function atacaTorre(tr){
   if(!selHeroi||habAtual===null)return;
   const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
   if(di===null)return;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
-  tr.vida-=DANO_TORRE; tr.batida=1;
+  tr.vida-=DANO_TORRE;
   agendaAnim(()=>animaAtaque(h,ROTAS[tr.rota][tr.i]));
   reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} `+
       `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
@@ -1213,7 +1353,7 @@ function atacaTorre(tr){
   calcula(); pinta();
 }
 
-/* O Nexus, pela mesma porta da torre: dano fixo de 1, um golpe por rodada, e sem
+/* O Nexus, pela mesma porta da torre: dano fixo de 1, sem trava por rodada e sem
    revide — quem chegou até aqui já pagou o pedágio das duas torres da rota.
    Até a v0.6 não existia caminho nenhum: só a onda derrubava Nexus, e a partida
    terminava sem que ninguém desse o golpe final. */
@@ -1223,28 +1363,47 @@ function atacaNexus(lado){
   if(di===null)return;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(18);
 
-  J.nexus[lado]--; J.nexusBatido[lado]=1;
+  J.nexus[lado]--;
   agendaAnim(()=>animaAtaque(h,BASE[lado][0]));
   reg(J.vez?"c":"a",`${h.n} golpeia o NEXUS ${NOMES[lado]} com ${hb.n} `+
       `(${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS})`);
   fx(BASE[lado][0],"-1","dano");
 
   if(J.nexus[lado]<=0){
-    J.fim=1-lado; J.motivoFim=`Nexus ${NOMES[lado]} destruído por ${h.n}.`;
     reg("b",`NEXUS ${NOMES[lado]} DESTRUÍDO`);
     toast("NEXUS DESTRUÍDO","gank"); vibra([60,80,60]);
+    encerraPartida(1-lado,`Nexus ${NOMES[lado]} destruído por ${h.n}.`,h);
   }else{ toast("NEXUS EM "+J.nexus[lado],"gank"); }
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
 
 /* mesma porta da torre: dano fixo, sem armadura e sem status — mas sem a trava de
-   um golpe por rodada, e com o prêmio indo para quem der o último. */
+   e com o prêmio indo para quem der o último.
+
+   `golpeiaEpico` é o miolo, separado de `atacaEpico` porque o morador do poço
+   pode agora levar pancada por DOIS caminhos: mirado (atacaEpico, gasta dado) ou
+   de respingo (usaHab, sem gastar dado a mais). Antes só existia o mirado, e o
+   respingo o atravessava — ver `inimigosNosHex`. */
+function golpeiaEpico(h,ep,golpe,comoTxt){
+  const d=EPICO[ep.id];
+  ep.vida-=golpe;
+  agendaAnim(()=>animaAtaque(h,POCO));
+  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n}${comoTxt||""} (−${golpe}) `
+     +`(${Math.max(0,ep.vida)}/${ep.vidaMax})`);
+  fx(POCO,"-"+golpe,"dano");
+
+  if(ep.vida<=0){ levaEpico(ep,h.t); return; }
+  /* o revide nunca mata, pelo mesmo motivo da torre: `mata()` precisa de autor
+     para creditar o ouro, e monstro neutro não é autor. */
+  const levou=Math.min(d.revide,h.vida-1);
+  if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
+    fx(h.pos,-levou,"dano"); tremer(h); }
+}
 function atacaEpico(ep){
   if(!selHeroi||habAtual===null)return;
   const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
   if(di===null)return;
-  const d=EPICO[ep.id];
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
   /* A ultimate vale por duas. Antes todo golpe tirava 1, e a consequência era que
@@ -1252,21 +1411,7 @@ function atacaEpico(ep){
      objetivo grande premiava o dado pequeno. Com 2, derrubar o poço em uma rodada
      exige que alguém queime a ultimate nele em vez de num herói: é a escolha que
      faz o objetivo pesar. Testado na mesa antes de entrar. */
-  const golpe = habAtual===2 ? GOLPE_ULT : GOLPE_HAB;
-  ep.vida-=golpe;
-  agendaAnim(()=>animaAtaque(h,POCO));
-  reg(J.vez?"c":"a",`${h.n} golpeia o ${d.n} com ${hb.n} (−${golpe}) `
-     +`(${Math.max(0,ep.vida)}/${ep.vidaMax})`);
-  fx(POCO,"-"+golpe,"dano");
-
-  if(ep.vida<=0) levaEpico(ep,h.t);
-  else{
-    /* o revide nunca mata, pelo mesmo motivo da torre: `mata()` precisa de autor
-       para creditar o ouro, e monstro neutro não é autor. */
-    const levou=Math.min(d.revide,h.vida-1);
-    if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
-      fx(h.pos,-levou,"dano"); tremer(h); }
-  }
+  golpeiaEpico(h,ep,habAtual===2?GOLPE_ULT:GOLPE_HAB,` com ${hb.n}`);
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
@@ -1392,6 +1537,7 @@ const _moveAte=moveAte;
 moveAte=function(c,r){
   if(!selHeroi)return;
   if(modo==="lampejo") return lampejaAte(c,r);
+  if(modo==="recuo")   return recuaAte(c,r);
   const de=[...selHeroi.pos];
   _moveAte(c,r);
   modo=null; calcula(); pinta();
@@ -1647,11 +1793,11 @@ function abreLoja(){
       <img src="${RETRATO(h.id)}" alt=""><span>${h.n}</span><i>${h.ouro}◈</i></button>`).join("");
   const cards=ITENS.map(it=>{
     const preco=Math.max(0,it.o-descontos[t]);
-    const tem=quem.itens.includes(it.id), cheio=quem.itens.length>=(quem.slots||3), pode=quem.ouro>=preco&&!tem&&!cheio;
+    const tem=quem.itens.includes(it.id), cheio=inventarioCheio(quem), pode=quem.ouro>=preco&&!tem&&!cheio;
     return `<button class="itC${pode?"":" off"}${tem?" tem":""}" data-i="${it.id}" ${pode?"":"disabled"}>
       <img src="${RETRATO_ITEM(it.id)}" alt=""><span class="iN">${it.n}</span>
       <span class="iD">${it.d}</span>
-      <span class="iO">${tem?"comprado":cheio?(quem.slots||3)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
+      <span class="iO">${tem?"comprado":cheio?capacidade(quem)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
   }).join("");
   abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>`);
   G("shCorpo").querySelectorAll(".abaH").forEach(b=>b.onclick=()=>{
@@ -1659,7 +1805,7 @@ function abreLoja(){
   G("shCorpo").querySelectorAll(".itC").forEach(b=>b.onclick=()=>{
     const it=ITEM[b.dataset.i];
     const preco=Math.max(0,it.o-descontos[t]);
-    if(quem.ouro<preco||quem.itens.includes(it.id)||quem.itens.length>=(quem.slots||3))return;
+    if(quem.ouro<preco||quem.itens.includes(it.id)||inventarioCheio(quem))return;
     quem.ouro-=preco; quem.itens.push(it.id);
     if(descontos[t]){ descontos[t]=0; }
     if(it.ef.vida){ quem.vidaMax+=it.ef.vida; quem.vida+=it.ef.vida; }
@@ -1706,13 +1852,13 @@ function abreManual(){
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
       <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada, e o golpe de herói tira <b>1</b> — qualquer habilidade ofensiva, inclusive a Ultimate. Torre não é poço: quem quer derrubar mais rápido junta heróis, não gasta a Ultimate.</p>
-      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> — e só aceita <b>um golpe de herói por rodada</b>. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
+      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> a cada golpe — e é esse pedágio, não uma trava de rodada, que decide quantas vezes vale bater. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
       <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>8 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
       <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>14 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
-      <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem limite por rodada</b> e <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+      <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section><h4>Plano de Caça</h4>
 <p>No início da rodada, cada Caçador escolhe secretamente <b>TOP, MEIO, BAIXO ou FARM</b>. A ficha não move ninguém: todo deslocamento usa o Dado Mestre. Se chegar à rota declarada, a primeira habilidade ofensiva recebe <b>+2 Força</b>. FARM dá <b>+1 ouro</b> somente se o Caçador coletar um acampamento. Se não cumprir, perde o bônus. <b>Ward revela o Plano de Caça inimigo.</b></p></section>
     <section><h4>No aparelho</h4>
@@ -2125,8 +2271,9 @@ iniciaTurno=function(){
 };
 
 /* buffs do deck duram até o fim da rodada */
-const _fimDaRodada=fimDaRodada;
-fimDaRodada=function(){ limpaBuffs(); _fimDaRodada(); };
+/* limpaBuffs() era chamada aqui, no fim da rodada, e zerava o buff dos DOIS
+   times de uma vez. Agora cada time perde o seu no início do próprio turno
+   (expiraDoTime), que é o que dá a mesma janela de exposição aos dois lados. */
 /* A tela existia e só dizia quem venceu. Agora mostra o placar dos dois lados e o
    motivo — que hoje é sempre o Nexus, mas `J.motivoFim` já está plumbado para o dia
    em que o limite de rodadas entrar (ver docs/REVISAO-EXTERNA.md, item 3.3). */
@@ -2234,7 +2381,7 @@ function abreEstruturas(){
         if(x.vida<=0) return `<span class="tw caiu" title="passo ${x.i}">✕</span>`;
         const eu=x===exp;
         return `<span class="tw${eu?" exposta":""}" title="passo ${x.i}">`+
-               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}${x.batida?'<em class="ja">batida</em>':""}</span>`;
+               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}</span>`;
       }).join("");
       return `<div class="er${caiu?" aberta":""}">
         <b>${nome.toUpperCase()}</b>
@@ -2252,7 +2399,7 @@ function abreEstruturas(){
     `<div id="estruturas">${lado(0)}${lado(1)}</div>
      <p class="est-nota">A torre marcada <b>alvo</b> é a única da rota que aceita golpe de herói
      agora — a de trás só depois que ela cair. O <b>Nexus</b> só fica exposto quando uma rota
-     inteira daquele lado cai, e aguenta um golpe de herói por rodada.</p>`);
+     inteira daquele lado cai.</p>`);
 }
 G("btEstr").onclick=()=>{ sheetAberto==="Estruturas"?fechaSheet():abreEstruturas(); };
 G("btLog").onclick=()=>{ sheetAberto==="Histórico"?fechaSheet():abreLog(); };
@@ -2270,13 +2417,7 @@ G("btFim").onclick=()=>{
   fechaSheet(); limpaModo(); selHeroi=null;
   encerraTurno(); pinta();
 };
-G("btConv").onclick=()=>{
-  if(dadoSel===null||J.dados[dadoSel].usado)return;
-  const d=J.dados[dadoSel]; d.usado=1; J.mov.rest+=d.v; J.mov.v+=d.v;
-  reg(J.vez?"c":"a",`${NOMES[J.vez]} vira a ação ${d.v} em movimento (total ${J.mov.rest})`);
-  toast("+"+d.v+" de movimento",""); vibra(12);
-  dadoSel=null; calcula(); pinta();
-};
+G("btConv").onclick=()=>converteDado();
 G("btPlaca").onclick=()=>{ usaPlaca(1); toast("dado ajustado",""); vibra(10); };
 G("btRerol").onclick=()=>{ rerola(); toast("dado re-rolado",""); vibra(10); };
 document.addEventListener("keydown",e=>{
@@ -2379,7 +2520,14 @@ function jogaCarta(id){
   if(ef.dadoParaMov){ const d=J.dados[dadoSel]; d.usado=1;
     J.mov.rest+=d.v*2; J.mov.v+=d.v*2; dadoSel=null; msg+=` → +${d.v*2} de movimento`; }
   if(ef.movExtra){ J.mov.rest+=ef.movExtra; J.mov.v+=ef.movExtra; }
-  if(ef.moverReacao){ J.mov.rest+=1; J.mov.v+=1; }
+  if(ef.moverReacao){
+    /* Recuo não empresta movimento: ele move ESTE herói exatamente uma casa.
+       Somar em J.mov era o bug — o Dado Mestre é de quem está na vez, então uma
+       carta de reação acabava presenteando o adversário com +1 de movimento, e
+       o herói que deveria recuar não saía do lugar. */
+    modo="recuo"; selHeroi=h; calcula();
+    msg+=` → escolha a casa para onde ${h.n} recua`;
+  }
   if(ef.dadoExtra){ const v=1+Math.floor(Math.random()*6);
     J.dados.push({v,usado:0,extra:1}); msg+=` → dado ${v}`; }
   if(ef.reativar){ h.agiu=0; msg+=` → ${h.n} pode agir de novo`; }
@@ -2390,7 +2538,7 @@ function jogaCarta(id){
   if(ef.buffAgil){ aplicaBuff(h,"agil",1); msg+=` → ${h.n} está ágil`; }
   if(ef.ouro){ h.ouro+=ef.ouro; msg+=` → ${h.n} +${ef.ouro} de ouro`; }
   if(ef.desconto){ descontos[t]+=ef.desconto; }
-  if(ef.slotExtra){ h.slots=(h.slots||3)+1; msg+=` → ${h.n} tem ${h.slots} slots`; }
+  if(ef.slotExtra){ h.slots=capacidade(h)+1; msg+=` → ${h.n} tem ${h.slots} slots`; }
   if(ef.recall){ h.pos=[...BASE[t][0]]; desempilha(); msg+=` → ${h.n} volta à base`; }
   if(ef.ward){ J.times[t].ward=1; const z=J.times[1-t].caca;
     msg+=z?` → Caçador inimigo vai ao ${z.toUpperCase()}`:" → ward posta"; }
@@ -2401,11 +2549,16 @@ function jogaCarta(id){
     J.frentes[rota]=limitaFrente(rota, J.frentes[rota]+(t===0?1:-1));
     msg+=` → onda do ${rota} avança`; }
   if(ef.itemGratis){
+    /* Antes o motor sorteava UM item e equipava. A carta era um dado disfarçado:
+       o jogador não escolhia nada, e "Forja de Campo" acabava valendo o item que
+       calhasse. Agora o sorteio escolhe TRÊS e a decisão é do jogador — mesma
+       aleatoriedade na oferta, agência de volta na escolha. */
     const opc=ITENS.filter(i=>i.o<=ef.itemGratis&&!h.itens.includes(i.id));
-    if(opc.length&&h.itens.length<(h.slots||3)){
-      const it=opc[Math.floor(Math.random()*opc.length)];
-      h.itens.push(it.id); if(it.ef.vida){h.vidaMax+=it.ef.vida;h.vida+=it.ef.vida;}
-      msg+=` → ${h.n} equipa ${it.n}`;
+    if(opc.length&&!inventarioCheio(h)){
+      const sorteio=opc.slice();
+      for(let i=sorteio.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sorteio[i],sorteio[j]]=[sorteio[j],sorteio[i]];}
+      abreEscolhaItem(h,sorteio.slice(0,3).map(i=>i.id),c.n);
+      msg+=` → ${h.n} escolhe entre 3 itens`;
     } else msg+=" → sem item disponível";
   }
   if(ef.doCemiterio){ const volta=cemiterio.pop(); maos[t].push(volta);
@@ -2415,6 +2568,34 @@ function jogaCarta(id){
   reg(t?"c":"a",msg); toast(c.n,""); vibra(12);
   calcula(); pinta(); if(sheetAberto==="Cartas") abreMao();
 }
+/* ---------- ESCOLHA DE ITEM ----------
+   Estado próprio porque a escolha sobrevive ao fechamento do sheet: a carta já
+   foi para o cemitério quando a lista aparece, então perder a escolha por um
+   toque fora seria perder a carta. `confirmaEscolhaItem` é a única saída. */
+let escolhaItem=null;
+function abreEscolhaItem(h,ids,titulo){
+  escolhaItem={h,opcoes:ids};
+  const cards=ids.map(id=>{const it=ITEM[id];
+    return `<button class="itC" data-i="${id}">
+      <img src="${RETRATO_ITEM(id)}" alt=""><span class="iN">${it.n}</span>
+      <span class="iD">${it.d}</span><span class="iO">grátis</span></button>`;}).join("");
+  abreSheet(titulo||"Escolha um item",
+    `<p style="color:var(--ink-2);font-size:13.5px;margin:0 0 10px">
+       <b style="color:var(--ink)">${h.n}</b> equipa <b style="color:var(--brass)">um</b> destes.
+       Os outros dois são descartados.</p><div class="prat">${cards}</div>`);
+  G("shCorpo").querySelectorAll(".itC").forEach(b=>
+    b.onclick=()=>confirmaEscolhaItem(b.dataset.i));
+}
+function confirmaEscolhaItem(id){
+  if(!escolhaItem||!escolhaItem.opcoes.includes(id))return;
+  const h=escolhaItem.h, it=ITEM[id];
+  h.itens.push(id);
+  if(it.ef.vida){ h.vidaMax+=it.ef.vida; h.vida+=it.ef.vida; }
+  reg(h.t?"c":"a",`${h.n} forja ${it.n}`);
+  toast(it.n,""); vibra(14);
+  escolhaItem=null; fechaSheet(); calcula(); pinta();
+}
+
 function abreMao(){
   const t=J.vez, mao=maos[t];
   const corpo = !mao.length

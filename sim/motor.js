@@ -86,6 +86,8 @@ const PONTE = `
   get modo(){return modo},           set modo(v){modo=v},
   get habAtual(){return habAtual},   set habAtual(v){habAtual=v},
   get dadoSel(){return dadoSel},     set dadoSel(v){dadoSel=v},
+  get aiMode(){return aiMode},       set aiMode(v){aiMode=v},
+  get simMode(){return simMode},     set simMode(v){simMode=v},
   get alvos(){return alvos},
   get alvosTorre(){return alvosTorre},
   get alvosEpico(){return alvosEpico},
@@ -93,7 +95,20 @@ const PONTE = `
   get mover(){return mover},
   get maos(){return maos},
   get baralho(){return baralho},
-  get cemiterio(){return cemiterio}
+  get cemiterio(){return cemiterio},
+  get escolhaItem(){return escolhaItem},
+  /* geometria e catálogo — \`const\` de script não vira propriedade do global,
+     então sem estes getters um teste não consegue nem achar um herói. */
+  get CATALOGO(){return CATALOGO},   get ITENS(){return ITENS},
+  get ROTAS(){return ROTAS},         get BASE(){return BASE},
+  get POCO(){return POCO},           get EPICO(){return EPICO},
+  get COLS(){return COLS},           get LINS(){return LINS},
+  get VIDA_TORRE(){return VIDA_TORRE}, get VIDA_NEXUS(){return VIDA_NEXUS},
+  dist:(...a)=>dist(...a), vizinhos:(...a)=>vizinhos(...a),
+  noTab:(...a)=>noTab(...a), em:(...a)=>em(...a), k:(...a)=>k(...a),
+  todos:()=>todos(), vivos:t=>vivos(t), naBase:h=>naBase(h),
+  torreExposta:(...a)=>torreExposta(...a), capacidade:h=>capacidade(h),
+  poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h)
 };`;
 
 function carrega(trocas = []) {
