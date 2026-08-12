@@ -177,7 +177,7 @@ function textoHab(hb){
   if(e.ouroSeMatar)    p.push(`<b>+${e.ouroSeMatar}</b> de ouro se matar`);
   if(e.recarga)        p.push(`O próximo golpe leva <b>+${e.recarga}</b>`);
   if(e.intocavel)      p.push("Fica <b>intocável</b> até o próximo turno");
-  if(e.ward)           p.push("<b>Ward</b> — revela a carta do Caçador inimigo antes dela virar");
+  if(e.ward)           p.push("<b>Ward</b> — revela por onde o Caçador inimigo sai da rotação");
   if(e.revive)         p.push("Um aliado morto <b>volta 1 rodada antes</b>");
   if(e.marca)          p.push(`<b>Marca</b> o alvo: o próximo dano nele leva +${e.marca}`);
   if(e.doar)           p.push("<b>Doa este dado</b> para um aliado usar como se fosse dele");
@@ -244,11 +244,11 @@ const DECK = [
  {id:"anteparo", n:"Anteparo",         fam:"reacao",   copias:2, quando:"reacao",
   d:"Anule 3 de dano de um golpe.",                              ef:{anularDano:3}},
  {id:"contra",   n:"Contra-emboscada", fam:"reacao",   copias:2, quando:"reacao",
-  d:"Revele a carta do Caçador inimigo agora.",                  ef:{revelarCaca:1}},
+  d:"Revele onde o Caçador inimigo em rotação vai sair.",         ef:{revelarCaca:1}},
 
  /* MAPA — peça, onda e visão */
  {id:"sinal",    n:"Sinalizador",      fam:"mapa",     copias:2, quando:"turno",
-  d:"Ward: revela o Caçador inimigo na próxima revelação.",       ef:{ward:1}},
+  d:"Ward: revela por onde o Caçador inimigo sai da rotação.",     ef:{ward:1}},
  {id:"convocar", n:"Convocar",         fam:"mapa",     copias:2, quando:"turno",
   d:"Teletransporte um herói seu para a sua base.",              ef:{recall:1}},
  {id:"pressao",  n:"Pressão",          fam:"mapa",     copias:2, quando:"turno",

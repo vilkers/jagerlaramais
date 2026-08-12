@@ -608,6 +608,119 @@ teste("a IA gasta o ouro que sobra depois de fechar os itens", () => {
   ok(h.ouro < 30, "a IA ficou sentada em 30 de ouro com o inventário cheio");
 });
 
+
+/* ═══════════════ v18 — Jungle em rotação (as 5 fichas saíram) ═══════════════ */
+
+teste("as entradas de selva são poucas, fixas e espelhadas", () => {
+  const c = cena();
+  const g = c.g;
+  const E = g.ENTRADAS_SELVA;
+  eq(E.length, 4, "deveriam ser quatro entradas");
+  E.forEach(p => {
+    ok(g.noTab(...p), `entrada ${JSON.stringify(p)} fora do tabuleiro`);
+    ok(g.k(...p) !== g.k(...g.POCO), "uma entrada caiu em cima do poço épico");
+  });
+  /* justiça: para cada entrada perto do Azul existe a espelhada perto do Carmim */
+  const daBase = (p, t) => Math.min(...g.BASE[t].map(([col, r]) => g.dist(col, r, ...p)));
+  const perfil = E.map(p => [daBase(p, 0), daBase(p, 1)].join("-")).sort();
+  const espelho = E.map(p => [daBase(p, 1), daBase(p, 0)].join("-")).sort();
+  eq(perfil.join(","), espelho.join(","), "as entradas não são simétricas entre os times");
+});
+
+teste("o Caçador entra em rotação, some do mapa e não pode ser atacado", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const cac = c.heroi(0, "selva"), inimigo = c.heroi(1, "topo");
+  ok(g.ehCacador(cac), "o herói de selva não é reconhecido como Caçador");
+  c.poe(inimigo, g.vizinhos(...cac.pos).find(v => g.noTab(...v) && !g.em(...v)));
+
+  ok(g.podeRotacionar(cac), "não dá para rotacionar com dado livre e sem ter agido");
+  g.entraEmRotacao(cac, g.ENTRADAS_SELVA[0]);
+  eq(cac.oculto, 1, "o Caçador não ficou oculto");
+  ok(cac.rotando, "não guardou a entrada escolhida");
+  eq(g.em(...cac.pos), undefined, "o Caçador oculto ainda ocupa a casa");
+
+  /* o inimigo mira: o Caçador não pode estar na lista */
+  g.J.vez = 1; g.J.dados = [{ v: 6, usado: 0 }];
+  g.limpaModo(); g.selHeroi = inimigo; g.iniciaHab(0);
+  ok(!g.alvos.includes(cac), "herói em rotação continuou alvejável");
+});
+
+teste("quem está em rotação não segura rota", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const cac = c.heroi(0, "selva");
+  /* põe o caçador em cima de uma rota, onde ele PRESSIONARIA */
+  c.poe(cac, g.ROTAS.meio[Math.floor(g.ROTAS.meio.length / 2)]);
+  g.entraEmRotacao(cac, g.ENTRADAS_SELVA[0]);
+  eq(g.rotaDaPos(cac), null, "o Caçador oculto ainda conta presença na rota");
+});
+
+teste("o Caçador emerge na entrada escolhida no início do próprio turno", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const cac = c.heroi(0, "selva");
+  const entrada = g.ENTRADAS_SELVA[2];
+  g.entraEmRotacao(cac, entrada);
+
+  g.encerraTurno();                       // passa a vez ao adversário
+  eq(cac.oculto, 1, "emergiu cedo demais, ainda no turno do adversário");
+  eq(g.J.vez, 1, "a vez não passou");
+
+  g.encerraTurno();                       // fim da rodada → volta a vez do dono
+  eq(cac.oculto, 0, "não emergiu no início do próprio turno");
+  eq(g.k(...cac.pos), g.k(...entrada), "emergiu na casa errada");
+  ok(cac.gankPlano, "emergiu sem o bônus de gank");
+});
+
+teste("o golpe depois da rotação sai com +2 de Força", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(0);
+  const g = c.g;
+  const cac = c.heroi(0, "selva"), alvo = c.heroi(1, "topo");
+  alvo.vida = alvo.vidaMax = 60; alvo.arm = 0; alvo.esc = 0;
+
+  /* mesma cena duas vezes: sem gank e com gank, e a diferença tem que ser 2 */
+  c.poe(alvo, g.vizinhos(...cac.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  const v0 = alvo.vida;
+  c.usa(cac, 0, alvo);
+  const semGank = v0 - alvo.vida;
+
+  cac.agiu = 0; cac.gankPlano = 1;
+  const v1 = alvo.vida;
+  c.usa(cac, 0, alvo);
+  const comGank = v1 - alvo.vida;
+
+  eq(comGank - semGank, 2, "o bônus de gank não valeu +2 de Força");
+  ok(!cac.gankPlano, "o bônus não foi consumido");
+});
+
+teste("Ward revela por onde o Caçador inimigo vai sair", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const g = c.g;
+  const cacInimigo = c.heroi(1, "selva");
+  const entrada = g.ENTRADAS_SELVA[1];
+  g.entraEmRotacao(cacInimigo, entrada);
+
+  /* o time 0 tem ward posta: o log tem que dizer a saída */
+  g.J.times[0].ward = 1;
+  g.J.vez = 1;
+  const cac2 = c.heroi(1, "sup");
+  g.J.times[1].herois.forEach(h => { if (h.rotando) return; h.agiu = 0; });
+  /* a revelação acontece na entrada em rotação; repete com ward já posta */
+  const outro = g.J.times[1].herois.find(h => g.ehCacador(h));
+  outro.oculto = 0; outro.rotando = null; outro.agiu = 0;
+  g.J.dados = [{ v: 6, usado: 0 }];
+  g.entraEmRotacao(outro, entrada);
+  const achou = g.J.log.some(l => /WARD/.test(l.txt) && new RegExp(g.ENTRADA_NOME(entrada).split(" ")[0], "i").test(l.txt));
+  ok(achou, "com ward posta, a saída do Caçador não foi revelada no log");
+});
+
+teste("não existe mais fase de comando oculto antes do primeiro turno", () => {
+  const c = cena();
+  eq(c.g.J.fase, "jogando", "a partida ainda começa numa fase que não é jogar");
+  ok(c.g.J.times[0].caca === undefined, "o campo das 5 fichas continua no estado");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

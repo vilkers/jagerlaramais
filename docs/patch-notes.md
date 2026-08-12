@@ -16,6 +16,85 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v18 — a IA que avalia, e o Caçador que some de verdade · 2026-08-12
+
+### O que mudou
+
+**IA — de gulosa para avaliadora.** Ela varria heróis e habilidades na ordem do
+catálogo e executava a PRIMEIRA jogada válida, com escada fixa de prioridade. Por
+isso batia num herói de passagem enquanto o Barão morria ao lado. Agora
+`iaJogadas` enumera toda jogada possível (herói × habilidade × alvo) e pontua numa
+escala declarada — 1000 ganhar agora, 300 matar, 100 torre, 10 dano comum — e
+executa a maior. Com piso de nota 15 ela também RECUSA jogada ruim, preferindo
+converter o dado em movimento.
+
+**IA — movimento com motivo.** Andar era o que ela fazia quando não sabia o que
+fazer. Agora cada herói tem destino nomeado (recua / objetivo / farma / caça /
+pressiona / avança) e ela só anda se o passo APROXIMAR. Movimento inútil fica no
+bolso.
+
+**Acampamentos.** Só o Caçador buscava. Agora qualquer herói a até 3 hexágonos
+vai; o Caçador mantém raio 9.
+
+**Acampamento neutro: uma posição fixa → duas, sorteadas por partida.** Ambas a
+**7** das duas bases. A justiça não é sorteada, só o lado.
+
+**Vida do épico: Dragão 8 → 4, Barão 14 → 6.** Medido: a 1–2 de dano por ação e 3
+dados por turno, o Dragão custava ~2,7 turnos do time INTEIRO e o Barão ~4,7 —
+contra uma torre de 3 golpes que leva direto à vitória. Não havia dilema, e foi
+por isso que a IA, depois de ganhar avaliação, parou de bater no poço: ela estava
+certa, o preço é que estava errado. *Medido depois, n=300: **0,69 Dragões por
+partida**, contra 0,01 antes; golpes de herói no poço de 0,1 para 2,8.*
+
+**Ultimate de dano fixo — as três que faltavam.** Julgamento, Ato Final e
+Sentença não escalavam com nada e PIORAVAM ao longo da partida. `danoFixo` passa a
+**ignorar armadura**: vira dano garantido, função diferente em vez de versão pior,
+e o melhor golpe contra tanque. Com a mecânica distinguindo as duas,
+**Julgamento 8 → 11, Ato Final 7 → 10, Sentença 6 → 10**. Medido: em 16 heróis com
+dano, **zero** têm básica alcançando a Ultimate, contra alvo de 0 e de 3 de
+armadura.
+
+**Jungle: as 5 fichas saíram, entrou a ROTAÇÃO.** Antes o Caçador escolhia uma de
+cinco fichas numa tela antes do primeiro turno, e a Ward revelava qual — informação
+abstrata numa interface, sobre uma peça que continuava visível o tempo todo. Agora
+ele gasta **uma ação** para entrar em rotação: **sai do tabuleiro**, escolhe em
+segredo uma de **quatro entradas de selva** (fixas e espelhadas entre os times), e
+reaparece lá **no início do seu próximo turno**, com **+2 de Força** no primeiro
+golpe ofensivo. Fora do mapa ele não pode ser atacado, mas também **não segura
+rota** — a onda anda sem ele. O turno inteiro fora é o que impede de parecer
+teleporte. **Ward** passou a revelar **por onde ele vai sair**.
+*Removidos: a fase de comando oculto antes do primeiro turno, o bônus FARM, e a
+Ward que revelava ficha.*
+
+**Prioridade** explica e pede confirmação antes de gastar a carga.
+**Pular a vez da IA** salta direto para a resolução em vez de acelerar.
+**Fim sem autor** (Nexus derrubado pela onda) mostra os cinco heróis do time.
+
+**Gasto de ouro tardio**, só na base: **Reforço** (6 de ouro, +2 a cada compra do
+mesmo herói → +1 de Poder permanente; o preço subindo é o que impede virar renda)
+e **Requisição** (5 de ouro → 1 carta). A IA usa os dois ao fechar o inventário.
+
+**Favicon** consertado — o SVG usava aspas duplas, a segunda fechava o `href` e o
+resto vazava como texto visível acima do HUD.
+
+### Por quê
+
+A queixa do playtest foi "IA muito fácil, sem noção de urgência, sem avaliação,
+sem estratégia" — e a causa não eram heurísticas ruins, era a ausência de
+comparação. Corrigida a avaliação, ela passou a recusar o épico, o que revelou que
+o preço do objetivo é que estava errado. Um conserto expôs o outro.
+
+### O que isso quebra
+
+- **Ultimates ficaram mais fortes** em 3 heróis, e ignorar armadura é uma regra
+  nova no jogo. Não medido em playtest humano.
+- **Épico muito mais barato.** Dobra a frequência de Herança e Fúria numa partida;
+  o efeito no ritmo precisa de playtest.
+- **Quem começa continua em desvantagem: 43,3%** (n=300). Sem compensação
+  definida — ver `docs/DECISOES-PENDENTES.md` item 1.
+- Partidas do agente aleatório subiram para mediana 23 rodadas.
+- Quem jogava em volta do Plano de Caça precisa reaprender o Caçador do zero.
+
 ## v16 — a revisão dos nove bugs · 2026-08-12
 
 Primeira versão depois do playtest da v15. Nove bugs relatados, cinco causas
