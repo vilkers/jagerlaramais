@@ -6,6 +6,8 @@
 
 **Versão:** v20 (ordem equilibrada + dádiva do Barão) · **Atualizado em:** 2026-08-12
 
+> **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
+> memória. `docs/02-regras.md` é da v0.2 e está arquivado.
 > Decisões medidas e **não** tomadas estão em `docs/DECISOES-PENDENTES.md`.
 > Antes de mudar número, leia lá — várias já têm medição pronta esperando escolha.
 

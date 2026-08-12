@@ -1,4 +1,12 @@
-# JAGERLARAMAIS — regras completas
+# JAGERLARAMAIS — regras completas (v0.2 · ARQUIVADO)
+
+> **⚠ Este arquivo está obsoleto.** Ele descreve a v0.2 e várias regras aqui não
+> existem mais: o Caçador com fichas de destino, escudo até o fim da rodada, a
+> trava de um golpe por rodada na torre, o Barão com Fúria de Poder.
+>
+> **As regras que valem estão em [`docs/REGRAS.md`](REGRAS.md).**
+>
+> Mantido só como registro de onde o jogo começou.
 
 Versão 0.2 · para quem nunca jogou. Leia na ordem.
 
