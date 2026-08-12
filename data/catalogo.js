@@ -44,7 +44,7 @@ solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndr
   vida:10,poder:3,arm:1,alc:3,
   habs:[{n:"Feixe",f:1,alvo:"in",ef:{dano:1}},
         {n:"Prisma",f:4,alvo:"in",ef:{dano:1,area:1}},
-        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:8}}]},
+        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:11}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
   vida:10,poder:4,arm:1,alc:1,agil:1,
@@ -62,7 +62,7 @@ cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
   vida:10,poder:3,arm:1,alc:3,
   habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
         {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2}},
-        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:6}}]},
+        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:10}}]},
 
 mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
   vida:11,poder:2,arm:2,alc:3,
@@ -137,7 +137,7 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
   vida:10,poder:3,arm:1,alc:4,patamar:1,
   habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,marca:3}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
-        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:7}}]},
+        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:10}}]},
 
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */
 /* mirrha = curandeira · torvald = gancho com visão  (ambos em jogo/index.html) */

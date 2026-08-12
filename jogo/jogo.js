@@ -379,9 +379,22 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    encostar, como na torre.
    Ninguém tem limite de golpes por rodada: é o dado que você deixa de gastar em outro
    lugar que mede o quanto você quer o objetivo — e é isso que abre a janela do roubo. */
+/* VIDA DO ÉPICO — medida, não estimada. Com 8 e 14 o objetivo estava fora de
+   alcance: um time rola 3 dados por turno, e a básica tira 1 do poço enquanto a
+   Ultimate tira 2. Isso punha o Dragão em ~2,7 turnos do time INTEIRO e o Barão
+   em ~4,7 — contra uma torre que custa 3 golpes e leva direto à vitória.
+
+   Não havia dilema nenhum: contestar era matematicamente um mau negócio, e foi
+   por isso que a IA — depois de ganhar avaliação na v17 — parou de bater no poço.
+   Ela estava certa; o preço é que estava errado.
+
+   Com 4 e 6: o Dragão cai em 2 Ultimates ou 4 básicas, o Barão em 3 Ultimates.
+   Cabe dentro de um turno se o time comprar a briga, e aí a pergunta "pressiono a
+   torre ou disputo o objetivo?" passa a ter os dois lados viáveis — que é a
+   definição de dilema. O revide não mudou: encostar continua custando. */
 const EPICO={
-  dragao:{n:"Dragão", vida:8, revide:1, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:14, revide:2, volta:4, pre:"a Fúria do Barão"}
+  dragao:{n:"Dragão", vida:4, revide:1, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:6, revide:2, volta:4, pre:"a Fúria do Barão"}
 };
 const R_DRAGAO=5, R_BARAO=8;          /* rodada em que cada morador passa a descer */
 const morador=r=>r>=R_BARAO?"barao":"dragao";
@@ -854,7 +867,7 @@ function usaHab(alvo){
     if(ef.extra)d+=ef.extra;
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
-    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5);
+    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo);
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
       .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
@@ -926,11 +939,21 @@ function danoEmEntidade(quem,alvo,bruto,txt,ehUlt){
   if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,GOLPE_HAB,txt?` com ${txt}`:" de raspão");
   aplicaDano(quem,alvo,bruto,txt,ehUlt);
 }
-function aplicaDano(quem,alvo,bruto,txt,ehUlt){
+function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
   if(ehUlt&&bonus(alvo,"veu")&&!alvo.veuAtivo){
     alvo.veuAtivo=1; reg("b",`VÉU PRISMÁTICO — ${alvo.n} anula a Ultimate`); return; }
-  let d=Math.max(1,bruto+(alvo.marca||0)-armTotal(alvo));
+  /* DANO GARANTIDO (`danoFixo`). Três Ultimates usam número fixo em vez de
+     escalar com o dado: Julgamento, Ato Final e Sentença. Elas continuavam
+     perdendo para a própria básica mesmo depois da escala 1,5× da v16, porque
+     número fixo não escala com nada — nem com o dado, nem com o Poder, nem com
+     item. Pior: elas PIORAVAM ao longo da partida, enquanto a básica subia.
+
+     A saída não foi só aumentar o número, que faria delas "a básica com mais
+     dano". Elas passam a IGNORAR ARMADURA. Agora são uma função diferente, não
+     uma versão pior: previsíveis, e o melhor golpe do jogo contra tanque —
+     exatamente onde a básica, que perde ponto a ponto para a armadura, falha. */
+  let d=Math.max(1,bruto+(alvo.marca||0)-(ignoraArm?0:armTotal(alvo)));
   alvo.marca=0;
   if(alvo.esc>0){ const abs=Math.min(alvo.esc,d); alvo.esc-=abs; d-=abs;
     if(abs)reg("b",`escudo de ${alvo.n} absorve ${abs}`); }
@@ -1062,7 +1085,7 @@ function descreve(h,hb,F){
      aprende a não confiar na ficha */
   const esc=escalaDe(h.habs.indexOf(hb));
   const t=[];
-  if(e.danoFixo) t.push(`${e.danoFixo} de dano`);
+  if(e.danoFixo) t.push(`${e.danoFixo} de dano garantido · ignora armadura`);
   else if(e.dano){
     const base=F!=null?Math.round(F*e.dano*esc)+p+(e.extra||0):null;
     t.push(base!=null?`~${base} de dano`:(esc>1?`Força × ${esc} + ${p} de dano`:`Força + ${p} de dano`));
@@ -2283,7 +2306,7 @@ function iaDanoReal(h,hb,slot,F,alvo){
   if(ef.extra)bruto+=ef.extra;
   if(ef.bonusFerido&&alvo&&alvo.vida<=alvo.vidaMax/2)bruto+=ef.bonusFerido;
   if(!alvo)return bruto;
-  const d=Math.max(1,bruto+(alvo.marca||0)-armTotal(alvo));
+  const d=Math.max(1,bruto+(alvo.marca||0)-(ef.danoFixo?0:armTotal(alvo)));
   return Math.max(0,d-(alvo.esc||0));
 }
 /* o quanto vale tirar este herói do tabuleiro: quem está atrás na vida morre
