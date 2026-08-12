@@ -16,6 +16,99 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v21 — visão por fontes, e o fim do hitkill · 2026-08-12
+
+Nove itens do playtest. Quatro eram bug, três eram número, dois eram regra nova.
+
+### Visão — agora vem das peças, como num MOBA
+
+**A névoa por região saiu.** A v19 escondia só o mato, e rota/rio/base eram
+sempre visíveis. Agora **você enxerga o que as suas peças enxergam**, e o resto
+do tabuleiro é escuridão — inclusive pedaço de rota.
+
+| Fonte | Raio |
+|---|---|
+| Herói | 2 |
+| Torre viva | 2 |
+| Base | 2 |
+| Frente de Onda (o creep) | 2 |
+| **Ward** | **3** |
+
+*Medido no início de partida: ~67% do mapa visível, 38 hexágonos escuros.*
+
+**A Ward virou peça no mapa**, com posição e prazo de 3 rodadas, em vez de um
+sinalizador abstrato do time. É o que a faz interagir com a visão por raio:
+acende um pedaço onde você não tem ninguém.
+
+**Na vez da IA a tela é a do humano.** O tabuleiro desenhava pela perspectiva de
+`J.vez`, então durante o turno dela o jogador via os heróis dela saindo do mato —
+a névoa vazava exatamente para o lado errado. Agora `ladoDaTela()` é sempre o
+humano em partida contra IA.
+
+### Bugs
+
+**Ágil dava movimento infinito.** "A 1ª casa andada é grátis" valia por
+MOVIMENTO, não por turno: andando de 1 em 1 hexágono, todo passo custava zero.
+Agora o desconto é uma vez por turno.
+
+**Respingo de Ultimate tirava 1 do poço** enquanto o golpe mirado tirava 2 — o
+Cerco do Torvald, que é Ultimate, valia como habilidade básica. O peso do golpe
+passou a ser da habilidade, não do caminho por onde ele chega.
+
+**Carta de item sumia sem entregar nada.** Com o inventário cheio ela ia para o
+cemitério e só escrevia "sem item disponível" no log. Agora fica apagada quando
+não há slot livre ou item elegível. *A escolha de 3 itens sempre funcionou — o
+que falhava era esse caso.*
+
+**Acampamento era corrida, não disputa.** Pisar coletava na hora, e quem jogava
+primeiro com um Dado Mestre alto varria os três sem o adversário poder responder.
+Agora **pisar ocupa; o ouro sai no fim da rodada, para quem ainda estiver lá** —
+um turno inteiro de janela para matar, empurrar ou chegar antes.
+
+### Números
+
+**Fim do hitkill.** Medido: vida de herói 10–14 contra Ultimates de 11–13 —
+**11 das 12 Ultimates matavam de um golpe**, e todos os 12 heróis morriam em duas
+básicas. Três mudanças juntas:
+
+- **vida ×1,8** (10–14 → 18–25), e com ela tudo que é medido em vida: escudo,
+  cura, roubo, espinho, item de vida, Égide do Barão, Retorno, cartas defensivas,
+  revide de torre (2 → 4) e revide dos épicos;
+- **escala da Ultimate 1,5 → 1,25**;
+- **dano fixo ×0,75** (Julgamento 11 → 8, Ato Final 10 → 8, Sentença 10 → 8).
+
+*Resultado: **0 de 12** Ultimates matam de um golpe, e só 3 de 12 heróis morrem
+em duas básicas. A duração da partida não mudou (mediana 21) — quem marca o
+relógio é a torre, não o abate.*
+
+**Alcance com teto de 4.** O Corvo tinha base 4 e somava Cetro +1 com Lente +2:
+atirava a **sete** hexágonos. Corvo 4 → 3, Lente de Âmbar +2 de Alcance → +1 de
+Alcance e +2 de Poder, e um teto duro de 4.
+
+### Regra nova
+
+**Cara ou coroa.** Quem começa deixou de ser sempre o Azul. Começar tem valor
+medido — o Primeiro Passo existe por isso —, e num jogo de dois no mesmo
+aparelho a ordem fixa era um presente silencioso para quem sentasse do lado azul.
+
+### Correção no instrumento
+
+O memo do campo de visão nasceu com invalidação manual (`sujaVisao()` em cada
+ponto que move peça) e quebrou na primeira mutação direta de estado. Foi
+trocado por uma **chave derivada do estado** — ~25 números somados, barata o
+bastante para rodar a cada consulta e correta por construção. A vizinhança de
+cada hexágono também passou a ser pré-calculada na carga: sem isso a bateria de
+2000 partidas deixava de terminar.
+
+### O que isso quebra
+
+- **O tabuleiro fica bem mais escuro.** ~1/3 do mapa é névoa a qualquer momento.
+- **Combate ficou mais longo:** de 1–2 golpes para 3. Fica a dúvida de playtest
+  se as brigas agora arrastam.
+- **Quem começa:** 50,5% (n=2000, z=0,49) e 51,9% (n=800). Dentro do ruído.
+- Os três heróis de dano fixo perderam ~20% de dano; contra tanque continuam
+  sendo o melhor golpe, porque seguem ignorando armadura.
+
 ## v20 — ordem equilibrada, Barão com escolha, e ouro com prazo · 2026-08-12
 
 Três frentes pedidas no playtest, medidas uma de cada vez.

@@ -72,6 +72,9 @@ function jogaUma(ctx, opc = {}) {
   return {
     terminou: g.J.fim !== null,
     vencedor: g.J.fim,
+    /* quem COMEÇOU a partida. Desde que o cara ou coroa entrou, o time 0 não é
+       mais sempre o primeiro — sem este campo, "quem começa" mediria "time 0". */
+    primeiro: g.J.primeiro,
     rodadas: g.J.rodada,
     passos,
     golpesTorre,

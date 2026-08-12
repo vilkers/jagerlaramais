@@ -82,6 +82,11 @@ button:disabled{cursor:not-allowed}
    claro o bastante para o jogador ainda enxergar o formato do mapa e planejar
    caminho por dentro dele. */
 #mapa .hx.cego{fill:#070C0A;stroke:#121B16}
+/* ward no mapa: olho pequeno, com as rodadas restantes embaixo */
+#mapa .ward .w-bg{fill:var(--ground-2);stroke:var(--brass);stroke-width:1.2}
+#mapa .ward .w-olho{fill:var(--brass)}
+#mapa .ward .w-cd{font-family:var(--mono);font-size:4.4px;text-anchor:middle;
+  fill:var(--brass-dim);pointer-events:none}
 #mapa .hx.rota{fill:var(--rota)}
 #mapa .hx.rio{fill:var(--rio)}
 #mapa .hx.base0{fill:var(--azul);fill-opacity:.28}
@@ -531,6 +536,15 @@ button:disabled{cursor:not-allowed}
 /* separador de prateleira na loja — só aparece quando há gasto tardio ativo */
 .secao-loja{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--ink-3);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line-soft)}
+
+/* a moeda do sorteio de quem começa */
+.moeda{width:104px;height:104px;margin:18px auto;border-radius:50%;
+  border:2px solid var(--brass);background:var(--ground-2);
+  display:grid;place-items:center;font-family:var(--display);font-size:19px;
+  letter-spacing:.04em;color:var(--brass);text-transform:uppercase}
+@keyframes gira{0%{transform:rotateY(0)}100%{transform:rotateY(1440deg)}}
+.moeda.girando{animation:gira .9s cubic-bezier(.2,.7,.3,1)}
+@media (prefers-reduced-motion:reduce){.moeda.girando{animation:none}}
 
 /* ══════════ CARTA GRANDE ══════════ */
 .carta-g{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--ground-3);

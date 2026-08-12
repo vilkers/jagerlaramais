@@ -137,8 +137,8 @@ for (let i = 0; i < n; i++) {
 }
 
 const rodadas = resume(jogos.map(j => j.rodadas));
-const assim = assimetria(jogos.filter(j => j.vencedor === 0).length,
-                         jogos.filter(j => j.vencedor === 1).length);
+const assim = assimetria(jogos.filter(j => j.vencedor === j.primeiro).length,
+                         jogos.filter(j => j.vencedor !== j.primeiro).length);
 const media = campo => +(jogos.reduce((a, j) => a + j[campo], 0) / jogos.length).toFixed(1);
 
 console.log(`\n  JAGERLARAMAIS · ${rotulo}`);

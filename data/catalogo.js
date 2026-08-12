@@ -17,61 +17,61 @@
 const HEROIS_BASE = {
 
 vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
-  vida:14,poder:3,arm:3,alc:1,
+  vida:25,poder:3,arm:3,alc:1,
   habs:[{n:"Golpe de Escudo",f:1,alvo:"in",ef:{dano:1}},
         {n:"Provocar",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
-        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
+        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:11,prendeVizinhos:1}}]},
 
 kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
-  vida:12,poder:3,arm:2,alc:1,
+  vida:22,poder:3,arm:2,alc:1,
   habs:[{n:"Talho",f:1,alvo:"in",ef:{dano:1,bonusFerido:3}},
         {n:"Puxada",f:3,alvo:"in",ef:{dano:1,puxar:1}},
         {n:"Execução",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 nyx:{n:"Nyx",ep:"a Presa Silenciosa",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
-  vida:10,poder:3,arm:1,alc:1,agil:1,
+  vida:18,poder:3,arm:1,alc:1,agil:1,
   habs:[{n:"Bote",f:1,alvo:"in",ef:{dano:1,extra:2}},
         {n:"Sombra",f:3,alvo:"eu",ef:{intocavel:1}},
         {n:"Caçada",f:5,alvo:"in",ef:{dano:1}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
-  vida:13,poder:3,arm:3,alc:1,
+  vida:23,poder:3,arm:3,alc:1,
   habs:[{n:"Investida",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
-        {n:"Digerir",f:2,alvo:"eu",ef:{cura:4,ouro:3}},
+        {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:3}},
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndra",
-  vida:10,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Feixe",f:1,alvo:"in",ef:{dano:1}},
         {n:"Prisma",f:4,alvo:"in",ef:{dano:1,area:1}},
-        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:11}}]},
+        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:8}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
-  vida:10,poder:4,arm:1,alc:1,agil:1,
+  vida:18,poder:4,arm:1,alc:1,agil:1,
   habs:[{n:"Estocada",f:1,alvo:"in",ef:{dano:1}},
         {n:"Eco",f:2,alvo:"in",ef:{marca:4}},
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 vesper:{n:"Vesper",ep:"a Pontaria Final",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
-  vida:11,poder:3,arm:1,alc:3,patamar:1,
+  vida:20,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro",f:1,alvo:"in",ef:{dano:1}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
         {n:"Chuva de Ferro",f:5,alvo:"eu",ef:{danoRaio:3}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
-  vida:10,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
         {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2}},
-        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:10}}]},
+        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:8}}]},
 
 mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
-  vida:11,poder:2,arm:2,alc:3,
-  habs:[{n:"Sopro",f:1,alvo:"al",ef:{escudo:2,cura:3}},
+  vida:20,poder:2,arm:2,alc:3,
+  habs:[{n:"Sopro",f:1,alvo:"al",ef:{escudo:4,cura:5}},
         {n:"Doar Dado",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Eco",f:4,alvo:"al",ef:{revive:1,cura:4,escudo:3}}]},
+        {n:"Eco",f:4,alvo:"al",ef:{revive:1,cura:7,escudo:5}}]},
 
 torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nautilus",
-  vida:12,poder:3,arm:3,alc:1,
+  vida:22,poder:3,arm:3,alc:1,
   habs:[{n:"Ward",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Gancho",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2}},
         {n:"Cerco",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]}
@@ -83,28 +83,28 @@ const HEROIS_NOVOS = {
 /* vharn = tanque de controle · kaross = executor */
 
 ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
-  vida:11,poder:4,arm:2,alc:2,
+  vida:20,poder:4,arm:2,alc:2,
   habs:[{n:"Chama Espectral",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:3}},
+        {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:5}},
         {n:"Ceifa",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven",
-  vida:12,poder:4,arm:2,alc:1,
-  habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",ef:{dano:1,cura:2}},
+  vida:22,poder:4,arm:2,alc:1,
+  habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",ef:{dano:1,cura:4}},
         {n:"Investir",f:3,alvo:"in",ef:{dano:1,puxar:1}},
-        {n:"Sede Final",f:5,alvo:"in",ef:{dano:1,cura:5,bonusFerido:3}}]},
+        {n:"Sede Final",f:5,alvo:"in",ef:{dano:1,cura:9,bonusFerido:3}}]},
 
 /* ─────────── SELVA · O Caçador · 4 arquétipos ─────────── */
 /* nyx = assassino · grumo = tanque que farma  (ambos em jogo/index.html) */
 
 kurr:{n:"Kurr",ep:"o Rastreador",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
-  vida:10,poder:3,arm:1,alc:2,agil:1,
+  vida:18,poder:3,arm:1,alc:2,agil:1,
   habs:[{n:"Lança Farpada",f:1,alvo:"in",ef:{dano:1}},
         {n:"Rastro",f:2,alvo:"in",ef:{marca:4}},
         {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
-  vida:10,poder:4,arm:2,alc:2,agil:1,
+  vida:18,poder:4,arm:2,alc:2,agil:1,
   habs:[{n:"Arpão",f:1,alvo:"in",ef:{dano:1}},
         {n:"Puxada Funda",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2}},
         {n:"Cova",f:5,alvo:"in",ef:{dano:1,executa:7,ouroSeMatar:3}}]},
@@ -113,46 +113,46 @@ pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
 /* solenne = artilharia · zhet = assassino  (ambos em jogo/index.html) */
 
 nira:{n:"Nira",ep:"a Tecelã",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
-  vida:10,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Fio de Luz",f:1,alvo:"in",ef:{dano:1}},
         {n:"Emaranhar",f:3,alvo:"in",ef:{dano:1,prende:1}},
         {n:"Tapeçaria",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
-  vida:12,poder:3,arm:2,alc:2,
+  vida:22,poder:3,arm:2,alc:2,
   habs:[{n:"Sentença",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Drenar",f:2,alvo:"in",ef:{dano:1,cura:3}},
+        {n:"Drenar",f:2,alvo:"in",ef:{dano:1,cura:5}},
         {n:"Tribunal",f:5,alvo:"eu",ef:{danoRaio:3}}]},
 
 /* ─────────── ATIRADOR · O Investimento · 4 arquétipos ─────────── */
 /* vesper = sustentado · cael = armadilheiro  (ambos em jogo/index.html) */
 
 nessa:{n:"Nessa",ep:"a Rápida",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
-  vida:10,poder:3,arm:1,alc:3,patamar:1,agil:1,
+  vida:18,poder:3,arm:1,alc:3,patamar:1,agil:1,
   habs:[{n:"Virote",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Reposicionar",f:2,alvo:"eu",ef:{escudo:2}},
+        {n:"Reposicionar",f:2,alvo:"eu",ef:{escudo:4}},
         {n:"Perfurar",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
-  vida:10,poder:3,arm:1,alc:4,patamar:1,
+  vida:18,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,marca:3}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
-        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:10}}]},
+        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:8}}]},
 
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */
 /* mirrha = curandeira · torvald = gancho com visão  (ambos em jogo/index.html) */
 
 gorm:{n:"Gorm",ep:"o Portão",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
-  vida:14,poder:3,arm:4,alc:1,
+  vida:25,poder:3,arm:4,alc:1,
   habs:[{n:"Empurrão",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
-        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:4}},
+        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:7}},
         {n:"Barreira",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
-  vida:10,poder:2,arm:2,alc:3,
+  vida:18,poder:2,arm:2,alc:3,
   habs:[{n:"Presságio",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Empréstimo",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5}}]}
+        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:9}}]}
 };
 
 /* ═══════════ O CATÁLOGO COMPLETO ═══════════
@@ -177,7 +177,7 @@ function textoHab(hb){
   if(e.ouroSeMatar)    p.push(`<b>+${e.ouroSeMatar}</b> de ouro se matar`);
   if(e.recarga)        p.push(`O próximo golpe leva <b>+${e.recarga}</b>`);
   if(e.intocavel)      p.push("Fica <b>intocável</b> até o próximo turno");
-  if(e.ward)           p.push("<b>Ward</b> — revela por onde o Caçador inimigo sai da rotação");
+  if(e.ward)           p.push("<b>Ward</b> — posta um olho aqui: acende 3 de raio por 3 rodadas");
   if(e.revive)         p.push("Um aliado morto <b>volta 1 rodada antes</b>");
   if(e.marca)          p.push(`<b>Marca</b> o alvo: o próximo dano nele leva +${e.marca}`);
   if(e.doar)           p.push("<b>Doa este dado</b> para um aliado usar como se fosse dele");
@@ -204,15 +204,15 @@ const CLASSES = [
 
 /* ═══════════ ITENS — 10 novos (loja passa a 22) ═══════════ */
 const ITENS_NOVOS = [
- {id:"presagio",  n:"Presságio de Ferro", o:8, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:3}},
+ {id:"presagio",  n:"Presságio de Ferro", o:8, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:5}},
  {id:"runa",      n:"Runa do Vazio",      o:8, d:"+4 de Poder",                        ef:{poder:4}},
- {id:"lente",     n:"Lente de Âmbar",     o:7, d:"+2 de Alcance",                      ef:{alc:2}},
+ {id:"lente",     n:"Lente de Âmbar",     o:7, d:"+1 de Alcance e +2 de Poder",     ef:{alc:1,poder:2}},
  {id:"botas",     n:"Botas Rúnicas",      o:6, d:"Ágil e +1 no Dado Mestre",           ef:{agil:1,mov:1}},
- {id:"calice",    n:"Cálice Partido",     o:8, d:"Cura 3 ao causar dano; +2 de Vida",  ef:{roubo:3,vida:2}},
+ {id:"calice",    n:"Cálice Partido",     o:8, d:"Cura 3 ao causar dano; +2 de Vida",  ef:{roubo:5,vida:2}},
  {id:"elmo",      n:"Elmo do Comando",    o:7, d:"Aliados adjacentes +1 Poder; +2 Arm",ef:{aura:1,arm:2}},
  {id:"espectro",  n:"Manto do Espectro",  o:7, d:"Bloqueia uma Ultimate; +1 Armadura", ef:{veu:1,arm:1}},
  {id:"grilhao",   n:"Grilhão de Cinzas",  o:7, d:"Impede cura no alvo; +2 de Poder",   ef:{antiCura:1,poder:2}},
- {id:"couraca",   n:"Couraça de Ossos",   o:8, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:3,vida:2}},
+ {id:"couraca",   n:"Couraça de Ossos",   o:8, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:5,vida:2}},
  {id:"ampuldour", n:"Ampulheta Dourada",  o:9, d:"+2 no Dado Mestre, toda rodada",     ef:{mov:2}}
 ];
 
@@ -242,13 +242,13 @@ const DECK = [
  {id:"recuo",    n:"Recuo",            fam:"reacao",   copias:2, quando:"reacao",
   d:"Escolha uma casa vizinha: seu herói recua 1, de graça.",     ef:{moverReacao:1}},
  {id:"anteparo", n:"Anteparo",         fam:"reacao",   copias:2, quando:"reacao",
-  d:"Anule 3 de dano de um golpe.",                              ef:{anularDano:3}},
+  d:"Anule 5 de dano de um golpe.",                              ef:{anularDano:5}},
  {id:"contra",   n:"Contra-emboscada", fam:"reacao",   copias:2, quando:"reacao",
-  d:"Revele onde o Caçador inimigo em rotação vai sair.",         ef:{revelarCaca:1}},
+  d:"Revele todos os heróis inimigos escondidos agora.",           ef:{revelarCaca:1}},
 
  /* MAPA — peça, onda e visão */
  {id:"sinal",    n:"Sinalizador",      fam:"mapa",     copias:2, quando:"turno",
-  d:"Ward: revela por onde o Caçador inimigo sai da rotação.",     ef:{ward:1}},
+  d:"Posta uma ward: acende 3 de raio por 3 rodadas.",             ef:{ward:1}},
  {id:"convocar", n:"Convocar",         fam:"mapa",     copias:2, quando:"turno",
   d:"Teletransporte um herói seu para a sua base.",              ef:{recall:1}},
  {id:"pressao",  n:"Pressão",          fam:"mapa",     copias:2, quando:"turno",
@@ -270,7 +270,7 @@ const DECK = [
  {id:"muralha",  n:"Pele de Pedra",    fam:"buff",     copias:3, quando:"turno",
   d:"Um herói seu ganha +3 de Armadura até o seu próximo turno.",  ef:{buffArm:3}},
  {id:"talha",    n:"Talha Rúnica",     fam:"buff",     copias:2, quando:"turno",
-  d:"Um herói seu ganha 5 de escudo.",                            ef:{buffEscudo:5}},
+  d:"Um herói seu ganha 9 de escudo.",                            ef:{buffEscudo:9}},
  {id:"passolev", n:"Passo Leve",       fam:"buff",     copias:2, quando:"turno",
   d:"Um herói seu fica Ágil até o seu próximo turno.",             ef:{buffAgil:1}},
 

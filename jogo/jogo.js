@@ -62,7 +62,7 @@ const capacidade=h=>h.slots||3;
    Ultimate rende 1,5× o dado"), preserva a identidade de cada herói e não mexe
    em nenhum número do catálogo — Ultimate de utilidade continua valendo pelo que
    faz, e Ultimate ofensiva volta a ser um pico. */
-const ESCALA_ULT=1.5;
+const ESCALA_ULT=1.25;
 const escalaDe=slot=>slot===2?ESCALA_ULT:1;
 const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
@@ -72,7 +72,12 @@ function auraDe(h){
 }
 const poderTotal=h=>h.poder+h.extraPoder+bonus(h,"poder")+auraDe(h);
 const armTotal=h=>h.arm+bonus(h,"arm");
-const alcTotal=h=>h.alc+bonus(h,"alc");
+/* TETO DE ALCANCE. Sem ele o Corvo (base 4) somava Cetro +1 e Lente +2 e
+   atirava a SETE hexágonos — atravessava meio tabuleiro sem sair do lugar, que
+   foi a queixa "os range tão conseguindo 4, 5 hexágonos". Quatro é o teto: ainda
+   é o dobro do corpo a corpo, e ainda dá para fugir andando. */
+const ALCANCE_MAX=4;
+const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc"));
 const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 
 /* ---------- GEOMETRIA DO MAPA ---------- */
@@ -256,7 +261,7 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
    O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
 const VIDA_TORRE=3, VIDA_NEXUS=3;
 const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
-const REVIDE_TORRE=2;      /* e a torre cobra o pedágio de quem encostou */
+const REVIDE_TORRE=4;      /* e a torre cobra o pedágio de quem encostou */
 /* Meio do vão neutro. Com as torres espelhadas o meio é (a+b)/2 — inteiro só quando a
    rota tem comprimento ímpar. Rota par não TEM hexágono central: a frente começa meio
    passo para um dos lados, e esse meio passo é vantagem de siege para alguém.
@@ -371,52 +376,125 @@ function sorteiaNeutro(){
   CAMP_NEUTRO=CAMP_NEUTRO_LADOS[Math.floor(Math.random()*CAMP_NEUTRO_LADOS.length)];
   return CAMP_NEUTRO;
 }
-/* ---------- REGIÕES DE SELVA E VISÃO ----------
-   A névoa do JagerLaramais é de propósito PEQUENA: vale só para o mato, e a
-   pergunta que ela responde é uma só — "onde está o Caçador inimigo?".
+/* ---------- VISÃO ----------
+   Regra de MOBA, direto: **você enxerga o que as suas peças enxergam.** Cada
+   fonte acende um raio ao redor de si, e o que estiver fora de todos os raios
+   é escuridão — inclusive pedaço de rota.
 
-   A regra em uma frase: **rota, rio e base todo mundo vê; o mato você só
-   enxerga se tiver alguém dentro dele.** Um herói parado na selva de cima só
-   aparece para o adversário que também tenha alguém na selva de cima.
+   A v19 tinha uma versão simplificada disto, por REGIÃO: o mato só se enxergava
+   com alguém dentro dele, e rota/rio/base eram sempre visíveis. Funcionava, mas
+   não era o que o jogo queria: escondia só a selva, e a rota era um corredor
+   iluminado de graça. Agora a visão é do tabuleiro inteiro e vem das peças.
 
-   Por que assim, e não o sistema completo de MOBA com raios por unidade: o mapa
-   tem 11×11 e quase sempre há um herói em cada rota. Névoa por raio, aqui,
-   revelaria o tabuleiro inteiro quase o tempo todo — muita regra para nenhum
-   efeito. Amarrando a visão à PRESENÇA na região, a informação passa a custar
-   uma peça, que é uma decisão de verdade: mando alguém vigiar o mato ou deixo
-   ele pressionando a rota?
+   Os raios são pequenos de propósito. Num 11×11, raio grande revela tudo e a
+   névoa vira enfeite; com estes números a linha de frente enxerga à sua volta e
+   o resto do mapa é suposição.  */
+const VISAO_HEROI=2;      /* o que o herói vê à volta */
+const VISAO_TORRE=2;      /* torre viva vigia o próprio pedaço de rota */
+const VISAO_BASE=2;       /* a própria base nunca é surpresa */
+const VISAO_ONDA=2;       /* a onda é o creep: enxerga onde está empurrando */
+const VISAO_WARD=3;       /* ward vê mais que herói — é o que a torna comprável */
+const WARD_RODADAS=3;     /* e ela apaga sozinha */
 
-   Duas regiões, cima e baixo, separadas pela rota do meio. É o que faz "o mato
-   de cima" e "o mato de baixo" serem coisas diferentes de se disputar. */
-const SELVA_REGIAO=(()=>{
-  const mapa=new Map();
-  const perto=(p,l)=>Math.min(...l.map(q=>dist(...p,...q)));
+/* Vizinhança pré-calculada. A primeira versão varria os 116 hexágonos para CADA
+   fonte de visão, a cada consulta — com ~15 fontes por time e a visão sendo
+   perguntada dentro de laços de mira, a bateria de 2000 partidas deixou de
+   terminar. Aqui o raio de cada casa é calculado UMA vez, na carga. */
+const RAIO_ATE=(()=>{
+  const maior=Math.max(VISAO_HEROI,VISAO_TORRE,VISAO_BASE,VISAO_ONDA,VISAO_WARD);
+  const m=new Map();
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;
-    /* rota, base e rio são território aberto: sempre visíveis */
-    if(LANE.has(k(c,r))||BASE_S.has(k(c,r))||RIO_S.has(k(c,r))){ mapa.set(k(c,r),null); continue; }
-    mapa.set(k(c,r), perto([c,r],L_TOPO)<=perto([c,r],L_BOT) ? "cima" : "baixo");
+    const porRaio=Array.from({length:maior+1},()=>[]);
+    for(let r2=0;r2<LINS;r2++)for(let c2=0;c2<COLS;c2++){
+      if(!noTab(c2,r2))continue;
+      const d=dist(c,r,c2,r2);
+      if(d<=maior) porRaio[d].push(k(c2,r2));
+    }
+    /* acumula: porRaio[n] passa a conter tudo até n */
+    for(let i=1;i<=maior;i++) porRaio[i]=porRaio[i-1].concat(porRaio[i]);
+    m.set(k(c,r),porRaio);
   }
-  return mapa;
+  return m;
 })();
-const regiaoDe=(c,r)=>SELVA_REGIAO.get(k(c,r))||null;
 
-/* O time `t` enxerga a região? Basta ter um herói vivo dentro dela. A Ward
-   funciona como um olho a mais: enquanto posta, revela as duas. */
-function enxergaRegiao(t,reg){
-  if(!reg)return true;                              // território aberto
-  if(J.times[t].ward)return true;
-  return J.times[t].herois.some(h=>!h.morto&&regiaoDe(...h.pos)===reg);
+/* Todas as casas que o time `t` enxerga agora. */
+function campoDeVisao(t){
+  const vistos=new Set();
+  const acende=(p,raio)=>{
+    const tab=p&&RAIO_ATE.get(k(...p));
+    if(tab) tab[raio].forEach(x=>vistos.add(x));
+  };
+  J.times[t].herois.filter(h=>!h.morto).forEach(h=>acende(h.pos,VISAO_HEROI));
+  J.torres.filter(x=>x.t===t&&x.vida>0).forEach(x=>acende(ROTAS[x.rota][x.i],VISAO_TORRE));
+  BASE[t].forEach(p=>acende(p,VISAO_BASE));
+  /* a Frente de Onda é o creep: acende onde a sua onda está */
+  Object.entries(ROTAS).forEach(([nome,l])=>{
+    const i=Math.max(0,Math.min(l.length-1,J.frentes[nome]));
+    acende(l[i],VISAO_ONDA);
+  });
+  (J.times[t].wards||[]).forEach(w=>acende(w.pos,VISAO_WARD));
+  return vistos;
 }
+/* Memo com chave DERIVADA DO ESTADO, não invalidação manual.
+   A primeira tentativa foi um contador `sujaVisao()` chamado em cada ponto que
+   move peça — e ela quebrou na hora: qualquer código que escreva `h.pos` direto
+   (um teste, uma carta nova, a IA sondando) deixava o cache mentindo. Cache que
+   depende de todo mundo lembrar de avisar sempre desatualiza.
+   A chave abaixo é ~25 números somados: barata o bastante para rodar a cada
+   consulta e correta por construção. */
+function seloVisao(t){
+  let x=0;
+  const hs=J.times[t].herois;
+  for(let i=0;i<hs.length;i++) x=x*31+hs[i].pos[0]*13+hs[i].pos[1]*7+(hs[i].morto?1:0);
+  for(let i=0;i<J.torres.length;i++) if(J.torres[i].t===t) x=x*31+J.torres[i].vida;
+  x=x*31+J.frentes.topo*7+J.frentes.meio*13+J.frentes.baixo*17;
+  const w=J.times[t].wards||[];
+  for(let i=0;i<w.length;i++) x=x*31+w[i].pos[0]*13+w[i].pos[1]*7;
+  return x*31+w.length;
+}
+let _visCache=[null,null], _visSelo=[NaN,NaN];
+function visaoDe(t){
+  const selo=seloVisao(t);
+  if(_visSelo[t]!==selo){ _visCache[t]=campoDeVisao(t); _visSelo[t]=selo; }
+  return _visCache[t];
+}
+const enxergaCasa=(t,c,r)=>visaoDe(t).has(k(c,r));
+
 /* O herói `h` é visível para o time `t`? */
 function visivelPara(h,t){
-  if(h.t===t||h.morto)return true;                  // os seus você sempre vê
-  return enxergaRegiao(t,regiaoDe(...h.pos));
+  if(h.t===t||h.morto)return true;              // os seus você sempre vê
+  return enxergaCasa(t,...h.pos);
 }
-/* Escondido AGORA: está no mato e o adversário não tem olhos lá. É a condição
-   que dá o bônus de emboscada — o gank deixou de ser uma ficha declarada e
-   passou a ser consequência de posição. */
+/* Escondido AGORA: fora do campo de visão inimigo. É a condição do bônus de
+   emboscada — o gank virou consequência de posição, não de ficha declarada. */
 const escondido=h=>!h.morto&&!visivelPara(h,1-h.t);
+
+/* De quem é a tela. Em partida contra a IA quem olha é SEMPRE o humano: durante
+   a vez dela o tabuleiro continua mostrando o que o time 0 enxerga. Antes ele
+   desenhava pela perspectiva de `J.vez`, e no turno da IA o jogador via os
+   heróis dela saindo do mato — a névoa vazava justamente para o lado errado. */
+const ladoDaTela=()=>aiMode?0:J.vez;
+
+/* ---------- WARDS ----------
+   A Ward deixou de ser um sinalizador abstrato do time e virou uma PEÇA NO MAPA,
+   com posição e prazo. É o que a faz interagir com a visão por raio: ela acende
+   um pedaço do tabuleiro onde você não tem ninguém. */
+function poeWard(t,pos){
+  const tm=J.times[t];
+  tm.wards=tm.wards||[];
+  tm.wards.push({pos:[...pos],rodadas:WARD_RODADAS});
+  reg(t?"c":"a",`ward posta — acende ${VISAO_WARD} de raio por ${WARD_RODADAS} rodadas`);
+}
+function expiraWards(){
+  J.times.forEach((tm,t)=>{
+    if(!tm.wards||!tm.wards.length)return;
+    tm.wards.forEach(w=>w.rodadas--);
+    const antes=tm.wards.length;
+    tm.wards=tm.wards.filter(w=>w.rodadas>0);
+    if(tm.wards.length<antes) reg("b",`uma ward do ${NOMES[t]} apagou`);
+  });
+}
 
 const CAMP_AZUL=[3,4];
 const CAMP_CARMIM=gira(...CAMP_AZUL);
@@ -440,8 +518,8 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    torre ou disputo o objetivo?" passa a ter os dois lados viáveis — que é a
    definição de dilema. O revide não mudou: encostar continua custando. */
 const EPICO={
-  dragao:{n:"Dragão", vida:4, revide:1, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:4, revide:2, volta:4, pre:"a Fúria do Barão"}
+  dragao:{n:"Dragão", vida:4, revide:2, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:4, revide:4, volta:4, pre:"a Fúria do Barão"}
 };
 /* Rodadas medidas em sim/epicos.js, 600 partidas por variante:
      · Barão na 8 dava ao Dragão só 3 rodadas de janela — ele caía em 1,3%;
@@ -473,7 +551,7 @@ const DADIVAS=[
    porque:"Dobra a velocidade de derrubar estrutura."}
 ];
 const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
-const BARAO_ESCUDO=4;
+const BARAO_ESCUDO=7;
 const BARAO_ARIETE=1;      /* dano somado ao golpe em estrutura */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
 const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
@@ -487,7 +565,7 @@ function novo(){
   J={
     rodada:1, vez:0, primeiro:0, fase:"oculto", fim:null,
     times:[0,1].map(t=>({
-      placas:0, prio:0, prioGuardada:0, ward:0,
+      placas:0, prio:0, prioGuardada:0, wards:[],
       dragoes:0, baroes:0, barao:0, dadiva:null, retomada:0,
       feitico:1, feiticoCd:0,
       herois:TIMES[t].map((id,i)=>{
@@ -521,7 +599,7 @@ function novo(){
   desempilha();
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
   reg("r","— rodada 1 —");
-  faseOculta();
+  caraOuCoroa(()=>faseOculta());
 }
 function desempilha(){                     // dois heróis nunca no mesmo hex
   const usados=new Set();
@@ -549,6 +627,9 @@ const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
    DENTRO do turno, quando ele decide entrar em rotação, e custa uma ação — em vez
    de ser um formulário obrigatório antes de qualquer jogada. Menos uma tela entre
    o jogador e a primeira decisão. */
+/* início de RODADA — roda no fim de cada uma. O cara ou coroa NÃO mora aqui:
+   ele é uma vez por partida, em `novo()`. Deixá-lo aqui re-sorteava quem começa
+   a cada rodada, e a ordem virava aleatória no meio da partida. */
 function faseOculta(){
   J.fase="jogando"; J.vez=J.primeiro; iniciaTurno();
 }
@@ -612,7 +693,7 @@ function expiraDoTime(t){
   J.times[t].herois.forEach(h=>{
     if(h.esc){ h.esc=0; }
     h.intoc=0; h.veuAtivo=0;
-    h.agiu=0;
+    h.agiu=0; h.agilUsado=0;
     h.preso=Math.max(0,h.preso-1);
     h.semCura=Math.max(0,h.semCura-1);
     if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
@@ -744,6 +825,7 @@ function fimDaRodada(){
       tm.dadiva=null;
     }
   });
+  colheAcampamentos();                            // quem ficou em cima, colhe
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
     h.ouro += h.agiu?1:3;
@@ -773,7 +855,7 @@ function fimDaRodada(){
     if(h.morto){ h.morto--; if(!h.morto){ h.vida=h.vidaMax; h.esc=0; h.pos=[...BASE[h.t][0]]; reg("b",`${h.n} voltou`);} }
   });   /* escudo, buff, prisão e ação expiram em expiraDoTime, no início do turno do dono */
   desempilha();
-  J.times.forEach(t=>{t.ward=0;});
+  expiraWards();
   if(J.fim!==null) return;      // encerraPartida já pintou e abriu a tela de vitória
   /* A iniciativa NÃO alterna mais entre rodadas. Ela alternava desde a v0.5 para
      diluir a vantagem de quem começa (60,3% → 56,8%, 3000 partidas), mas o preço
@@ -817,12 +899,17 @@ function fimDaRodada(){
 /* calcula() mora na seção ESTADO DE INTERAÇÃO — é a versão baseada em `modo`. */
 function moveAte(c,r){
   const h=selHeroi; if(!h)return;
-  const d=dist(...h.pos,c,r), custo=Math.max(0,d-(ehAgil(h)?1:0));
+  /* ÁGIL — "a 1ª casa andada é grátis" era por MOVIMENTO, não por turno. Andando
+     de 1 em 1 hexágono, todo passo custava zero: movimento infinito. Agora o
+     desconto vale uma vez por turno, e `agilUsado` expira com o resto. */
+  const temDesconto = ehAgil(h) && !h.agilUsado;
+  const d=dist(...h.pos,c,r), custo=Math.max(0,d-(temDesconto?1:0));
+  if(temDesconto&&d>0) h.agilUsado=1;
   if(custo>J.mov.rest)return;
   h.pos=[c,r]; J.mov.rest-=custo;
   coletaAcampamento(h);
   reg(J.vez?"c":"a",
-    `${h.n} anda ${d} ${d>1?"casas":"casa"}${ehAgil(h)&&d>0?" (ágil)":""} — movimento restante ${J.mov.rest}`);
+    `${h.n} anda ${d} ${d>1?"casas":"casa"}${temDesconto&&d>0?" (ágil)":""} — movimento restante ${J.mov.rest}`);
   calcula(); pinta();
 }
 /* ---------- FEITIÇOS DE INVOCADOR ---------- */
@@ -839,7 +926,7 @@ function moveAte(c,r){
 
    É aqui, e só aqui, que a versão digital se solta do tabuleiro físico: no papel
    seria um contador extra por time. Um cabe na mesa; vinte não cabiam. */
-const LAMPEJO_ALC=2, FEITICO_CD=3, RETORNO_CURA=3;
+const LAMPEJO_ALC=2, FEITICO_CD=3, RETORNO_CURA=5;
 
 const temFeitico=t=>!!J.times[t].feitico;
 function gastaFeitico(t){
@@ -897,17 +984,31 @@ function usaRetorno(){
 }
 
 const campEm=(c,r)=>J.camps.find(cp=>cp.ativo&&cp.pos[0]===c&&cp.pos[1]===r);
-function coletaAcampamento(h){
-  const cp=campEm(...h.pos);
-  if(!cp||cp.respawn>0)return;
-  if(cp.t!==-1&&cp.t!==h.t){
-    cp.ativo=0; cp.respawn=3; h.ouro+=cp.ouro+1;
-    reg("b",`${h.n} invadiu a selva e roubou um acampamento (+${cp.ouro+1} ouro)`);
-  }else{
-    cp.ativo=0; cp.respawn=3; h.ouro+=cp.ouro;
-    reg(h.t?"c":"a",`${h.n} farmou acampamento (+${cp.ouro} ouro)`);
-  }
+/* PISAR NÃO COLETA MAIS. Antes o ouro saía no instante em que o herói entrava na
+   casa, e o efeito era o relatado no playtest: quem joga primeiro, com um Dado
+   Mestre alto, varria os três acampamentos numa tacada e o adversário não tinha
+   como responder — não havia janela para contestar.
+
+   Agora pisar só OCUPA. O ouro sai no fim da rodada, para quem ainda estiver em
+   cima. Isso dá ao adversário um turno inteiro para matar, empurrar ou chegar
+   antes — o acampamento virou território disputado em vez de item de corrida. */
+function coletaAcampamento(h){ /* mantida por compatibilidade: ocupar é o que vale */ }
+
+/* roda no fim da rodada, depois de todo mundo ter mexido */
+function colheAcampamentos(){
+  J.camps.forEach(cp=>{
+    if(!cp.ativo||cp.respawn>0)return;
+    const h=em(...cp.pos);
+    if(!h||h.morto)return;
+    const invadindo = cp.t!==-1 && cp.t!==h.t;
+    const ouro = cp.ouro + (invadindo?1:0);
+    cp.ativo=0; cp.respawn=3; h.ouro+=ouro;
+    reg(invadindo?"b":(h.t?"c":"a"),
+      invadindo ? `${h.n} segurou o acampamento inimigo a rodada inteira e roubou ${ouro} de ouro`
+                : `${h.n} colheu o acampamento (+${ouro} de ouro)`);
+  });
 }
+
 function atualizaAcampamentos(){
   J.camps.forEach(cp=>{
     if(cp.respawn>0){ cp.respawn--; if(cp.respawn===0)cp.ativo=1; }
@@ -945,14 +1046,9 @@ function usaHab(alvo){
   if(ef.recarga){ h.recarga=ef.recarga; txt+=` — próximo golpe +${ef.recarga}`; }
   if(ef.intocavel){ h.intoc=1; txt+=" — intocável até o próximo turno"; }
   if(ef.ward){
-    J.times[h.t].ward=1;
-    /* Ward não revela mais uma ficha escolhida numa tela: revela POSIÇÃO. Se o
-       Caçador inimigo estiver em rotação agora, ela diz por onde ele vai sair —
-       e fica posta, revelando as próximas rotações enquanto durar. */
-    const escondidos=J.times[1-h.t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
-    txt+=escondidos.length
-      ? ` — WARD revela o mato: ${escondidos.map(x=>`${x.n} (${regiaoDe(...x.pos)})`).join(", ")}`
-      : " — ward posta: o mato inteiro fica à vista";
+    /* a Ward nasce ONDE O HERÓI ESTÁ e acende um raio dali por algumas rodadas */
+    poeWard(h.t,h.pos);
+    txt+=` — ward posta aqui (raio ${VISAO_WARD}, ${WARD_RODADAS} rodadas)`;
   }
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
   if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
@@ -964,18 +1060,18 @@ function usaHab(alvo){
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
     else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo);
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
-      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n));
+      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
     h.recarga=0;
   }else reg(J.vez?"c":"a",txt);
 
   if(ef.danoVizinhos) inimigosNosHex(vizinhos(...h.pos),h)
-    .forEach(o=>danoEmEntidade(h,o,base(ef.danoVizinhos),hb.n));
+    .forEach(o=>danoEmEntidade(h,o,base(ef.danoVizinhos),hb.n,habSel===2));
   if(ef.danoRaio){
     const raio=[];
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
       if(noTab(c,r)&&dist(...h.pos,c,r)<=ef.danoRaio) raio.push([c,r]);
-    inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,Math.round(F*escalaDe(habSel))+poder,hb.n));
+    inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,Math.round(F*escalaDe(habSel))+poder,hb.n,habSel===2));
   }
   if(ef.prendeVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
     .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});   /* prender só vale em herói */
@@ -1031,9 +1127,13 @@ function inimigosNosHex(hexes,h){
 }
 /* dano que não sabe de antemão se bate em herói ou em morador do poço.
    O poço não tem armadura nem escudo: ele conta GOLPES, então respingo vale 1. */
-function danoEmEntidade(quem,alvo,bruto,txt,ehUlt){
-  if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,GOLPE_HAB,txt?` com ${txt}`:" de raspão");
-  aplicaDano(quem,alvo,bruto,txt,ehUlt);
+function danoEmEntidade(quem,alvo,bruto,txt,ehUlt,ignoraArm){
+  /* O poço conta GOLPES, não dano — e o peso do golpe é da HABILIDADE, não do
+     caminho por onde ele chegou. Antes o respingo entrava sempre como 1, então
+     o Cerco do Torvald (que é Ultimate) tirava 1 do Dragão enquanto uma
+     Ultimate mirada tirava 2. Mesma habilidade, peso diferente por acidente. */
+  if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,ehUlt?GOLPE_ULT:GOLPE_HAB,txt?` com ${txt}`:"");
+  aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm);
 }
 function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
@@ -1194,7 +1294,7 @@ function descreve(h,hb,F){
   if(e.ouro) t.push(`+${e.ouro} de ouro`);
   if(e.recarga) t.push(`próximo golpe +${e.recarga}`);
   if(e.intocavel) t.push("fica intocável");
-  if(e.ward) t.push("revela a saída da rotação inimiga");
+  if(e.ward) t.push("posta uma ward aqui");
   if(e.revive) t.push("acelera o respawn de um aliado");
   if(e.marca) t.push(`marca: próximo dano +${e.marca}`);
   if(e.doar) t.push("passa este dado a um aliado");
@@ -1371,7 +1471,7 @@ function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 function calcula(){
   mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
-    const teto=J.mov.rest+(ehAgil(selHeroi)?1:0);
+    const teto=J.mov.rest+((ehAgil(selHeroi)&&!selHeroi.agilUsado)?1:0);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
       if(!noTab(c,r)||em(c,r))continue;   // casa fora do tabuleiro não é destino
       const d=dist(...selHeroi.pos,c,r);
@@ -1827,9 +1927,8 @@ function desenhaMapa(){
        saber que aquele pedaço do mapa pode ter alguém dentro. Sem isso a névoa
        seria invisível — e névoa que não se vê é só herói sumindo sem explicação. */
     /* o poço fica de fora: é objetivo compartilhado, e a vida do morador tem de
-       ser legível para os dois lados o tempo todo — esconder o relógio da
-       partida não é tensão, é confusão. */
-    if(k(c,r)!==POCO_K&&regiaoDe(c,r)&&!enxergaRegiao(J.vez,regiaoDe(c,r))) cls+=" cego";
+       ser legível para os dois lados o tempo todo. */
+    if(k(c,r)!==POCO_K&&!enxergaCasa(ladoDaTela(),c,r)) cls+=" cego";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
@@ -1917,10 +2016,21 @@ function desenhaMapa(){
   rot("BAIXO",centro(...L_BOT[2])[0],275);
   rot("MEIO",...centro(3,2));
 
+  /* wards do lado que olha — peça pequena, mas precisa ser visível para o
+     jogador lembrar onde gastou a carta */
+  (J.times[ladoDaTela()].wards||[]).forEach(w=>{
+    const [x,y]=centro(...w.pos);
+    const g=el("g",{class:"ward"});
+    g.appendChild(el("circle",{cx:x,cy:y,r:5.4,class:"w-bg"}));
+    g.appendChild(el("circle",{cx:x,cy:y,r:2.2,class:"w-olho"}));
+    const t=el("text",{x:x,y:y+10.5,class:"w-cd"}); t.textContent=w.rodadas; g.appendChild(t);
+    gM.appendChild(g);
+  });
+
   const alvoS=new Set(alvos.map(o=>o.id+o.t));
   /* Quem o jogador da vez não enxerga simplesmente não aparece. É aqui que a
      névoa vira jogo: o mato deixa de ser cenário e vira lugar onde cabe alguém. */
-  todos().filter(h=>!h.morto&&visivelPara(h,J.vez)).forEach(h=>{
+  todos().filter(h=>!h.morto&&visivelPara(h,ladoDaTela())).forEach(h=>{
     const[x,y]=centro(...h.pos);
     const ehAlvo=alvoS.has(h.id+h.t), ehSel=selHeroi===h;
     const foco=tutFoco==="peca:"+h.id;
@@ -2312,14 +2422,14 @@ function pinta(){
   G("quem").textContent=NOMES[J.vez];
 
   const ouro=tm.herois.reduce((a,h)=>a+h.ouro,0);
-  /* O aviso do HUD é sobre INFORMAÇÃO: quantos dos meus estão escondidos, e
-     quais matos eu consigo enxergar. Sem isso a névoa vira só heróis sumindo. */
-  const meusEscondidos=J.times[J.vez].herois.filter(h=>escondido(h)).length;
-  const cego=["cima","baixo"].filter(r=>!enxergaRegiao(J.vez,r));
-  const cacaTxt = meusEscondidos ? `${meusEscondidos} no mato, sem ser visto`
-      : cego.length===2 ? "mato todo sem visão"
-      : cego.length ? `sem visão no mato de ${cego[0]}`
-      : "mato todo à vista";
+  /* O aviso do HUD é sobre INFORMAÇÃO: quanto do mapa eu enxergo, e quantos dos
+     meus estão fora da vista do inimigo. */
+  const meuLado=ladoDaTela();
+  const vistas=visaoDe(meuLado).size, totalCasas=NO_TAB.size;
+  const meusEscondidos=J.times[meuLado].herois.filter(h=>escondido(h)).length;
+  const nWards=(J.times[meuLado].wards||[]).length;
+  const cacaTxt = meusEscondidos ? `${meusEscondidos} escondido${meusEscondidos>1?"s":""}`
+      : `visão ${Math.round(vistas/totalCasas*100)}%${nWards?` · ${nWards} ward`:""}`;
   G("pills").innerHTML=
     `<span>◈ <b>${ouro}</b></span>`+
     `<span class="${tm.placas?"on":""}">⬢ <b>${tm.placas}</b></span>`+
@@ -2411,7 +2521,7 @@ function feiticoBt(h,qual){
         <span class="ico">${svgIco(ICO.passos)}</span>
         <span class="txt"><span class="t1">Mover</span>
           <span class="t2">${h.preso?"preso nesta rodada":
-            podeMover?`até <b>${J.mov.rest+(ehAgil(h)?1:0)}</b> casas · sai do bolso do time`:"sem movimento restante"}</span></span>
+            podeMover?`até <b>${J.mov.rest+((ehAgil(h)&&!h.agilUsado)?1:0)}</b> casas · sai do bolso do time`:"sem movimento restante"}</span></span>
         <span class="mark">${J.mov.rest}</span>
       </button>
       ${feiticoBt(h,"lampejo")}
@@ -3191,7 +3301,17 @@ function podeJogar(id){
   if(ef.rerolar||ef.ajustar||ef.dadoParaMov) return dLivre;
   if(ef.buffPoder||ef.buffArm||ef.buffEscudo||ef.buffAgil||ef.ouro||ef.recall||
      ef.reativar||ef.anularDano||ef.moverReacao||ef.slotExtra) return !!selHeroi&&!selHeroi.morto;
-  if(ef.itemGratis) return !!selHeroi&&!selHeroi.morto&&(ef.ondeEstiver||naBase(selHeroi));
+  if(ef.itemGratis){
+    /* A carta era jogável mesmo quando não tinha o que entregar: com o
+       inventário cheio ela ia para o cemitério e escrevia "sem item disponível"
+       no log, sem abrir escolha nenhuma. Do lado do jogador isso é a carta
+       sumindo sem fazer nada. Agora ela fica apagada quando não há slot livre
+       ou quando não sobrou item elegível. */
+    if(!selHeroi||selHeroi.morto)return false;
+    if(!(ef.ondeEstiver||naBase(selHeroi)))return false;
+    if(inventarioCheio(selHeroi))return false;
+    return ITENS.some(i=>i.o<=ef.itemGratis&&!selHeroi.itens.includes(i.id));
+  }
   if(ef.doCemiterio) return cemiterio.length>0;
   return true;
 }
@@ -3225,13 +3345,13 @@ function jogaCarta(id){
   if(ef.desconto){ descontos[t]+=ef.desconto; }
   if(ef.slotExtra){ h.slots=capacidade(h)+1; msg+=` → ${h.n} tem ${h.slots} slots`; }
   if(ef.recall){ h.pos=[...BASE[t][0]]; desempilha(); msg+=` → ${h.n} volta à base`; }
-  if(ef.ward){ J.times[t].ward=1;
-    const nomato=J.times[1-t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
-    msg+=nomato.length?` → no mato: ${nomato.map(x=>x.n).join(", ")}`:" → ward posta"; }
+  if(ef.ward){ poeWard(t,h.pos); msg+=` → ward posta em ${h.n}`; }
   if(ef.revelarCaca){
-    const nomato=J.times[1-t].herois.filter(x=>!x.morto&&regiaoDe(...x.pos));
-    msg+=nomato.length?` → no mato: ${nomato.map(x=>`${x.n} (${regiaoDe(...x.pos)})`).join(", ")}`
-                      :" → ninguém escondido no mato"; }
+    /* revela pelo LOG quem está fora do seu campo de visão agora — informação
+       pontual, sem virar uma ward de graça */
+    const ocultos=J.times[1-t].herois.filter(x=>!x.morto&&!visivelPara(x,t));
+    msg+=ocultos.length?` → escondidos: ${ocultos.map(x=>x.n).join(", ")}`
+                       :" → ninguém escondido"; }
   if(ef.empurrarOnda){
     const rota=["topo","meio","baixo"][Math.floor(Math.random()*3)];
     J.frentes[rota]=limitaFrente(rota, J.frentes[rota]+(t===0?1:-1));
@@ -3428,8 +3548,29 @@ function partida(comTutorial){
   baralho = typeof montaDeck!=="undefined" ? montaDeck() : [];
   cemiterio=[]; maos=[[],[]]; descontos=[0,0];
   if(comTutorial) iniciaTutorial();   /* fica no painel, atrás das telas de fluxo */
-  novo();                             /* dispara a fase de comando oculto */
+  novo();
   pinta();
+}
+/* CARA OU COROA. Quem começa deixou de ser sempre o Azul. Começar tem valor
+   medido (a compensação do Primeiro Passo existe por isso), e num jogo de dois
+   no mesmo aparelho a ordem fixa era um presente silencioso para quem sentasse
+   do lado azul. O sorteio é visível de propósito: o jogador vê a moeda cair. */
+function caraOuCoroa(depois){
+  if(simMode) { J.primeiro=Math.random()<.5?0:1; J.vez=J.primeiro; return depois(); }
+  const vencedor=Math.random()<.5?0:1;
+  abre(`<span class="et">Antes de começar</span>
+    <h2 style="font-size:30px">Cara ou coroa</h2>
+    <p>Quem começa joga sem saber o que o outro vai fazer — e por isso rola
+       <b style="color:var(--brass)">+1 de movimento</b> na primeira rodada.</p>
+    <div class="moeda" id="moeda">?</div>
+    <button class="grande" id="ok">Girar a moeda</button>`,
+    ()=>{
+      const m=G("moeda");
+      if(m){ m.classList.add("girando"); m.textContent = vencedor===0?"AZUL":"CARMIM"; }
+      J.primeiro=vencedor; J.vez=vencedor;
+      reg("b",`Cara ou coroa — ${NOMES[vencedor]} começa a partida`);
+      setTimeout(()=>{ fecha(); depois(); },1100);
+    });
 }
 function comeca(comTutorial,comDraft){
   if(!comDraft) return partida(comTutorial);

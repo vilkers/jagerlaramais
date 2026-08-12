@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v20 (ordem equilibrada + dádiva do Barão) · **Atualizado em:** 2026-08-12
+**Versão:** v21 (visão por fontes + fim do hitkill) · **Atualizado em:** 2026-08-12
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -35,8 +35,12 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Poço épico | casa **[8,8]** (derivada) · Dragão (4 de vida) até a rodada 12, **Barão (4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1 |
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
-| Visão | rota, rio e base **sempre visíveis**; o **mato** só se você tiver alguém dentro. Duas regiões (cima/baixo), enxergadas em separado. Ward acende as duas |
-| Emboscada | atacar vindo do mato **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia |
+| Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto do tabuleiro é escuridão. Ward é peça no mapa, dura 3 rodadas |
+| Emboscada | atacar **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
+| Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
+| Alcance | teto de **4**, itens incluídos |
+| Quem começa | **cara ou coroa** no início da partida |
+| Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
 | Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1. Só na base |
 | Vantagem de quem começa | **48,6%** (n=6000, três execuções de 2000). Era 42,0% na v19. Corrigido por **presença congelada no fim do turno de cada time** + **Primeiro Passo** (+1 de movimento na rodada 1 para quem começa). Sobra 1,4 ponto |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |

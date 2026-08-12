@@ -102,8 +102,10 @@ const PONTE = `
   get CATALOGO(){return CATALOGO},   get ITENS(){return ITENS},
   get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
   get CAMP_NEUTRO_LADOS(){return CAMP_NEUTRO_LADOS}, get GASTOS(){return GASTOS},
-  regiaoDe:(...a)=>regiaoDe(...a), visivelPara:(h,t)=>visivelPara(h,t),
-  escondido:h=>escondido(h), enxergaRegiao:(t,r)=>enxergaRegiao(t,r),
+  visivelPara:(h,t)=>visivelPara(h,t), escondido:h=>escondido(h),
+  enxergaCasa:(t,c,r)=>enxergaCasa(t,c,r), visaoDe:t=>visaoDe(t),
+  poeWard:(t,p)=>poeWard(t,p), expiraWards:()=>expiraWards(),
+  ladoDaTela:()=>ladoDaTela(), colheAcampamentos:()=>colheAcampamentos(),
   iaInimigosVisiveis:t=>iaInimigosVisiveis(t),
   desempilha:()=>desempilha(),
   precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
@@ -150,6 +152,18 @@ function carrega(trocas = []) {
      partida() de novo, e auto-executar isso iniciaria uma partida infinita. */
   ctx.abre = (html, ok) => { ctx.__pendente = ok || null; };
   ctx.fecha = nada;
+
+  /* O cara ou coroa (v21) é uma TELA com botão, e sem ninguém para clicar a
+     partida nunca saía da fase "oculto" — a bateria inteira reportava 100% de
+     partidas não terminadas. Aqui ele resolve na hora, sorteando do mesmo jeito
+     que sortearia na mão do jogador: quem começa continua sendo aleatório, que é
+     justamente o que a medição de "quem começa" precisa. */
+  ctx.caraOuCoroa = depois => {
+    const p = ctx.__ponte.J;
+    p.primeiro = Math.random() < 0.5 ? 0 : 1;
+    p.vez = p.primeiro;
+    depois();
+  };
 
   const ponte = ctx.__ponte;
 

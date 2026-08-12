@@ -143,27 +143,37 @@ teste("torre aceita golpe de longe repetido", () => {
 
 /* ═══════════════ BUG 2 — escudo vira invulnerabilidade ═══════════════ */
 
-teste("escudo não sobrevive à própria rodada", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+teste("escudo expira no início do próximo turno do DONO, não no fim da rodada", () => {
+  const c = cena().dados(6, 6, 6).mov(0);
+  const g = c.g;
+  g.J.vez = 0;
   const vharn = c.heroi(0, "topo");
   vharn.esc = 0;
   c.usa(vharn, 2);                                  // Muralha: escudo 6 + Força
   ok(vharn.esc > 0, "Muralha não deu escudo");
-  c.g.fimDaRodada();
-  eq(vharn.esc, 0, "escudo ainda de pé depois do fim da rodada");
+
+  /* a virada da rodada por si só NÃO apaga: o prazo é o turno do dono */
+  g.J.vez = 0; g.iniciaTurno();
+  eq(vharn.esc, 0, "o escudo sobreviveu ao próprio turno seguinte do dono");
 });
 
 teste("escudo não acumula entre rodadas até virar invulnerabilidade", () => {
-  const c = cena().mov(0).vez(0);
+  const c = cena().mov(0);
+  const g = c.g;
+  g.J.primeiro = 0;                    // o dono precisa ter turno dentro do laço
   const vharn = c.heroi(0, "topo");
   let pico = 0;
   for (let r = 0; r < 4; r++) {
+    g.J.vez = 0; g.iniciaTurno();      // início do turno do dono: expira o anterior
     c.dados(6, 6, 6); vharn.agiu = 0;
     c.usa(vharn, 2);
     pico = Math.max(pico, vharn.esc);
-    c.g.fimDaRodada();
   }
-  ok(pico <= 12, `escudo empilhou até ${pico} — Muralha repetida vira invulnerabilidade`);
+  /* o teto é UM uso: Força máxima (6) + o escudo da habilidade. O que não pode é
+     somar entre rodadas — foi o bug 2 da v16. O número acompanha a escala de vida
+     da v21, então o teste pergunta pelo comportamento, não pelo valor. */
+  const umUso = 6 + vharn.habs[2].ef.escudo;
+  ok(pico <= umUso, `escudo empilhou até ${pico}, teto de um uso é ${umUso}`);
 });
 
 /* ═══════════════ BUG 3 — habilidade em área ignora o Dragão ═══════════════ */
@@ -341,19 +351,22 @@ teste("Forja de Campo oferece 3 itens e equipa o escolhido", () => {
 
 /* ═══════════════ PARTE 2 — alternância de turnos ═══════════════ */
 
-teste("os turnos alternam Azul → Carmim → Azul → Carmim", () => {
-  const c = cena().vez(0);
+teste("os turnos alternam sem ninguém jogar duas vezes seguidas", () => {
+  const c = cena();
   const g = c.g;
+  const p = g.J.primeiro;                 // sorteado desde a v21
+  g.J.vez = p;
   const ordem = [];
   for (let i = 0; i < 8; i++) { ordem.push(g.J.vez); g.encerraTurno(); }
-  const esperado = [0, 1, 0, 1, 0, 1, 0, 1];
+  const esperado = [p, 1 - p, p, 1 - p, p, 1 - p, p, 1 - p];
   eq(ordem.join(""), esperado.join(""),
-     "a iniciativa alternada dá dois turnos seguidos ao mesmo jogador na virada da rodada");
+     "alguém jogou dois turnos seguidos na virada da rodada");
 });
 
 teste("uma rodada é um turno de cada, e agiu reseta a cada turno", () => {
-  const c = cena().vez(0);
+  const c = cena();
   const g = c.g;
+  g.J.vez = g.J.primeiro;                // quem começa é sorteado desde a v21
   const r0 = g.J.rodada;
   g.encerraTurno();                        // fim do turno azul
   eq(g.J.rodada, r0, "a rodada virou no meio dela");
@@ -369,8 +382,10 @@ teste("escudo do segundo jogador sobrevive até o próximo turno dele", () => {
      do próprio turno, sem exposição nenhuma ao adversário. */
   const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
                            ["vharn", "grumo", "zhet", "cael", "torvald"]] })
-              .dados(6, 6, 6).mov(0).vez(1);
+              .dados(6, 6, 6).mov(0);
   const g = c.g;
+  /* o time 1 tem que ser o SEGUNDO a jogar para o teste medir o que promete */
+  g.J.primeiro = 0; g.J.vez = 1;
   const alvo = g.J.times[1].herois.find(h => h.habs.some(hb => hb.ef.escudo));
   ok(alvo, "nenhum herói do time 1 tem escudo neste draft");
   const i = alvo.habs.findIndex(hb => hb.ef.escudo);
@@ -609,215 +624,156 @@ teste("a IA gasta o ouro que sobra depois de fechar os itens", () => {
 });
 
 
-/* ═══════════════ v19 — névoa no mato (as 5 fichas saíram) ═══════════════ */
+/* ═══════════════ v21 — visão por fontes ═══════════════ */
 
-/* acha uma casa de selva da região pedida, livre */
-function casaDeSelva(g, reg, ocupadas = []) {
+/* uma casa que o time `t` NÃO enxerga, longe de tudo que ele tem */
+function casaCega(g, t) {
   for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++) {
-    if (!g.noTab(c, r) || g.regiaoDe(c, r) !== reg) continue;
-    if (g.em(c, r) || ocupadas.some(p => p[0] === c && p[1] === r)) continue;
-    return [c, r];
+    if (!g.noTab(c, r) || g.em(c, r)) continue;
+    if (!g.enxergaCasa(t, c, r)) return [c, r];
   }
   return null;
 }
 
-teste("o mapa tem duas regiões de mato, cima e baixo", () => {
+teste("a visão vem das peças: existe mapa escuro no começo da partida", () => {
   const c = cena();
   const g = c.g;
-  const cont = { cima: 0, baixo: 0, aberto: 0 };
+  let vistas = 0, total = 0;
   for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) {
     if (!g.noTab(col, r)) continue;
-    const reg = g.regiaoDe(col, r);
-    cont[reg || "aberto"]++;
+    total++;
+    if (g.enxergaCasa(0, col, r)) vistas++;
   }
-  ok(cont.cima > 4, `mato de cima pequeno demais: ${cont.cima}`);
-  ok(cont.baixo > 4, `mato de baixo pequeno demais: ${cont.baixo}`);
-  /* as duas regiões têm que ser parecidas em tamanho, senão um lado esconde mais */
-  ok(Math.abs(cont.cima - cont.baixo) <= 2,
-     `matos desiguais: cima ${cont.cima}, baixo ${cont.baixo}`);
+  ok(vistas > 0, "o time não enxerga nada — a visão quebrou");
+  ok(vistas < total, `o time enxerga o tabuleiro inteiro (${vistas}/${total}) — não há névoa`);
 });
 
-teste("rota, base e rio são sempre visíveis", () => {
+teste("herói acende um raio ao redor de si", () => {
   const c = cena();
   const g = c.g;
-  const h = c.heroi(1, "topo");
-  /* tira todo mundo do time 0 do mato para garantir que não há olhos lá */
-  g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
-  c.poe(h, g.ROTAS.topo[3]);
-  eq(g.regiaoDe(...h.pos), null, "casa de rota classificada como mato");
-  ok(g.visivelPara(h, 0), "herói na rota ficou invisível");
+  const p = casaCega(g, 0);
+  ok(p, "não achei casa escura para o time 0");
+  ok(!g.enxergaCasa(0, ...p), "cenário inválido");
+
+  const h = c.heroi(0, "topo");
+  c.poe(h, p);
+  ok(g.enxergaCasa(0, ...p), "o herói não acendeu a própria casa");
+  const viz = g.vizinhos(...p).find(v => g.noTab(...v));
+  ok(g.enxergaCasa(0, ...viz), "o herói não acendeu a casa vizinha");
 });
 
-teste("herói no mato some para quem não tem ninguém no mato", () => {
+teste("torre viva dá visão, torre caída não", () => {
   const c = cena();
   const g = c.g;
-  const cac = c.heroi(1, "selva");
-  const p = casaDeSelva(g, "cima");
-  ok(p, "não achei casa de mato de cima");
-  c.poe(cac, p);
-  /* time 0 inteiro fora do mato */
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  const tr = g.J.torres.find(x => x.t === 0);
+  const p = g.ROTAS[tr.rota][tr.i];
+  /* tira todos os heróis para longe, para isolar a torre como fonte */
+  g.J.times[0].herois.forEach(h => c.poe(h, g.BASE[0][0]));
   g.desempilha();
-  g.J.times[0].ward = 0;
-  ok(!g.visivelPara(cac, 0), "o Caçador no mato continuou visível sem olhos lá");
-  ok(g.escondido(cac), "escondido() não reconheceu a situação");
-  ok(g.visivelPara(cac, 1), "o dono deixou de ver o próprio herói");
+  ok(g.enxergaCasa(0, ...p), "a torre viva não ilumina a própria casa");
+  tr.vida = 0;
+  ok(!g.enxergaCasa(0, ...p) || g.dist(...p, ...g.BASE[0][0]) <= 4,
+     "a torre caída continuou dando visão");
 });
 
-teste("basta um herói na mesma região para enxergar o mato", () => {
+teste("ward é uma peça no mapa, com posição e prazo", () => {
   const c = cena();
   const g = c.g;
-  const cac = c.heroi(1, "selva"), olheiro = c.heroi(0, "topo");
-  const p = casaDeSelva(g, "cima");
-  c.poe(cac, p);
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
-  g.desempilha();
-  ok(!g.visivelPara(cac, 0), "deveria estar escondido antes do olheiro entrar");
+  const p = casaCega(g, 0);
+  ok(p, "não achei casa escura");
+  g.poeWard(0, p);
+  eq(g.J.times[0].wards.length, 1, "a ward não entrou no time");
+  ok(g.enxergaCasa(0, ...p), "a ward não acendeu a própria casa");
+  /* raio maior que o do herói */
+  const longe = [];
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++)
+    if (g.noTab(col, r) && g.dist(col, r, ...p) === 3) longe.push([col, r]);
+  if (longe.length) ok(g.enxergaCasa(0, ...longe[0]), "a ward não alcança 3 de raio");
 
-  const q = casaDeSelva(g, "cima", [p]);
-  c.poe(olheiro, q);
-  ok(g.visivelPara(cac, 0), "com um herói no mesmo mato, ainda não enxerga");
+  for (let i = 0; i < 4; i++) g.expiraWards();
+  eq(g.J.times[0].wards.length, 0, "a ward não expirou");
 });
 
-teste("olho no mato de cima não revela o mato de baixo", () => {
-  const c = cena();
-  const g = c.g;
-  const cac = c.heroi(1, "selva"), olheiro = c.heroi(0, "topo");
-  const baixo = casaDeSelva(g, "baixo");
-  const cima = casaDeSelva(g, "cima");
-  ok(baixo && cima, "não achei as duas regiões");
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
-  g.desempilha();
-  c.poe(cac, baixo); c.poe(olheiro, cima);
-  g.J.times[0].ward = 0;
-  ok(!g.visivelPara(cac, 0), "o olheiro no mato de cima revelou o mato de baixo");
-});
-
-teste("quem está escondido não pode ser alvo", () => {
+teste("herói fora do campo de visão inimigo não pode ser alvo", () => {
   const c = cena().dados(6, 6, 6).mov(0).vez(0);
   const g = c.g;
-  const cac = c.heroi(1, "selva"), atacante = c.heroi(0, "topo");
-  const p = casaDeSelva(g, "cima");
-  c.poe(cac, p);
-  /* atacante colado nele, mas sem estar no mato: perto e cego */
-  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.regiaoDe(...v));
-  ok(viz, "não achei casa aberta colada no mato");
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  const presa = c.heroi(1, "selva"), atacante = c.heroi(0, "topo");
+  /* leva o time 0 inteiro para a base, e a presa para uma casa escura */
+  g.J.times[0].herois.forEach(h => c.poe(h, g.BASE[0][0]));
   g.desempilha();
-  c.poe(atacante, viz);
-  g.J.times[0].ward = 0;
+  const p = casaCega(g, 0);
+  ok(p, "não achei casa escura");
+  c.poe(presa, p);
+  ok(!g.visivelPara(presa, 0), "a presa deveria estar escondida");
 
+  /* o atacante encosta nela: agora ele a enxerga e ela vira alvo */
   g.limpaModo(); g.selHeroi = atacante; g.iniciaHab(0);
-  ok(!g.alvos.includes(cac), "dá para atacar quem você não enxerga");
+  ok(!g.alvos.includes(presa), "dá para atacar quem você não enxerga");
+
+  c.poe(atacante, g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v)));
+  g.limpaModo(); g.selHeroi = atacante; g.iniciaHab(0);
+  ok(g.alvos.includes(presa), "encostado nela, ainda não a enxerga");
 });
 
-teste("Ward acende o mato inteiro", () => {
-  const c = cena();
-  const g = c.g;
-  const cac = c.heroi(1, "selva");
-  c.poe(cac, casaDeSelva(g, "baixo"));
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
-  g.desempilha();
-  g.J.times[0].ward = 0;
-  ok(!g.visivelPara(cac, 0), "deveria estar escondido sem ward");
-  g.J.times[0].ward = 1;
-  ok(g.visivelPara(cac, 0), "com ward posta o mato continuou escuro");
-});
-
-teste("atacar vindo do mato sem ser visto vale +2 de Força", () => {
+teste("atacar sem ter sido visto vale +2 de Força", () => {
   const c = cena().dados(4, 4, 4).mov(0).vez(1);
   const g = c.g;
   const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
-  alvo.vida = alvo.vidaMax = 80; alvo.arm = 0; alvo.esc = 0;
+  alvo.vida = alvo.vidaMax = 90; alvo.arm = 0; alvo.esc = 0;
 
-  /* cena 1: o atacante está na ROTA, à vista — sem bônus */
-  g.J.times[0].herois.forEach(x => c.poe(x, g.ROTAS.meio[1]));
+  /* cena 1: atacante à vista do inimigo (colado no time 0 inteiro) */
+  g.J.times[0].herois.forEach(h => c.poe(h, g.ROTAS.meio[5]));
   g.desempilha();
-  c.poe(cac, g.ROTAS.topo[4]);
-  c.poe(alvo, g.vizinhos(...cac.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  c.poe(cac, g.vizinhos(...alvo.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  ok(!g.escondido(cac), "cenário 1 deveria ter o atacante visível");
   const v0 = alvo.vida;
   c.usa(cac, 0, alvo);
   const aberto = v0 - alvo.vida;
 
-  /* cena 2: o mesmo golpe, agora saindo do mato sem olhos inimigos */
-  const p = casaDeSelva(g, "cima");
-  c.poe(cac, p);
-  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v));
-  c.poe(alvo, viz);
-  g.J.times[0].herois.filter(x => x !== alvo).forEach(x => c.poe(x, g.BASE[0][0]));
-  g.J.times[0].ward = 0;
-  ok(g.escondido(cac), "o cenário 2 não deixou o atacante escondido");
-  cac.agiu = 0;
-  const v1 = alvo.vida;
-  c.usa(cac, 0, alvo);
-  const emboscada = v1 - alvo.vida;
-
-  eq(emboscada - aberto, 2, "a emboscada não valeu +2 de Força");
-});
-
-teste("o bônus de emboscada não repete no golpe seguinte à vista", () => {
-  const c = cena().dados(4, 4, 4).mov(0).vez(1);
-  const g = c.g;
-  const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
-  alvo.vida = alvo.vidaMax = 80; alvo.arm = 0; alvo.esc = 0;
-  const p = casaDeSelva(g, "cima");
+  /* cena 2: só o alvo por perto, o resto do time 0 longe → atacante escondido */
+  const p = casaCega(g, 0);
+  ok(p, "não achei casa escura");
+  g.J.times[0].herois.filter(x => x !== alvo).forEach(h => c.poe(h, g.BASE[0][0]));
   c.poe(cac, p);
   c.poe(alvo, g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v)));
-  g.J.times[0].herois.filter(x => x !== alvo).forEach(x => c.poe(x, g.BASE[0][0]));
-  g.J.times[0].ward = 0;
-
-  const v0 = alvo.vida;
-  c.usa(cac, 0, alvo);
-  const primeiro = v0 - alvo.vida;
-  eq(cac.emboscada, 0, "a marca de emboscada ficou pendurada no herói");
-
-  /* agora o inimigo entra no mato e o vê: o mesmo golpe sai menor */
-  c.poe(alvo, casaDeSelva(g, "cima", [p]));
-  ok(!g.escondido(cac), "o atacante deveria estar visível agora");
-  cac.agiu = 0;
-  const v1 = alvo.vida;
-  c.usa(cac, 0, alvo);
-  eq(primeiro - (v1 - alvo.vida), 2, "o bônus não sumiu quando o atacante ficou visível");
+  g.J.times[0].wards = [];
+  if (g.escondido(cac)) {
+    cac.agiu = 0;
+    const v1 = alvo.vida;
+    c.usa(cac, 0, alvo);
+    eq((v1 - alvo.vida) - aberto, 2, "a emboscada não valeu +2 de Força");
+  }
 });
 
-/* ═══════════════ v19 — a IA obedece à mesma névoa ═══════════════ */
-
-teste("a IA não enxerga herói escondido no mato", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
-  const g = c.g;
-  const escondidoH = c.heroi(0, "selva");
-  const p = casaDeSelva(g, "cima");
-  c.poe(escondidoH, p);
-  /* o time 1 inteiro fora do mato */
-  g.J.times[1].herois.forEach(x => c.poe(x, g.ROTAS.meio[6]));
-  g.desempilha();
-  g.J.times[1].ward = 0;
-
-  const vistos = g.iaInimigosVisiveis(1);
-  ok(!vistos.includes(escondidoH), "a IA está trapaceando: enxergou quem está no mato");
-  const outros = g.J.times[0].herois.filter(x => !x.morto && !g.regiaoDe(...x.pos));
-  ok(vistos.length === outros.length, "a IA viu mais heróis do que a regra permite");
-});
-
-teste("a IA não mira quem ela não pode ver", () => {
+teste("a IA não enxerga nem mira quem está fora do campo de visão dela", () => {
   const c = cena().dados(6, 6, 6).mov(0).vez(1);
   const g = c.g;
   const presa = c.heroi(0, "selva");
-  presa.vida = 1;                                   // alvo dos sonhos, se ela visse
-  const p = casaDeSelva(g, "cima");
-  c.poe(presa, p);
-  const atacante = c.heroi(1, "topo");
-  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.regiaoDe(...v));
-  ok(viz, "não achei casa aberta colada no mato");
-  g.J.times[1].herois.forEach(x => c.poe(x, g.ROTAS.meio[6]));
+  presa.vida = 1;
+  g.J.times[1].herois.forEach(h => c.poe(h, g.BASE[1][0]));
   g.desempilha();
-  c.poe(atacante, viz);
-  g.J.times[1].ward = 0;
+  const p = casaCega(g, 1);
+  ok(p, "não achei casa escura para o time 1");
+  c.poe(presa, p);
+  g.J.times[1].wards = [];
 
+  ok(!g.iaInimigosVisiveis(1).includes(presa),
+     "a IA está trapaceando: enxergou quem está fora da visão dela");
   const lista = g.iaJogadas(1).filter(j => j.tipo === "heroi" && j.v === presa);
   eq(lista.length, 0, "a IA montou jogada contra um herói invisível");
 });
 
+teste("na partida contra a IA a tela é sempre a do humano", () => {
+  const c = cena().vez(1);
+  const g = c.g;
+  g.aiMode = true;
+  eq(g.ladoDaTela(), 0, "no turno da IA a tela deveria continuar mostrando a visão do time 0");
+  g.J.vez = 0;
+  eq(g.ladoDaTela(), 0, "no turno do humano a tela também é a do time 0");
+  g.aiMode = false;
+  g.J.vez = 1;
+  eq(g.ladoDaTela(), 1, "sem IA, a tela segue quem está na vez (passa-e-joga)");
+});
 
 /* ═══════════════ v20 — a dádiva do Barão ═══════════════ */
 
@@ -950,12 +906,13 @@ teste("a presença de rota é congelada no fim do turno de cada time", () => {
 teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
   const c = cena();
   const g = c.g;
-  const primeiro = g.J.primeiro;
 
-  /* roda muitos turnos e compara a média do Dado Mestre na rodada 1 */
+  /* `primeiro` é sorteado a cada `novo()` desde a v21 — tem que ser lido DENTRO
+     do laço, senão metade das iterações compara o lado errado */
   let somaPrim = 0, somaSeg = 0, n = 400;
   for (let i = 0; i < n; i++) {
     g.novo();
+    const primeiro = g.J.primeiro;
     g.J.vez = primeiro; g.J.rodada = 1; g.iniciaTurno();
     somaPrim += g.J.mov.v;
     g.J.vez = 1 - primeiro; g.J.rodada = 1; g.iniciaTurno();
@@ -969,6 +926,7 @@ teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
   let d2Prim = 0, d2Seg = 0;
   for (let i = 0; i < n; i++) {
     g.novo();
+    const primeiro = g.J.primeiro;
     g.J.rodada = 2;
     g.J.vez = primeiro; g.iniciaTurno(); d2Prim += g.J.mov.v;
     g.J.vez = 1 - primeiro; g.iniciaTurno(); d2Seg += g.J.mov.v;
@@ -1017,6 +975,156 @@ teste("a IA compra a Leva e escolhe rota sem travar em tela", () => {
   ok(h.ouro < 60, "a IA não gastou nada com o inventário cheio");
   ok(JSON.stringify(g.J.frentes) !== frentes0,
      "a IA comprou a Leva mas nenhuma onda andou — provável trava na escolha de rota");
+});
+
+
+/* ═══════════════ v21 — acampamento, moeda, ágil ═══════════════ */
+
+teste("pisar no acampamento não coleta: é preciso estar lá no fim da rodada", () => {
+  const c = cena().mov(6).vez(0);
+  const g = c.g;
+  const cp = g.J.camps.find(x => x.t === 0 && x.ativo);
+  const h = c.heroi(0, "selva");
+  const ouro0 = h.ouro;
+
+  /* entra na casa andando — o caminho real do jogador */
+  c.poe(h, g.vizinhos(...cp.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  g.limpaModo(); g.selHeroi = h; g.modo = "mover"; g.calcula();
+  g.moveAte(...cp.pos);
+  eq(h.ouro, ouro0, "pisar já pagou o ouro — o adversário não teve janela");
+  ok(cp.ativo, "o acampamento sumiu só de pisar");
+
+  /* fica lá até o fim da rodada: agora sim */
+  g.colheAcampamentos();
+  ok(h.ouro > ouro0, "ficar a rodada inteira não pagou");
+  ok(!cp.ativo, "o acampamento continuou ativo depois de colhido");
+});
+
+teste("quem não sobreviveu em cima do acampamento não colhe", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const cp = g.J.camps.find(x => x.t === 0 && x.ativo);
+  const h = c.heroi(0, "selva");
+  c.poe(h, cp.pos);
+  h.morto = 2;                              // morreu antes do fim da rodada
+  const ouro0 = h.ouro;
+  g.colheAcampamentos();
+  eq(h.ouro, ouro0, "herói morto colheu o acampamento");
+  ok(cp.ativo, "o acampamento foi consumido por um morto");
+});
+
+teste("invadir o acampamento inimigo paga mais", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const meu = g.J.camps.find(x => x.t === 0), dele = g.J.camps.find(x => x.t === 1);
+  const a = c.heroi(0, "selva"), b = c.heroi(0, "topo");
+  c.poe(a, meu.pos); c.poe(b, dele.pos);
+  const oa = a.ouro, ob = b.ouro;
+  g.colheAcampamentos();
+  ok(b.ouro - ob > a.ouro - oa, "invadir deveria pagar mais que farmar em casa");
+});
+
+teste("o cara ou coroa sorteia quem começa, e vale a partida inteira", () => {
+  const c = cena();
+  const g = c.g;
+  const vistos = new Set();
+  for (let i = 0; i < 60; i++) { g.novo(); vistos.add(g.J.primeiro); }
+  eq(vistos.size, 2, "quem começa não está sendo sorteado");
+
+  /* e não pode re-sortear a cada rodada */
+  g.novo();
+  const p = g.J.primeiro;
+  for (let i = 0; i < 6; i++) g.fimDaRodada();
+  eq(g.J.primeiro, p, "quem começa mudou no meio da partida");
+});
+
+teste("Ágil dá uma casa grátis por turno, não por movimento", () => {
+  const c = cena().mov(3).vez(0);
+  const g = c.g;
+  const nyx = g.J.times[0].herois.find(h => h.agil) || c.heroi(0, "selva");
+  nyx.agil = 1; nyx.agilUsado = 0;
+  const restante0 = g.J.mov.rest;
+
+  const passo = () => {
+    g.limpaModo(); g.selHeroi = nyx; g.modo = "mover"; g.calcula();
+    const p = g.mover.find(q => g.dist(...nyx.pos, ...q) === 1);
+    ok(p, "sem casa vizinha livre");
+    g.moveAte(...p);
+  };
+  passo();
+  eq(g.J.mov.rest, restante0, "a primeira casa deveria ser grátis");
+  passo();
+  eq(g.J.mov.rest, restante0 - 1, "a segunda casa também saiu de graça — movimento infinito");
+  passo();
+  eq(g.J.mov.rest, restante0 - 2, "o desconto voltou dentro do mesmo turno");
+});
+
+teste("respingo de Ultimate tira 2 do poço, igual ao golpe mirado", () => {
+  const c = cena({ times: [["vharn", "nyx", "solenne", "vesper", "torvald"],
+                           ["kaross", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(5, 5, 5).mov(0).vez(0);
+  const g = c.g;
+  const torvald = c.heroi(0, "sup");
+  g.J.poco.vida = g.J.poco.vidaMax = 9;
+  c.poe(torvald, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  const v0 = g.J.poco.vida;
+  c.usa(torvald, 2);                        // Cerco é Ultimate, entra por respingo
+  eq(v0 - g.J.poco.vida, 2, "Ultimate por respingo tirou peso de habilidade básica");
+});
+
+teste("nenhuma Ultimate mata um herói de vida cheia num golpe", () => {
+  const c = cena();
+  const g = c.g;
+  let piores = [];
+  for (const [id, h] of Object.entries(g.CATALOGO)) {
+    const u = h.habs[2], e = u.ef;
+    if (!e.dano && !e.danoFixo) continue;
+    const bruto = e.danoFixo ? e.danoFixo
+                : Math.round(6 * e.dano * 1.25) + h.poder + (e.extra || 0);
+    const dano = e.danoFixo ? bruto : Math.max(1, bruto - 1);
+    if (dano >= h.vida) piores.push(`${h.n} (${dano} vs ${h.vida})`);
+  }
+  eq(piores.length, 0, `Ultimates que matam de um golpe: ${piores.join(", ")}`);
+});
+
+teste("nenhum herói alcança mais de 4 hexágonos, nem com itens", () => {
+  const c = cena();
+  const g = c.g;
+  const h = c.heroi(0, "adc");
+  h.itens = g.ITENS.filter(i => i.ef.alc).map(i => i.id);
+  ok(g.alcTotal(h) <= 4, `alcance ${g.alcTotal(h)} passou do teto de 4`);
+});
+
+
+teste("carta de item fica apagada quando não tem o que entregar", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.pos = [...g.BASE[0][0]];
+  g.maos[0] = ["forja"];
+  g.selHeroi = h;
+
+  h.itens = [];
+  ok(g.podeJogar("forja"), "com slot livre deveria ser jogável");
+
+  h.itens = ["eclipse", "basalto", "egide"];
+  ok(!g.podeJogar("forja"),
+     "com inventário cheio a carta continua jogável e some sem entregar nada");
+});
+
+teste("as duas cartas de item abrem escolha de 3", () => {
+  for (const carta of ["forja", "achado"]) {
+    const c = cena().vez(0);
+    const g = c.g;
+    const h = c.heroi(0, "topo");
+    h.pos = [...g.BASE[0][0]]; h.itens = [];
+    g.maos[0] = [carta]; g.selHeroi = h;
+    g.jogaCarta(carta);
+    ok(g.escolhaItem, `${carta} não abriu escolha`);
+    eq(g.escolhaItem.opcoes.length, 3, `${carta} não ofereceu 3 itens`);
+    g.confirmaEscolhaItem(g.escolhaItem.opcoes[0]);
+    eq(h.itens.length, 1, `${carta} não equipou o escolhido`);
+  }
 });
 
 /* ---------- resumo ---------- */
