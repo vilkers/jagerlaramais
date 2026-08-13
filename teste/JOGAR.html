@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 3dd1aa5 2026-08-13
+     commit 902d89c 2026-08-13
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -1678,12 +1678,29 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    por isso que a IA — depois de ganhar avaliação na v17 — parou de bater no poço.
    Ela estava certa; o preço é que estava errado.
 
-   Com 4 e 6: o Dragão cai em 2 Ultimates ou 4 básicas, o Barão em 3 Ultimates.
    Cabe dentro de um turno se o time comprar a briga, e aí a pergunta "pressiono a
    torre ou disputo o objetivo?" passa a ter os dois lados viáveis — que é a
-   definição de dilema. O revide não mudou: encostar continua custando. */
+   definição de dilema. O revide não mudou: encostar continua custando.
+
+   VIDA DO DRAGÃO 4 → 3 na v24. Com 4 ele exigia DUAS Ultimates no mesmo poço, e a
+   janela dele é curta: desce na rodada 5 e perde o lugar na 12, quando o Barão
+   toma o poço mesmo com ele vivo. Medido em 1500 partidas: morria em 21,5%
+   daquelas em que aparecia, com o veredito automático de sim/epicos.js em "muito
+   tentado e pouco fechado". O Barão, com a mesma vida 4 e um pedágio MAIOR, caía
+   em 56% — a diferença nunca foi preço, foi tempo de janela.
+
+   O pedágio foi descartado por medição, não por gosto: `revide=off` deu 21,7% e
+   `rdragao=0` deu 23,4%, contra os 21,5% da base. Zerar o revide não move o
+   número, porque quem desiste do Dragão desiste por dado gasto, não por vida
+   perdida. Com vida 3 ele cai em Ultimate + básica — dois dados, de dois heróis,
+   dentro de um turno — e fecha em 33,1%, sem ser mais atacado (1,3 golpes por
+   partida contra 1,4). Não virou ímã: virou tentativa que converte.
+
+   O Barão continua em 4 de propósito. É ele que vira a mesa, e a assimetria
+   agora diz na mecânica o que a lore já dizia: o Dragão se acumula, o Barão se
+   conquista. */
 const EPICO={
-  dragao:{n:"Dragão", vida:4, revide:2, volta:3, pre:"a Herança do Dragão"},
+  dragao:{n:"Dragão", vida:3, revide:2, volta:3, pre:"a Herança do Dragão"},
   barao: {n:"Barão",  vida:4, revide:4, volta:4, pre:"a Fúria do Barão"}
 };
 /* Rodadas medidas em sim/epicos.js, 600 partidas por variante:
@@ -3651,8 +3668,8 @@ function abreManual(){
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
-      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>8 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
-      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>14 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
+      <p>Na <b>rodada 5</b> desce o <b>Dragão</b>: <b>3 de vida</b>, revida 2. Cai em <b>dois dados</b> — uma Ultimate e uma básica — se dois heróis comprarem a briga no mesmo turno. Levar dá a <b>Herança do Dragão</b>: <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
+      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. São <b>4 de vida</b> e revida 4: encostar nele custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
       <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section><h4>Rotação do Caçador</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
