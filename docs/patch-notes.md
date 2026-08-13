@@ -16,6 +16,134 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v23 — o fim de partida volta a ser jogado · 2026-08-13
+
+Cinco itens do playtest. Dois de tela, três de regra — e o maior deles saiu de
+uma medição que confirmou o relato quase em cima da vírgula.
+
+### Creep não fecha mais partida com alguém defendendo
+
+**O relato:** *"as lanes acabam empurrando... os creeps acabam levando o jogo
+depois que eu levo as torres."*
+
+**Medido em 1500 partidas da v22: 97,3% terminavam com a ONDA dando o golpe
+final.** O jogador derrubava a rota e depois assistia três rodadas de contagem
+regressiva em que nenhuma escolha mudava nada.
+
+**A regra:** com o Nexus em **1**, a onda só passa se **não houver herói inimigo
+defendendo** (a 1 de distância do Nexus). Base abandonada continua caindo
+sozinha; base defendida exige matar o defensor.
+
+*A primeira tentativa foi um piso duro — a onda para em 1, sempre. Ela morreu na
+medição: sem ninguém obrigado a ir fechar, a bateria de 1200 partidas **não
+terminou nenhuma**. Regra cujo fim depende de iniciativa trava contra quem não
+toma iniciativa. A versão que ficou não pode empacar por construção.*
+
+**A IA aprendeu a defender junto.** Com o Nexus em 1 e uma rota aberta, ela manda
+**um** herói — o mais perto de casa — segurar a base. Sem isso a regra existiria
+só para o humano, e o jogador nunca veria a última luta que ela devolve.
+
+### Morrer custa mais conforme a partida anda
+
+**O relato:** *"o herói dentro da base é curado... tem que fazer alguma coisa
+para ele não ficar dentro da base se curando e lutando."*
+
+Não existe cura de base neste jogo — o que existe é o **respawn**, que devolve
+vida cheia a uma casa do Nexus. Custava **2 rodadas** do começo ao fim, então
+defender o próprio Nexus morrendo de propósito era de graça.
+
+**Agora:** 2 rodadas até a 8, **3** até a 16, **4** daí em diante. É a curva de
+MOBA: cedo, morrer é lição; tarde, morrer é a partida — e é o que abre a janela
+para o atacante fechar o Nexus com um herói.
+
+### A habilidade do meio paga o próprio dado
+
+**O relato:** *"otimiza as habilidades dos heróis, ainda mais algumas de
+controle."*
+
+Virou medição em `sim/habs.js` (instrumento novo): com o **mesmo dado**, quanto
+cada habilidade entrega comparada à **básica do próprio herói**. Achado:
+**Provocar, Puxada, Puxada Funda e Emaranhar davam exatamente o mesmo dano da
+básica** — só que a básica sai com qualquer dado e elas exigem 3+. O jogador
+pagava um dado mais raro pelo mesmo número, e o efeito vinha como se fosse
+grátis.
+
+| Mudança | De | Para | Por quê |
+|---|---|---|---|
+| **Escala da habilidade do meio** | ×1 | **×1,2** | +1 de dano em todo dado de 3 a 6. Com ×1,15 o arredondamento comia o bônus justo no dado 3 |
+| **Caçada** (Nyx, Ultimate) | `dano 1` | `dano 1 · +3 · executa 6` | Era **pior que a própria básica**: Bote (F1) tem +2 e a Ultimate (F5) não tinha nada |
+| **Recarregar** (Vesper, Corvo) | recarga 4 | **recarga 6** | Gastar a ação para guardar +4 rendia menos que bater |
+| **Eco** (Zhet) e **Rastro** (Kurr) | só `marca 4` | `dano 1 · marca 4` | Marcar sem bater é guardar valor que só paga se um segundo golpe acertar |
+
+A escala da Ultimate segue **×1,25**, e continua sendo o pico.
+
+*Duas habilidades continuam abaixo da régua de propósito: **Doar Dado** (Mirrha)
+e **Empréstimo** (Vidra) aparecem em −10 porque devolvem uma **ação inteira** a
+um aliado, e ação não cabe em ponto de vida. **Sombra** (Nyx, intocável) e
+**Investir** (Xhera, troca cura por agarrão) valem o que a situação valer.*
+
+### Tela
+
+**A ward mostra o que acende.** Antes era um pontinho com o prazo embaixo, e a
+queixa foi direta: *"quando usar um ward, sinalizar no mapa onde ele tá"*. Agora
+as casas dentro do alcance dela ganham borda tracejada — dá para escolher onde
+plantar olhando o mapa, em vez de contar hexágono de cabeça. Recém-plantada, o
+olho pulsa. *A primeira versão desenhava um anel de raio 3 em volta do olho e
+quebrou a tela: o `viewBox` é recalculado por `getBBox()`, então um círculo de
+~100px num tabuleiro de 300 inflava a caixa e **encolhia o mapa inteiro**.*
+
+**O estado está escrito na peça.** *"Quando o herói tiver preso tem que estar
+escrito nele."* Uma etiqueta por peça, a de maior consequência primeiro: `PRESO`,
+`INTOCÁVEL`, `MARCADO`, `CARREGADO`, `SEM CURA` e — só para o dono da peça —
+`ESCONDIDO` / `REVELADO`. Uma e não três: em peça de 19px, três etiquetas não são
+três informações, são zero. A gaveta do Time passou a mostrar os números
+(`marcado +4`, `carregado +6`) e ganhou `revelado` e `sem cura`.
+
+### Balanceamento
+
+`quem começa`, build v23, **três execuções de 2000**: **50,7% · 51,6% · 51,0%**
+→ **51,1% em 6000 (z=1,76, dentro do ruído)**. A v22 fechou em 51,3% com z=2,0 e
+com muito mais espalhamento entre execuções (49,6 a 52,6).
+
+| Medição | v22 | v23 |
+|---|---|---|
+| Partidas fechadas pela **onda** | **97,3%** | ver nota |
+| Duração mediana | 21 rodadas | **23** |
+| Barão morto (das partidas em que aparece) | 49,9% | **54,6%** |
+| Vitória de quem leva o Barão | 48,8% | **52,3%** |
+| Torres por partida | 4,5/12 | 4,7/12 |
+
+**Nota honesta sobre os 97,3%:** com a regra nova a bateria mede **94,8%**, e a
+queda pequena não mede a regra — mede o agente. O agente quase aleatório **não
+defende a própria base**, então a última muralha quase nunca dispara para ele. Em
+partida de gente, quem está perdendo defende: é literalmente a queixa que abriu
+este item. O efeito real se vê em partida contra a IA, que agora manda um herói
+para casa, e no playtest humano.
+
+O Barão melhorou nos três números ao mesmo tempo — mais fechado, mais atacado, e
+levá-lo passou a correlacionar com vencer (48,8% → 52,3%). Fazia sentido: com o
+último ponto do Nexus dependendo de golpe de herói, o **Aríete** (golpe de herói
+em estrutura vale 2) virou dádiva de fim de partida de verdade.
+
+**O Dragão continua caro** — 21,9% de fechamento, e `sim/epicos.js` segue
+imprimindo *"muito tentado e pouco fechado"*. Não foi mexido nesta versão: já são
+três regras novas no mesmo lote, e mexer no preço do Dragão junto tornaria
+impossível dizer de quem é qualquer efeito medido depois.
+
+### O que isso quebra
+
+- Derrubar as torres **não fecha mais a partida sozinho** se o adversário levar
+  um herói para casa. O último ponto é de herói.
+- Morrer na rodada 20 custa **4 rodadas**, não 2.
+- As habilidades do meio dão **+1 de dano** — inclusive as dos inimigos.
+- Nyx ganhou execução (6 de vida ou menos) e **3 de dano** a mais na Ultimate.
+
+**84 testes passam** (eram 81). Partida IA×IA completa no navegador: 33 a 47
+rodadas, e o Nexus fica em 1 por **no máximo 1 rodada** — a regra nova não
+arrasta o fim.
+
+---
+
 ## v22 — o mato esconde de verdade · 2026-08-13
 
 Quatro itens: um bug de visão, uma regra nova de defesa, um gasto de ouro e um

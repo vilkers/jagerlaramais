@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 22** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 23** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -10,7 +10,7 @@
 |---|---|
 | Tabuleiro | 11×11, 116 casas |
 | Conteúdo | 20 heróis · 22 itens · 46 cartas |
-| Duração | mediana de 21 rodadas |
+| Duração | mediana de 23 rodadas |
 
 ---
 
@@ -120,7 +120,14 @@ Suporte (faz o outro jogar melhor).
 ## 6 · Combate
 
 **Básica:** `Força × multiplicador da habilidade + Poder`
+**Habilidade do meio:** `Força × multiplicador × 1,2 + Poder`
 **Ultimate:** `Força × multiplicador × 1,25 + Poder`
+
+> **Dinâmica — por que a do meio escala.** Ela exige dado **3 ou mais**; a básica
+> sai com qualquer um. Sem escala própria, as duas davam o mesmo número e o
+> jogador pagava um dado mais raro pelo mesmo dano — o efeito (prender, puxar)
+> vinha como se fosse grátis, e não é: vem em vez da liberdade de gastar aquele 3
+> em outro herói. Medido em `sim/habs.js`.
 
 Depois desconta a **Armadura** do alvo; o **Escudo** absorve o que sobrar antes da
 vida. O dano nunca é menor que 1.
@@ -133,8 +140,19 @@ brigar em casa e brigar no vão da rota.
 **Dano garantido:** três Ultimates (Julgamento, Ato Final, Sentença) causam um
 número fixo e **ignoram Armadura**. São o melhor golpe do jogo contra tanque.
 
-**Morte:** quem matou leva **4 de ouro**. O morto volta **2 rodadas depois**, na
-base, com a vida cheia — e pode comprar na loja enquanto espera.
+**Morte:** quem matou leva **4 de ouro**. O morto volta na base, com a vida
+cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
+
+| Rodada | Volta em |
+|---|---|
+| 1 a 8 | 2 rodadas |
+| 9 a 16 | 3 rodadas |
+| 17 em diante | 4 rodadas |
+
+> **Dinâmica.** Não existe cura de base neste jogo — o que devolve vida cheia é o
+> respawn, a uma casa do Nexus. Com preço fixo de 2, segurar o próprio Nexus
+> morrendo de propósito saía de graça. Cedo, morrer é lição; tarde, morrer é a
+> partida.
 
 | Efeito | O que faz |
 |---|---|
@@ -206,7 +224,21 @@ de Suporte, da carta Sinalizador, ou da **Sentinela** comprada na loja (§12).
 | Estrutura | Vida | Como cai |
 |---|---|---|
 | **Torre** | 3 | A onda tira 1 por rodada. O golpe de herói tira **1** — qualquer habilidade ofensiva |
-| **Nexus** | 3 | Igual, mas só depois que uma rota inteira do lado dele cai |
+| **Nexus** | 3 | Igual, mas só depois que uma rota inteira do lado dele cai — e o **último ponto é de herói** |
+
+**A última muralha.** Com o Nexus em **1**, a onda só passa se **não houver herói
+inimigo defendendo** — a 1 hexágono do Nexus. Base abandonada cai sozinha; base
+defendida exige matar quem está lá.
+
+> **Dinâmica — por que o creep não fecha.** Medido na v22, em 1500 partidas:
+> **97,3% terminavam com a onda dando o golpe final.** Quem derrubava a rota
+> depois só assistia — três rodadas de contagem regressiva em que nenhuma escolha
+> mudava nada. A regra devolve a última luta ao fim de partida, e dá função ao
+> **Aríete** do Barão (golpe de herói em estrutura vale 2).
+>
+> Ela é condicional de propósito. Um piso duro (a onda para em 1, sempre) foi
+> testado e morreu na medição: sem ninguém obrigado a ir fechar, **1200 partidas
+> não terminaram nenhuma**.
 
 **Torre exposta:** numa rota, só a **torre mais avançada ainda de pé** aceita
 golpe. Enquanto ela vive, a de trás está protegida.

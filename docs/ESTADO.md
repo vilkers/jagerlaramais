@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v22 (o mato esconde de verdade) · **Atualizado em:** 2026-08-13
+**Versão:** v23 (o fim de partida volta a ser jogado) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -29,9 +29,9 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
 | Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
-| Escala de dano | básica `round(Força × dano) + Poder` · **Ultimate `round(Força × dano × 1,25) + Poder`** |
+| Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
-| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe, sem trava, só depois que uma rota inteira cai |
+| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
 | Poço épico | casa **[8,8]** (derivada) · Dragão (4 de vida) até a rodada 12, **Barão (4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1 |
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
@@ -43,10 +43,11 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Quem começa | **cara ou coroa** no início da partida |
 | Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
 | Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
-| Vantagem de quem começa | **51,3%** (n=6000, três execuções de 2000: 52,6 · 51,6 · 49,6). A regra do mato levou de ~50 para cá; nada foi mexido para compensar, porque a bateria é cega para agência e névoa é agência pura. Ver patch note v22 |
+| Vantagem de quem começa | **51,1%** (n=6000, três execuções de 2000: 50,7 · 51,6 · 51,0 · z=1,76, dentro do ruído) |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **27 de mato** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | **~21 rodadas** (mediana medida: 21, n=6000) |
+| Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
+| Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
@@ -65,9 +66,10 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 77 testes de regressão — um por bug já relatado
+node sim/testes.js        # 84 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
+node sim/habs.js          # cada habilidade contra a básica do próprio herói
 node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
 ```
 
@@ -119,6 +121,7 @@ sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off
                      armtorre= mato=off revelar=off passo1=   (as regras da v22)
+                     muralha=off respawn=fixo               (as regras da v23)
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
 jogo/index.html      Só a estrutura da tela. 64 linhas.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.

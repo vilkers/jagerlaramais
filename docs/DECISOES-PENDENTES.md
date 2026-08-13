@@ -183,10 +183,25 @@ Corrigido na v18: **Dragão 8 → 4, Barão 14 → 6**. Medido em 1500 partidas:
 **0,66 Dragões por partida** contra 0,01 antes, e golpes de herói no poço de 0,1
 para 2,8.
 
-**Ainda em aberto:** o Barão continua raro (0,05 por partida). Ele desce só a
-partir da rodada 8 e custa 3 Ultimates; pode ser que a janela seja curta demais,
-ou que 6 de vida ainda seja caro para o que ele entrega (2 rodadas de Fúria).
-Precisa de playtest humano antes de mexer de novo.
+**Atualização v23 — o Barão deixou de ser o problema; o Dragão é.**
+
+| | v22 | v23 |
+|---|---|---|
+| Barão morto (das partidas em que aparece) | 49,9% | **54,6%** |
+| Vitória de quem leva o Barão | 48,8% | **52,3%** |
+| Dragão morto | 20,7% | 21,9% |
+
+O Barão melhorou nos três números ao mesmo tempo, e sem ninguém mexer no preço
+dele: foi a **última muralha** (o último ponto do Nexus só sai por golpe de
+herói) que deu função ao **Aríete**, e com isso a dádiva passou a valer o custo.
+Levar o Barão agora correlaciona com vencer.
+
+**O que sobra é o Dragão.** `sim/epicos.js` segue imprimindo *"muito tentado e
+pouco fechado — CARO DEMAIS"*: 63% das partidas tentam, 22% fecham. Não foi
+mexido na v23 de propósito — já entraram três regras no mesmo lote, e mudar o
+preço do Dragão junto tornaria impossível dizer de quem é qualquer efeito medido
+depois. Fica como o **próximo número a testar sozinho**: vida 4 → 3, ou o revide
+dele, uma coisa de cada vez (`vdragao=` e `revide=off` já existem na bateria).
 
 ---
 

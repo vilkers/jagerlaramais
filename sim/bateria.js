@@ -105,6 +105,11 @@ if (opcoes.mato === "off")                       // mato volta a não bloquear v
 if (opcoes.passo1 !== undefined)                 // compensação do Primeiro Passo
   trocas.push([/const primeiroPasso = \(t===J\.primeiro && J\.rodada===1\) \? 1 : 0;/,
                `const primeiroPasso = (t===J.primeiro && J.rodada===1) ? ${+opcoes.passo1} : 0;`]);
+if (opcoes.muralha === "off")                     // onda volta a fechar mesmo com defensor
+  trocas.push([/const golpeFinal = J\.nexus\[lado\]<=1;/, "const golpeFinal = false;"]);
+if (opcoes.respawn === "fixo")                    // morte custa 2 rodadas do começo ao fim
+  trocas.push([/const RESPAWN_BASE=2, RESPAWN_MAX=4, RESPAWN_PASSO=8;/,
+               "const RESPAWN_BASE=2, RESPAWN_MAX=2, RESPAWN_PASSO=8;"]);
 if (opcoes.revelar === "off")                    // atacar deixa de entregar a posição
   trocas.push([/const reveladoPorAtaque=h=>/, "const reveladoPorAtaque=h=>false&&"]);
 

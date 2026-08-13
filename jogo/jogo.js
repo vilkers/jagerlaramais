@@ -63,7 +63,20 @@ const capacidade=h=>h.slots||3;
    em nenhum número do catálogo — Ultimate de utilidade continua valendo pelo que
    faz, e Ultimate ofensiva volta a ser um pico. */
 const ESCALA_ULT=1.25;
-const escalaDe=slot=>slot===2?ESCALA_ULT:1;
+/* ---------- A HABILIDADE DO MEIO PAGA O PRÓPRIO DADO ----------
+   Medido em `sim/habs.js`, com o dado mínimo de cada uma e alvo de 2 de
+   armadura: Provocar, Puxada, Emaranhar e Puxada Funda entregavam EXATAMENTE o
+   mesmo dano que a básica do próprio herói. Só que a básica sai com qualquer
+   dado e elas exigem 3+ — o jogador pagava um dado mais raro pelo mesmo número,
+   e o efeito (prender, puxar) vinha como se fosse de graça. Não vinha: vinha em
+   vez da liberdade de gastar aquele 3 em outro herói.
+
+   1,2 e não 1,15: com 1,15 o arredondamento comia o bônus justamente no dado 3,
+   que é o dado mínimo da maioria delas (round(3×1,15)=3, igual à básica). Com
+   1,2 o ganho é +1 em TODO dado de 3 a 6 — pequeno, constante e legível. O pico
+   continua sendo da Ultimate, que escala 1,25 e pede 5 ou 6. */
+const ESCALA_CTRL=1.2;
+const escalaDe=slot=>slot===2?ESCALA_ULT:slot===1?ESCALA_CTRL:1;
 const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
@@ -852,6 +865,16 @@ function rotaDaPos(h){
   const passou = h.t===0 ? idx>exterior : idx<exterior;
   return passou?melhor:null;
 }
+/* Alguma rota do time `t` está sem torre e com a onda encostada na base dele?
+   É a condição de "a onda vai bater no meu Nexus na virada da rodada". */
+function rotaAbertaContra(t){
+  return Object.entries(ROTAS).some(([nome,l])=>{
+    const f=J.frentes[nome];
+    const encostou = t===0 ? f<=0 : f>=l.length-1;
+    return encostou && !J.torres.some(x=>x.rota===nome&&x.t===t&&x.vida>0);
+  });
+}
+
 function fimDaRodada(){
   /* a Fúria do Barão empurra as três rotas sozinha, mesmo sem herói nenhum nelas.
      É o que faz do Barão um relógio: dois times parados param de empatar. */
@@ -876,6 +899,30 @@ function fimDaRodada(){
     const lado = f<=0 ? 0 : (f>=l.length-1 ? 1 : null);
     if(lado===null) return;
     if(J.torres.some(x=>x.rota===nome&&x.t===lado&&x.vida>0)) return;
+    /* ── ÚLTIMA MURALHA: creep não fecha partida com alguém defendendo ──
+       Medido na v22, em 1500 partidas: **97,3% terminavam com a onda dando o
+       golpe final**. O jogador derrubava a rota e depois assistia — três rodadas
+       de contagem regressiva em que nenhuma escolha mudava nada. Era a queixa do
+       playtest: *"as lanes acabam empurrando... os creeps acabam levando o jogo
+       depois que eu levo as torres"*.
+
+       A primeira tentativa foi um piso duro (a onda para em 1, sempre). Ela
+       morreu na medição: sem ninguém obrigado a ir lá fechar, a bateria de 1200
+       partidas não terminou nenhuma — regra que depende de iniciativa para a
+       partida acabar trava contra quem não toma iniciativa.
+
+       A regra que ficou não pode empacar: a onda só é barrada no último ponto
+       **enquanto houver herói inimigo defendendo o Nexus** (a 1 de distância).
+       Base vazia continua caindo sozinha, então a partida sempre termina. Base
+       defendida exige matar o defensor — a última luta volta a existir, e o
+       Aríete do Barão (golpe de herói em estrutura vale 2) ganha função. */
+    const golpeFinal = J.nexus[lado]<=1;
+    const defensor = golpeFinal && J.times[lado].herois.some(h=>
+      !h.morto && dist(...h.pos,...BASE[lado][0])<=1);
+    if(defensor){
+      reg("b",`ÚLTIMA MURALHA — ${NOMES[lado]} defende o Nexus e a onda não passa`);
+      return;
+    }
     J.nexus[lado]--;      /* a onda tira 1: o Aríete é bônus de GOLPE DE HERÓI */
     reg("b",`Rota ${nome} aberta — Nexus ${NOMES[lado]} em ${Math.max(0,J.nexus[lado])}/${VIDA_NEXUS}`);
     if(J.nexus[lado]<=0) encerraPartida(1-lado,`Nexus ${NOMES[lado]} destruído pela onda do ${nome}.`);
@@ -1232,10 +1279,24 @@ function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
     if(quem.vida<=0) mata(quem,alvo); }
   if(alvo.vida<=0) mata(alvo,quem);
 }
+/* ---------- O PREÇO DE MORRER CRESCE ----------
+   Morrer custava 2 rodadas do começo ao fim. Com a base a uma casa do Nexus, o
+   defensor de fim de partida voltava inteiro, de graça e no lugar certo — dava
+   para segurar o Nexus morrendo de propósito, que foi o relato do playtest:
+   *"não ficar dentro da base se curando e lutando contra os inimigos"*.
+
+   Não existe cura de base neste jogo; o que existe é o RESPAWN, que devolve
+   vida cheia. Então é ele que tem preço. A curva é a de MOBA: 2 rodadas até a 8,
+   3 até a 16, 4 daí em diante. Cedo, morrer é lição; tarde, morrer é a partida —
+   e é o que abre a janela para o atacante fechar o Nexus com um herói. */
+const RESPAWN_BASE=2, RESPAWN_MAX=4, RESPAWN_PASSO=8;
+const respawnAgora=()=>Math.min(RESPAWN_MAX,
+  RESPAWN_BASE+Math.floor((J.rodada-1)/RESPAWN_PASSO));
+
 function mata(alvo,quem){
-  alvo.vida=0; alvo.morto=2; alvo.esc=0; alvo.intoc=0;
+  alvo.vida=0; alvo.morto=respawnAgora(); alvo.esc=0; alvo.intoc=0;
   quem.ouro+=4;
-  reg("b",`☠ ${alvo.n} morreu — ${quem.n} leva 4 de ouro`);
+  reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva 4 de ouro`);
 }
 
 /* conclui o Recuo: anda a casa escolhida sem tocar no Dado Mestre */
@@ -1970,6 +2031,25 @@ moveAte=function(c,r){
    é o cenário do hexágono, tem o alvo menor. Assim o toque no meio da casa é
    sempre da criatura, e a estrutura continua alcançável pela borda — e pelo
    painel de comando, que nunca dependeu do mapa. */
+/* A etiqueta de estado da peça, em ordem de consequência. Só uma aparece: numa
+   peça de 19px de raio, três etiquetas não são três informações — são zero.
+   Primeiro o que IMPEDE a jogada (preso, intocável), depois o que a modifica
+   (marcado, carregado), e por último o que é só posição (revelado, escondido). */
+function estadoDaPeca(h){
+  if(h.preso)  return {k:"mal",  txt:"PRESO"};
+  if(h.intoc)  return {k:"bom",  txt:"INTOCÁVEL"};
+  if(h.marca)  return {k:"mal",  txt:"MARCADO"};
+  if(h.recarga)return {k:"bom",  txt:"CARREGADO"};
+  if(h.semCura)return {k:"mal",  txt:"SEM CURA"};
+  /* os dois de posição só interessam ao dono da peça: para o adversário,
+     "escondido" é justamente o que ele não deveria saber */
+  if(h.t===ladoDaTela()){
+    if(escondido(h))          return {k:"bom", txt:"ESCONDIDO"};
+    if(reveladoPorAtaque(h))  return {k:"mal", txt:"REVELADO"};
+  }
+  return null;
+}
+
 const R_TOQUE=15.5;
 const R_TOQUE_ESTRUTURA=9;
 const alvoDeToque=(g,x,y,aoTocar,raio)=>{
@@ -1982,6 +2062,18 @@ function desenhaMapa(){
   svg.textContent="";
   const gH=el("g"),gE=el("g"),gM=el("g"),gP=el("g");
   const moverS=new Set(mover.map(p=>k(...p)));
+
+  /* O QUE A WARD ACENDE, desenhado nas próprias casas.
+     A primeira tentativa foi um anel em volta do olho, e ela quebrou a tela: o
+     `viewBox` é recalculado por `getBBox()`, então um círculo de raio 3 (≈100px
+     num tabuleiro de 300) inflava a caixa e ENCOLHIA o mapa inteiro. Marcar
+     hexágono é mais barato, é exato (distância de hexágono não é círculo) e não
+     sai do tabuleiro — a borda tracejada mostra exatamente o que a ward compra. */
+  const wardS=new Set();
+  (J.times[ladoDaTela()].wards||[]).forEach(w=>{
+    const tab=RAIO_ATE.get(k(...w.pos));
+    if(tab) tab[VISAO_WARD].forEach(x=>{ if(!MATO.has(x)||ehMato(...w.pos)) wardS.add(x); });
+  });
 
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
@@ -1999,6 +2091,7 @@ function desenhaMapa(){
     /* o poço fica de fora: é objetivo compartilhado, e a vida do morador tem de
        ser legível para os dois lados o tempo todo. */
     if(k(c,r)!==POCO_K&&!enxergaCasa(ladoDaTela(),c,r)) cls+=" cego";
+    if(wardS.has(k(c,r)))cls+=" wardado";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
@@ -2086,14 +2179,20 @@ function desenhaMapa(){
   rot("BAIXO",centro(...L_BOT[2])[0],275);
   rot("MEIO",...centro(3,2));
 
-  /* wards do lado que olha — peça pequena, mas precisa ser visível para o
-     jogador lembrar onde gastou a carta */
+  /* WARDS do lado que olha. Antes era só um pontinho com o prazo embaixo, e a
+     queixa foi direta: *"quando usar um ward, sinalizar no mapa onde ele tá"*.
+     O problema não era a peça estar ausente — era ela não dizer NADA sobre o que
+     comprou. Agora cada ward desenha o próprio ALCANCE: o anel tracejado é
+     exatamente o que ela acende, então dá para escolher onde plantar olhando o
+     mapa em vez de contar hexágono na cabeça.
+     `w-larg` é a largura de um hexágono; três delas é o raio 3 da ward. */
   (J.times[ladoDaTela()].wards||[]).forEach(w=>{
     const [x,y]=centro(...w.pos);
-    const g=el("g",{class:"ward"});
-    g.appendChild(el("circle",{cx:x,cy:y,r:5.4,class:"w-bg"}));
-    g.appendChild(el("circle",{cx:x,cy:y,r:2.2,class:"w-olho"}));
-    const t=el("text",{x:x,y:y+10.5,class:"w-cd"}); t.textContent=w.rodadas; g.appendChild(t);
+    /* recém-plantada: nasce pulsando, para o olho achar onde ela caiu */
+    const g=el("g",{class:"ward"+(w.rodadas===WARD_RODADAS?" nova":"")});
+    g.appendChild(el("circle",{cx:x,cy:y,r:6.4,class:"w-bg"}));
+    g.appendChild(el("circle",{cx:x,cy:y,r:2.4,class:"w-olho"}));
+    const t=el("text",{x:x,y:y+11.4,class:"w-cd"}); t.textContent=w.rodadas+"R"; g.appendChild(t);
     gM.appendChild(g);
   });
 
@@ -2132,6 +2231,22 @@ function desenhaMapa(){
     if(h.itens.length){
       g.append(el("circle",{cx:x+7.4,cy:y-7.4,r:3.6,class:"selo"}));
       const bt=el("text",{x:x+7.4,y:y-5.8,class:"selotxt"}); bt.textContent=h.itens.length; g.append(bt);
+    }
+
+    /* ESTADO ESCRITO NA PEÇA. Antes ele só existia na gaveta do Time, e a queixa
+       foi essa: *"quando o herói tiver preso tem que estar escrito nele"*. Um
+       herói que não anda precisa dizer por quê no lugar onde o jogador está
+       olhando — o mapa —, não numa tela que é preciso abrir.
+       Uma etiqueta só, a de maior consequência, para não virar sopa de ícone: o
+       que impede a jogada vem antes do que a modifica. */
+    const et=estadoDaPeca(h);
+    if(et){
+      const larg=et.txt.length*2.55+5;
+      const eg=el("g",{class:"est "+et.k});
+      eg.appendChild(el("rect",{x:x-larg/2,y:y+14,width:larg,height:5.8,rx:2.4}));
+      const t2=el("text",{x:x,y:y+18.3}); t2.textContent=et.txt; eg.appendChild(t2);
+      g.appendChild(eg);
+      g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida, ${et.txt.toLowerCase()}`);
     }
     g.onclick=()=>escolheHeroi(h);
     g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();escolheHeroi(h);}};
@@ -2176,8 +2291,10 @@ function fichaHTML(h,meu){
     h.preso?'<span class="selo-est mal">preso</span>':"",
     h.intoc?'<span class="selo-est">intocável</span>':"",
     escondido(h)?'<span class="selo-est">escondido</span>':"",
-    h.recarga?'<span class="selo-est">carregado</span>':"",
-    h.marca?'<span class="selo-est mal">marcado</span>':"",
+    reveladoPorAtaque(h)&&!h.morto?'<span class="selo-est mal">revelado</span>':"",
+    h.recarga?`<span class="selo-est">carregado +${h.recarga}</span>`:"",
+    h.marca?`<span class="selo-est mal">marcado +${h.marca}</span>`:"",
+    h.semCura?'<span class="selo-est mal">sem cura</span>':"",
     h.pat?`<span class="selo-est">patamar ${h.pat}</span>`:""
   ].join("");
   return `<div class="fic${h.morto?" morto":""}${selHeroi===h?" sel":""}"
@@ -2945,6 +3062,18 @@ function iaDestino(h,t){
   const inimigos=iaInimigosVisiveis(t);
   const ferido=h.vida<=Math.ceil(h.vidaMax*.3);
   if(ferido&&!naBase(h)) return {p:BASE[t][0],motivo:"recua"};
+
+  /* ÚLTIMA MURALHA. Com o Nexus em 1 e uma rota aberta, ficar em casa deixou de
+     ser desperdício e passou a ser a jogada que impede a onda de fechar (ver
+     `fimDaRodada`). Sem isto a regra existiria só para o humano: a IA nunca
+     voltaria, e o jogador jamais veria a última luta que ela devolve.
+     Um herói e não o time todo — o mais perto de casa. Segurar o Nexus com
+     cinco é perder o mapa inteiro para não perder um ponto. */
+  if(J.nexus[t]<=1 && rotaAbertaContra(t)){
+    const perto=vivos(t).slice().sort((a,b)=>
+      dist(...a.pos,...BASE[t][0])-dist(...b.pos,...BASE[t][0]))[0];
+    if(perto===h) return {p:BASE[t][0],motivo:"defende o Nexus"};
+  }
 
   if(J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
 

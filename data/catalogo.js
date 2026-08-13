@@ -32,7 +32,7 @@ nyx:{n:"Nyx",ep:"a Presa Silenciosa",pos:"selva",cls:"Assassino",ref:"Kha'Zix / 
   vida:18,poder:3,arm:1,alc:1,agil:1,
   habs:[{n:"Bote",f:1,alvo:"in",ef:{dano:1,extra:2}},
         {n:"Sombra",f:3,alvo:"eu",ef:{intocavel:1}},
-        {n:"Caçada",f:5,alvo:"in",ef:{dano:1}}]},
+        {n:"Caçada",f:5,alvo:"in",ef:{dano:1,extra:3,executa:6}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
   vida:23,poder:3,arm:3,alc:1,
@@ -49,13 +49,13 @@ solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndr
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
   vida:18,poder:4,arm:1,alc:1,agil:1,
   habs:[{n:"Estocada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Eco",f:2,alvo:"in",ef:{marca:4}},
+        {n:"Eco",f:2,alvo:"in",ef:{dano:1,marca:4}},
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 vesper:{n:"Vesper",ep:"a Pontaria Final",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
   vida:20,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
+        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:6}},
         {n:"Chuva de Ferro",f:5,alvo:"eu",ef:{danoRaio:3}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
@@ -100,7 +100,7 @@ xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven
 kurr:{n:"Kurr",ep:"o Rastreador",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
   vida:18,poder:3,arm:1,alc:2,agil:1,
   habs:[{n:"Lança Farpada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Rastro",f:2,alvo:"in",ef:{marca:4}},
+        {n:"Rastro",f:2,alvo:"in",ef:{dano:1,marca:4}},
         {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
@@ -136,7 +136,7 @@ nessa:{n:"Nessa",ep:"a Rápida",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
   vida:18,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,marca:3}},
-        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:4}},
+        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:6}},
         {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:8}}]},
 
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */

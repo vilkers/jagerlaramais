@@ -1345,6 +1345,126 @@ teste("Sentinela encarece a cada compra do mesmo herói", () => {
   ok(p2 > p1, `o preço não subiu (${p1} → ${p2})`);
 });
 
+/* ═══════════════ v23 — o fim de partida é de quem joga ═══════════════ */
+
+/* deixa a rota do meio aberta e a onda encostada na base de `lado` */
+function rotaAberta(c, lado) {
+  const g = c.g;
+  g.J.torres.filter(t => t.rota === "meio" && t.t === lado).forEach(t => t.vida = 0);
+  g.J.frentes.meio = lado === 1 ? g.ROTAS.meio.length - 1 : 0;
+}
+
+teste("com defensor no Nexus, a onda para em 1 — o último ponto é de herói", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  rotaAberta(c, 1);
+  /* um defensor Carmim colado no próprio Nexus, o resto longe */
+  const guarda = c.heroi(1, "sup");
+  c.poe(guarda, g.BASE[1][0]);
+
+  const antes = g.J.nexus[1];
+  for (let i = 0; i < 8 && g.J.fim === null; i++) { rotaAberta(c, 1); g.fimDaRodada(); }
+  ok(g.J.nexus[1] < antes, "a onda não bateu no Nexus nenhuma vez");
+  eq(g.J.nexus[1], 1, "a onda passou de 1 mesmo com defensor — a última muralha não segurou");
+  eq(g.J.fim, null, "a onda fechou a partida com o Nexus defendido");
+});
+
+teste("base vazia continua caindo sozinha — a regra não trava a partida", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  rotaAberta(c, 1);
+  /* ninguém do Carmim perto da própria base */
+  const longe = g.ROTAS.meio[0];
+  g.J.times[1].herois.forEach(h => c.poe(h, longe));
+  g.desempilha();
+
+  for (let i = 0; i < 10 && g.J.fim === null; i++) {
+    rotaAberta(c, 1);
+    g.J.times[1].herois.forEach(h => { if (!h.morto) c.poe(h, longe); });
+    g.desempilha();
+    g.fimDaRodada();
+  }
+  eq(g.J.fim, 0, "com a base abandonada a onda deveria ter fechado a partida");
+});
+
+teste("com o Nexus em 1, o herói fecha a partida", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  g.J.torres.filter(t => t.rota === "meio" && t.t === 1).forEach(t => t.vida = 0);
+  g.J.nexus[1] = 1;
+  const h = c.heroi(0, "meio");
+  c.poe(h, g.vizinhos(...g.BASE[1][0]).find(v => g.noTab(...v) && !g.em(...v)));
+  c.mira(h, 0);
+  ok(g.alvoNexus === 1, "o Nexus exposto não virou alvo do herói");
+  g.atacaNexus(1);
+  eq(g.J.fim, 0, "o golpe de herói no Nexus em 1 não fechou a partida");
+});
+
+teste("o tempo de respawn cresce com a partida", () => {
+  const c = cena();
+  const g = c.g;
+  const alvo = c.heroi(1, "topo"), quem = c.heroi(0, "topo");
+
+  const morre = rodada => {
+    g.J.rodada = rodada;
+    alvo.vida = 1; alvo.morto = 0;
+    g.mata(alvo, quem);
+    return alvo.morto;
+  };
+  eq(morre(1), 2, "no começo da partida a morte deveria custar 2 rodadas");
+  ok(morre(12) > 2, "na rodada 12 a morte ainda custa o mesmo do começo");
+  ok(morre(30) <= 4, "o tempo de respawn passou do teto de 4");
+  ok(morre(30) >= morre(12), "o tempo de respawn não é monotônico");
+});
+
+/* ═══════════════ v23 — a habilidade do meio paga o próprio dado ═══════════════ */
+
+/* dano bruto de uma habilidade com o dado F, sem alvo — a régua da comparação */
+function danoBruto(g, def, i, F) {
+  const ef = def.habs[i].ef;
+  return Math.round(F * (ef.dano || 0) * g.escalaDe(i)) + def.poder + (ef.extra || 0);
+}
+
+teste("habilidade do meio nunca dá MENOS dano que a básica com o mesmo dado", () => {
+  const c = cena();
+  const g = c.g;
+  Object.entries(g.CATALOGO).forEach(([id, def]) => {
+    const meio = def.habs[1];
+    if (!meio.ef.dano || !def.habs[0].ef.dano) return;   // só compara dano com dano
+    const F = meio.f;
+    const dMeio = danoBruto(g, def, 1, F), dBas = danoBruto(g, def, 0, F);
+    /* `>=` e não `>`: no dado 2 a escala de controle arredonda para baixo
+       (round(2×1,2)=2) e o empate é legítimo — quem exige dado 2 exige quase
+       nada, e essas trazem o efeito por cima. O que não pode é ficar ABAIXO. */
+    ok(dMeio >= dBas,
+       `${def.n}: ${meio.n} (F${F}) dá ${dMeio} e a básica dá ${dBas} com o mesmo dado`);
+  });
+});
+
+teste("no dado 3 ou mais, a habilidade do meio paga o dado que ela exige", () => {
+  const c = cena();
+  const g = c.g;
+  Object.entries(g.CATALOGO).forEach(([id, def]) => {
+    const meio = def.habs[1];
+    if (!meio.ef.dano || !def.habs[0].ef.dano || meio.f < 3) return;
+    const dMeio = danoBruto(g, def, 1, meio.f), dBas = danoBruto(g, def, 0, meio.f);
+    ok(dMeio > dBas,
+       `${def.n}: ${meio.n} exige dado ${meio.f} e entrega o mesmo que a básica (${dMeio})`);
+  });
+});
+
+teste("nenhuma Ultimate entrega menos que a básica do próprio herói", () => {
+  const c = cena();
+  const g = c.g;
+  Object.entries(g.CATALOGO).forEach(([id, def]) => {
+    const ult = def.habs[2];
+    if (!ult.ef.dano || !def.habs[0].ef.dano) return;
+    const dUlt = danoBruto(g, def, 2, ult.f), dBas = danoBruto(g, def, 0, ult.f);
+    ok(dUlt >= dBas,
+       `${def.n}: a Ultimate ${ult.n} dá ${dUlt} e a básica dá ${dBas} com o mesmo dado`);
+  });
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

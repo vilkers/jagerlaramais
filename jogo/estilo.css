@@ -101,11 +101,29 @@ button:disabled{cursor:not-allowed}
    claro o bastante para o jogador ainda enxergar o formato do mapa e planejar
    caminho por dentro dele. */
 #mapa .hx.cego{fill:#070C0A;stroke:#121B16}
-/* ward no mapa: olho pequeno, com as rodadas restantes embaixo */
-#mapa .ward .w-bg{fill:var(--ground-2);stroke:var(--brass);stroke-width:1.2}
+/* ETIQUETA DE ESTADO na peça. Fundo opaco porque ela cai em cima do hexágono e
+   de qualquer coisa desenhada nele — texto sem chapa some no mapa escuro. */
+#mapa .peca .est rect{fill:var(--ground);fill-opacity:.92;stroke-width:.7}
+#mapa .peca .est text{font-family:var(--mono);font-size:3.7px;letter-spacing:.06em;
+  text-anchor:middle;pointer-events:none}
+#mapa .peca .est.mal rect{stroke:var(--dano)} #mapa .peca .est.mal text{fill:var(--dano)}
+#mapa .peca .est.bom rect{stroke:var(--brass)} #mapa .peca .est.bom text{fill:var(--brass)}
+
+/* WARD no mapa: o olho, o prazo, e o ANEL do que ela acende.
+   O anel é a parte que faltava — sem ele a ward era um pontinho sem consequência
+   visível, e escolher onde plantar virava contar hexágono de cabeça. */
+#mapa .ward{pointer-events:none}
+/* as casas que a ward acende — a resposta a "sinalizar no mapa onde ele tá" */
+#mapa .hx.wardado{stroke:var(--brass-dim);stroke-width:1.1;stroke-dasharray:3 3}
+#mapa .hx.wardado:not(.cego){fill:#16221B}
+#mapa .ward .w-bg{fill:var(--ground-2);stroke:var(--brass);stroke-width:1.3}
 #mapa .ward .w-olho{fill:var(--brass)}
-#mapa .ward .w-cd{font-family:var(--mono);font-size:4.4px;text-anchor:middle;
-  fill:var(--brass-dim);pointer-events:none}
+#mapa .ward .w-cd{font-family:var(--mono);font-size:4.6px;text-anchor:middle;
+  fill:var(--brass-dim)}
+/* recém-plantada pulsa, para o olho achar onde ela caiu */
+@keyframes wardNasce{0%,100%{stroke-width:1.3}50%{stroke-width:3}}
+#mapa .ward.nova .w-bg{animation:wardNasce 1.1s ease-in-out 3}
+@media(prefers-reduced-motion:reduce){#mapa .ward.nova .w-bg{animation:none}}
 #mapa .hx.rota{fill:var(--rota)}
 #mapa .hx.rio{fill:var(--rio)}
 #mapa .hx.base0{fill:var(--azul);fill-opacity:.28}
