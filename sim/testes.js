@@ -1127,6 +1127,224 @@ teste("as duas cartas de item abrem escolha de 3", () => {
   }
 });
 
+/* ═══════════════ v22 — o mato esconde de verdade ═══════════════ */
+
+/* uma casa de mato longe de qualquer herói, para servir de esconderijo */
+function casaDeMato(g, longeDe) {
+  const cand = [];
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++) {
+    if (!g.noTab(c, r) || !g.ehMato(c, r) || g.em(c, r)) continue;
+    cand.push([c, r]);
+  }
+  if (!longeDe) return cand[0];
+  return cand.sort((a, b) =>
+    g.dist(...b, ...longeDe) - g.dist(...a, ...longeDe))[0];
+}
+
+teste("o mato só é visto de dentro do mato — rota e torre não enxergam lá", () => {
+  const c = cena();
+  const g = c.g;
+  /* time 1 inteiro fora do mato: nas próprias casas de base */
+  g.J.times[1].herois.forEach(h => c.poe(h, g.BASE[1][0]));
+  g.desempilha();
+  g.J.times[1].wards = [];
+
+  let mato = 0, visto = 0;
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) {
+    if (!g.noTab(col, r) || !g.ehMato(col, r)) continue;
+    mato++;
+    if (g.enxergaCasa(1, col, r)) visto++;
+  }
+  ok(mato > 0, "o tabuleiro não tem mato — a classificação de terreno quebrou");
+  eq(visto, 0,
+     `com ninguém no mato o time ainda enxerga ${visto} de ${mato} casas de mato`);
+});
+
+teste("herói dentro do mato enxerga o mato à volta", () => {
+  const c = cena();
+  const g = c.g;
+  g.J.times[0].herois.forEach(h => c.poe(h, g.BASE[0][0]));
+  g.desempilha();
+  const p = casaDeMato(g, g.BASE[0][0]);
+  ok(p, "não achei casa de mato");
+  ok(!g.enxergaCasa(0, ...p), "cenário inválido: o mato já estava aceso");
+
+  const h = c.heroi(0, "selva");
+  c.poe(h, p);
+  ok(g.enxergaCasa(0, ...p), "o herói não acendeu o próprio mato");
+  const vizMato = g.vizinhos(...p).find(v => g.ehMato(...v));
+  if (vizMato) ok(g.enxergaCasa(0, ...vizMato), "o herói no mato não vê o mato vizinho");
+});
+
+teste("herói escondido no mato não aparece para o inimigo em cima da rota", () => {
+  const c = cena();
+  const g = c.g;
+  const cac = c.heroi(1, "selva");
+  g.J.times[0].wards = [];
+  const p = casaDeMato(g, g.BASE[0][0]);
+  c.poe(cac, p);
+  /* o time 0 inteiro na casa de rota mais próxima do esconderijo */
+  let melhor = null;
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) {
+    if (!g.noTab(col, r) || g.ehMato(col, r)) continue;
+    const d = g.dist(col, r, ...p);
+    if (!melhor || d < melhor.d) melhor = { p: [col, r], d };
+  }
+  ok(melhor && melhor.d <= 2, "não achei casa aberta encostada no mato");
+  g.J.times[0].herois.forEach(h => c.poe(h, melhor.p));
+  g.desempilha();
+  ok(!g.visivelPara(cac, 0),
+     "o inimigo na rota, colado no mato, continua vendo quem está dentro dele");
+});
+
+teste("ward posta na rota não enxerga dentro do mato; posta no mato, enxerga", () => {
+  const c = cena();
+  const g = c.g;
+  g.J.times[0].herois.forEach(h => c.poe(h, g.BASE[0][0]));
+  g.desempilha();
+  const p = casaDeMato(g, g.BASE[0][0]);
+  const aberta = g.vizinhos(...p).find(v => !g.ehMato(...v));
+
+  g.J.times[0].wards = [];
+  if (aberta) {
+    g.poeWard(0, aberta);
+    ok(!g.enxergaCasa(0, ...p), "a ward na rota enxergou dentro do mato");
+  }
+  g.J.times[0].wards = [];
+  g.poeWard(0, p);
+  ok(g.enxergaCasa(0, ...p), "a ward posta no mato não acendeu o mato");
+});
+
+teste("quem ataca fica revelado até se mover", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(1);
+  const g = c.g;
+  const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
+  alvo.vida = alvo.vidaMax = 90;
+  g.J.times[0].wards = [];
+
+  const p = casaDeMato(g, g.BASE[0][0]);
+  c.poe(cac, p);
+  g.J.times[0].herois.forEach(h => c.poe(h, g.BASE[0][0]));
+  /* o alvo encosta no mato POR FORA: de lá ele não vê dentro, que é o cenário */
+  const viz = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.ehMato(...v));
+  ok(viz, "não achei casa aberta encostada no mato");
+  c.poe(alvo, viz);
+  ok(!g.visivelPara(cac, 0), "cenário inválido: o atacante já estava à vista");
+
+  c.usa(cac, 0, alvo);
+  ok(g.visivelPara(cac, 0), "atacou de dentro do mato e continuou invisível");
+
+  /* andar quebra o feitiço: ele sai da casa de onde atacou e some de novo */
+  const outro = g.vizinhos(...p).find(v => g.ehMato(...v) && !g.em(...v));
+  if (outro) {
+    c.poe(cac, outro);
+    ok(!g.visivelPara(cac, 0), "o revelado grudou no herói mesmo depois de ele andar");
+  }
+});
+
+/* ═══════════════ v22 — defender junto da torre ═══════════════ */
+
+teste("herói colado na própria torre viva ganha +1 de Armadura", () => {
+  const c = cena();
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 0 && x.vida > 0);
+  const p = posTorre(g, tr);
+
+  c.poe(h, g.BASE[0][0]);
+  g.desempilha();
+  const base = g.armTotal(h);
+
+  c.poe(h, g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v)));
+  eq(g.armTotal(h), base + 1, "colado na própria torre, a armadura não subiu");
+
+  tr.vida = 0;
+  eq(g.armTotal(h), base, "a torre caída continuou protegendo");
+});
+
+teste("a torre INIMIGA não dá armadura a quem está mergulhando nela", () => {
+  const c = cena();
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0);
+  const p = posTorre(g, tr);
+  c.poe(h, g.BASE[0][0]);
+  g.desempilha();
+  const base = g.armTotal(h);
+  c.poe(h, g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v)));
+  eq(g.armTotal(h), base, "a torre do adversário está protegendo o invasor");
+});
+
+teste("a armadura da torre entra na conta do dano", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(1);
+  const g = c.g;
+  const alvo = c.heroi(0, "topo"), bate = c.heroi(1, "topo");
+  alvo.vida = alvo.vidaMax = 90; alvo.esc = 0;
+  const tr = g.J.torres.find(x => x.t === 0 && x.vida > 0);
+  const p = posTorre(g, tr);
+
+  /* Uma cena só, medida duas vezes: com a torre viva e com ela caída. Comparar
+     duas POSIÇÕES diferentes não serve aqui — mudar de casa mexe também em quem
+     enxerga quem, e o +2 de emboscada entraria na conta sem avisar. A ward do
+     time 0 em cima do atacante fecha essa porta nas duas medições. */
+  const junto = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v));
+  c.poe(alvo, junto);
+  c.poe(bate, g.vizinhos(...junto).find(v => g.noTab(...v) && !g.em(...v)));
+  g.J.times[0].wards = [];
+  g.poeWard(0, bate.pos);
+  ok(!g.escondido(bate), "cenário inválido: o atacante ficou escondido");
+
+  let v0 = alvo.vida; c.usa(bate, 0, alvo);
+  const sobTorre = v0 - alvo.vida;
+
+  tr.vida = 0;
+  bate.agiu = 0;
+  v0 = alvo.vida; c.usa(bate, 0, alvo);
+  const semTorre = v0 - alvo.vida;
+
+  eq(semTorre - sobTorre, 1, "lutar sob a torre não reduziu o dano em 1");
+});
+
+/* ═══════════════ v22 — a Sentinela como gasto de ouro ═══════════════ */
+
+teste("Sentinela: compra na base vira carga, e a carga vira ward onde o herói está", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "selva");
+  c.poe(h, g.BASE[0][0]);
+  h.ouro = 30;
+  g.J.times[0].wards = [];
+
+  ok(g.gastosDisponiveis(h).some(x => x.id === "sentinela"),
+     "a Sentinela não aparece na loja para quem está na base");
+  const preco = g.precoGasto(g.GASTOS.find(x => x.id === "sentinela"), h);
+  ok(g.usaGasto("sentinela", h, 0), "não deu para comprar a Sentinela");
+  eq(h.ouro, 30 - preco, "o ouro não saiu");
+  eq(h.sentinelas, 1, "a carga não entrou no herói");
+  eq(g.J.times[0].wards.length, 0, "a ward foi plantada na base em vez de virar carga");
+
+  const p = casaDeMato(g, g.BASE[0][0]);
+  c.poe(h, p);
+  ok(g.plantaSentinela(h), "não deu para plantar a carga");
+  eq(h.sentinelas, 0, "a carga não foi consumida");
+  eq(g.J.times[0].wards.length, 1, "a ward não entrou no mapa");
+  ok(g.enxergaCasa(0, ...p), "a ward plantada não acendeu o mato");
+  ok(!g.plantaSentinela(h), "plantou sem ter carga");
+});
+
+teste("Sentinela encarece a cada compra do mesmo herói", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "selva");
+  c.poe(h, g.BASE[0][0]);
+  h.ouro = 99;
+  const gs = g.GASTOS.find(x => x.id === "sentinela");
+  const p1 = g.precoGasto(gs, h);
+  g.usaGasto("sentinela", h, 0);
+  const p2 = g.precoGasto(gs, h);
+  ok(p2 > p1, `o preço não subiu (${p1} → ${p2})`);
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

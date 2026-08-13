@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 20** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 22** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -10,7 +10,7 @@
 |---|---|
 | Tabuleiro | 11×11, 116 casas |
 | Conteúdo | 20 heróis · 22 itens · 46 cartas |
-| Duração | mediana de 22 rodadas |
+| Duração | mediana de 21 rodadas |
 
 ---
 
@@ -33,8 +33,8 @@ tudo que vale para um lado vale para o outro.
 | Terreno | O que é |
 |---|---|
 | **Rotas** | Topo (17 casas), Meio (12), Baixo (17). Onde as ondas andam e onde ficam as torres |
-| **Mato** | A selva, dividida em **mato de cima** (14 casas) e **mato de baixo** (14) |
-| **Rio** | Faixa central neutra, sempre à vista |
+| **Mato** | A selva, **27 casas**. Bloqueia visão: só se enxerga de dentro (§8) |
+| **Rio** | Faixa central neutra. Não bloqueia visão nem movimento |
 | **Bases** | Uma por time, com o Nexus |
 | **Poço** | Casa central onde mora o Dragão, e depois o Barão |
 
@@ -120,10 +120,15 @@ Suporte (faz o outro jogar melhor).
 ## 6 · Combate
 
 **Básica:** `Força × multiplicador da habilidade + Poder`
-**Ultimate:** `Força × multiplicador × 1,5 + Poder`
+**Ultimate:** `Força × multiplicador × 1,25 + Poder`
 
 Depois desconta a **Armadura** do alvo; o **Escudo** absorve o que sobrar antes da
 vida. O dano nunca é menor que 1.
+
+**Defender junto da torre:** herói colado (distância ≤ 1) numa torre **viva do
+próprio time** ganha **+1 de Armadura**. A torre do adversário não protege quem
+está mergulhando nela, e o bônus **cai junto com a torre**. É a diferença entre
+brigar em casa e brigar no vão da rota.
 
 **Dano garantido:** três Ultimates (Julgamento, Ato Final, Sentença) causam um
 número fixo e **ignoram Armadura**. São o melhor golpe do jogo contra tanque.
@@ -154,26 +159,45 @@ Intocável e Preso duram **até o início do seu próximo turno**.
 
 ## 8 · Visão e o mato
 
-**Rota, rio e base todo mundo vê. O mato você só enxerga se tiver alguém dentro.**
+**Você enxerga o que as suas peças enxergam.** O resto do tabuleiro é escuridão —
+inclusive pedaço de rota. Herói dentro da escuridão **não aparece na tela** e
+**não pode ser mirado**.
 
-São dois matos — cima e baixo — enxergados **em separado**. Ter alguém no mato de
-cima não revela o de baixo. No tabuleiro, o mato onde você está cego aparece
-**mais escuro**.
+| Fonte de visão | Raio |
+|---|---|
+| Herói vivo | 2 |
+| Torre viva | 2 |
+| Base | 2 |
+| Frente de Onda (o creep) | 2 |
+| **Ward** | **3** |
+
+**E o mato bloqueia: dentro do mato só se enxerga de dentro do mato.** Estar
+colado nele pela rota não adianta. Ward plantada na rota também não vê lá dentro
+— para vigiar o mato é preciso **entrar** ou **plantar a ward dentro**. Fora do
+mato, raio é raio.
+
+*No início da partida: 61 dos 116 hexágonos visíveis, os três acampamentos
+escuros para os dois lados.*
 
 Um herói escondido **não deixa de existir**: ocupa a casa, bloqueia passagem,
 coleta acampamento e **continua empurrando a rota**. Você é que parou de vê-lo.
-Ao pisar numa rota, reaparece.
 
-**Emboscada:** quem ataca **vindo do mato sem ter sido visto** ganha **+2 de
-Força** no golpe. Vale uma vez, no golpe que sai da sombra.
+**Emboscada:** quem ataca **sem ter sido visto** ganha **+2 de Força** no golpe.
 
-**Ward:** acende **os dois matos** até o fim da rodada. Vem de habilidade de
-Suporte ou de carta.
+**Mas quem ataca fica revelado.** Golpe em herói inimigo entrega a posição: o
+atacante fica visível para o adversário **até sair da casa de onde bateu**. A
+emboscada é uma troca — dano agora, esconderijo depois.
 
-> **Dinâmica — por que presença e não raio de visão.** O mapa é compacto e quase
-> sempre há um herói em cada rota; névoa por raio revelaria o tabuleiro quase
-> inteiro o tempo todo. Amarrada à presença, a informação custa **uma peça** — e
-> aí vira decisão: vigiar o mato, ou deixar essa peça pressionando a rota?
+**Ward:** peça no mapa, com posição e **3 rodadas** de prazo. Vem de habilidade
+de Suporte, da carta Sinalizador, ou da **Sentinela** comprada na loja (§12).
+
+> **Dinâmica — por que o mato é terreno e não pintura.** A versão anterior tinha
+> só o raio, e ela foi medida: no início da partida o time já enxergava **78 dos
+> 116** hexágonos. Com seis torres, três ondas, a base e cinco heróis acendendo 2
+> de raio, sobrava escuro onde ninguém ia — e o mato, o único lugar em que
+> esconder-se é jogada, vinha aceso de graça. Diminuir os raios escureceria o
+> mapa inteiro por igual. Fazer o mato **bloquear** escurece exatamente o pedaço
+> que precisa de decisão: vigiar o mato custa **uma peça ou uma ward**.
 
 ---
 
@@ -269,11 +293,19 @@ quem está **na própria base ou morto**.
 | **Reforço** | 6, **+2 por compra** | +1 de Poder permanente neste herói |
 | **Requisição** | 5 | Compra 1 carta do baralho |
 | **Leva de Ferro** | 4, **+1 a cada 3 rodadas** (teto 12) | A sua onda de uma rota avança 1 casa |
+| **Sentinela** | 4, **+2 por compra** | 1 ward na mochila (máximo 2) |
 
-> **Dinâmica — duas curvas de preço.** Reforço encarece conforme *você* compra, e
-> por isso nunca vira renda infinita. Leva de Ferro encarece conforme a *partida*
-> anda, porque compra território — cedo, empurrar uma rota é barato e rende pouco;
-> tarde, é caro e pode fechar a partida.
+A **Sentinela** não vira ward na hora: vira **carga**. Plantar é de graça — nem
+dado, nem movimento — pelo botão `◉ plantar ward`, que aparece no painel quando o
+herói selecionado tem carga. A ward nasce **na casa onde ele está**, com o raio 3
+e as 3 rodadas de sempre.
+
+> **Dinâmica — três curvas de preço.** Reforço e Sentinela encarecem conforme
+> *você* compra, e por isso nunca viram renda infinita. Leva de Ferro encarece
+> conforme a *partida* anda, porque compra território — cedo, empurrar uma rota é
+> barato e rende pouco; tarde, é caro e pode fechar a partida. E a Sentinela
+> compra a terceira coisa que o ouro tardio pode querer: **informação**, que só
+> passou a ter preço quando o mato virou terreno de verdade (§8).
 
 ---
 
@@ -338,16 +370,17 @@ três?"**. E o herói que você deixa de fora hoje é o que estará mais rico am
 **O Dado Mestre é um bolso comum.** Movimento é do time, não do herói. Aproximar
 o assassino custa literalmente o recuo do atirador.
 
-**Informação custa uma peça.** O mato só se enxerga com alguém dentro. Mandar um
-herói vigiar é tirá-lo da rota; não vigiar é jogar sem saber de onde vem o
-próximo golpe.
+**Informação custa uma peça — ou uma ward.** O mato só se enxerga de dentro.
+Mandar um herói vigiar é tirá-lo da rota; comprar a Sentinela é ouro que não
+virou Poder; não fazer nem um nem outro é jogar sem saber de onde vem o próximo
+golpe. E quem se esconde paga também: o primeiro golpe entrega a casa.
 
 **Torre ou objetivo.** O revide de 2 torna a torre uma **conta**: bater três vezes
 custa 6 de vida ao time. Quando o poço abre, a mesma ação que derrubaria uma
 torre pode fechar um Dragão. O jogo não diz qual escolher — só garante que você
 não tem dado para as duas.
 
-**A Ultimate é um pico, não um botão.** Rende 1,5× o dado, mas exige 5 ou 6.
+**A Ultimate é um pico, não um botão.** Rende 1,25× o dado, mas exige 5 ou 6.
 Guardar o dado alto para ela é abrir mão de três ações pequenas. E ela vale 2 no
 poço contra 1 da básica: às vezes o melhor uso da Ultimate não é num herói.
 

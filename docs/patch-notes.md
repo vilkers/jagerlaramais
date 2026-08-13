@@ -16,6 +16,139 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v22 — o mato esconde de verdade · 2026-08-13
+
+Quatro itens: um bug de visão, uma regra nova de defesa, um gasto de ouro e um
+conserto de tela. Mais um bug latente que apareceu no meio do caminho.
+
+### O mato voltou a esconder
+
+**O relato:** *"continuo vendo os adversários no mato mesmo sem ter visão."*
+
+**Medido na v21, no início da partida:** o time enxergava **78 dos 116**
+hexágonos (67%), e **47 das 70** casas fora de rota. Com seis torres, três
+ondas, a base e cinco heróis acendendo 2 de raio cada, sobrava pouco escuro — e
+o pouco que sobrava não era o mato. **O acampamento Carmim nascia visível para
+os dois lados.** O Caçador estava invisível na regra e à vista na tela.
+
+**A regra nova, uma só:** *o mato só se enxerga de dentro do mato.* Vale para
+toda fonte, inclusive a ward — ward plantada na rota **não** vê o mato ao lado.
+Fora do mato, nada muda: raio continua raio.
+
+**Medido agora, no mesmo início de partida:** **61 de 116** (53%), 30 das 70
+fora de rota, e **os três acampamentos escuros** para os dois lados.
+
+Os raios continuam os mesmos (herói 2, torre 2, base 2, onda 2, ward 3).
+Diminuir raio teria escurecido o mapa inteiro por igual — o que faltava era o
+mato ser **terreno**, não só pintura.
+
+**Quem ataca fica revelado.** Golpe em herói inimigo entrega a posição de quem
+bateu: ele fica visível para o adversário **até sair da casa de onde atacou**.
+É o preço da emboscada (+2 de Força, que continua valendo) — o mato deixa de ser
+ninho de tiro grátis, e sair de lá vira decisão.
+
+*Guardado como a casa de onde ele bateu, e não como um sinalizador: andar
+invalida sozinho, em qualquer caminho que mexa na posição (passo, recuo,
+Convocar, respawn).*
+
+### Bug latente: o cache de visão podia mentir
+
+Achado enquanto o teste da ward falhava sem explicação. A chave do memo de visão
+somava `x = x*31 + termo` em `Number` comum. Com 5 heróis, 6 torres, 3 frentes e
+as wards, `x` passa de 1e19 antes do fim — e a partir daí **o ulp do float é
+maior que os termos que ainda faltam entrar**. Na prática, mover a ward de uma
+casa para a vizinha dava a **mesma chave**, e a visão vinha do cache velho.
+
+Agora a conta é em inteiro de 32 bits (`Math.imul`), onde nenhum bit se perde por
+magnitude. Vale desde a v21, e é parte de por que a névoa parecia grudar.
+
+### Defender junto da torre — **+1 de Armadura**
+
+Herói colado (distância ≤ 1) numa torre **viva do próprio time** ganha
+**+1 de Armadura**. A torre do adversário não protege quem está mergulhando.
+
+Um ponto e não mais: com a vida da v21 (18–25) e o golpe médio em 6–8, +1 tira
+cerca de **um sétimo** do dano. Muda a conta da troca sem tornar o par
+torre+herói impossível de quebrar — que era exatamente o risco levantado quando
+a ideia foi proposta. E o bônus **cai junto com a torre**.
+
+### Ouro depois dos três itens — a **Sentinela**
+
+Quarto e último gasto da prateleira: **4 de ouro, +2 a cada compra do mesmo
+herói**, teto de **2 na mochila**.
+
+Compra na base (ou morto), como todo o resto. Não vira ward na hora: vira
+**carga**. Plantar é de graça — nem dado, nem movimento, nem submenu — pelo botão
+`◉ plantar ward`, que só existe quando o herói tem carga.
+
+**Ficou uma opção e não cinco**, que era o pedido. Entre os cinco candidatos
+discutidos (ward, consumível, carta, creep, re-rolagem), a ward foi escolhida
+porque é a única que **ficou melhor com a regra do mato**: agora que o mato só se
+vê de dentro, saber onde o adversário está é problema de verdade. O consumível de
+cura, o candidato mais próximo, fica de fora por redundância — quem compra está
+na base ou morto, e os dois estados já curam.
+
+A IA compra e planta pelas mesmas regras: só no mato, e só onde ainda não
+enxerga.
+
+### Tela: as pastilhas atravessavam a faixa colorida
+
+**O relato:** *"no canto superior direito está quebrado o layout fora da linha
+vermelha."*
+
+A linha das pastilhas (ouro, placas, prioridade, herança, fúria, retomada,
+feitiço, visão) chega a **oito** e cabiam quatro. Sem `flex-wrap` e sem
+`min-width:0` ela não tinha como ceder: o texto de dentro de cada pastilha
+quebrava em duas alturas e a última **atravessava a borda** da faixa.
+
+Agora quem quebra é a **lista** (pastilha inteira desce de linha, alinhada à
+direita), nunca o texto de dentro. No mesmo passo, os três ícones do HUD deixaram
+de encolher: num 320 de largura eles apertavam para **29px**, abaixo do mínimo de
+toque de 40. Medido depois: `scrollWidth == clientWidth` em 320, 375, 390 e 430.
+
+### Balanceamento — o que a medição diz
+
+`quem começa`, build v22, **três execuções de 2000 partidas**:
+**52,6%** (z=2,37) · **51,6%** (z=1,48) · **49,6%** (z=−0,36).
+Somadas: **51,3% em 6000 partidas (z=2,0)**.
+
+Isoladas, uma de cada vez, n=2000 (variantes novas na bateria: `armtorre=`,
+`mato=off`, `revelar=off`, `passo1=`):
+
+| Variante | quem começa |
+|---|---|
+| build v22 completo | 52,6% (z=2,37) |
+| `armtorre=0` — sem a armadura de torre | 51,8% (z=1,61) |
+| `revelar=off` — atacar não revela | 51,6% (z=1,43) |
+| `passo1=0` — sem o Primeiro Passo | 51,9% (z=1,70) |
+| **`mato=off`** — mato volta a não bloquear | **50,4% (z=0,36)** |
+
+A regra do mato responde pela subida. **Nada foi mexido para compensar**, por
+dois motivos. Primeiro: a diferença entre as três execuções do mesmo build
+(49,6 → 52,6) é maior que o efeito que se quer corrigir — uma execução isolada de
+2000 não distingue 51 de 53. Segundo, e mais importante: a bateria é
+**declaradamente cega para agência**, e névoa é a mecânica de agência por
+excelência. O agente quase aleatório não colhe o prêmio de se esconder, só paga o
+custo de não enxergar alvo — então este número tende a **superestimar** o
+prejuízo. Fica registrado para o playtest humano decidir.
+
+*Ritmo inalterado: mediana 21 rodadas, 4,5/12 torres, 0,2 Dragões e 0,7 Barões
+por partida.*
+
+### O que isso quebra
+
+- Quem jogava contando com ver o mato da rota **não vê mais**. Ward na rota
+  também não. É a mudança que mais muda o hábito.
+- Atirar do mato deixou de ser grátis: o primeiro golpe entrega a casa.
+- Torre viva agora vale **+1 de Armadura** para quem defende — mergulho em torre
+  ficou mais caro.
+- Texto do manual atualizado: a seção do Caçador ainda descrevia a **rotação da
+  v18**, removida na v19, e a do Suporte falava em "sair da rotação".
+
+**77 testes passam** (eram 67; dez novos, todos escritos antes da correção).
+
+---
+
 ## v21 — visão por fontes, e o fim do hitkill · 2026-08-12
 
 Nove itens do playtest. Quatro eram bug, três eram número, dois eram regra nova.

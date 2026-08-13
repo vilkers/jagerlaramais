@@ -94,6 +94,19 @@ if (opcoes.heranca !== undefined)
 if (opcoes.escudobarao !== undefined)
   trocas.push([/const BARAO_ESCUDO=\d+/, `const BARAO_ESCUDO=${+opcoes.escudobarao}`]);
 if (opcoes.ondas === "off") trocas.push([/d\+=furia\[0\]-furia\[1\];/, ""]);
+/* v22 — as três mudanças da revisão, cada uma desligável sozinha. Existem porque
+   a medição do lote inteiro deu 52,6% e não dizia de quem era a culpa: sem poder
+   desligar uma de cada vez, "quem começa" vira número sem endereço. */
+if (opcoes.armtorre !== undefined)
+  trocas.push([/const ARM_TORRE=\d+/, `const ARM_TORRE=${+opcoes.armtorre}`]);
+if (opcoes.mato === "off")                       // mato volta a não bloquear visão
+  trocas.push([/const tabela = ehMato\(\.\.\.p\) \? RAIO_ATE : RAIO_ATE_ABERTO;/,
+               "const tabela = RAIO_ATE;"]);
+if (opcoes.passo1 !== undefined)                 // compensação do Primeiro Passo
+  trocas.push([/const primeiroPasso = \(t===J\.primeiro && J\.rodada===1\) \? 1 : 0;/,
+               `const primeiroPasso = (t===J.primeiro && J.rodada===1) ? ${+opcoes.passo1} : 0;`]);
+if (opcoes.revelar === "off")                    // atacar deixa de entregar a posição
+  trocas.push([/const reveladoPorAtaque=h=>/, "const reveladoPorAtaque=h=>false&&"]);
 
 const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ")

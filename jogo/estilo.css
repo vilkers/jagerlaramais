@@ -45,11 +45,16 @@ button:disabled{cursor:not-allowed}
 /* ══════════ HUD ══════════ */
 #hud{flex:none;padding:8px 12px 0;display:flex;flex-direction:column;gap:7px}
 .hud-l1{display:flex;align-items:center;gap:9px}
-.marca{font-family:var(--display);font-size:16px;letter-spacing:.02em;text-transform:uppercase;color:var(--ink-3)}
+/* o título é a única coisa desta linha que pode encolher: os três botões são
+   alvo de toque e a rodada é informação de estado. Sem isto, num 320 de largura
+   os ícones apertavam para 29px — abaixo do mínimo de toque de 40. */
+.marca{font-family:var(--display);font-size:16px;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--ink-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .marca b{color:var(--brass);font-weight:700}
 .rodada{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3);
-  border:1px solid var(--line);padding:3px 8px;border-radius:20px}
-.icobt{width:var(--toque);height:var(--toque);display:grid;place-items:center;border:1px solid var(--line);
+  border:1px solid var(--line);padding:3px 8px;border-radius:20px;flex:none}
+.icobt{width:var(--toque);height:var(--toque);flex:none;
+  display:grid;place-items:center;border:1px solid var(--line);
   border-radius:9px;font-size:15px;color:var(--ink-2);background:var(--ground-2)}
 .icobt:active{background:var(--ground-3)}
 .icobt:disabled{opacity:.3}
@@ -60,14 +65,28 @@ button:disabled{cursor:not-allowed}
 @keyframes pulsa{50%{background:rgba(255,106,90,.16)}}
 
 .faixa{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:12px;
-  border:1px solid;transition:background .3s,border-color .3s}
+  border:1px solid;transition:background .3s,border-color .3s;
+  /* a faixa não pode ser empurrada pelo próprio conteúdo: quem cede é a lista de
+     pastilhas, não a moldura */
+  overflow:hidden}
 .faixa.t0{background:linear-gradient(90deg,rgba(76,155,214,.20),rgba(76,155,214,.04));border-color:rgba(76,155,214,.45)}
 .faixa.t1{background:linear-gradient(90deg,rgba(212,91,78,.20),rgba(212,91,78,.04));border-color:rgba(212,91,78,.45)}
-.faixa .quem{font-family:var(--display);font-size:19px;text-transform:uppercase;line-height:1;letter-spacing:.01em}
+.faixa .quem{font-family:var(--display);font-size:19px;text-transform:uppercase;line-height:1;
+  letter-spacing:.01em;flex:none}
 .faixa.t0 .quem{color:var(--azul-2)} .faixa.t1 .quem{color:var(--carmim-2)}
-.faixa .pill{margin-left:auto;display:flex;gap:5px}
+/* ── A LINHA DAS PASTILHAS ──
+   Ela chega a oito pastilhas (ouro, placas, prioridade, herança, fúria, retomada,
+   feitiço, visão) e cabiam quatro. Sem `wrap` e sem `min-width:0` a linha não
+   tinha como ceder: o flex a mantinha na largura do conteúdo, o texto de dentro
+   quebrava em duas alturas e a última pastilha atravessava a borda colorida da
+   faixa — o "canto superior direito fora da linha vermelha" do relatório.
+   Agora quem quebra é a LISTA (pastilha inteira desce de linha, alinhada à
+   direita) e nunca o texto de dentro de uma pastilha. */
+.faixa .pill{margin-left:auto;display:flex;gap:5px;
+  flex-wrap:wrap;justify-content:flex-end;min-width:0}
 .pill span{font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:8px;
-  background:rgba(0,0,0,.32);display:flex;align-items:center;gap:4px;color:var(--ink-2)}
+  background:rgba(0,0,0,.32);display:flex;align-items:center;gap:4px;color:var(--ink-2);
+  flex:none;white-space:nowrap}
 .pill span b{color:var(--brass);font-weight:400}
 .pill span.on{background:var(--brass-glow);color:var(--brass)}
 @keyframes bater{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}

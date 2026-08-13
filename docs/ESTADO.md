@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v21 (visão por fontes + fim do hitkill) · **Atualizado em:** 2026-08-12
+**Versão:** v22 (o mato esconde de verdade) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -29,23 +29,24 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
 | Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
-| Escala de dano | básica `round(Força × dano) + Poder` · **Ultimate `round(Força × dano × 1,5) + Poder`** |
+| Escala de dano | básica `round(Força × dano) + Poder` · **Ultimate `round(Força × dano × 1,25) + Poder`** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe, sem trava, só depois que uma rota inteira cai |
 | Poço épico | casa **[8,8]** (derivada) · Dragão (4 de vida) até a rodada 12, **Barão (4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1 |
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
-| Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto do tabuleiro é escuridão. Ward é peça no mapa, dura 3 rodadas |
-| Emboscada | atacar **sem ter sido visto** dá **+2 de Força**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
+| Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
+| Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
+| Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
 | Alcance | teto de **4**, itens incluídos |
 | Quem começa | **cara ou coroa** no início da partida |
 | Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
-| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1. Só na base |
-| Vantagem de quem começa | **48,6%** (n=6000, três execuções de 2000). Era 42,0% na v19. Corrigido por **presença congelada no fim do turno de cada time** + **Primeiro Passo** (+1 de movimento na rodada 1 para quem começa). Sobra 1,4 ponto |
-| Tamanho do tabuleiro | **11×11**, 116 casas · **30 de selva** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
+| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
+| Vantagem de quem começa | **51,3%** (n=6000, três execuções de 2000: 52,6 · 51,6 · 49,6). A regra do mato levou de ~50 para cá; nada foi mexido para compensar, porque a bateria é cega para agência e névoa é agência pura. Ver patch note v22 |
+| Tamanho do tabuleiro | **11×11**, 116 casas · **27 de mato** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
-| Duração de uma partida | **~22 rodadas** (mediana medida: 22, n=3000) |
+| Duração de uma partida | **~21 rodadas** (mediana medida: 21, n=6000) |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
 | Publicado em | vilkers.github.io/jagerlaramais |
@@ -53,7 +54,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 ## O que funciona
 
 Motor de regras · mapa hexagonal, torres, ondas, Nexus · Dado Mestre + 3 de ação ·
-Caçador que **some no mato** · Placas do Topo · Prioridade do Meio · loja e itens ·
+Caçador que **some no mato** (e o mato bloqueia visão de verdade) · Placas do Topo · Prioridade do Meio · loja e itens ·
 **poço épico com Dragão e Barão** · **Retomada (freio de bola de neve)** ·
 tutorial de 9 passos · draft com ban e counterpick · Deck de Comando com face ilustrada ·
 guia navegável · visualizador de cartas · **ergonomia de toque auditada em 4 tamanhos de tela** ·
@@ -64,7 +65,7 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 60 testes de regressão — um por bug já relatado
+node sim/testes.js        # 77 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
@@ -102,8 +103,6 @@ colide com medição já registrada.
 | O quê | Por que importa |
 |---|---|
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
-| **Acampamentos de selva** | Buffs Azul e Vermelho — a válvula contra dado ruim. |
-| **Feitiços de invocador** | 5 cartas, alto retorno em história. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
 | **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
@@ -119,6 +118,7 @@ sim/simetria.js      Confere se o tabuleiro é espelho de si mesmo: casas sem pa
 sim/motor.js         Carrega o jogo em Node com DOM falso.
                      Variantes: torre= mov= acao= mapa= epico=off retomada=off revide=off
                      dragao= barao= vdragao= vbarao= heranca= furia= ondas=off
+                     armtorre= mato=off revelar=off passo1=   (as regras da v22)
 data/catalogo.js     ÚNICA fonte de conteúdo: heróis, itens, deck, classes, textoHab()
 jogo/index.html      Só a estrutura da tela. 64 linhas.
 jogo/estilo.css      TODA a aparência. Área segura: mexer aqui não quebra regra.

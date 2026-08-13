@@ -51,20 +51,23 @@ faltava a ela.
 
 ---
 
-## 3. Bônus defensivo ao lado da torre (PARTE 4)
+## 3. ~~Bônus defensivo ao lado da torre~~ — APROVADO e IMPLEMENTADO na v22
 
-Não implementado — é ideia para discussão, e tem um efeito colateral que precisa
-ser decidido antes.
+Entrou como proposto: **+1 de Armadura** para herói a distância ≤ 1 de torre
+**viva do próprio time**. Torre inimiga não protege quem mergulha; o bônus cai
+com a torre.
 
-A proposta (+1 de armadura para herói adjacente à torre aliada) é simples e
-barata de implementar (`armTotal` já soma bônus). O problema é interação com
-outra regra: a torre **revida 2** em quem a ataca. Somando os dois, atacar uma
-torre defendida passa a custar caro o suficiente para que a resposta ótima seja
-nunca atacar torre defendida — e aí o cerco vira só esperar a onda, que é
-exatamente o turno morto que a v0.6 tinha corrigido.
+**O revide continuou em 2.** A preocupação registrada aqui era o empilhamento
+(revide 2 + armadura 1 tornando o cerco irracional), e a medição não a confirmou:
+`armtorre=0` deu 51,8% de vitória para quem começa contra 52,6% do build
+completo, e o ritmo não mudou — **4,5 de 12 torres por partida**, mediana de 21
+rodadas, com e sem o bônus. Reduzir o revide junto teria sido mexer em dois
+números de uma vez sem que o segundo tivesse motivo.
 
-Se entrar, sugiro entrar **junto** com uma redução do revide (2 → 1) e uma
-medição antes/depois. Isso é uma sessão de balanceamento, não um patch.
+**O que ficou para o playtest humano:** a bateria é cega para agência, e "vale a
+pena mergulhar nesta torre?" é decisão de jogador. Se na mesa o cerco começar a
+parecer irracional, o ajuste continua sendo o revide 2 → 1 — uma linha, e a
+medição antes/depois já está montada (`armtorre=`).
 
 ---
 
@@ -97,24 +100,29 @@ Opções:
 
 ---
 
-## 5. ~~Gasto de ouro no fim da partida~~ — IMPLEMENTADO na v18
+## 5. ~~Gasto de ouro no fim da partida~~ — FECHADO na v22, com quatro gastos
 
-Dois gastos, os dois só na base:
+| Gasto | Preço | O que faz | Entrou em |
+|---|---|---|---|
+| **Reforço** | 6, **+2 por compra** | +1 de Poder permanente | v18 |
+| **Requisição** | 5 | compra 1 carta do baralho | v18 |
+| **Leva de Ferro** | 4, **+1 a cada 3 rodadas** (teto 12) | a sua onda avança 1 casa | v20 |
+| **Sentinela** | 4, **+2 por compra** (máx. 2 na mochila) | 1 ward na mochila, plantada de graça | v22 |
 
-| Gasto | Preço | O que faz |
-|---|---|---|
-| **Reforço** | 6, **+2 a cada compra do mesmo herói** | +1 de Poder permanente |
-| **Requisição** | 5 | compra 1 carta do baralho |
+A revisão da v21 listou cinco candidatos (ward, consumível, carta, creep,
+re-rolagem) e pediu **uma ou duas opções, não cinco**. Com três já na prateleira,
+entrou **uma**: a ward.
 
-O preço subindo do Reforço é o que impede o ouro tardio de virar renda infinita:
-cada ponto custa mais que o anterior. A Requisição foi a recomendação original —
-transforma ouro em **opção** em vez de estatística, e reaproveita o Deck de
-Comando em vez de inventar sistema novo. A IA usa os dois ao fechar o inventário.
+**Por que a ward e não o consumível.** A ward é a única das cinco que ficou
+*melhor* com a regra do mato da v22 — agora que só se enxerga o mato de dentro,
+informação passou a ter preço. E ela não abre submenu: a compra vira carga, a
+carga vira ward num botão só. O consumível de cura, o candidato mais próximo,
+é redundante: quem compra está na base ou morto, e os dois estados já curam.
 
-**Ainda em aberto:** o problema tem dois lados e só mexi num. A **renda nunca
-para** (3 de ouro por herói por rodada só de não agir), então o ouro volta a
-sobrar mesmo com onde gastar. Se depois de jogar ainda sobrar montanha de ouro,
-o ajuste é na renda, não em mais gastos.
+**Continua em aberto (e é o lado que nunca foi mexido):** a **renda nunca para**
+— 3 de ouro por herói por rodada só de não agir. Quatro gastos não resolvem uma
+torneira aberta. Se depois do playtest ainda sobrar montanha de ouro, o ajuste é
+na **renda**, não num quinto gasto.
 
 ---
 
@@ -138,10 +146,25 @@ tiver alguém dentro.** Duas regiões, enxergadas em separado. Ward acende as
 duas. Emboscada (+2 de Força) para quem ataca do mato sem ter sido visto. A IA
 obedece à mesma névoa.
 
-**Lição:** os raios de visão por unidade que este item propunha (herói 3, creep
-2, torre 3, ward 3) nunca foram testados e provavelmente não são necessários. A
-visão por **presença na região** custa uma peça em vez de um número, e num mapa
-11×11 é a que gera decisão.
+**Atualização v21 e v22 — e a lição acima estava errada pela metade.**
+
+Na v19 a conclusão registrada aqui era que raio por unidade "provavelmente não é
+necessário". O Vinicius pediu o contrário na v21 (*"no moba a visão do tabuleiro
+é feito de acordo se há heróis, creeps, torres ou wards do seu time dando
+visão"*), e ele estava certo: **presença por região é grosseira demais** — ou o
+mato inteiro acende, ou nada.
+
+Mas a v21, só com raio, foi longe demais para o outro lado: **78 dos 116**
+hexágonos visíveis na rodada 1, os acampamentos acesos, o Caçador invisível na
+regra e à vista na tela. Foi o relato da v22: *"continuo vendo os adversários no
+mato mesmo sem ter visão."*
+
+O acerto é **as duas coisas juntas**, e é o que está no jogo desde a v22: raio por
+fonte para o mapa aberto, e o **mato bloqueando** — só se enxerga de dentro. Mais
+a contrapartida: **quem ataca fica revelado** até sair da casa de onde bateu.
+
+**Lição de verdade:** presença sozinha é grossa, raio sozinho vaza. O que faz a
+névoa virar decisão é o terreno participar dela.
 
 ---
 
@@ -176,3 +199,25 @@ Registro só o achado técnico: o motor **já suporta** quase tudo que a seção
 `aplicaDano` (depois de sofrer dano), `moveAte` (ao andar) e `expiraDoTime`
 (primeiro golpe da rodada). Um item do tipo "primeiro ataque da rodada causa +1"
 custa um contador por herói e três linhas. Quando o grupo quiser, é barato.
+
+---
+
+## 9. Acampamento e torre aparecem através da névoa (achado na v22)
+
+Não corrigido — é decisão de design, não bug.
+
+Com a névoa da v22 o mapa esconde heróis, mas **continua desenhando estruturas e
+acampamentos em casa escura**: o losango da torre com a vida escrita, e o
+marcador do acampamento com `ATIVO` ou `R3` de respawn.
+
+Onde eles ficam **não** é informação escondida — todo mundo sabe onde é a torre e
+onde é o acampamento, como em qualquer MOBA. O que vaza é o **estado**: a vida
+exata da torre inimiga e se o acampamento já foi farmado.
+
+Opções: **(a)** deixar como está — legibilidade acima de simulação, e ninguém
+reclamou; **(b)** esconder só o número (torre e acampamento aparecem como
+silhueta, sem vida nem contador, enquanto a casa estiver escura). A (b) custa
+duas condições em `desenhaMapa` e nenhuma regra nova.
+
+Sugiro **(b)** se o grupo achar que farm de acampamento inimigo deve ser aposta,
+e **(a)** se o mapa já estiver pesado de ler no celular.

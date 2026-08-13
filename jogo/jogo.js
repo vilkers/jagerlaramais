@@ -71,7 +71,20 @@ function auraDe(h){
     && dist(...h.pos,...o.pos)<=1) ? 1 : 0;
 }
 const poderTotal=h=>h.poder+h.extraPoder+bonus(h,"poder")+auraDe(h);
-const armTotal=h=>h.arm+bonus(h,"arm");
+
+/* ---------- DEFENDER JUNTO DA TORRE ----------
+   +1 de Armadura para quem está encostado numa torre VIVA do próprio time. É a
+   diferença entre brigar no vão da rota e brigar em casa: quem defende ganha um
+   ponto, quem mergulha na torre inimiga não ganha nada.
+
+   Um ponto e não mais. Com a vida da v21 (18–25) e o golpe médio na casa de 6–8,
+   +1 tira cerca de um sétimo do dano — muda a conta da troca sem tornar o par
+   torre+herói impossível de quebrar, que era o risco levantado. E ele morre com
+   a torre: derrubada a estrutura, a rota volta a ser vão. */
+const ARM_TORRE=1;
+const sobTorreAmiga=h=>(h.t===0||h.t===1)&&J.torres.some(x=>
+  x.t===h.t&&x.vida>0&&dist(...h.pos,...ROTAS[x.rota][x.i])<=1);
+const armTotal=h=>h.arm+bonus(h,"arm")+(sobTorreAmiga(h)?ARM_TORRE:0);
 /* TETO DE ALCANCE. Sem ele o Corvo (base 4) somava Cetro +1 e Lente +2 e
    atirava a SETE hexágonos — atravessava meio tabuleiro sem sair do lugar, que
    foi a queixa "os range tão conseguindo 4, 5 hexágonos". Quatro é o teto: ainda
@@ -327,6 +340,19 @@ const POCO=(N===8?[4,4]:(()=>{
 })());
 const POCO_K=k(...POCO);
 
+/* ---------- O MATO ----------
+   Terreno é uma coisa só, classificada uma vez: base, poço, rota (o corredor
+   largo), rio, e o que sobra é MATO. `desenhaMapa` pintava por esta mesma ordem
+   com um if/else local; agora a ordem mora aqui, porque a visão passou a
+   depender dela e duas cópias da regra de terreno viram duas regras diferentes
+   na primeira vez que alguém mexer no mapa. */
+const MATO=new Set();
+NO_TAB.forEach(key=>{
+  if(BASE_S.has(key)||key===POCO_K||LANE.has(key)||RIO_S.has(key))return;
+  MATO.add(key);
+});
+const ehMato=(c,r)=>MATO.has(k(c,r));
+
 /* ---------- ACAMPAMENTOS ----------
    As três posições eram fixas no código: [3,4], [7,6] e [6,4]. Medido no
    tabuleiro 11×11 da v15, o acampamento NEUTRO ficava a 8 da base Azul e a 5 da
@@ -400,9 +426,9 @@ const WARD_RODADAS=3;     /* e ela apaga sozinha */
    fonte de visão, a cada consulta — com ~15 fontes por time e a visão sendo
    perguntada dentro de laços de mira, a bateria de 2000 partidas deixou de
    terminar. Aqui o raio de cada casa é calculado UMA vez, na carga. */
-const RAIO_ATE=(()=>{
+const [RAIO_ATE,RAIO_ATE_ABERTO]=(()=>{
   const maior=Math.max(VISAO_HEROI,VISAO_TORRE,VISAO_BASE,VISAO_ONDA,VISAO_WARD);
-  const m=new Map();
+  const tudo=new Map(), aberto=new Map();
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;
     const porRaio=Array.from({length:maior+1},()=>[]);
@@ -413,16 +439,31 @@ const RAIO_ATE=(()=>{
     }
     /* acumula: porRaio[n] passa a conter tudo até n */
     for(let i=1;i<=maior;i++) porRaio[i]=porRaio[i-1].concat(porRaio[i]);
-    m.set(k(c,r),porRaio);
+    tudo.set(k(c,r),porRaio);
+    /* a mesma lista sem as casas de mato — é o que uma fonte de fora do mato vê */
+    aberto.set(k(c,r),porRaio.map(l=>l.filter(x=>!MATO.has(x))));
   }
-  return m;
+  return [tudo,aberto];
 })();
 
-/* Todas as casas que o time `t` enxerga agora. */
+/* Todas as casas que o time `t` enxerga agora.
+
+   A REGRA DO MATO (v22). Medido na v21: na rodada 1 o time já enxergava 78 das
+   116 casas, e 47 das 70 fora de rota. Com seis torres, três ondas, a base e
+   cinco heróis acendendo 2 de raio cada, a névoa cobria o que ninguém ia visitar
+   e o mato — o único lugar onde esconder-se é jogada — vinha aceso de graça. O
+   Caçador ficava invisível no papel e à vista na tela.
+
+   O conserto não é diminuir raio (isso só empurra o problema): é o mato bloquear
+   visão, como o mato de MOBA sempre bloqueou. Só se enxerga o mato de DENTRO do
+   mato. Vale para todas as fontes, inclusive a ward — ward na rota não vê o mato
+   ao lado, e é isso que faz existir escolha de onde plantar. */
 function campoDeVisao(t){
   const vistos=new Set();
   const acende=(p,raio)=>{
-    const tab=p&&RAIO_ATE.get(k(...p));
+    if(!p)return;
+    const tabela = ehMato(...p) ? RAIO_ATE : RAIO_ATE_ABERTO;
+    const tab=tabela.get(k(...p));
     if(tab) tab[raio].forEach(x=>vistos.add(x));
   };
   J.times[t].herois.filter(h=>!h.morto).forEach(h=>acende(h.pos,VISAO_HEROI));
@@ -443,15 +484,24 @@ function campoDeVisao(t){
    depende de todo mundo lembrar de avisar sempre desatualiza.
    A chave abaixo é ~25 números somados: barata o bastante para rodar a cada
    consulta e correta por construção. */
+/* A conta é em INTEIRO DE 32 BITS, e isso não é preciosismo. A primeira versão
+   somava `x=x*31+…` em `Number` comum: com 5 heróis, 6 torres, 3 frentes e as
+   wards, `x` passa de 1e19 muito antes do fim, e a partir daí o ulp do float é
+   maior que os termos que ainda faltam entrar. Na prática a POSIÇÃO DA WARD e os
+   últimos heróis deixavam de mudar o selo — mover a ward de uma casa para a
+   vizinha dava a mesma chave e a visão vinha do cache velho.
+   `Math.imul` mantém tudo em 32 bits, onde nenhum bit se perde por magnitude. */
 function seloVisao(t){
   let x=0;
+  const mix=n=>{ x=(Math.imul(x,31)+n)|0; };
   const hs=J.times[t].herois;
-  for(let i=0;i<hs.length;i++) x=x*31+hs[i].pos[0]*13+hs[i].pos[1]*7+(hs[i].morto?1:0);
-  for(let i=0;i<J.torres.length;i++) if(J.torres[i].t===t) x=x*31+J.torres[i].vida;
-  x=x*31+J.frentes.topo*7+J.frentes.meio*13+J.frentes.baixo*17;
+  for(let i=0;i<hs.length;i++) mix(hs[i].pos[0]*13+hs[i].pos[1]*7+(hs[i].morto?1:0));
+  for(let i=0;i<J.torres.length;i++) if(J.torres[i].t===t) mix(J.torres[i].vida);
+  mix(J.frentes.topo*7+J.frentes.meio*13+J.frentes.baixo*17);
   const w=J.times[t].wards||[];
-  for(let i=0;i<w.length;i++) x=x*31+w[i].pos[0]*13+w[i].pos[1]*7;
-  return x*31+w.length;
+  for(let i=0;i<w.length;i++) mix(w[i].pos[0]*13+w[i].pos[1]*7);
+  mix(w.length);
+  return x;
 }
 let _visCache=[null,null], _visSelo=[NaN,NaN];
 function visaoDe(t){
@@ -461,9 +511,23 @@ function visaoDe(t){
 }
 const enxergaCasa=(t,c,r)=>visaoDe(t).has(k(c,r));
 
+/* ---------- REVELADO POR TER ATACADO ----------
+   Bater entrega a posição. Quem golpeia de dentro do mato fica visível para o
+   adversário até SAIR da casa de onde bateu — é o que impede que o mato vire um
+   ninho onde se atira de graça a partida inteira, e é a razão de o gank ser um
+   compromisso: você troca o esconderijo pelo dano.
+
+   Guardado como a CASA de onde ele atacou, não como um sinalizador para alguém
+   lembrar de apagar. Andar invalida sozinho, e isso vale para todo caminho que
+   mexe em `pos` — passo, recuo, Convocar, respawn. A v21 já tinha aprendido isso
+   com o cache de visão: estado derivado não desatualiza; sinalizador desatualiza. */
+const entregaPosicao=h=>{ h.revelou=[...h.pos]; };
+const reveladoPorAtaque=h=>!!h.revelou&&h.revelou[0]===h.pos[0]&&h.revelou[1]===h.pos[1];
+
 /* O herói `h` é visível para o time `t`? */
 function visivelPara(h,t){
   if(h.t===t||h.morto)return true;              // os seus você sempre vê
+  if(reveladoPorAtaque(h))return true;          // bateu: entregou onde está
   return enxergaCasa(t,...h.pos);
 }
 /* Escondido AGORA: fora do campo de visão inimigo. É a condição do bônus de
@@ -1136,6 +1200,10 @@ function danoEmEntidade(quem,alvo,bruto,txt,ehUlt,ignoraArm){
   aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm);
 }
 function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
+  /* antes de qualquer coisa: bateu em herói inimigo, entregou a posição.
+     Fica aqui e não em cada habilidade porque este é o funil por onde passam
+     básica, ultimate e respingo — três lugares, uma regra. */
+  if(quem&&quem.t!==alvo.t&&!ehEpico(quem)&&!ehEpico(alvo)) entregaPosicao(quem);
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
   if(ehUlt&&bonus(alvo,"veu")&&!alvo.veuAtivo){
     alvo.veuAtivo=1; reg("b",`VÉU PRISMÁTICO — ${alvo.n} anula a Ultimate`); return; }
@@ -1918,11 +1986,13 @@ function desenhaMapa(){
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
     let cls="hx ";
+    /* a classificação de terreno é a de `MATO` — uma cópia local aqui e a regra
+       da tela sairia da regra da visão no primeiro ajuste de mapa */
     if(BASE_S.has(k(c,r)))cls+="base"+BASE_S.get(k(c,r));
     else if(k(c,r)===POCO_K)cls+="poco";
+    else if(ehMato(c,r))cls+="selva";
     else if(LANE.has(k(c,r)))cls+="rota";
-    else if(RIO_S.has(k(c,r)))cls+="rio";
-    else cls+="selva";
+    else cls+="rio";
     /* mato sem visão fica visivelmente mais escuro: é a única forma de o jogador
        saber que aquele pedaço do mapa pode ter alguém dentro. Sem isso a névoa
        seria invisível — e névoa que não se vê é só herói sumindo sem explicação. */
@@ -2193,8 +2263,40 @@ const GASTOS=[
   {id:"leva", n:"Leva de Ferro", d:"A sua onda de uma rota avança 1 casa agora.",
    o:()=>PRECO_LEVA(),
    pode:h=>h.morto||naBase(h),
-   faz:(h,t)=>{ abreEscolhaRota(t); }}
+   faz:(h,t)=>{ abreEscolhaRota(t); }},
+
+  /* SENTINELA — o gasto tardio que compra INFORMAÇÃO.
+     Escolhido entre os cinco candidatos discutidos (ward, consumível, carta,
+     creep, re-rolagem) por dois motivos. Primeiro, é o único que ficou melhor
+     com a regra do mato da v22: agora que o mato só se vê de dentro, saber onde
+     o adversário está passou a ser um problema de verdade, e a ward é a resposta
+     que o gênero já tem. Segundo, não abre submenu nenhum — a compra vira carga,
+     e a carga vira ward na casa onde o herói estiver, num botão só.
+
+     E ficou UM. A prateleira já tinha três; um quarto é o teto pedido, e um
+     quinto seria a lista de cinco opções que o próprio pedido dizia para não
+     fazer. O consumível de cura, o candidato mais próximo, fica de fora por
+     redundância: quem compra está na base ou morto, e os dois estados já curam. */
+  {id:"sentinela", n:"Sentinela", d:"Leva 1 ward na mochila. Plante onde quiser, de graça.",
+   o:h=>4+2*(h.sentinelasCompradas||0),
+   pode:h=>(h.morto||naBase(h))&&(h.sentinelas||0)<SENTINELAS_MAX,
+   faz:h=>{ h.sentinelas=(h.sentinelas||0)+1;
+            h.sentinelasCompradas=(h.sentinelasCompradas||0)+1; }}
 ];
+/* Duas na mochila. O teto existe para a Sentinela não virar cofre: sem ele o
+   ouro tardio compraria dez wards e o mapa inteiro acenderia de uma vez, que é
+   exatamente o problema que a regra do mato acabou de resolver. */
+const SENTINELAS_MAX=2;
+
+/* Planta uma carga onde o herói está. Não gasta dado nem ação: o custo já foi
+   pago em ouro, e cobrar de novo em tempo faria dela uma compra que ninguém usa. */
+function plantaSentinela(h){
+  if(!h||h.morto||!(h.sentinelas>0))return false;
+  h.sentinelas--;
+  poeWard(h.t,h.pos);
+  toast("sentinela plantada",""); vibra(12);
+  return true;
+}
 /* 4 na rodada 1, subindo 1 a cada três rodadas, teto 12 — a curva foi escolhida
    para cruzar a renda de um herói (3 por rodada parado) por volta da rodada 12,
    que é quando o Barão desce e o mapa passa a valer mais que o cofre. */
@@ -2324,10 +2426,17 @@ function abreManual(){
       <tr><td>Quem matou</td><td>+4 de ouro</td></tr></table></section>
     <section><h4>As cinco posições</h4>
       <p><b>Topo</b> — sozinho lá em cima. Dominar a rota dá <b>Placas</b>: 1 ajusta um dado em ±1, 2 re-rolam. É a sua única fonte de controle sobre a sorte.</p>
-      <p><b>Farm</b> — o Caçador. A intenção dele é <b>escondida</b> no início da rodada. Ele se move normalmente com o <b>Dado Mestre</b>. Se alcançar a rota declarada, arma o <b>gank</b>: +2 de Força.</p>
+      <p><b>Farm</b> — o Caçador. Ele vive no <b>mato</b>, e é lá que ele desaparece: enquanto o adversário não tiver ninguém (nem ward) dentro do mato, ele não está na tela do outro. Sair do mato para a rota é aparecer.</p>
       <p><b>Meio</b> — a rota mais curta. Dominar dá <b>Prioridade</b>: gaste para rolar <b>um dado de ação a mais</b>, quando quiser.</p>
       <p><b>Atirador</b> — frágil e caro, mas escala: a cada 10 de ouro ganha +2 de Poder. Perto do Suporte, ganha escudo e dano.</p>
-      <p><b>Suporte</b> — escuda, doa o próprio dado, e a <b>Ward</b> revela por onde o Caçador inimigo vai sair da rotação.</p></section>
+      <p><b>Suporte</b> — escuda, doa o próprio dado, e planta a <b>Ward</b>: o olho que enxerga um pedaço de mapa onde o time não tem ninguém.</p></section>
+    <section class="destaque"><h4>Visão · o mato esconde</h4>
+      <p>Você só enxerga o que as <b>suas peças</b> enxergam: heróis, torres vivas, a sua onda, a base e as wards. O resto do tabuleiro fica <b>escuro</b> — e herói que está no escuro <b>não aparece</b>.</p>
+      <p>E o <b>mato bloqueia</b>: dentro do mato só se enxerga <b>de dentro do mato</b>. Estar colado nele pela rota não adianta, e ward plantada na rota também não vê lá dentro. Quem quer saber o que tem no mato entra ou <b>planta a ward dentro</b>.</p>
+      <p>Duas saídas para quem está no escuro: atacar de lá vale <b>+2 de Força</b> (emboscada) — mas <b>quem ataca fica visível</b> até sair da casa de onde bateu. Bater entrega a posição.</p>
+      <p>Ouro sobrando com os três itens comprados? A <b>Sentinela</b>, na loja, é uma ward na mochila: compre na base, plante onde quiser, sem gastar dado.</p></section>
+    <section><h4>Defender junto da torre</h4>
+      <p>Herói colado numa torre <b>viva do próprio time</b> ganha <b>+1 de Armadura</b>. Lutar em casa é diferente de lutar no vão da rota — e o bônus cai junto com a torre.</p></section>
     <section class="destaque"><h4>Regra de mesa · presença na rota</h4>
       <p>Um herói só conta para empurrar uma rota depois de <b>passar da própria Torre Exterior</b>. Antes dela, está em desenvolvimento e não gera Top/Meio/Bot. Mais heróis ativos que o rival: a onda anda 1. Empate: não anda.</p></section>
     <section><h4>Torres, ondas e Nexus</h4>
@@ -2556,9 +2665,17 @@ function feiticoBt(h,qual){
   G("btConv").disabled = !dLivre;
   G("btPrio").disabled = !tm.prio || J.fase!=="jogando";
   G("btPrio").textContent = tm.prio ? `⚡ prioridade (${tm.prio})` : "⚡ prioridade";
-  /* linha inteira some quando nenhum dos três serve — devolve altura ao mapa */
+  /* o botão da Sentinela só existe quando o herói selecionado tem carga: ele é a
+     única saída dela, e um botão apagado a partida inteira só ocupa altura */
+  const cargas = selHeroi&&selHeroi.t===J.vez ? (selHeroi.sentinelas||0) : 0;
+  const bw=G("btWard");
+  bw.hidden = !cargas;
+  bw.disabled = !cargas || J.fase!=="jogando" || selHeroi.morto;
+  bw.textContent = `◉ plantar ward${cargas>1?` (${cargas})`:""}`;
+  /* linha inteira some quando nenhum dos botões serve — devolve altura ao mapa */
   G("extraBts").classList.toggle("ocioso",
-    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled && G("btPrio").disabled);
+    G("btPlaca").disabled && G("btRerol").disabled && G("btConv").disabled
+    && G("btPrio").disabled && bw.hidden);
   G("btLoja").classList.toggle("destaque",tm.herois.some(h=>h.morto||naBase(h)));
   G("btLoja").disabled=J.fase!=="jogando";
   G("btTime").innerHTML="Time"+(tm.prio?` <span class="bad">⚡${tm.prio}</span>`:"");
@@ -2756,7 +2873,7 @@ function iaCompra(t){
        mais caro: um monopólio disfarçado de heurística. Agora ela passa uma vez
        por cada tipo, na ordem em que eles resolvem problemas diferentes —
        território, opção, e só então estatística. */
-    const ORDEM_GASTO=["leva","requisicao","reforco"];
+    const ORDEM_GASTO=["sentinela","leva","requisicao","reforco"];
     for(let volta=0;volta<2;volta++){
       for(const id of ORDEM_GASTO){
         const g=gastosDisponiveis(h).find(x=>x.id===id);
@@ -2895,6 +3012,25 @@ function iaPlanejaAlcance(t){
    sem virar espera, e quem já entendeu tem o botão de pular. */
 const RITMO_IA=1200;
 let iaRodando=false, pularIA=false;
+/* A IA planta as Sentinelas que comprou, no fim do turno, onde os heróis
+   pararam. Planta só no MATO — fora dele a ward não acende nada que os raios já
+   não deem, e gastar carga na rota seria a IA jogando pior que as regras.
+
+   O critério NÃO é "não enxergo isto agora": herói parado no mato acende 2 de
+   raio à própria volta, então essa condição é falsa quase sempre e a primeira
+   versão nunca plantou nada — medido numa partida IA×IA inteira, 19 Sentinelas
+   compradas e zero plantadas, com o ouro morrendo na mochila. O que a ward
+   compra é visão que FICA depois que o herói sai. Logo o critério é cobertura:
+   planta se não houver ward dela por perto. */
+function iaPlantaWards(t){
+  J.times[t].herois.forEach(h=>{
+    if(h.morto||!(h.sentinelas>0)||!ehMato(...h.pos))return;
+    const jaCoberto=(J.times[t].wards||[]).some(w=>dist(...w.pos,...h.pos)<=VISAO_WARD);
+    if(jaCoberto)return;
+    plantaSentinela(h);
+  });
+}
+
 async function iaExecutaTurno(){
   if(iaRodando||(!aiMode&&!simMode)||J.fim!==null||J.fase!=="jogando"||(aiMode&&J.vez!==1))return;
   iaRodando=true; pularIA=false;
@@ -2999,6 +3135,7 @@ async function iaExecutaTurno(){
     break;
   }
 
+  iaPlantaWards(lado);
   limpaModo(); selHeroi=null;
   pinta();
   if(bp) bp.classList.remove("on");
@@ -3215,6 +3352,7 @@ G("btFim").onclick=()=>{
 G("btConv").onclick=()=>converteDado();
 G("btPlaca").onclick=()=>{ usaPlaca(1); toast("dado ajustado",""); vibra(10); };
 G("btRerol").onclick=()=>{ rerola(); toast("dado re-rolado",""); vibra(10); };
+G("btWard").onclick=()=>{ if(plantaSentinela(selHeroi)){ calcula(); pinta(); } };
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ if(sheetAberto)return fechaSheet(); return cancela(); }
 });
