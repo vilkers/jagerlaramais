@@ -16,6 +16,67 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v31 — as rotas certas, e os nomes certos · 2026-08-13
+
+Correção da v30. Eu tinha deduzido quatro rotas e batizado quatro personagens
+porque as fichas não traziam nem uma coisa nem outra. Vieram as duas informações,
+e **eu tinha errado quatro rotas e três nomes**.
+
+### Os nomes de verdade
+
+| Eu chamei de | É |
+|---|---|
+| Vovó do Chinelo | **Dona Chinela** |
+| Seu Coco | **Valti** |
+| Bombinha | **Catarino** |
+
+### As quatro rotas erradas
+
+| Personagem | Eu pus em | É |
+|---|---|---|
+| **Valti** | Suporte | **Jungle** |
+| **Gari Mago** | Suporte | **Mid** |
+| **Emerson Emo** | Mid | **Suporte** |
+| **Caramêlo 2.0** | Jungle | **Suporte** |
+
+**A rota é propriedade do chassi**, então trocar só o campo `pos` quebraria a
+distribuição de 4 heróis por rota. Cada um foi **remanejado para o chassi certo**,
+e a escolha de qual chassi dentro da rota não foi sorteio:
+
+- **Valti** herda o assassino de selva com **sangramento no slot de controle** — o
+  Talho de Facão é literalmente um facão que faz sangrar.
+- **Caramêlo** herda o suporte **corpo a corpo** (alcance 1, o mais duro do jogo):
+  cachorro é linha de frente, e a Ultimate dele já era `danoVizinhos +
+  prendeVizinhos`, que é o **Latido Caótico** da ficha ao pé da letra — *confunde
+  e afugenta inimigos em uma área*.
+- **Emerson** herda o suporte **encantador de alcance 3**: Ombro Amigo (escudo e
+  cura), Empresta o Fone (doa o dado) e **Ninguém Me Entende**, que aqui traz um
+  aliado caído de volta. A intensidade dele virou utilidade em vez de dano.
+- **Gari Mago** herda o mago de meio com **zona**: a Coleta Seletiva Suprema
+  espalha lixo que continua no chão cobrando de quem fica.
+
+Nenhum efeito foi alterado — só nome e a que chassi cada personagem se liga.
+123 testes, inalterados.
+
+### O mapa de arte mudou junto
+
+Quatro personagens trocaram de `id`, e é por `id` que a arte entra:
+
+| Personagem | Arquivo |
+|---|---|
+| O Taxista | `arte/herois/web/vharn.jpg` |
+| Dona Chinela | `kaross.jpg` |
+| Pombo Ciborgue | `nyx.jpg` |
+| **Valti** | **`kurr.jpg`** |
+| Parabólica Diabólica | `solenne.jpg` |
+| **Gari Mago** | **`nira.jpg`** |
+| Zé Griteco | `vesper.jpg` |
+| Catarino | `nessa.jpg` |
+| **Caramêlo 2.0** | **`gorm.jpg`** |
+| **Emerson Emo** | **`mirrha.jpg`** |
+
+---
+
 ## v30 — dez heróis novos, mesmo chassi · 2026-08-13
 
 Dez personagens vindos das fichas de arte entram no lugar de dez do elenco.
