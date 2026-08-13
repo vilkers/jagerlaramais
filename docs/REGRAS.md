@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 25** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 26** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -327,14 +327,28 @@ Quem está **SEM CURA** não é tratado pela base.
 
 ### O poço — Dragão e Barão
 
-Bater no poço é como bater na torre, mas **sem dono**: qualquer um bate, e **quem
-dá o último golpe leva o prêmio inteiro**. Básica tira **1**, Ultimate tira **2**,
-respingo de área tira 1.
+O poço é **sem dono**: qualquer um bate, e **quem dá o último golpe leva o prêmio
+inteiro**.
 
-| Morador | Desce | Vida | Revide | Prêmio |
-|---|---|---|---|---|
-| **Dragão** | rodada 5 | **3** | 2 | **+1 de Poder** no time, permanente e acumulativo |
-| **Barão** | rodada 12 | 4 | 4 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+**Os dois moradores contam coisas diferentes, de propósito.**
+
+| Morador | Desce | Vida | Armadura | Como apanha | Revide | Prêmio |
+|---|---|---|---|---|---|---|
+| **Dragão** | rodada 5 | **3** | — | **conta GOLPES**: básica 1, Ultimate 2, respingo 1. O dado não entra | 2 | **+1 de Poder** no time, permanente e acumulativo |
+| **Barão** | rodada 12 | **16** | **3** | **conta DANO**, pela regra dos heróis: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora a armadura | 4 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+
+**Por que os dois não são iguais.** Contar golpes achata o dado: contra o Dragão o
+1 e o 6 de uma básica valem o mesmo. Isso é aceitável num alvo de 3 que cai em dois
+dados, na rodada 5, quando ninguém tem item. Num alvo grande, achatar apagaria a
+decisão inteira — por isso o Barão premia o dado que você comprometeu nele, e as
+três Ultimates de dano garantido ganham no poço o mesmo papel que já têm contra
+tanque.
+
+**O que faz o Barão exigir um grupo é a ARMADURA, não a vida.** Ele tem **16**, que
+é menos que a vida de qualquer um dos 20 heróis — o objetivo não é o saco de pancada
+mais gordo da mesa. Mas com **3 de armadura** e Poder 3, uma básica de dado 2 tira
+**2** e uma Ultimate de dado 6 tira **8**: quatro vezes mais. Cutucar com dado ruim
+quase não anda, e fechar num turno pede **4 dos 5 heróis**.
 
 O Dragão cai em **dois dados** — uma Ultimate (2) e uma básica (1) — e nunca em
 um só. É o preço que o faz caber na janela curta dele sem virar farm: com 4 de

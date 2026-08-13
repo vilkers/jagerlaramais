@@ -16,6 +16,139 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v26 — o Barão apanha como herói, e os escudos deixam de apagar o turno · 2026-08-13
+
+Duas mudanças de regra, **simuladas antes de entrar** — os números foram varridos
+com `sim/epicos.js baraodano= baraoarm=` sem tocar em `jogo/jogo.js`, e só depois
+aplicados.
+
+### Os dois moradores passam a contar coisas diferentes
+
+| | Dragão | Barão |
+|---|---|---|
+| Vida | **3** | **16** |
+| Armadura | — | **3** |
+| Como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1 — o dado não entra | **conta DANO**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura |
+| Revide | 2 | 4 |
+
+**O Dragão não foi tocado.** Continua em Ultimate 2 e básica 1, e há teste
+travando isso nos dois sentidos — um exige que a básica tire 1 e a Ultimate 2,
+outro exige que o dado **não** mude o que ele leva.
+
+**Por que os dois não são iguais.** Contar golpes achata o dado: contra o Dragão
+o 1 e o 6 de uma básica valem o mesmo. Isso é aceitável num alvo de 3 que cai em
+dois dados, na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa.
+Num alvo grande, achatar apagaria a decisão inteira.
+
+### O que faz o Barão exigir um grupo é a ARMADURA, não a vida
+
+A primeira tentativa deu a ele **22 de vida e 1 de armadura** — perto do herói
+mais duro do jogo. Estava resolvendo o problema errado, e o retorno do playtest
+foi direto: *"não precisa ter a vida até a do maior herói do jogo, tem que ser
+equilibrado para necessitar de um grupo para levá-lo"*.
+
+Com armadura baixa, todo dado contribui proporcionalmente: cinco cutucadas fracas
+derrubam o objetivo igual a dois golpes comprometidos. Vida alta vira **barra
+comprida**, não exigência de time — é o jeito preguiçoso de fazer um chefe.
+
+**16 de vida e 3 de armadura.** Com Poder 3:
+
+| Golpe | Conta | Tira |
+|---|---|---|
+| básica, dado 2 | `2 + 3 − 3` | **2** |
+| básica, dado 6 | `6 + 3 − 3` | 6 |
+| Ultimate, dado 6 | `round(6 × 1,25) + 3 − 3` | **8** |
+
+**Quatro vezes** entre o pior e o melhor golpe. Cutucar com dado ruim quase não
+anda, e é isso — e não o tamanho da barra — que obriga a comprometer o dado bom de
+vários heróis ao mesmo tempo. Fechar num turno pede **4 dos 5 heróis** (`16 ÷ 4`).
+
+E **16 fica abaixo da vida de todos os 20 heróis** — o mais frágil tem 18. O
+objetivo não é mais o saco de pancada mais gordo da mesa. Há teste travando as
+duas pontas: o Barão tem menos vida que o herói mais frágil, e a Ultimate tira
+pelo menos 3× o que tira a básica de dado baixo.
+
+**Dificuldade preservada**, n=2500 por braço:
+
+| Regra | Barão morto | golpes | duração |
+|---|---|---|---|
+| golpes, vida 4 (v25) | 52,1% · 53,4% · 56,6% | 3,3–3,5 | 23 |
+| **dano, 16/3 (v26)** | **54,7%** | 3,1 | 23 |
+
+Dragão inalterado (34,8%). Ordem no confronto espelhado: **53,3%** (n=9000) contra
+52,98% da v25 — 0,3 ponto, ruído.
+
+### Os escudos apagavam o turno
+
+**O relato:** *"achei os valores dos buffs mto fortes"*.
+
+Confere. Heróis têm 18 a 25 de vida, e a Muralha do Vharn dava `Força + 11` — **17
+num herói de 25**, ou 68% da vida máxima, de uma habilidade só. Isso não é
+"absorve um golpe", é **ignore a rodada**. Foi exatamente o episódio que abriu a
+v25: dois ataques no Vharn sem tirar um ponto de vida.
+
+**Teto de 12** — metade da vida do maior herói do jogo, dois terços da do menor:
+
+| Escudo | Era (dado 6) | Ficou | % da vida de quem recebe |
+|---|---|---|---|
+| **Muralha** (Vharn) | Força + 11 = **17** | Força + 6 = **12** | 68% → **48%** |
+| **Vento Contrário** (Vidra) | Força + 9 = 15 | Força + 5 = **11** | 83% → **61%** |
+| **Anteparo** (Gorm) | Força + 7 = 13 | Força + 4 = **10** | 52% → **40%** |
+
+Os demais já estavam dentro (Sopro 10, Eco 11, Véu de Névoa 11, Reposicionar 10) e
+não foram tocados. A faixa inteira saiu de **10 a 17** para **10 a 12**, e há teste
+travando o teto.
+
+### A Égide entregava 7 e a carta prometia 4
+
+Achado ao auditar os buffs, e é o pior tipo de erro de balanceamento: **o jogador
+escolhia a dádiva lendo um número e recebia outro.** `const BARAO_ESCUDO=7`, com a
+carta dizendo *"Todos os seus heróis ganham 4 de escudo"*.
+
+E 7 não é 4 com folga: por herói, por turno, com cinco heróis e duas rodadas,
+somava **70 de escudo** — quase três heróis inteiros de vida, de graça, num jogo
+em que o maior tem 25. **Agora entrega 4, como sempre esteve escrito**, e são 40 —
+ainda a dádiva que "compra as brigas que você não podia comprar", sem apagar duas
+rodadas de combate. Há teste conferindo que o motor entrega o número que a própria
+carta promete.
+
+### O degrau que a medição tem, e que é preciso saber
+
+**O agente da bateria só compromete dado com o poço quando consegue FECHAR no
+mesmo turno** — decisão de desenho antiga e documentada. A consequência é que a
+medição do poço é **quantizada em degraus inteiros de heróis necessários**:
+
+| Heróis necessários | Configurações | Barão morto |
+|---|---|---|
+| 4 | 16/3 · 22/1 · 24/0 · 18/2 | 55–58% |
+| 5 | 25/1 · 27/1 · 25/2 | 44–46% |
+
+Passar de 4 para 5 derruba 10 pontos de uma vez, porque precisar dos cinco livres é
+muito mais raro que precisar de quatro. **Leitura de vida do poço acima de ~5
+golpes típicos mede o agente desistindo, e não o objetivo** — foi por isso que a
+primeira varredura mostrou um penhasco entre vida 30 e 36 que não existe no jogo.
+
+### Duas correções de unidade que a mudança exigiu
+
+Enquanto os dois moradores contavam golpes, motor e IA podiam calcular o golpe em
+lugares diferentes sem ninguém notar. Com o Barão em dano, a divergência viraria a
+IA achando que nunca fecha e **largando o objetivo**:
+
+- **`iaJogadas`** avaliava `ep.vida <= (i===2?GOLPE_ULT:GOLPE_HAB)` — em golpes,
+  enquanto o motor cobraria em dano;
+- **o agente de simulação** avaliava `ep.vida <= podemAgir.length` — e teria
+  reportado "ninguém quer o Barão" quando o que houve foi o agente ficar cego para
+  a unidade.
+
+O cálculo virou **uma função só**, `golpeNoPoco(h,hb,slot,F,ep)`, usada pelo golpe
+mirado e pela IA, com teste conferindo que o que a IA usa para decidir é o que o
+motor cobra. O agente de simulação ganhou a mesma conta, e a mudança é **no-op**
+para morador que conta golpes — verificado antes de medir qualquer coisa.
+
+112 testes.
+
+---
+
 ## v25 — dois botões mortos, o escudo invisível e o tempo entrando no jogo · 2026-08-13
 
 Cinco itens de playtest. Dois eram bug — e os dois eram **de tela, não de regra**,

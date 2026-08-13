@@ -20,7 +20,7 @@ vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
   vida:25,poder:3,arm:3,alc:1,
   habs:[{n:"Golpe de Escudo",f:1,alvo:"in",ef:{dano:1}},
         {n:"Provocar",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
-        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:11,prendeVizinhos:1}}]},
+        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
 
 kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
   vida:22,poder:3,arm:2,alc:1,
@@ -145,14 +145,14 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
 gorm:{n:"Gorm",ep:"o Portão",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
   vida:25,poder:3,arm:4,alc:1,
   habs:[{n:"Empurrão",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
-        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:7}},
+        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:4}},
         {n:"Barreira",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
   vida:18,poder:2,arm:2,alc:3,
   habs:[{n:"Presságio",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Empréstimo",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:9}}]}
+        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5}}]}
 };
 
 /* ═══════════ O CATÁLOGO COMPLETO ═══════════

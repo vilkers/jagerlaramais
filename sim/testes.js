@@ -1508,6 +1508,166 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      + `— deixou de custar o segundo dado, e com ele o dilema`);
 });
 
+/* ═══════════════ v26 — o Barão apanha como herói ═══════════════ */
+
+/* Cada morador conta uma coisa, e é de propósito. O Dragão conta GOLPES
+   (Ultimate 2, básica 1, o dado não entra); o Barão conta DANO, pela mesma
+   fórmula de qualquer herói. Estes testes travam os dois lados: sem o primeiro,
+   alguém "uniformiza" o Dragão; sem o segundo, o Barão volta a ser um contador. */
+
+const cenaPoco = (id, vida) => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .mov(0).vez(0);
+  const g = c.g;
+  g.J.rodada = id === "barao" ? 12 : 1;
+  g.J.poco.id = id;
+  g.J.poco.vidaMax = vida || g.EPICO[id].vida;
+  g.J.poco.vida = g.J.poco.vidaMax;
+  return c;
+};
+/* bate no poço com o herói `h` usando o slot `i` e o dado `dado`; devolve quanto saiu */
+function golpeNoPoco(c, h, i, dado) {
+  const g = c.g;
+  h.agiu = 0; h.vida = g.CATALOGO[h.id].vida;
+  c.dados(dado, dado, dado);
+  const v0 = g.J.poco.vida;
+  c.mira(h, i); g.atacaEpico(g.J.poco);
+  return v0 - g.J.poco.vida;
+}
+
+teste("o Barão apanha pela regra dos heróis — Força + Poder − Armadura", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");                      // Kaross: básica dano 1
+  const livre = g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v));
+  c.poe(h, livre);
+
+  const arm = g.EPICO.barao.arm || 0;
+  const P = g.poderTotal(h);
+  for (const dado of [2, 4, 6]) {
+    const esperado = Math.max(1, Math.round(dado * 1) + P - arm);
+    eq(golpeNoPoco(c, h, 0, dado), esperado,
+       `básica com dado ${dado} devia tirar ${esperado} do Barão (Força+Poder−Armadura)`);
+  }
+});
+
+teste("no Barão o dado importa; no Dragão, não", () => {
+  const cB = cenaPoco("barao", 99), gB = cB.g;
+  const hB = cB.heroi(0, "topo");
+  cB.poe(hB, gB.vizinhos(...gB.POCO).find(v => gB.noTab(...v) && !gB.em(...v)));
+  ok(golpeNoPoco(cB, hB, 0, 6) > golpeNoPoco(cB, hB, 0, 1),
+     "o Barão levou o mesmo de um dado 6 e de um dado 1 — ele voltou a contar golpes");
+
+  const cD = cenaPoco("dragao", 99), gD = cD.g;
+  const hD = cD.heroi(0, "topo");
+  cD.poe(hD, gD.vizinhos(...gD.POCO).find(v => gD.noTab(...v) && !gD.em(...v)));
+  eq(golpeNoPoco(cD, hD, 0, 6), golpeNoPoco(cD, hD, 0, 1),
+     "o Dragão passou a variar com o dado — ele conta GOLPES, e é assim de propósito");
+});
+
+teste("o Dragão continua em Ultimate 2 e básica 1", () => {
+  const c = cenaPoco("dragao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  eq(golpeNoPoco(c, h, 0, 6), 1, "a básica deixou de tirar 1 do Dragão");
+  eq(golpeNoPoco(c, h, 2, 6), 2, "a Ultimate deixou de tirar 2 do Dragão");
+});
+
+/* O QUE OBRIGA UM GRUPO É A ARMADURA, NÃO A VIDA.
+   A primeira tentativa deu ao Barão 22 de vida e 1 de armadura, e resolvia o
+   problema errado: com armadura baixa todo dado contribui proporcionalmente, e
+   cinco cutucadas fracas derrubam o objetivo igual a dois golpes comprometidos —
+   vida alta vira barra comprida, não exigência de time. Com armadura 3 o dado
+   fraco quase não conta, e é isso que faz o Barão pedir os dados bons de vários
+   heróis ao mesmo tempo. */
+teste("no Barão o dado bom vale muito mais que o fraco — é isso que exige um grupo", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+
+  const fraco = golpeNoPoco(c, h, 0, 2);      // básica, dado 2
+  const forte = golpeNoPoco(c, h, 2, 6);      // Ultimate, dado 6
+  ok(forte >= fraco * 3,
+     `Ultimate com dado 6 tira ${forte} e básica com dado 2 tira ${fraco} — só ${(forte / fraco).toFixed(1)}× `
+     + `de diferença. Sem esse degrau, cutucar com dado ruim vale tanto quanto comprometer o bom, `
+     + `e o Barão deixa de precisar de um grupo`);
+});
+
+teste("o Barão não é o saco de pancada mais gordo da mesa", () => {
+  const c = cena();
+  const g = c.g;
+  const menorHeroi = Math.min(...Object.values(g.CATALOGO).map(d => d.vida));
+  ok(g.EPICO.barao.vida < menorHeroi,
+     `o Barão tem ${g.EPICO.barao.vida} de vida e o herói mais frágil tem ${menorHeroi} — `
+     + `o objetivo passou a exigir grupo por ter barra comprida, que é o jeito preguiçoso`);
+  ok(g.EPICO.barao.arm >= 3,
+     `o Barão tem ${g.EPICO.barao.arm} de armadura — é a armadura, e não a vida, que faz o dado ruim não servir`);
+});
+
+/* Nenhum escudo pode valer um turno inteiro. A Muralha dava Força + 11, ou seja
+   17 num herói de 25 — 68% da vida máxima, de uma habilidade só. Isso não é
+   "absorve um golpe", é "ignore a rodada". Teto de 12: metade da vida do maior
+   herói do jogo e dois terços da do menor. */
+teste("nenhum escudo passa de 12 — metade da vida do maior herói", () => {
+  const c = cena();
+  const g = c.g;
+  const TETO = 12, DADO_MAX = 6;
+  const passaram = [];
+  Object.values(g.CATALOGO).forEach(def => def.habs.forEach(hb => {
+    if (!hb.ef.escudo) return;
+    const maximo = DADO_MAX + hb.ef.escudo;
+    if (maximo > TETO) passaram.push(`${def.n}/${hb.n} chega a ${maximo}`);
+  }));
+  eq(passaram.length, 0,
+     `escudo acima do teto de ${TETO}: ${passaram.join(", ")} — escudo desse tamanho `
+     + `não absorve um golpe, apaga um turno`);
+});
+
+/* A carta prometia 4 de escudo e o motor entregava 7. O jogador escolhia a
+   dádiva lendo um número e recebia outro — e 7 por herói por turno somava 70 de
+   escudo no time em duas rodadas. */
+teste("a Égide entrega exatamente o escudo que a própria carta promete", () => {
+  const c = cena();
+  const g = c.g;
+  const egide = g.DADIVAS.find(d => d.id === "egide");
+  ok(egide, "não achei a Égide entre as dádivas");
+  const prometido = /(\d+) de escudo/.exec(egide.d);
+  ok(prometido, `o texto da Égide não diz quanto escudo dá: "${egide.d}"`);
+  eq(g.BARAO_ESCUDO, +prometido[1],
+     `a carta promete ${prometido[1]} de escudo e o motor entrega ${g.BARAO_ESCUDO}`);
+});
+
+teste("dano garantido ignora a armadura do Barão, como ignora a de um herói", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  /* Solenne: Julgamento é danoFixo 8 */
+  const s = c.heroi(0, "meio");
+  const ult = s.habs[2];
+  ok(ult.ef.danoFixo, "a Ultimate da Solenne deixou de ser dano fixo");
+  c.poe(s, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  eq(golpeNoPoco(c, s, 2, 6), ult.ef.danoFixo,
+     "a armadura do Barão comeu parte do dano garantido");
+});
+
+/* Quando os dois moradores contavam golpes, o motor e a IA podiam calcular o
+   golpe em lugares diferentes sem ninguém notar. Com o Barão em dano, a
+   divergência viraria a IA achando que nunca fecha e largando o objetivo. */
+teste("a IA avalia o poço na mesma unidade em que o motor cobra", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  c.dados(5, 5, 5); h.agiu = 0;
+
+  const previsto = g.golpeNoPoco(h, h.habs[0], 0, 5, g.J.poco);
+  const saiu = golpeNoPoco(c, h, 0, 5);
+  eq(saiu, previsto,
+     "o que a IA usa para decidir não é o que o motor cobra — ela vai largar o Barão");
+});
+
 /* ═══════════════ v25 — a loja e o escudo que não apareciam ═══════════════ */
 
 /* RELATO: "não tô conseguindo comprar os itens de buff".

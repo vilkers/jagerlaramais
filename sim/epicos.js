@@ -55,6 +55,19 @@ if (opcoes.revide === "off")
 if (opcoes.rdragao !== undefined)
   trocas.push([/n:"Dragão", vida:(\d+), revide:\d+/, `n:"Dragão", vida:$1, revide:${+opcoes.rdragao}`]);
 
+/* ---- o Barão conta DANO desde a v26 ----
+   `baraodano=N` e `baraoarm=N` varrem a vida e a armadura dele; `baraogolpe=on`
+   devolve a regra antiga (contava golpes, vida 4) e existe para o A/B continuar
+   possível depois que a mudança virou padrão. O Dragão nunca é tocado por
+   nenhuma das três — ele conta golpes por desenho. */
+if (opcoes.baraodano !== undefined)
+  trocas.push([/barao: \{n:"Barão",  vida:\d+/, `barao: {n:"Barão",  vida:${+opcoes.baraodano}`]);
+if (opcoes.baraoarm !== undefined)
+  trocas.push([/(barao: \{n:"Barão",  vida:\d+, )arm:\d+/, `$1arm:${+opcoes.baraoarm}`]);
+if (opcoes.baraogolpe === "on")
+  trocas.push([/barao: \{n:"Barão",  vida:\d+, arm:\d+, porDano:1,/,
+               'barao: {n:"Barão",  vida:4, arm:0,']);
+
 const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ") : "build atual";
 

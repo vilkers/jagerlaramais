@@ -40,8 +40,29 @@ function jogaUma(ctx, opc = {}) {
         g.iniciaHab(i);
         if (g.modo === "mirar") {
           /* podemAgir conta os heróis que ainda têm dado — teto otimista do que dá
-             para despejar no poço antes do turno acabar. */
-          const fechavel = g.alvosEpico.filter(ep => ep.vida <= podemAgir.length);
+             para despejar no poço antes do turno acabar.
+
+             A conta precisa saber em QUE UNIDADE está a vida do morador. O poço
+             sempre contou GOLPES (vida 3 = três golpes), e `ep.vida <=
+             podemAgir.length` lia isso direto. Um morador que recebe dano pela
+             regra dos heróis tem vida na casa das dezenas, e a mesma comparação
+             daria falso sempre: o agente pararia de encostar nele e a medição
+             mostraria "ninguém quer" quando o que houve foi o agente ficar cego
+             para a unidade.
+
+             GOLPE_TIPICO é uma estimativa grosseira de propósito — o golpe médio
+             de um herói (dado ~3,5 + Poder ~3) menos a armadura do morador. Serve
+             para o agente decidir "dá para fechar neste turno?", que é uma
+             pergunta de ordem de grandeza, não de precisão. Para morador que
+             conta golpes o valor é 1 e a conta volta a ser exatamente a de antes,
+             então esta mudança é no-op no build que conta golpes. */
+          const GOLPE_TIPICO = 7;
+          const custoEmDados = ep => {
+            const def = g.EPICO && g.EPICO[ep.id];
+            if (!def || !def.porDano) return ep.vida;          // vida já está em golpes
+            return Math.ceil(ep.vida / Math.max(1, GOLPE_TIPICO - (def.arm || 0)));
+          };
+          const fechavel = g.alvosEpico.filter(ep => custoEmDados(ep) <= podemAgir.length);
           /* Nexus primeiro: é a condição de vitória, e nenhum outro alvo compete
              com ela. Sem este ramo o agente ignorava o golpe de herói no Nexus e
              a bateria media um jogo que não é o que está no arquivo. */

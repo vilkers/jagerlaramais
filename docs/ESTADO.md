@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v25 (o tempo entra no jogo) · **Atualizado em:** 2026-08-13
+**Versão:** v26 (o Barão apanha como herói) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -32,7 +32,10 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
-| Poço épico | casa **[8,8]** (derivada) · Dragão (**3 de vida**, revide 2) até a rodada 12, **Barão (4, revide 4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1. O Dragão cai em **Ultimate + básica**, nunca numa Ultimate só |
+| Poço épico | casa **[8,8]** (derivada) · **Dragão** (3 de vida) até a rodada 12, **Barão a partir da 12 — toma o poço mesmo com o Dragão vivo** |
+| Dragão — como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1, o dado não entra. Cai em **Ultimate + básica**, nunca numa Ultimate só. Revide 2 |
+| Barão — como apanha | **conta DANO, pela regra dos heróis**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura. **16 de vida, 3 de armadura** — menos vida que qualquer herói; é a **armadura** que o faz exigir grupo (básica de dado 2 tira 2; Ultimate de dado 6 tira 8). Fechar num turno pede **4 dos 5**. Revide 4 |
+| Teto de escudo | **12** — metade da vida do maior herói. Muralha 17→12, Vento Contrário 15→11, Anteparo 13→10. Égide do Barão **4** por turno (era 7, e a própria carta já dizia 4) |
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
@@ -70,7 +73,7 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 103 testes de regressão — um por bug já relatado
+node sim/testes.js        # 112 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói
