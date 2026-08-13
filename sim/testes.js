@@ -1508,6 +1508,28 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      + `— deixou de custar o segundo dado, e com ele o dilema`);
 });
 
+/* ═══════════════ v29 — níveis da IA, e o crash do time inteiro morto ═══════════════ */
+
+/* Achado dirigindo a IA de verdade em sim/niveis.js: com o TIME INTEIRO morto,
+   `iaJogaCartas` escolhia como alvo o herói vivo mais saudável — que não existe —
+   e seguia jogando a carta com `selHeroi` indefinido. A primeira carta de ward
+   estourava `TypeError: Cannot read properties of undefined (reading 'pos')` e a
+   partida MORRIA. Time inteiro no respawn ao mesmo tempo é situação comum no fim
+   de partida, não caso de borda. */
+teste("com o time inteiro morto a IA não joga carta — e não derruba a partida", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  g.J.times[0].herois.forEach(h => { h.morto = 2; h.vida = 0; });
+  g.maos[0] = g.baralho.slice(0, 3);            // mão cheia, para ela querer jogar
+
+  let estourou = null;
+  try { g.iaJogaCartas(0); } catch (e) { estourou = e; }
+  eq(estourou, null,
+     `a IA estourou com o time morto: ${estourou && estourou.message}`);
+});
+
 /* ═══════════════ v28 — a rotação do Caçador ═══════════════ */
 
 /* No início da rodada os dois escolhem, às cegas, para onde o próprio Caçador

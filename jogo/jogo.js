@@ -558,6 +558,9 @@ function migraCacador(t){
 function iaEscolheRotacao(t){
   const h=cacadorDe(t);
   if(!h) return "proprio";
+  /* o Aprendiz aposta no acaso — e é aposta de verdade, não sabotagem: às vezes
+     acerta o destino certo, como quem ainda não leu o mapa */
+  if(!IA().rotacaoBoa) return ROTACOES[Math.floor(Math.random()*ROTACOES.length)].id;
   if(J.poco.vida>0&&dist(...h.pos,...POCO)<=ROTACAO_PASSOS+2) return "poco";
   const meu=J.times[t].herois.reduce((a,x)=>a+x.ouro,0);
   const dele=J.times[1-t].herois.reduce((a,x)=>a+x.ouro,0);
@@ -949,6 +952,36 @@ const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver ata
 let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
     alvoNexus=null,mover=[],lojaHeroi=null;
 let aiMode=false, simMode=false;
+
+/* ---------- OS TRÊS NÍVEIS DA IA ----------
+   A regra que rege tudo aqui: DIFICULDADE MEXE NA QUALIDADE DA DECISÃO, NUNCA
+   NOS NÚMEROS. A IA difícil não ganha dano, vida, ouro nem dado a mais, e não
+   enxerga um hexágono sequer além do que a névoa deixa — este projeto já decidiu
+   que ela obedece à mesma névoa e não trapaceia (v19), e nível de dificuldade
+   não é desculpa para desfazer isso. Uma IA que trapaceia ensina a regra errada:
+   o jogador perde e não sabe o que fez de errado, porque não fez.
+
+   O que muda entre os níveis é o que qualquer jogador humano faz melhor com
+   experiência — reparar na melhor jogada, gastar ouro, comprar visão, converter
+   dado em movimento para chegar, voltar para defender e disputar o objetivo.
+
+   `erro` é o coração: a chance de a IA NÃO pegar a melhor jogada da lista que
+   ela mesma ordenou. É assim que se erra de verdade — vendo a jogada certa e
+   escolhendo outra —, e não jogando dado escondido.
+
+   `minimo` é o piso de nota para agir. Contraintuitivo e proposital: piso ALTO
+   deixa a IA passiva, porque ela desdenha jogada pequena que somada ganha
+   partida. É o erro clássico de quem está aprendendo. */
+const NIVEIS_IA={
+  facil:  {id:"facil",  n:"Aprendiz", d:"Erra bastante e joga passivo. Compra item, mas não warda, não volta para defender e não disputa o poço.",
+           erro:0.40, minimo:26, compra:1, wards:0, alcance:0, defende:0, objetivo:0, rotacaoBoa:0},
+  normal: {id:"normal", n:"Veterano", d:"Joga o mapa inteiro: compra, warda, volta para defender o Nexus e disputa o poço.",
+           erro:0.20, minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1},
+  dificil:{id:"dificil",n:"Mestre",   d:"Não erra jogada e concentra fogo em quem já está caindo.",
+           erro:0,    minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1, foco:1}
+};
+let nivelIA="normal";
+const IA=()=>NIVEIS_IA[nivelIA]||NIVEIS_IA.normal;
 
 function novo(){
   J={
@@ -3446,13 +3479,19 @@ function iaJogadas(t){
           saida.push({h,i,tipo:"torre",v:tr,nota});
         });
 
-        /* HERÓI — matar vale muito mais que machucar. */
+        /* HERÓI — matar vale muito mais que machucar. O Mestre ainda soma foco:
+           entre dois alvos igualmente atingíveis, ele bate em quem já está
+           ferido, que é o que transforma dano espalhado em abate. */
         alvos.filter(o=>o.t!==h.t&&!o.morto).forEach(o=>{
           const d=iaDanoReal(h,hb,i,F,o);
           const mata=d>=o.vida||(hb.ef.executa&&o.vida<=hb.ef.executa);
           let nota = mata ? 300*iaValorHeroi(o)
                           : 10*Math.min(d,o.vida)*iaValorHeroi(o)/Math.max(1,o.vidaMax/6);
           if(!mata&&i===2) nota*=.55;               /* não queima Ultimate sem fechar */
+          /* FOCO (só o Mestre): alvo já ferido vale mais, porque dano em quem
+             está caindo vira abate e dano espalhado vira nada. Não é bônus de
+             número — é ordem de preferência entre alvos que ela já podia bater. */
+          if(IA().foco&&!mata) nota*=1+.8*(1-o.vida/o.vidaMax);
           saida.push({h,i,tipo:"heroi",v:o,nota});
         });
 
@@ -3483,8 +3522,18 @@ function iaJogadas(t){
    guardar o dado (e convertê-lo em movimento) a gastar num golpe inútil. */
 function iaMelhorJogada(t,minimo){
   const lista=iaJogadas(t);
-  const j=lista[0];
-  if(!j||j.nota<(minimo||0))return null;
+  const cfg=IA();
+  const piso=(minimo!==undefined&&minimo!==null)?minimo:cfg.minimo;
+  /* O ERRO. Ela ordenou a lista e conhece a melhor — e às vezes escolhe outra,
+     que é exatamente como um jogador inexperiente erra: a informação estava lá.
+     Nunca escolhe jogada abaixo do piso, senão viraria IA aleatória em vez de
+     IA fraca, e jogar contra o acaso não ensina nada. */
+  const viaveis=lista.filter(x=>x.nota>=piso);
+  if(!viaveis.length)return null;
+  const j=(cfg.erro&&viaveis.length>1&&Math.random()<cfg.erro)
+    ? viaveis[1+Math.floor(Math.random()*(viaveis.length-1))]
+    : viaveis[0];
+  if(!j)return null;
   limpaModo(); selHeroi=j.h; iniciaHab(j.i);
   if(j.tipo==="nexus")      atacaNexus(j.v);
   else if(j.tipo==="torre") atacaTorre(j.v);
@@ -3506,6 +3555,7 @@ function iaMelhorJogada(t,minimo){
    os caros são os que mudam o combate — e só quando o herói está na base ou
    morto, que é a mesma regra do humano. */
 function iaCompra(t){
+  if(!IA().compra)return false;   // o Aprendiz deixa o ouro parado, como quem está aprendendo
   let comprou=false;
   J.times[t].herois.forEach(h=>{
     if(!(h.morto||naBase(h)))return;
@@ -3553,6 +3603,11 @@ function iaJogaCartas(t){
     /* cartas que pedem herói recebem o melhor candidato antes da checagem */
     const alvo=J.times[t].herois.filter(h=>!h.morto)
       .sort((a,b)=>(b.vida/b.vidaMax)-(a.vida/a.vidaMax))[0];
+    /* TIME INTEIRO MORTO: sem herói vivo não há alvo, e seguir daqui punha
+       `selHeroi` indefinido dentro de `jogaCarta` — a primeira carta que lê
+       `h.pos` (ward, recall, escudo) derrubava a partida com TypeError. Cinco
+       heróis no respawn ao mesmo tempo é fim de partida normal, não borda. */
+    if(!alvo)break;
     const id=mao.find(x=>{
       const salvo=selHeroi; selHeroi=alvo;
       const pode=podeJogar(x); selHeroi=salvo; return pode;
@@ -3635,13 +3690,13 @@ function iaDestino(h,t){
      voltaria, e o jogador jamais veria a última luta que ela devolve.
      Um herói e não o time todo — o mais perto de casa. Segurar o Nexus com
      cinco é perder o mapa inteiro para não perder um ponto. */
-  if(J.nexus[t]<=1 && rotaAbertaContra(t)){
+  if(IA().defende && J.nexus[t]<=1 && rotaAbertaContra(t)){
     const perto=vivos(t).slice().sort((a,b)=>
       dist(...a.pos,...BASE[t][0])-dist(...b.pos,...BASE[t][0]))[0];
     if(perto===h) return {p:BASE[t][0],motivo:"defende o Nexus"};
   }
 
-  if(J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
+  if(IA().objetivo && J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
 
   /* acampamento: qualquer herói pega, não só o caçador — era a queixa de "toda
      partida eu pego os acampamentos sozinho". O caçador continua com prioridade
@@ -3669,6 +3724,7 @@ function iaDestino(h,t){
    faz sem pensar — "gasto uma ação virando movimento, chego, e ataco com a
    outra" — e só gasta o dado se a conta realmente fechar. */
 function iaPlanejaAlcance(t){
+  if(!IA().alcance)return false;  // converter dado em movimento para chegar é jogada de quem já jogou
   const livres=J.dados.map((d,i)=>({d,i})).filter(x=>!x.d.usado);
   if(livres.length<2 && !(livres.length===1&&J.mov.rest>0)) return false;
 
@@ -3718,6 +3774,7 @@ let iaRodando=false, pularIA=false;
    compra é visão que FICA depois que o herói sai. Logo o critério é cobertura:
    planta se não houver ward dela por perto. */
 function iaPlantaWards(t){
+  if(!IA().wards)return false;   // visão é a última coisa que o iniciante compra
   J.times[t].herois.forEach(h=>{
     if(h.morto||!(h.sentinelas>0)||!ehMato(...h.pos))return;
     const jaCoberto=(J.times[t].wards||[]).some(w=>dist(...w.pos,...h.pos)<=VISAO_WARD);
@@ -3788,7 +3845,7 @@ async function iaExecutaTurno(){
        O piso de 15 é o que separa "jogada" de "gastar dado": abaixo disso a IA
        prefere guardar a ação — e o fim do laço a converte em movimento, que
        quase sempre vale mais que um arranhão. */
-    const jogada = iaMelhorJogada(lado, 15);
+    const jogada = iaMelhorJogada(lado, IA().minimo);
     if(jogada){
       if(aiMode){
         const alvoTxt = jogada.tipo==="nexus" ? "no NEXUS"
@@ -4410,6 +4467,24 @@ function comeca(comTutorial,comDraft){
   if(!comDraft) return partida(comTutorial);
   iniciaDraft(times=>{ TIMES=times; partida(comTutorial); });
 }
+/* A escolha do nível, antes do draft. Fica antes de propósito: o jogador decide
+   contra quem vai jogar antes de escolher com quem vai jogar.
+
+   O texto de cada botão diz o que MUDA no comportamento, e não "fácil/médio/
+   difícil". É a diferença entre o jogador saber que a IA vai deixar o poço
+   passar e ele só sentir que "tá mais fácil" sem entender por quê. */
+function escolheNivelIA(depois){
+  const bts=Object.values(NIVEIS_IA).map(v=>
+    `<button class="grande nivIA" data-n="${v.id}" style="font-size:15px;padding:12px;text-align:left">
+      ${v.n}${v.id===nivelIA?" ·  atual":""}<br>
+      <span style="font-size:12.5px;opacity:.8">${v.d}</span></button>`).join("");
+  abre(`<span class="et">Contra a IA</span><h2>Qual adversário?</h2>
+    <p>Nenhum nível dá à IA dano, vida, ouro ou visão a mais —
+    ela obedece à mesma névoa que você. <b>O que muda é como ela decide.</b></p>${bts}`);
+  G("telacx").querySelectorAll(".nivIA").forEach(b=>b.onclick=()=>{
+    nivelIA=b.dataset.n; fecha(); depois();
+  });
+}
 function telaAbertura(){
   abre(`<span class="et">Um MOBA de mesa para dois</span><h2>JAGER<br>LARAMAIS</h2>
     <p>Cada um comanda <b>cinco heróis</b> — no mesmo aparelho.</p>
@@ -4420,10 +4495,10 @@ function telaAbertura(){
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
-  G("btIA").onclick=()=>{
+  G("btIA").onclick=()=>escolheNivelIA(()=>{
     aiMode=true; simMode=false;
     iniciaDraft(times=>{ TIMES=times; partida(false); });
-  };
+  });
   G("btDireto").onclick=()=>{aiMode=false;comeca(false,false);};
 }
 globalThis.__JAGER_AI__={

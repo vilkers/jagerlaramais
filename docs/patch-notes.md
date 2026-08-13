@@ -16,6 +16,145 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v29 — três níveis de IA, e um crash que só aparecia jogando · 2026-08-13
+
+**O pedido:** *"coloca 3 níveis de dificuldade da IA"*.
+
+**A regra que rege os três: dificuldade mexe na qualidade da decisão, nunca nos
+números.** A IA difícil não ganha dano, vida, ouro nem dado a mais, e não enxerga
+um hexágono além do que a névoa deixa — a v19 decidiu que ela obedece à mesma
+névoa, e nível não é desculpa para desfazer isso. IA que trapaceia ensina a regra
+errada: o jogador perde e não sabe o que fez de errado, porque não fez.
+
+| | **Aprendiz** | **Veterano** | **Mestre** |
+|---|---|---|---|
+| Chance de não pegar a melhor jogada | **40%** | 20% | **0** |
+| Piso de nota para agir | **26** (passivo) | 15 | 15 |
+| Planta ward | **não** | sim | sim |
+| Converte dado em movimento para chegar | **não** | sim | sim |
+| Volta para defender o Nexus | **não** | sim | sim |
+| Disputa o poço | **não** | sim | sim |
+| Rotação do Caçador | **ao acaso** | pelo mapa | pelo mapa |
+| Concentra fogo em quem está caindo | não | não | **sim** |
+
+`erro` é o coração: a chance de a IA **não pegar a melhor jogada da lista que ela
+mesma ordenou** — errar vendo a jogada certa, e não rolando dado escondido. Ela
+nunca escolhe abaixo do piso, senão viraria IA aleatória em vez de IA fraca.
+`minimo` é contraintuitivo de propósito: piso **alto** deixa a IA **passiva**,
+porque ela desdenha a jogada pequena que somada ganha partida.
+
+### Medidos, não afirmados
+
+**`sim/niveis.js`** dirige a IA **de verdade** nos dois lados — as outras medições
+usam o agente da bateria, que joga quase ao acaso e não é a IA do jogo. Os lados
+alternam a cada partida, senão o número misturaria "o Mestre é melhor" com a
+vantagem de ordem:
+
+| Confronto | Resultado | z |
+|---|---|---|
+| Mestre × Veterano | **55,8%** × 44,2% | 2,86 |
+| Veterano × Aprendiz | **72,7%** × 27,3% | 11,10 |
+| Mestre × Aprendiz | **71,5%** × 28,5% | 10,53 |
+
+O Aprendiz ganha **uma em cada quatro**, de propósito: nível fácil que nunca ganha
+não é fácil, é quebrado.
+
+**A primeira versão estava invertida, e a medição pegou.** O Mestre saiu com piso
+8 (supus que "mais ativo = melhor") e **perdia do Veterano, 40% × 60%, z=−2,83**.
+O comentário do próprio código já dizia o porquê: o piso existe para a IA guardar
+o dado em vez de gastar num golpe inútil. Piso 15 nos dois. O Aprendiz também
+nasceu quebrado — 97% a 3%, porque **não comprava item nenhum**; vinte rodadas sem
+loja não é jogar mal, é não jogar.
+
+### O crash que só aparecia jogando
+
+Com o **time inteiro morto**, `iaJogaCartas` escolhia como alvo "o herói vivo mais
+saudável" — que não existe — e jogava a carta com `selHeroi` indefinido. A
+primeira carta que lê a posição do herói estourava `TypeError` e **a partida
+morria**. Cinco heróis no respawn ao mesmo tempo é fim de partida normal.
+**Nenhuma medição anterior pegaria isto: a bateria nunca executa a IA do jogo.**
+
+123 testes.
+
+---
+
+## v28 — a rotação do Caçador · 2026-08-13
+
+**O pedido:** *"no início da rodada ambos os jogadores escolhem pra onde o jungle
+vai, e quando for seu turno o jungle migra pra aquela região, e dependendo de onde
+ele for ele ganha um bônus"*.
+
+No início da rodada os dois escolhem **escondido um do outro**; no seu turno o
+Caçador migra; o bônus só sai **se ele chegar**.
+
+| Destino | Bônus ao chegar |
+|---|---|
+| Acampamento próprio | +3 de ouro |
+| Acampamento neutro | +1 de Poder até o seu próximo turno |
+| Acampamento inimigo | +4 de ouro roubado |
+| O poço | seus golpes no poço valem **+1** nesta rodada |
+
+**Sem teleporte, e isso é o ponto.** Este jogo já teve uma rotação do Caçador: ela
+entrou na v18 e foi desfeita na v19 porque lá ele **saía do tabuleiro**. A
+correção veio do Vinicius — a peça continua existindo num lugar real, e o que muda
+é quem enxerga. Aqui ele **anda**, até 3 casas de graça, no mapa, interceptável.
+A rotação compra **tempo**, não ubiquidade. Dois testes existem só para a versão
+da v18 não voltar.
+
+**Dois consertos que a mecânica exigiu:** o Caçador ficava **preso atrás do próprio
+time** saindo do canto da base (agora contorna por casa de mesma distância), e o
+**foco no poço não valia contra o Dragão** — o `return` antecipado do morador que
+conta golpes pulava o bônus, zerando esse destino em metade da partida.
+
+**Medição:** ordem no espelho 53,04% (n=9000) contra 53,26% da v26 — ruído.
+Duração 23. **O Barão subiu de 54,7% para 59,1%** de fechamento: o destino "poço"
+soma +1 e a IA o escolhe sempre que está perto. Se no playtest ele cair fácil
+demais, **o primeiro número a mexer é esse +1**, não a vida dele.
+
+---
+
+## v27 — o alvo embaixo do outro, e as Ultimates travadas · 2026-08-13
+
+### O Nexus ficava intocável com um defensor em cima
+
+**O relato:** *"eu estava com todos os creeps na base e ele com os heróis dentro do
+nexus, eu não conseguia dar dano no nexus pra acabar a partida, e os creeps tão
+não"*.
+
+Empate travado, e as duas metades se alimentavam. A **última muralha** (v23)
+segura a onda de propósito com o Nexus em 1 enquanto houver defensor — ela
+**exige** o golpe de herói. Só que na tela o Nexus desenha alvo de toque com raio
+**9**, o herói com **15,5**, e o herói é desenhado **depois**: um defensor em cima
+do Nexus cobria o alvo por inteiro. **A regra pedia o golpe e a interface não
+deixava dar.**
+
+Agora, quando mais de um alvo divide o hexágono, o toque abre **janela
+perguntando em quem bater**, com vida e revide de cada um. Um alvo só resolve
+direto. Vale também para herói em cima da própria torre (relato da v15).
+
+### As Ultimates travadas voltam a crescer
+
+**O relato:** *"alguns ults tão travados em valores, não tá usando a regra de mult
+da força e poder"*.
+
+Julgamento, Ato Final e Sentença viraram `danoFixo` na v19 porque estavam
+**piores que a própria básica**. O preço foi pararem no tempo: não cresciam com
+dado, Poder, item, Reforço nem Herança, enquanto a básica do mesmo herói crescia
+com tudo. Em partida longa a Ultimate virava a jogada pior.
+
+Agora escalam **e** continuam ignorando armadura, com multiplicador **reduzido
+(0,8)** — o preço do dano que passa por dentro. Contra alvo sem armadura rendem
+menos que uma Ultimate comum; contra tanque, mais.
+
+| | Era | Ficou |
+|---|---|---|
+| Julgamento (dado 6) | 8, sempre | **9** · com +2 de Poder: **11** |
+| Sentença · Ato Final | 8, sempre | 8 a 9 · e crescem com Poder |
+
+Elas também ganham papel contra o Barão, que tem 3 de armadura desde a v26.
+
+---
+
 ## v26 — o Barão apanha como herói, e os escudos deixam de apagar o turno · 2026-08-13
 
 Duas mudanças de regra, **simuladas antes de entrar** — os números foram varridos
