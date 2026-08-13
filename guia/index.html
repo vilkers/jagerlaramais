@@ -856,14 +856,17 @@ q("#filtros").addEventListener("click",e=>{
 });
 
 /* ==================== LABORATÓRIO DE DADOS ==================== */
-/* espelha o catálogo de jogo/index.html — Força mínima de cada habilidade */
-const REGRAS=[
-  {rota:"topo",     quem:"Vharn",   ops:[["Golpe de Escudo",1],["Provocar",3],["Muralha",6]]},
-  {rota:"selva",    quem:"Nyx",     ops:[["Bote",1],["Sombra",3],["Caçada",5]]},
-  {rota:"meio",     quem:"Solenne", ops:[["Feixe",1],["Prisma",4],["Julgamento",6]]},
-  {rota:"atirador", quem:"Vesper",  ops:[["Tiro",1],["Recarregar",2],["Chuva de Ferro",5]]},
-  {rota:"suporte",  quem:"Mirrha",  ops:[["Sopro",1],["Doar Dado",1],["Eco",4]]}
-];
+/* DERIVADO do catálogo, e não copiado dele. Esta lista era escrita à mão aqui e
+   ficou mentindo no instante em que os heróis mudaram de nome: mostrava Vharn,
+   Nyx, Solenne, Vesper e Mirrha com habilidades que não existiam mais. É o
+   terceiro catálogo divergente que a regra do projeto manda não criar.
+   Agora ele pega um herói por rota do CATALOGO — muda lá, muda aqui. */
+const ROTA_LAB=[["topo","topo"],["selva","selva"],["meio","meio"],
+                ["atirador","adc"],["suporte","sup"]];
+const REGRAS=ROTA_LAB.map(([rotulo,pos])=>{
+  const [,def]=Object.entries(HEROIS).find(([,d])=>d.pos===pos);
+  return {rota:rotulo, quem:def.n, ops:def.habs.map(h=>[h.n,h.f])};
+});
 let dados=[];
 function rolar(){
   dados=[0,1,2].map(()=>1+Math.floor(Math.random()*6));

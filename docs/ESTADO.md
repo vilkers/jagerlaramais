@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v29 (três níveis de IA) · **Atualizado em:** 2026-08-13
+**Versão:** v30 (dez heróis novos) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -22,7 +22,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 
 | | |
 |---|---|
-| Heróis no pool | **20** (4 por rota) — todos com arte |
+| Heróis no pool | **20** (4 por rota) · **10 substituídos na v30** — identidade nova sobre o mesmo chassi mecânico. Os `id` internos não mudaram, então a arte entra em `arte/herois/web/<id>.jpg` |
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |

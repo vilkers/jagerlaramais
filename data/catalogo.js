@@ -16,23 +16,23 @@
    uma verdade só. Agora jogo e guia leem daqui. */
 const HEROIS_BASE = {
 
-vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
+vharn:{n:"O Taxista",ep:"o Piloto da Quebrada",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
   vida:25,poder:3,arm:3,alc:1,
-  habs:[{n:"Golpe de Escudo",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Provocar",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
-        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
+  habs:[{n:"Martelo Carburado",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Buzina Infernal",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
+        {n:"Escudo de Porta",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
 
-kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
+kaross:{n:"Vovó do Chinelo",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",ref:"Darius",
   vida:22,poder:3,arm:2,alc:1,
-  habs:[{n:"Talho",f:1,alvo:"in",ef:{dano:1,bonusFerido:3}},
-        {n:"Puxada",f:3,alvo:"in",ef:{dano:1,puxar:1,dot:{tipo:"sangramento",dano:2,rodadas:2}}},
-        {n:"Execução",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
+  habs:[{n:"Chinelada",f:1,alvo:"in",ef:{dano:1,bonusFerido:3}},
+        {n:"Puxão de Orelha",f:3,alvo:"in",ef:{dano:1,puxar:1,dot:{tipo:"sangramento",dano:2,rodadas:2}}},
+        {n:"Chinelo Voador",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
-nyx:{n:"Nyx",ep:"a Presa Silenciosa",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
+nyx:{n:"Pombo Ciborgue",ep:"o Correio da Sarjeta",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
   vida:18,poder:3,arm:1,alc:1,agil:1,
-  habs:[{n:"Bote",f:1,alvo:"in",ef:{dano:1,extra:2}},
-        {n:"Sombra",f:3,alvo:"eu",ef:{intocavel:1}},
-        {n:"Caçada",f:5,alvo:"in",ef:{dano:1,extra:3,executa:6}}]},
+  habs:[{n:"Bicada",f:1,alvo:"in",ef:{dano:1,extra:2}},
+        {n:"Voo Rasante",f:3,alvo:"eu",ef:{intocavel:1}},
+        {n:"Rasante Final",f:5,alvo:"in",ef:{dano:1,extra:3,executa:6}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
   vida:23,poder:3,arm:3,alc:1,
@@ -40,11 +40,11 @@ grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
         {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:3}},
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
-solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndra",
+solenne:{n:"Parabólica Diabólica",ep:"que capta até o que não existe",pos:"meio",cls:"Mago",ref:"Lux / Syndra",
   vida:18,poder:3,arm:1,alc:3,
-  habs:[{n:"Feixe",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Prisma",f:4,alvo:"in",ef:{dano:1,area:1}},
-        {n:"Julgamento",f:6,alvo:"in",ef:{dano:0.8,perfura:1}}]},
+  habs:[{n:"Raio Diabólico",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Interferência",f:4,alvo:"in",ef:{dano:1,area:1}},
+        {n:"Sinal Aberto",f:6,alvo:"in",ef:{dano:0.8,perfura:1}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
   vida:18,poder:4,arm:1,alc:1,agil:1,
@@ -52,11 +52,11 @@ zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Z
         {n:"Eco",f:2,alvo:"in",ef:{dano:1,marca:4}},
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
-vesper:{n:"Vesper",ep:"a Pontaria Final",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
+vesper:{n:"Zé Griteco",ep:"o Regente das Gemas",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
   vida:20,poder:3,arm:1,alc:3,patamar:1,
-  habs:[{n:"Tiro",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:6}},
-        {n:"Chuva de Ferro",f:5,alvo:"eu",ef:{danoRaio:3}}]},
+  habs:[{n:"Ovada Surpresa",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Encher o Pulmão",f:2,alvo:"eu",ef:{recarga:6}},
+        {n:"Caminhão Fantasma",f:5,alvo:"eu",ef:{danoRaio:3}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
   vida:18,poder:3,arm:1,alc:3,
@@ -64,11 +64,11 @@ cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
         {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2,zona:{tipo:"veneno",dano:1,raio:1}}},
         {n:"Sentença",f:5,alvo:"in",ef:{dano:0.8,perfura:1}}]},
 
-mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
+mirrha:{n:"Seu Coco",ep:"o Vendedor da Praia",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
   vida:20,poder:2,arm:2,alc:3,
-  habs:[{n:"Sopro",f:1,alvo:"al",ef:{escudo:4,cura:5}},
-        {n:"Doar Dado",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Eco",f:4,alvo:"al",ef:{revive:1,cura:7,escudo:5}}]},
+  habs:[{n:"Água de Coco",f:1,alvo:"al",ef:{escudo:4,cura:5}},
+        {n:"Passa o Canudo",f:1,alvo:"al",ef:{doar:1}},
+        {n:"Coco Gelado",f:4,alvo:"al",ef:{revive:1,cura:7,escudo:5}}]},
 
 torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nautilus",
   vida:22,poder:3,arm:3,alc:1,
@@ -97,11 +97,11 @@ xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven
 /* ─────────── SELVA · O Caçador · 4 arquétipos ─────────── */
 /* nyx = assassino · grumo = tanque que farma  (ambos em jogo/index.html) */
 
-kurr:{n:"Kurr",ep:"o Rastreador",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
+kurr:{n:"Caramêlo 2.0",ep:"o Cachorro Pilotado",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
   vida:18,poder:3,arm:1,alc:2,agil:1,
-  habs:[{n:"Lança Farpada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Rastro",f:2,alvo:"in",ef:{dano:1,marca:4,dot:{tipo:"sangramento",dano:1,rodadas:2}}},
-        {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
+  habs:[{n:"Mordida",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Rastrear",f:2,alvo:"in",ef:{dano:1,marca:4,dot:{tipo:"sangramento",dano:1,rodadas:2}}},
+        {n:"Pulo Bobão",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
   vida:18,poder:4,arm:2,alc:2,agil:1,
@@ -112,11 +112,11 @@ pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
 /* ─────────── MEIO · O Relógio · 4 arquétipos ─────────── */
 /* solenne = artilharia · zhet = assassino  (ambos em jogo/index.html) */
 
-nira:{n:"Nira",ep:"a Tecelã",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
+nira:{n:"Emerson Emo",ep:"a Trilha Sonora",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
   vida:18,poder:3,arm:1,alc:3,
-  habs:[{n:"Fio de Luz",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Emaranhar",f:3,alvo:"in",ef:{dano:1,prende:1}},
-        {n:"Tapeçaria",f:5,alvo:"in",ef:{dano:1,area:1,zona:{tipo:"veneno",dano:2,raio:1}}}]},
+  habs:[{n:"Acorde Menor",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Riff da Angústia",f:3,alvo:"in",ef:{dano:1,prende:1}},
+        {n:"Ninguém Me Entende",f:5,alvo:"in",ef:{dano:1,area:1,zona:{tipo:"veneno",dano:2,raio:1}}}]},
 
 arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
   vida:22,poder:3,arm:2,alc:2,
@@ -127,11 +127,11 @@ arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
 /* ─────────── ATIRADOR · O Investimento · 4 arquétipos ─────────── */
 /* vesper = sustentado · cael = armadilheiro  (ambos em jogo/index.html) */
 
-nessa:{n:"Nessa",ep:"a Rápida",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
+nessa:{n:"Bombinha",ep:"o Menino do Cilindro",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
   vida:18,poder:3,arm:1,alc:3,patamar:1,agil:1,
-  habs:[{n:"Virote",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Reposicionar",f:2,alvo:"eu",ef:{escudo:4}},
-        {n:"Perfurar",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
+  habs:[{n:"Jato de Oxigênio",f:1,alvo:"in",ef:{dano:1}},
+        {n:"Puff de Emergência",f:2,alvo:"eu",ef:{escudo:4}},
+        {n:"Crise Alérgica",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
   vida:18,poder:3,arm:1,alc:3,patamar:1,
@@ -142,11 +142,11 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */
 /* mirrha = curandeira · torvald = gancho com visão  (ambos em jogo/index.html) */
 
-gorm:{n:"Gorm",ep:"o Portão",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
+gorm:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
   vida:25,poder:3,arm:4,alc:1,
-  habs:[{n:"Empurrão",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
-        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:4}},
-        {n:"Barreira",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
+  habs:[{n:"Varrida Purificadora",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
+        {n:"Escudo Reciclável",f:1,alvo:"al",ef:{escudo:4}},
+        {n:"Redemoinho Sustentável",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
   vida:18,poder:2,arm:2,alc:3,

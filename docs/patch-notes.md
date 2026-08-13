@@ -16,6 +16,84 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v30 — dez heróis novos, mesmo chassi · 2026-08-13
+
+Dez personagens vindos das fichas de arte entram no lugar de dez do elenco.
+**Nenhum número de balanceamento mudou.**
+
+### O método: troca a identidade, mantém o chassi
+
+Cada personagem novo herda do substituído a **vida, o Poder, a Armadura, o
+alcance e o formato das três habilidades**. Só mudam nome, epíteto e o nome de
+cada habilidade.
+
+Não é preguiça — é o que o `CLAUDE.md` já manda: *o que nasce na criação entra em
+cima da base mecânica, nunca por cima dela*. Aqueles números carregam 29 versões
+de medição: a escala ×1,2 do slot de controle, a regra de que a habilidade do meio
+paga o próprio dado, o teto de escudo de 12, o efeito com prazo só em slot de
+controle, o dano perfurante a 0,8. Reescrever stats a partir das fichas jogaria
+tudo fora e exigiria remedir do zero.
+
+**Os `id` internos não mudaram**, e isso é decisão, não descuido. São 206
+referências espalhadas por 6 arquivos, incluindo os 123 testes e o confronto fixo
+da bateria. Mantendo a chave: os testes seguem verdes, **toda a medição anterior
+continua comparável** (a bateria roda mecanicamente os mesmos heróis) e a arte
+entra sozinha — basta soltar a imagem em `arte/herois/web/<id>.jpg`.
+
+### O elenco novo — 2 por rota, os 4 por rota preservados
+
+| Rota | Novo | `id` (chassi herdado) | Habilidades |
+|---|---|---|---|
+| topo | **O Taxista** | `vharn` | Martelo Carburado · Buzina Infernal · Escudo de Porta |
+| topo | **Vovó do Chinelo** | `kaross` | Chinelada · Puxão de Orelha · Chinelo Voador |
+| selva | **Caramêlo 2.0** | `kurr` | Mordida · Rastrear · Pulo Bobão |
+| selva | **Pombo Ciborgue** | `nyx` | Bicada · Voo Rasante · Rasante Final |
+| meio | **Emerson Emo** | `nira` | Acorde Menor · Riff da Angústia · Ninguém Me Entende |
+| meio | **Parabólica Diabólica** | `solenne` | Raio Diabólico · Interferência · Sinal Aberto |
+| adc | **Zé Griteco** | `vesper` | Ovada Surpresa · Encher o Pulmão · Caminhão Fantasma |
+| adc | **Bombinha** | `nessa` | Jato de Oxigênio · Puff de Emergência · Crise Alérgica |
+| sup | **Gari Mago** | `gorm` | Varrida Purificadora · Escudo Reciclável · Redemoinho Sustentável |
+| sup | **Seu Coco** | `mirrha` | Água de Coco · Passa o Canudo · Coco Gelado |
+
+Ficam: Ilva e Xhera (topo), Grumo e Pyk (selva), Zhet e Arden (meio), Cael e Corvo
+(adc), Torvald e Vidra (sup).
+
+**Os encaixes não foram sorteados.** O Taxista pegou o chassi do tanque iniciador
+porque a Buzina Infernal é literalmente `prendeVizinhos` e o Escudo de Porta é a
+Muralha. O Riff da Angústia do Emerson é `prende`, e **Uma Lágrima** — *"altera o
+terreno e reduz a visão"* — é exatamente a **zona** que entrou na v25, já embutida
+na Ultimate dele. O Gari Mago varre, escuda e faz redemoinho, que é Empurrão,
+Anteparo e Barreira sem trocar uma linha de efeito.
+
+### E um catálogo divergente a menos
+
+O **Laboratório de Dados** do guia tinha a lista de heróis e Forças mínimas
+**escrita à mão no HTML**. No instante em que os nomes mudaram ele passou a mentir:
+mostrava Vharn, Nyx, Solenne, Vesper e Mirrha com habilidades que não existem mais.
+Era o terceiro catálogo divergente que a regra do projeto manda não criar. Agora
+ele **deriva do `CATALOGO`** — muda lá, muda aqui.
+
+### O que fica em aberto
+
+**Quatro nomes são meus, não seus.** As fichas do vendedor de água de coco, do
+menino do cilindro, do pombo e da vovó não traziam nome, e eu batizei para poder
+entregar: **Seu Coco**, **Bombinha**, **Pombo Ciborgue** e **Vovó do Chinelo**.
+Nomear personagem é trilha de criação (`visual-lab/`), não minha — trocar é uma
+linha por herói em `data/catalogo.js`.
+
+**Duas rotas foram dedução minha:** Emerson Emo (Meio, pelo kit de controle e
+área) e o vendedor de coco (Suporte curandeiro, pela água de coco). As fichas não
+declaravam.
+
+**Falta a arte.** Os dez `.jpg` antigos continuam em `arte/herois/web/` e agora
+mostram o personagem errado. Nada quebra — `RETRATO()` já cai num retrato
+provisório —, mas até as imagens novas entrarem, o elenco novo aparece com a cara
+do antigo.
+
+123 testes, inalterados: nenhuma regra foi tocada.
+
+---
+
 ## v29 — três níveis de IA, e um crash que só aparecia jogando · 2026-08-13
 
 **O pedido:** *"coloca 3 níveis de dificuldade da IA"*.
