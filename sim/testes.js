@@ -1465,6 +1465,49 @@ teste("nenhuma Ultimate entrega menos que a básica do próprio herói", () => {
   });
 });
 
+/* ═══════════════ v24 — o preço do Dragão ═══════════════ */
+
+/* Medido em 1500 partidas antes de mexer: o Dragão morria em 21,5% das partidas
+   em que aparecia, e `sim/epicos.js` imprimia "muito tentado e pouco fechado".
+   O pedágio foi descartado por medição, não por gosto — `revide=off` deu 21,7%,
+   ou seja, nada. O que segurava era a VIDA: com 4, matar exigia duas Ultimates
+   no mesmo poço, e a janela do Dragão (rodada 5 até a 12, quando o Barão toma o
+   lugar) quase nunca comportava as duas.
+
+   Este teste trava o preço nos dois sentidos, que é onde mora o dilema:
+   caber em dois dados, e nunca em um. */
+teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .mov(0).vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");           // Kaross: básica e Ultimate miram inimigo
+  const livre = g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v));
+  ok(livre, "não achei casa livre colada no poço");
+  c.poe(h, livre);
+
+  /* GOLPE_HAB e GOLPE_ULT são `const` de script e não saem pela ponte, então o
+     peso de cada golpe se mede batendo — num poço fundo demais para morrer no
+     meio da medição e falsear o segundo golpe. */
+  const peso = i => {
+    g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 99;
+    h.agiu = 0; h.vida = g.CATALOGO[h.id].vida; c.dados(6, 6, 6);
+    const v0 = g.J.poco.vida;
+    c.mira(h, i); g.atacaEpico(g.J.poco);
+    return v0 - g.J.poco.vida;
+  };
+  const pesoUlt = peso(2), pesoBas = peso(0);
+  ok(pesoUlt > 0 && pesoBas > 0, "o golpe no poço não tirou vida nenhuma");
+
+  const vida = g.EPICO.dragao.vida;
+  ok(vida <= pesoUlt + pesoBas,
+     `o Dragão tem ${vida} de vida e não cai em Ultimate + básica `
+     + `(${pesoUlt}+${pesoBas}=${pesoUlt + pesoBas}) — caro demais para a janela dele`);
+  ok(vida > pesoUlt,
+     `o Dragão tem ${vida} de vida e cai numa Ultimate sozinha (${pesoUlt}) `
+     + `— deixou de custar o segundo dado, e com ele o dilema`);
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

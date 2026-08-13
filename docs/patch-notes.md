@@ -16,6 +16,106 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v24 — o Dragão cabe em dois dados · 2026-08-13
+
+Um número só, medido sozinho de propósito. A v23 fechou com três regras novas no
+mesmo lote e o aviso de que mexer no Dragão junto tornaria impossível dizer de
+quem era qualquer efeito. Este lote é o Dragão, e nada além dele.
+
+### Vida do Dragão: 4 → 3
+
+**O relato, herdado da v23:** *"muito tentado e pouco fechado"* — o veredito que
+`sim/epicos.js` imprimia sozinho, versão após versão.
+
+**Medido em 1500 partidas antes de mexer:** o Dragão aparecia em 100% das
+partidas, era atacado em 63,3% delas e morria em **21,5%**. O Barão, com a
+**mesma vida 4 e um pedágio maior** (revide 4 contra 2), morria em 56,0%. A
+diferença nunca foi preço de encostar — foi **janela**: o Dragão desce na rodada
+5 e perde o lugar na 12, quando o Barão toma o poço mesmo com ele vivo. Sete
+rodadas para juntar **duas Ultimates no mesmo poço**, que é o que 4 de vida
+exigia.
+
+**A regra:** o Dragão tem **3 de vida**. Cai em **Ultimate + básica** — dois
+dados, de dois heróis, dentro de um turno. E continua **não caindo numa Ultimate
+sozinha**: o segundo dado é o dilema, e ele ficou de pé.
+
+| | v23 | v24 |
+|---|---|---|
+| Dragão morto (das partidas em que aparece) | 21,5% | **32,3%** |
+| Golpes no Dragão por partida | 1,4 | **1,3** |
+| Veredito de `sim/epicos.js` | *caro demais* | **disputado e fechável** |
+| Barão morto | 56,0% | 53,2% |
+| Duração mediana | 23 | 23 |
+
+**O ponto que interessa é o par:** o Dragão passou a fechar mais **sem ser mais
+atacado** — os golpes por partida até caíram. Não virou ímã nem farm; virou
+tentativa que converte. Era exatamente o que faltava.
+
+### O pedágio foi descartado por medição, não por gosto
+
+O handoff da v23 apontava **duas** alavancas para o Dragão, `vdragao=` e
+`revide=off`. A segunda foi medida e **não faz nada**:
+
+| Variante (n=1500 cada) | Dragão morto |
+|---|---|
+| build v23 | 21,5% |
+| `revide=off` (nenhum morador cobra pedágio) | **21,7%** |
+| `rdragao=0` (pedágio zero só do Dragão) | 23,4% |
+| **`vdragao=3`** | **33,1%** |
+| `barao=14` (janela de 7 → 9 rodadas) | 34,5% |
+
+Zerar o revide devolve 0,2 ponto. Faz sentido depois de visto: **quem desiste do
+Dragão desiste por dado gasto, não por vida perdida** — o custo que pesa é o
+turno que o herói não passou empurrando rota.
+
+`barao=14` funciona tão bem quanto a vida 3, e foi **recusado pelo preço**: o
+Barão deixa de aparecer em 7% das partidas (98,2% → 93,3%) e a mediana sobe para
+24 rodadas. O fim de partida arrastando é preocupação aberta desde a v23, e a
+correção do Dragão não podia ser paga pelo Barão.
+
+### O que isso quebra
+
+Nada de mecânica. **A vantagem de quem começa não se moveu** — A/B com a vida do
+Dragão como única variável, n=6000 por braço:
+
+| Braço | quem começa |
+|---|---|
+| vida 4 | 51,7% · 52,1% → **51,9%** |
+| vida 3 | 50,9% · 51,4% → **51,2%** |
+
+Diferença de 0,7 ponto, **z=0,75 — ruído**. Registro junto uma lição que já está
+escrita na armadilha nº 4 e que quase repeti: numa das execuções de 2000 a v24
+deu 52,8% com z=2,5, e o alerta de *"VANTAGEM REAL"* disparou. O A/B mostrou que
+o braço da **vida 4** dava 51,9% na mesma condição. Era oscilação. Execução
+isolada continua não distinguindo 51% de 53%.
+
+### Texto do jogo que estava mentindo
+
+Encontrado ao conferir onde a vida do Dragão aparecia escrita. O painel **Como
+jogar**, dentro do jogo, descrevia o poço com números de **três versões atrás**:
+
+| Dizia | É |
+|---|---|
+| Dragão: 8 de vida, revida 1, até a rodada 8 | 3 de vida, revida 2, rodada 5 |
+| Barão: 14 de vida, revida 2, da rodada 8 | 4 de vida, revida 4, rodada 12 |
+| Fúria: +2 de Poder no time e as ondas andam | **escolha de 1 de 3 dádivas**, nenhuma dá Poder |
+
+`docs/REGRAS.md` errava os dois revides (1 e 2, contra 2 e 4 do motor) num
+arquivo que se declara extraído do motor. O **guia** ainda dizia *"Dragão até a
+rodada 8"* e descrevia a recompensa do Barão como a **Fúria** (+2 de Poder e as
+ondas), que a escolha de três dádivas substituiu na v20. Tudo corrigido: bestiário
+e glossário.
+
+Nenhuma dessas linhas é regra — mas as três descreviam o poço para quem está
+aprendendo a jogar, e é o sistema que este lote mexeu.
+
+**Continua errado e não foi tocado:** o mesmo painel diz que *"uma Ward acende os
+dois matos de uma vez"*, o que a regra da v22 desfez — ward só enxerga mato de
+dentro do mato. Fica registrado aqui em vez de corrigido junto, porque é texto da
+v22 e não deste lote.
+
+---
+
 ## v23 — o fim de partida volta a ser jogado · 2026-08-13
 
 Cinco itens do playtest. Dois de tela, três de regra — e o maior deles saiu de

@@ -46,6 +46,14 @@ if (opcoes.escudobarao !== undefined)
 if (opcoes.heranca !== undefined)
   trocas.push([/const DRAGAO_PODER=\d+/, `const DRAGAO_PODER=${+opcoes.heranca}`]);
 if (opcoes.duracao) trocas.push([/const BARAO_RODADAS=\d+/, `const BARAO_RODADAS=${+opcoes.duracao}`]);
+/* `revide=off` tira o pedágio dos DOIS moradores de uma vez — serve para separar
+   "o poço é caro de bater" de "o poço tem vida demais", que a coluna MORTO
+   sozinha não distingue. `rdragao=N` mexe só no pedágio do Dragão, que é o que
+   se ajusta de verdade quando a resposta é a primeira. */
+if (opcoes.revide === "off")
+  trocas.push([/const levou=Math\.min\(d\.revide,h\.vida-1\);/, "const levou=0;"]);
+if (opcoes.rdragao !== undefined)
+  trocas.push([/n:"Dragão", vida:(\d+), revide:\d+/, `n:"Dragão", vida:$1, revide:${+opcoes.rdragao}`]);
 
 const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ") : "build atual";

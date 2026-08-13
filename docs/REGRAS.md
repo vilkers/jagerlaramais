@@ -286,8 +286,14 @@ respingo de área tira 1.
 
 | Morador | Desce | Vida | Revide | Prêmio |
 |---|---|---|---|---|
-| **Dragão** | rodada 5 | 4 | 1 | **+1 de Poder** no time, permanente e acumulativo |
-| **Barão** | rodada 12 | 4 | 2 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+| **Dragão** | rodada 5 | **3** | 2 | **+1 de Poder** no time, permanente e acumulativo |
+| **Barão** | rodada 12 | 4 | 4 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+
+O Dragão cai em **dois dados** — uma Ultimate (2) e uma básica (1) — e nunca em
+um só. É o preço que o faz caber na janela curta dele sem virar farm: com 4 de
+vida ele exigia duas Ultimates no mesmo poço e morria em 21,5% das partidas em
+que aparecia. O Barão continua em 4, e com o dobro de pedágio: o Dragão se
+acumula, o Barão se conquista.
 
 Na rodada 12 o **Barão toma o poço mesmo com o Dragão vivo** — o que dá ao Dragão
 um prazo de validade.

@@ -203,6 +203,28 @@ preço do Dragão junto tornaria impossível dizer de quem é qualquer efeito me
 depois. Fica como o **próximo número a testar sozinho**: vida 4 → 3, ou o revide
 dele, uma coisa de cada vez (`vdragao=` e `revide=off` já existem na bateria).
 
+**Fechado na v24 — era a vida, e o revide não era nada.** Testado sozinho, como
+o item pedia. As duas alavancas foram medidas separadas, n=1500 cada:
+
+| Variante | Dragão morto |
+|---|---|
+| build v23 | 21,5% |
+| `revide=off` | **21,7%** |
+| `rdragao=0` | 23,4% |
+| **`vdragao=3`** (o que entrou) | **33,1%** |
+| `barao=14` | 34,5%, mas o Barão some de 7% das partidas |
+
+**O revide foi descartado por medição:** zerá-lo devolve 0,2 ponto. Quem desiste
+do Dragão desiste **por dado gasto, não por vida perdida** — o custo que pesa é o
+turno que o herói não passou empurrando rota, e nenhum ajuste de pedágio alcança
+isso. Fica registrado porque a intuição contrária é forte e vai voltar.
+
+A vida foi para **3**: o Dragão cai em Ultimate + básica, dois dados, e continua
+sem cair numa Ultimate só. Fecha em 32,3% **sendo menos atacado que antes** (1,3
+golpes por partida contra 1,4) — converte, não vira farm. A vantagem de quem
+começa não se moveu (A/B de n=6000 por braço: 51,9% com vida 4, 51,2% com vida 3,
+z=0,75). Detalhes na v24 dos patch notes.
+
 ---
 
 ## 8. Itens que mudam comportamento (PARTE 17.3)
