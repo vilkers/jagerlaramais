@@ -25,7 +25,7 @@ vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
 kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
   vida:22,poder:3,arm:2,alc:1,
   habs:[{n:"Talho",f:1,alvo:"in",ef:{dano:1,bonusFerido:3}},
-        {n:"Puxada",f:3,alvo:"in",ef:{dano:1,puxar:1}},
+        {n:"Puxada",f:3,alvo:"in",ef:{dano:1,puxar:1,dot:{tipo:"sangramento",dano:2,rodadas:2}}},
         {n:"Execução",f:5,alvo:"in",ef:{dano:1,executa:5}}]},
 
 nyx:{n:"Nyx",ep:"a Presa Silenciosa",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
@@ -61,7 +61,7 @@ vesper:{n:"Vesper",ep:"a Pontaria Final",pos:"adc",cls:"Atirador",ref:"Jinx / Ko
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
   vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
-        {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2}},
+        {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2,zona:{tipo:"veneno",dano:1,raio:1}}},
         {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:8}}]},
 
 mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
@@ -85,13 +85,13 @@ const HEROIS_NOVOS = {
 ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
   vida:20,poder:4,arm:2,alc:2,
   habs:[{n:"Chama Espectral",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:5}},
+        {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:5,zona:{tipo:"veneno",dano:1,raio:1}}},
         {n:"Ceifa",f:5,alvo:"in",ef:{dano:1,area:1}}]},
 
 xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven",
   vida:22,poder:4,arm:2,alc:1,
   habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",ef:{dano:1,cura:4}},
-        {n:"Investir",f:3,alvo:"in",ef:{dano:1,puxar:1}},
+        {n:"Investir",f:3,alvo:"in",ef:{dano:1,puxar:1,dot:{tipo:"sangramento",dano:2,rodadas:2}}},
         {n:"Sede Final",f:5,alvo:"in",ef:{dano:1,cura:9,bonusFerido:3}}]},
 
 /* ─────────── SELVA · O Caçador · 4 arquétipos ─────────── */
@@ -100,7 +100,7 @@ xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven
 kurr:{n:"Kurr",ep:"o Rastreador",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
   vida:18,poder:3,arm:1,alc:2,agil:1,
   habs:[{n:"Lança Farpada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Rastro",f:2,alvo:"in",ef:{dano:1,marca:4}},
+        {n:"Rastro",f:2,alvo:"in",ef:{dano:1,marca:4,dot:{tipo:"sangramento",dano:1,rodadas:2}}},
         {n:"Salto Mortal",f:5,alvo:"in",ef:{dano:1,extra:2}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
@@ -116,13 +116,13 @@ nira:{n:"Nira",ep:"a Tecelã",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
   vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Fio de Luz",f:1,alvo:"in",ef:{dano:1}},
         {n:"Emaranhar",f:3,alvo:"in",ef:{dano:1,prende:1}},
-        {n:"Tapeçaria",f:5,alvo:"in",ef:{dano:1,area:1}}]},
+        {n:"Tapeçaria",f:5,alvo:"in",ef:{dano:1,area:1,zona:{tipo:"veneno",dano:2,raio:1}}}]},
 
 arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
   vida:22,poder:3,arm:2,alc:2,
   habs:[{n:"Sentença",f:1,alvo:"in",ef:{dano:1}},
         {n:"Drenar",f:2,alvo:"in",ef:{dano:1,cura:5}},
-        {n:"Tribunal",f:5,alvo:"eu",ef:{danoRaio:3}}]},
+        {n:"Tribunal",f:5,alvo:"eu",ef:{danoRaio:3,zona:{tipo:"veneno",dano:2,raio:1}}}]},
 
 /* ─────────── ATIRADOR · O Investimento · 4 arquétipos ─────────── */
 /* vesper = sustentado · cael = armadilheiro  (ambos em jogo/index.html) */
@@ -180,6 +180,13 @@ function textoHab(hb){
   if(e.ward)           p.push("<b>Ward</b> — posta um olho aqui: acende 3 de raio por 3 rodadas");
   if(e.revive)         p.push("Um aliado morto <b>volta 1 rodada antes</b>");
   if(e.marca)          p.push(`<b>Marca</b> o alvo: o próximo dano nele leva +${e.marca}`);
+  if(e.dot)            p.push(`<b>${e.dot.tipo==="veneno"?"Envenena":"Faz sangrar"}</b>: `
+                              +`<b>${e.dot.dano}</b> por rodada durante <b>${e.dot.rodadas}</b> rodadas, `
+                              +"cobrado no início do turno do alvo, <b>ignorando armadura e escudo</b>");
+  if(e.zona)           p.push(`<b>Zona</b> — cobre <b>${e.zona.raio}</b> de raio pelos `
+                              +`<b>2 próximos turnos do adversário</b>: `
+                              +`quem começar o turno dentro fica <b>${e.zona.tipo==="veneno"?"envenenado":"sangrando"}</b> `
+                              +`(${e.zona.dano} por rodada)`);
   if(e.doar)           p.push("<b>Doa este dado</b> para um aliado usar como se fosse dele");
   if(e.puxar)          p.push(`Puxa o alvo <b>${e.puxar}</b> ${e.puxar>1?"casas":"casa"} na sua direção`);
   if(e.empurrar)       p.push(`Empurra o alvo <b>${e.empurrar}</b> casa`);

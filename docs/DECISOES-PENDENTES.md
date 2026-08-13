@@ -227,6 +227,73 @@ z=0,75). Detalhes na v24 dos patch notes.
 
 ---
 
+## 10. A renda de ouro nunca para — MEDIDO na v25, e não decidido
+
+Medido em 600 partidas com `sim/ouro.js`:
+
+| | |
+|---|---|
+| Ouro que um herói acumula na partida | **61** |
+| Build completo de 3 itens, o mais caro | **25** |
+| A loja inteira (22 itens) | 142 |
+| Sobra por herói | **36** |
+
+**A renda paga o build 2,4×.** A v25 encareceu o Reforço (6+2 → 10+4) porque com a
+curva antiga a sobra comprava quatro deles, ou +4 de Poder permanente — mais que
+qualquer item, sem ocupar slot e sem teto. Isso resolveu o Reforço; **não resolve a
+torneira.**
+
+Aviso que vem desde a v22 e agora tem número: **mexer no preço de um gasto não
+fecha uma torneira aberta.** Se ainda sobrar montanha de ouro no playtest, o ajuste
+é na renda.
+
+As três alavancas já existem em `sim/ouro.js` e não foram tocadas:
+
+- **`farma=N`** — hoje 3 por rodada para quem não recebe dado. É o grosso da renda:
+  com 3 dados para 5 heróis, dois heróis sempre farmam.
+- **`agiu=N`** — hoje 1 por rodada para quem age.
+- **`matar=N`** — hoje 4 por abate.
+
+**Recomendo `farma=2` como o primeiro a testar** (derruba a renda ~1/3 sem tocar em
+quem joga), e **sempre com `times=espelho`**, porque ouro muda o quanto cada lado
+compra e o confronto fixo da bateria contamina a leitura. **Decisão do grupo:** a
+renda é generosa de propósito (deixa todo mundo vestir o build que quer) ou está
+gerando ouro sem destino?
+
+---
+
+## 11. "Quem começa" tem dois números, e o histórico era o do confronto
+
+Achado na v25, e ele recalibra o item 1 deste arquivo.
+
+`sim/bateria.js` sempre rodou **um confronto fixo e assimétrico** — dez dos vinte
+heróis, repartidos entre os lados. Toda a série histórica de "quem começa"
+(42,0% → 46,8% → 48,6% → 51,1% → 51,2%) foi medida assim.
+
+Com **`times=espelho`** (os mesmos cinco heróis dos dois lados), que é o único
+arranjo em que a única diferença entre os jogadores é a ordem:
+
+| Arranjo | quem começa | n |
+|---|---|---|
+| confronto fixo (histórico) | ~51,2% | 6000 |
+| **espelhado** | **~52,9%** | 9000 |
+
+Os dois números estão certos e medem coisas diferentes. O espelhado mede **ordem**;
+o fixo mede **ordem + aquele confronto**, e a composição de um lado vinha
+compensando parte da vantagem de quem começa.
+
+**O que isso muda para o item 1:** a vantagem de ordem "residual" pode ser ~1,9
+ponto maior do que o registrado. **Não corrigi nada por causa disso** — mudar a
+compensação de ordem com base numa métrica que acabou de trocar de definição seria
+repetir o erro que este arquivo existe para evitar. **Decisão do grupo:** adotar o
+espelho como métrica oficial de ordem (e reavaliar o Primeiro Passo contra ela), ou
+manter o confronto fixo como referência histórica.
+
+Seja qual for, a regra prática já vale e está em `ESTADO.md`: **mudança que toca
+herói, habilidade ou item mede-se com `times=espelho`.**
+
+---
+
 ## 8. Itens que mudam comportamento (PARTE 17.3)
 
 Não implementado — é ideia futura, e concordo com a priorização do relatório.

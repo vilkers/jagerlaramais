@@ -435,6 +435,50 @@ const VISAO_ONDA=2;       /* a onda é o creep: enxerga onde está empurrando */
 const VISAO_WARD=3;       /* ward vê mais que herói — é o que a torna comprável */
 const WARD_RODADAS=3;     /* e ela apaga sozinha */
 
+/* ---------- EFEITO AO LONGO DO TEMPO ----------
+   Sangramento e envenenamento. O jogo só tinha dano instantâneo: todo golpe
+   resolvia no próprio turno, e por isso a única forma de pressionar alguém era
+   estar do lado dele com dado na mão. O efeito com prazo é a primeira coisa que
+   continua trabalhando depois que o dado acabou — e é o que dá sentido a recuar,
+   perseguir e negar espaço.
+
+   COBRA NO INÍCIO DO TURNO DA VÍTIMA, uma vez por rodada, e é a mesma âncora de
+   escudo, prisão e buff (ver expiraDoTime): quem recebe sempre tem exatamente um
+   turno adversário de exposição, jogando em primeiro ou em segundo.
+
+   IGNORA ARMADURA E ESCUDO, de propósito. Não é o golpe chegando — é o golpe que
+   já chegou, cobrando depois. A consequência de desenho é a que faltava: um
+   Vharn com 17 de escudo e 4 de armadura era imune a quase tudo enquanto a
+   Muralha durasse, e agora existe uma classe de dano que responde a ele. Em
+   troca, o número é pequeno e não escala com o dado: quem quer matar continua
+   precisando bater. */
+const DOTS={
+  sangramento:{n:"sangramento", selo:"SANGRANDO",   ico:"🩸"},
+  veneno:     {n:"envenenamento", selo:"ENVENENADO", ico:"☠"}
+};
+/* ---------- ZONA — controle de área ----------
+   A ward já provou que peça-no-mapa-com-prazo funciona neste motor, e a zona é a
+   mesma ideia virada para o outro lado: em vez de acender o terreno, ela o
+   NEGA. Quem começa o turno dentro leva o efeito com prazo.
+
+   É o que faltava para "controle de área" existir de verdade. `area`,
+   `danoVizinhos` e `danoRaio` acertam quem está lá NO INSTANTE do golpe e
+   acabam ali — são explosões, não território. A zona permanece, então ela muda
+   por onde o adversário anda mesmo nas rodadas em que ninguém gasta dado.
+
+   O PRAZO É CONTADO EM TURNOS DO ADVERSÁRIO, e não em rodadas. Medir em rodada
+   parece igual e não é: a zona cobra no início do turno de quem está dentro,
+   então a criada por quem joga PRIMEIRO pega o adversário já na mesma rodada,
+   e a criada por quem joga em segundo só pega na rodada seguinte. Com prazo de
+   2 rodadas, a primeira cobrava dois turnos adversários e a segunda, um.
+
+   É exatamente o erro que a v20 já corrigiu nas ondas — comparar presença no
+   fim da RODADA dava 42% para quem começa, e congelar por turno devolveu 4,8
+   pontos. Medido de novo aqui: com prazo em rodadas a bateria dava 53,3% para
+   quem começa contra 51,6% com as zonas desligadas. Contando turnos, os dois
+   lados recebem o mesmo número de exposições por construção. */
+const ZONA_TURNOS=2;
+
 /* Vizinhança pré-calculada. A primeira versão varria os 116 hexágonos para CADA
    fonte de visão, a cada consulta — com ~15 fontes por time e a visão sendo
    perguntada dentro de laços de mira, a bateria de 2000 partidas deixou de
@@ -563,6 +607,83 @@ function poeWard(t,pos){
   tm.wards.push({pos:[...pos],rodadas:WARD_RODADAS});
   reg(t?"c":"a",`ward posta — acende ${VISAO_WARD} de raio por ${WARD_RODADAS} rodadas`);
 }
+/* Aplica (ou renova) um efeito com prazo. Não empilha duas vezes o mesmo tipo:
+   reaplicar RENOVA a duração e fica com o maior dano. Empilhar era a alternativa
+   e foi descartada na mesa do desenho — dois assassinos sangrando o mesmo alvo
+   viraria dano instantâneo com passos extras, que é justamente o que o efeito
+   com prazo não deveria ser. */
+function poeDot(alvo,quem,tipo,dano,rodadas){
+  if(!alvo||alvo.morto||!DOTS[tipo])return;
+  alvo.dots=alvo.dots||[];
+  const ja=alvo.dots.find(d=>d.tipo===tipo);
+  if(ja){ ja.dano=Math.max(ja.dano,dano); ja.rodadas=Math.max(ja.rodadas,rodadas); ja.dono=quem; }
+  else alvo.dots.push({tipo,dano,rodadas,dono:quem});
+  reg("b",`${alvo.n} está com ${DOTS[tipo].n} — ${dano} por rodada, ${rodadas} rodadas`);
+}
+/* Cobra os efeitos no início do turno do dono da peça, e só uma vez por rodada.
+   Ignora armadura e escudo — ver o comentário de DOTS. Não passa por aplicaDano
+   justamente por isso: aquele é o funil do golpe que CHEGA, e este é o do golpe
+   que já chegou. */
+function cobraDots(t){
+  J.times[t].herois.forEach(h=>{
+    if(h.morto||!h.dots||!h.dots.length)return;
+    /* o autor é guardado ANTES de a lista ser filtrada. Ler `h.dots[0].dono`
+       depois do filtro perdia o crédito exatamente no caso mais comum — a última
+       cobrança do efeito é justamente a que mata, e é também a que tira o efeito
+       da lista. O ouro da morte ia para o vizinho mais próximo em vez de para
+       quem aplicou. */
+    let autor=null;
+    h.dots.forEach(d=>{
+      if(h.vida<=0)return;
+      h.vida-=d.dano; autor=d.dono;
+      reg("b",`${DOTS[d.tipo].ico} ${h.n} perde ${d.dano} de ${DOTS[d.tipo].n} `
+             +`(${Math.max(0,h.vida)}/${h.vidaMax})`);
+      fx(h.pos,-d.dano,"dano");
+      d.rodadas--;
+    });
+    h.dots=h.dots.filter(d=>d.rodadas>0);
+    /* a morte por efeito credita o ouro a quem aplicou — mesmo que ele já tenha
+       morrido desde então. Herói morto continua existindo e continua tendo bolso. */
+    if(h.vida<=0) mata(h,autor||maisPertoDe(h,1-h.t));
+  });
+}
+/* fallback de autoria: se o aplicador sumiu da mesa (não deveria acontecer, mas
+   `mata` precisa de alguém para creditar), o crédito vai para o inimigo vivo mais
+   próximo. Nunca fica sem dono, e nunca estoura. */
+function maisPertoDe(h,t){
+  const cand=J.times[t].herois.filter(x=>!x.morto);
+  if(!cand.length)return J.times[t].herois[0];
+  return cand.reduce((a,b)=>dist(...h.pos,...b.pos)<dist(...h.pos,...a.pos)?b:a);
+}
+/* Zona: quem começa o turno dentro de uma zona inimiga recebe o efeito dela.
+   O prazo da zona também corre AQUI, e só aqui — cada turno adversário que ela
+   vigia gasta uma carga, tenha pegado alguém ou não. É o que a torna simétrica:
+   as duas zonas vigiam o mesmo número de turnos do outro lado, não importa quem
+   jogou primeiro. Gastar só quando pega alguém faria zona em canto vazio durar
+   a partida inteira. */
+function zonasCobram(t){
+  if(!J.zonas||!J.zonas.length)return;
+  J.zonas.forEach(z=>{
+    if(z.t===t)return;                       // a sua própria zona não te machuca
+    J.times[t].herois.forEach(h=>{
+      if(h.morto)return;
+      if(dist(...h.pos,...z.pos)>z.raio)return;
+      reg("b",`${h.n} começou o turno dentro de ${z.n}`);
+      poeDot(h,z.dono,z.tipo,z.dano,2);
+    });
+    z.turnos--;
+  });
+  const antes=J.zonas.length;
+  J.zonas=J.zonas.filter(z=>z.turnos>0);
+  if(J.zonas.length<antes) reg("b","uma zona se dissipou");
+}
+function poeZona(t,pos,z){
+  J.zonas=J.zonas||[];
+  J.zonas.push({t,pos:[...pos],raio:z.raio||1,turnos:ZONA_TURNOS,
+                tipo:z.tipo,dano:z.dano,n:z.n||"uma zona",dono:z.dono});
+  reg(t?"c":"a",`${z.n||"zona"} criada — raio ${z.raio||1}, `
+     +`os ${ZONA_TURNOS} próximos turnos do adversário`);
+}
 function expiraWards(){
   J.times.forEach((tm,t)=>{
     if(!tm.wards||!tm.wards.length)return;
@@ -665,7 +786,8 @@ function novo(){
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
-          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0};
+          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0,
+          dots:[], curouSitiado:0};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -679,6 +801,7 @@ function novo(){
       {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
       {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
     ],
+    zonas:[],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -798,6 +921,12 @@ function expiraDoTime(t){
 function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
   expiraDoTime(t);
+  /* a zona marca ANTES de o efeito cobrar: quem começou o turno dentro dela paga
+     na hora, e não só na rodada seguinte. Sem isso dava para entrar e sair da
+     zona no mesmo turno sem custo nenhum, e território que não cobra não nega
+     nada. */
+  zonasCobram(t);
+  cobraDots(t);
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
      mesmo instante em que é reposto */
   if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
@@ -954,6 +1083,7 @@ function fimDaRodada(){
     }
   });
   colheAcampamentos();                            // quem ficou em cima, colhe
+  curaDeBase();                                   // e quem ficou em casa, se trata
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
     h.ouro += h.agiu?1:3;
@@ -1123,6 +1253,40 @@ const campEm=(c,r)=>J.camps.find(cp=>cp.ativo&&cp.pos[0]===c&&cp.pos[1]===r);
 function coletaAcampamento(h){ /* mantida por compatibilidade: ocupar é o que vale */ }
 
 /* roda no fim da rodada, depois de todo mundo ter mexido */
+/* ---------- CURA DE BASE, E O CERCO QUE A INTERROMPE ----------
+   Até a v25 não havia cura nenhuma de base: o único jeito de recuperar vida
+   cheia era morrer, e o respawn ficou sendo a "cura" mais barata do jogo, o que
+   é exatamente o incentivo errado. Agora voltar para casa trata — e voltar custa
+   movimento, que é o recurso mais disputado da mesa.
+
+   A TRAVA é a parte que importa, e veio do relato: *"se tiver um inimigo a 2
+   hexágonos dele só cura 1x até ele sair de perto"*. Sem ela, recuar para a base
+   com o adversário em cima viraria um poço de vida infinito e o mergulho na base
+   deixaria de ser uma decisão. Com ela, quem está sitiado se trata UMA vez e
+   depois precisa resolver o cerco: matar, ser morto, ou esperar o outro
+   desistir. `curouSitiado` zera sozinho assim que não há mais ninguém a 2 —
+   sair de perto devolve a torneira, e é o próprio relato virado regra. */
+const CURA_BASE=3;
+const CERCO_RAIO=2;
+function curaDeBase(){
+  todos().forEach(h=>{
+    if(h.morto||!naBase(h))return;
+    const sitiado=J.times[1-h.t].herois.some(o=>!o.morto&&dist(...o.pos,...h.pos)<=CERCO_RAIO);
+    if(!sitiado){ h.curouSitiado=0; }
+    else if(h.curouSitiado){
+      if(h.vida<h.vidaMax) reg("b",`${h.n} está cercado na base — a cura não vem de novo`);
+      return;
+    }
+    if(h.semCura){ reg("b",`${h.n} está SEM CURA — a base não trata`); return; }
+    if(h.vida>=h.vidaMax)return;
+    const antes=h.vida;
+    h.vida=Math.min(h.vidaMax,h.vida+CURA_BASE);
+    if(sitiado) h.curouSitiado=1;
+    reg(h.t?"c":"a",`${h.n} se trata na base (+${h.vida-antes})`
+       +(sitiado?" — e não se trata de novo enquanto houver inimigo por perto":""));
+    fx(h.pos,"+"+(h.vida-antes),"cura");
+  });
+}
 function colheAcampamentos(){
   J.camps.forEach(cp=>{
     if(!cp.ativo||cp.respawn>0)return;
@@ -1180,6 +1344,13 @@ function usaHab(alvo){
   }
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
   if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
+  /* ZONA — o alvo é o CHÃO, não a peça. Nasce onde a habilidade aponta (ou sob o
+     próprio herói, quando ela é `alvo:"eu"`), e continua lá depois do turno. */
+  if(ef.zona){
+    const onde = (hb.alvo==="eu"||!alvo||!alvo.pos) ? h.pos : alvo.pos;
+    poeZona(h.t,onde,{...ef.zona,n:hb.n,dono:h});
+    txt+=` — ${hb.n} cobre ${ef.zona.raio||1} de raio pelos ${ZONA_TURNOS} próximos turnos do adversário`;
+  }
 
   if(ef.dano||ef.danoFixo){
     let d = ef.danoFixo ? ef.danoFixo : base(ef.dano);
@@ -1187,6 +1358,9 @@ function usaHab(alvo){
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
     else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo);
+    /* o efeito com prazo entra DEPOIS do dano e só se o alvo sobreviveu: pendurar
+       sangramento num defunto não faz sentido e ainda sujaria o crédito da morte */
+    if(ef.dot&&!alvo.morto) poeDot(alvo,h,ef.dot.tipo,ef.dot.dano,ef.dot.rodadas);
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
       .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
@@ -1311,7 +1485,10 @@ const respawnAgora=()=>Math.min(RESPAWN_MAX,
   RESPAWN_BASE+Math.floor((J.rodada-1)/RESPAWN_PASSO));
 
 function mata(alvo,quem){
+  /* morrer limpa o que estava pendurado: o respawn devolve o herói inteiro, e
+     sangramento que sobrevivesse à morte cobraria duas vezes pelo mesmo golpe */
   alvo.vida=0; alvo.morto=respawnAgora(); alvo.esc=0; alvo.intoc=0;
+  alvo.dots=[]; alvo.curouSitiado=0;
   quem.ouro+=4;
   reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva 4 de ouro`);
 }
@@ -1524,6 +1701,12 @@ function revela(snap){
     if(dv<0){ fx(h.pos,dv,"dano"); tremer(h); bateu=true; }
     else if(dv>0) fx(h.pos,"+"+dv,"cura");
     if(h.esc>s.e) fx(h.pos,"⛨"+(h.esc-s.e),"esc");
+    /* escudo que DESCE também é notícia. Antes só a subida virava número, e um
+       golpe inteiramente absorvido não produzia nada na tela: sem número de
+       dano (a vida não mudou), sem tremida, sem vibração. O jogador batia duas
+       vezes e via o adversário intacto, sem explicação. Agora o golpe absorvido
+       treme a peça igual, e o número sai com o sinal do escudo. */
+    else if(h.esc<s.e&&!h.morto){ fx(h.pos,"⛨−"+(s.e-h.esc),"esc"); tremer(h); bateu=true; }
     if(h.morto&&!s.m){ fx(h.pos,"☠","morte"); toast(h.n+" caiu","morte"); vibra([35,55,35]); }
   });
   if(bateu) vibra(18);
@@ -2055,6 +2238,17 @@ moveAte=function(c,r){
 function estadoDaPeca(h){
   if(h.preso)  return {k:"mal",  txt:"PRESO"};
   if(h.intoc)  return {k:"bom",  txt:"INTOCÁVEL"};
+  /* ESCUDO entra logo depois de INTOCÁVEL porque responde à mesma pergunta que
+     ele — "por que o meu golpe não fez nada?". Faltava, e o relato foi exato:
+     "dei 2 ataques contra o Vharn e não deu dano nem tirou escudo". A Muralha
+     dele dá até 17 num herói de 25, o golpe some inteiro dentro do escudo e a
+     peça não dizia nada. Vem antes de MARCADO por consequência: marca modifica
+     o próximo golpe, escudo decide se vale dar o golpe. */
+  if(h.esc>0)  return {k:"bom",  txt:"ESCUDO"};
+  /* o efeito com prazo vem antes de MARCADO porque já está cobrando: ele muda a
+     conta de "dá para aguentar mais uma rodada?", que é a decisão mais comum da
+     mesa. Marca só vale se um segundo golpe acertar. */
+  if(h.dots&&h.dots.length) return {k:"mal", txt:DOTS[h.dots[0].tipo].selo};
   if(h.marca)  return {k:"mal",  txt:"MARCADO"};
   if(h.recarga)return {k:"bom",  txt:"CARREGADO"};
   if(h.semCura)return {k:"mal",  txt:"SEM CURA"};
@@ -2092,6 +2286,27 @@ function desenhaMapa(){
     if(tab) tab[VISAO_WARD].forEach(x=>{ if(!MATO.has(x)||ehMato(...w.pos)) wardS.add(x); });
   });
 
+  /* AS ZONAS, pintadas no chão pelo mesmo princípio da ward: hexágono marcado, e
+     nunca um círculo. O anel de raio 3 da ward já quebrou o mapa uma vez inflando
+     o `getBBox()`, e uma zona é a mesma armadilha com outro nome.
+     A sua zona e a do adversário se distinguem pela classe — território negado
+     por você e território que nega você não podem ter a mesma cor.
+     Quem não enxerga a casa também não vê a zona: ela obedece à névoa igual a
+     todo o resto, senão viraria um radar de graça. */
+  const zonaMinha=new Set(), zonaDele=new Set();
+  const meuLadoZ=ladoDaTela();
+  (J.zonas||[]).forEach(z=>{
+    const tab=RAIO_ATE.get(k(...z.pos));
+    const casas=tab?tab[Math.min(z.raio,tab.length-1)]:[k(...z.pos)];
+    casas.forEach(x=>{
+      if(z.t!==meuLadoZ){
+        const [zc,zr]=x.split(",").map(Number);
+        if(!enxergaCasa(meuLadoZ,zc,zr))return;
+      }
+      (z.t===meuLadoZ?zonaMinha:zonaDele).add(x);
+    });
+  });
+
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
     let cls="hx ";
@@ -2109,6 +2324,8 @@ function desenhaMapa(){
        ser legível para os dois lados o tempo todo. */
     if(k(c,r)!==POCO_K&&!enxergaCasa(ladoDaTela(),c,r)) cls+=" cego";
     if(wardS.has(k(c,r)))cls+=" wardado";
+    if(zonaDele.has(k(c,r)))cls+=" zona-ini";
+    else if(zonaMinha.has(k(c,r)))cls+=" zona-min";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
@@ -2309,6 +2526,9 @@ function fichaHTML(h,meu){
     h.intoc?'<span class="selo-est">intocável</span>':"",
     escondido(h)?'<span class="selo-est">escondido</span>':"",
     reveladoPorAtaque(h)&&!h.morto?'<span class="selo-est mal">revelado</span>':"",
+    h.esc>0?`<span class="selo-est">escudo ${h.esc}</span>`:"",
+    ...(h.dots||[]).map(d=>`<span class="selo-est mal">${DOTS[d.tipo].n} ${d.dano}/rodada `
+       +`· ${d.rodadas} rodada${d.rodadas>1?"s":""}</span>`),
     h.recarga?`<span class="selo-est">carregado +${h.recarga}</span>`:"",
     h.marca?`<span class="selo-est mal">marcado +${h.marca}</span>`:"",
     h.semCura?'<span class="selo-est mal">sem cura</span>':"",
@@ -2372,11 +2592,24 @@ function abreLog(){
 
    `pode` decide se o botão fica ativo; `faz` aplica o efeito. Nada mais. */
 const GASTOS=[
-  /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói
-     (6, 8, 10, 12…), então ele nunca vira renda infinita: cada ponto de Poder
-     custa mais que o anterior, e a certa altura vale mais gastar em outra coisa. */
+  /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói,
+     então ele nunca vira renda infinita: cada ponto de Poder custa mais que o
+     anterior, e a certa altura vale mais gastar em outra coisa.
+
+     CURVA 6+2 → 10+4 na v25, e o relato foi direto: "tá mto barato". Medido em
+     600 partidas com sim/ouro.js: um herói termina a partida com 61 de ouro e o
+     build de 3 itens mais caro que ele consegue vestir custa 25. Sobravam 36 —
+     e 36 pagava QUATRO Reforços na curva antiga (6+8+10+12), ou +4 de Poder
+     permanente. Nenhum item da loja dá mais de +2, e todos ocupam um dos três
+     slots. O Reforço não ocupa nada e não tem teto: era o Poder mais barato do
+     jogo justamente por ser o único ilimitado.
+
+     Com 10+4 a mesma sobra compra DOIS (10+14=24), e o terceiro exige guardar
+     em vez de gastar. O que se comprou não foi equilíbrio de número, foi
+     escolha: com quatro compras o ouro tardio era uma lista; com duas, é uma
+     decisão entre Poder, carta, território e visão. */
   {id:"reforco", n:"Reforço", d:"+1 de Poder permanente neste herói.",
-   o:h=>6+2*(h.reforcos||0),
+   o:h=>10+4*(h.reforcos||0),
    pode:h=>h.morto||naBase(h),
    faz:h=>{ h.reforcos=(h.reforcos||0)+1; h.extraPoder+=1; }},
 
@@ -2519,7 +2752,13 @@ function abreLoja(){
     lojaHeroi=tm.herois.find(h=>h.id===b.dataset.h); abreLoja(); });
   G("shCorpo").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
     if(usaGasto(b.dataset.g,quem,t)){ abreLoja(); pinta(); } });
-  G("shCorpo").querySelectorAll(".itC").forEach(b=>b.onclick=()=>{
+  /* `[data-i]`, e NÃO `.itC`: as duas prateleiras usam a mesma classe de estilo,
+     então `.itC` pegava também os botões de gasto e — por ser ligado depois —
+     sobrescrevia o clique deles. Reforço, Requisição, Leva e Sentinela caíam no
+     corpo de compra de item, `ITEM[undefined]` dava undefined e `it.o` estourava
+     TypeError: quatro botões mortos, sem nada no console para o jogador.
+     A classe continua sendo de aparência; quem manda no clique é o dado. */
+  G("shCorpo").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{
     const it=ITEM[b.dataset.i];
     const preco=Math.max(0,it.o-descontos[t]);
     if(quem.ouro<preco||quem.itens.includes(it.id)||inventarioCheio(quem))return;
@@ -2569,6 +2808,13 @@ function abreManual(){
       <p>E o <b>mato bloqueia</b>: dentro do mato só se enxerga <b>de dentro do mato</b>. Estar colado nele pela rota não adianta, e ward plantada na rota também não vê lá dentro. Quem quer saber o que tem no mato entra ou <b>planta a ward dentro</b>.</p>
       <p>Duas saídas para quem está no escuro: atacar de lá vale <b>+2 de Força</b> (emboscada) — mas <b>quem ataca fica visível</b> até sair da casa de onde bateu. Bater entrega a posição.</p>
       <p>Ouro sobrando com os três itens comprados? A <b>Sentinela</b>, na loja, é uma ward na mochila: compre na base, plante onde quiser, sem gastar dado.</p></section>
+    <section class="destaque"><h4>Sangramento, veneno e zonas</h4>
+      <p>Algumas habilidades de <b>controle</b> (dado 3+) e algumas Ultimates deixam um <b>efeito com prazo</b>. Ele cobra <b>no início do turno de quem está marcado</b>, uma vez por rodada, e <b>ignora armadura e escudo</b> — é o golpe que já chegou, cobrando depois. É a resposta que faltava contra tanque com escudo grande.</p>
+      <p>Reaplicar <b>renova o prazo</b>, não empilha um segundo. Morrer limpa tudo.</p>
+      <p>A <b>zona</b> é o mesmo efeito posto no <b>chão</b>: quem <b>começa o turno dentro</b> dela fica envenenado. Ela dura os <b>2 próximos turnos do adversário</b> — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar mais tempo que a de quem joga em segundo. No mapa, a sua aparece em <b>verde tracejado</b> e a do adversário em <b>vermelho pulsante</b>.</p></section>
+    <section class="destaque"><h4>A base trata — mas não com o inimigo em cima</h4>
+      <p>Herói ferido na <b>própria base</b> recupera <b>3 de vida por rodada</b>. Voltar custa movimento, que é o recurso mais disputado da mesa — é esse o preço.</p>
+      <p><b>Com inimigo a 2 casas ou menos, ele se trata UMA vez e para.</b> A cura só volta quando o cerco sair de perto. Mergulhar na base do adversário continua sendo decisão, e não suicídio garantido.</p></section>
     <section><h4>Defender junto da torre</h4>
       <p>Herói colado numa torre <b>viva do próprio time</b> ganha <b>+1 de Armadura</b>. Lutar em casa é diferente de lutar no vão da rota — e o bônus cai junto com a torre.</p></section>
     <section class="destaque"><h4>Regra de mesa · presença na rota</h4>
@@ -3079,6 +3325,33 @@ function iaDestino(h,t){
   const inimigos=iaInimigosVisiveis(t);
   const ferido=h.vida<=Math.ceil(h.vidaMax*.3);
   if(ferido&&!naBase(h)) return {p:BASE[t][0],motivo:"recua"};
+
+  /* SAIR DA ZONA vem antes de tudo o mais, porque é a única entrada desta lista
+     que cobra por ficar parado. Território negado que a IA ignora não nega nada:
+     ela levaria o efeito todo turno e o jogador aprenderia que zona é decoração.
+     Sai para a casa vizinha mais próxima que esteja limpa — e se não houver
+     nenhuma, segue a lista normal, porque fugir para lugar nenhum é pior do que
+     jogar. */
+  const naZona=(p)=>(J.zonas||[]).some(z=>z.t!==t&&dist(...p,...z.pos)<=z.raio);
+  if(naZona(h.pos)){
+    /* A saída NÃO está entre os vizinhos. Uma zona de raio 1 cobre a casa e as
+       seis em volta, então procurar a 1 passo não acha nada e a IA desistia de
+       sair — foi o que o teste pegou. O alcance da busca tem de ser maior que o
+       raio da maior zona em cima dela, e o desempate é o de sempre: sai pelo
+       lado do adversário, não pelo próprio. */
+    const raioMax=Math.max(...(J.zonas||[]).filter(z=>z.t!==t).map(z=>z.raio),1);
+    let fora=null;
+    for(let d=1;d<=raioMax+1&&!fora;d++){
+      const anel=[];
+      for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+        if(!noTab(c,r)||dist(c,r,...h.pos)!==d)continue;
+        if(em(c,r)||naZona([c,r]))continue;
+        anel.push([c,r]);
+      }
+      fora=anel.sort((a,b)=>dist(...a,...BASE[1-t][0])-dist(...b,...BASE[1-t][0]))[0]||null;
+    }
+    if(fora) return {p:fora,motivo:"sai da zona"};
+  }
 
   /* ÚLTIMA MURALHA. Com o Nexus em 1 e uma rota aberta, ficar em casa deixou de
      ser desperdício e passou a ser a jogada que impede a onda de fechar (ver

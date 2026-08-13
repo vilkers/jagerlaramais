@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 23** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 25** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -149,14 +149,16 @@ cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
 | 9 a 16 | 3 rodadas |
 | 17 em diante | 4 rodadas |
 
-> **Dinâmica.** Não existe cura de base neste jogo — o que devolve vida cheia é o
-> respawn, a uma casa do Nexus. Com preço fixo de 2, segurar o próprio Nexus
-> morrendo de propósito saía de graça. Cedo, morrer é lição; tarde, morrer é a
-> partida.
+> **Dinâmica.** Com preço fixo de 2, segurar o próprio Nexus morrendo de propósito
+> saía de graça. Cedo, morrer é lição; tarde, morrer é a partida. Até a v25 o
+> respawn era também a única forma de recuperar vida cheia — morrer era a cura
+> mais barata do jogo, que é o incentivo errado. A **cura de base** (adiante)
+> desfez isso.
 
 | Efeito | O que faz |
 |---|---|
-| Escudo | Absorve dano antes da vida. Não empilha entre rodadas |
+| Escudo | Absorve dano antes da vida. Não empilha entre rodadas. Aparece como **ESCUDO** na peça |
+| Sangramento / veneno | Dano por rodada com prazo, **ignora armadura e escudo** (adiante) |
 | Preso | Não pode se mover |
 | Intocável | Não recebe dano nenhum |
 | Marca | Soma dano no próximo golpe recebido |
@@ -277,6 +279,51 @@ na casa**. Reaparecem 3 rodadas depois.
 | Seu | 3 |
 | Neutro | 4 |
 | Do adversário (invasão) | +1 a mais |
+
+### Efeito com prazo — sangramento e veneno
+
+Algumas habilidades de **controle** (dado 3+) e algumas Ultimates deixam um efeito
+que continua trabalhando depois do turno.
+
+| | |
+|---|---|
+| Quando cobra | no **início do turno de quem está marcado**, uma vez por rodada |
+| Quanto | o número da habilidade, fixo — não escala com o dado |
+| Passa por | **ignora armadura e escudo**. É o golpe que já chegou, cobrando depois |
+| Reaplicar | **renova o prazo e fica com o maior dano**. Nunca empilha um segundo |
+| Morte | limpa tudo — o respawn devolve o herói inteiro |
+
+**Nunca na habilidade básica.** Efeito com prazo custa dado médio ou alto, e é por
+isso que pode ser forte: ele é escolha, não passiva de todo golpe.
+
+Quem aplicou leva o **ouro da morte**, mesmo que já tenha morrido desde então.
+
+### Zona — controle de área
+
+A zona é o mesmo efeito posto no **chão**. Quem **começa o turno dentro** dela
+recebe o efeito.
+
+| | |
+|---|---|
+| Prazo | os **2 próximos turnos do adversário** — contado em turnos, **nunca em rodadas** |
+| Raio | 1 (a casa e as seis vizinhas) |
+| A sua zona | **não** machuca você |
+| No mapa | a sua em verde tracejado, a do adversário em vermelho pulsante |
+
+O prazo é medido em turnos do adversário porque a zona cobra no início do turno de
+quem está dentro: em rodadas, a zona de quem joga **primeiro** vigiaria dois turnos
+adversários e a do segundo apenas um. É o mesmo erro que a v20 corrigiu nas ondas.
+
+### Cura de base
+
+Herói ferido na **própria base** recupera **3 de vida por rodada**. Voltar custa
+movimento — é esse o preço.
+
+**Com inimigo a 2 casas ou menos, ele se trata UMA vez e para.** A cura só volta
+quando o cerco sair de perto. É o que impede a base de virar poço de vida infinito
+e mantém o mergulho como decisão.
+
+Quem está **SEM CURA** não é tratado pela base.
 
 ### O poço — Dragão e Barão
 

@@ -1508,6 +1508,368 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      + `— deixou de custar o segundo dado, e com ele o dilema`);
 });
 
+/* ═══════════════ v25 — a loja e o escudo que não apareciam ═══════════════ */
+
+/* RELATO: "não tô conseguindo comprar os itens de buff".
+   A prateleira "Gastar ouro" desenha os botões com class="itC" E data-g. O
+   handler dos itens era ligado por `querySelectorAll(".itC")`, que pega as DUAS
+   prateleiras, e como ele é ligado DEPOIS, sobrescrevia o handler do gasto.
+   Clicar em Reforço caía no corpo do item, `ITEM[undefined]` dava undefined e
+   `it.o` estourava TypeError: o botão simplesmente não fazia nada.
+
+   O teste lê do próprio fonte o seletor com que o handler de item é ligado e
+   confere que ele NÃO alcança nenhum botão de gasto. É o único jeito de pegar
+   este bug sem um DOM de verdade — e é a forma exata do erro. */
+teste("o seletor dos itens da loja não rouba o clique dos gastos de ouro", () => {
+  const fs = require("fs"), path = require("path");
+  const { RAIZ } = require("./motor.js");
+  const fonte = fs.readFileSync(path.join(RAIZ, "jogo/jogo.js"), "utf8");
+
+  const corpo = /function abreLoja\(\)\{[\s\S]*?\n\}/.exec(fonte);
+  ok(corpo, "não achei abreLoja no fonte");
+  const seletorItem = /querySelectorAll\("([^"]+)"\)\.forEach\(b=>b\.onclick=\(\)=>\{\s*const it=ITEM\[b\.dataset\.i\]/
+                        .exec(corpo[0]);
+  ok(seletorItem, "não achei o handler de compra de item dentro de abreLoja");
+
+  /* renderiza a loja de verdade e pega os botões que ela produz */
+  const c = cena();
+  const g = c.g;
+  let html = "";
+  g.abreSheet = (titulo, corpoHtml) => { html = corpoHtml; };
+  const h = g.J.times[0].herois[0];
+  h.ouro = 99;                              // dinheiro para as duas prateleiras acenderem
+  g.J.vez = 0;
+  g.abreLoja();
+
+  const botoes = html.match(/<button[^>]*>/g) || [];
+  const gastos = botoes.filter(b => /data-g="/.test(b));
+  ok(gastos.length, "a prateleira de gasto de ouro não apareceu na loja");
+
+  /* aplica o seletor lido do fonte — só as duas formas que abreLoja usa */
+  const alcanca = tag => seletorItem[1].startsWith(".")
+    ? new RegExp(`class="[^"]*\\b${seletorItem[1].slice(1)}\\b`).test(tag)
+    : new RegExp(`${seletorItem[1].replace(/[[\]]/g, "")}=`).test(tag);
+
+  const roubados = gastos.filter(alcanca);
+  eq(roubados.length, 0,
+     `o seletor '${seletorItem[1]}' dos itens também pega ${roubados.length} botão(ões) `
+     + `de gasto e sobrescreve o clique deles — Reforço vira botão morto`);
+});
+
+/* RELATO: "dei 2 ataques contra o Vharn e não deu dano nem tirou escudo".
+   O escudo absorvia certo — o que faltava era a tela dizer isso. A peça não
+   tem etiqueta de escudo (estadoDaPeca lista seis estados e escudo não é um
+   deles), e `revela()` só emite número flutuante quando o escudo SOBE. Como a
+   vida não muda num golpe absorvido, o ataque saía sem dano, sem tremida e sem
+   número: da cadeira do jogador, nada aconteceu. */
+teste("herói com escudo mostra ESCUDO na peça — senão o golpe absorvido some da tela", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] });
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");
+  /* nada de exigir etiqueta nula aqui: o Vharn nasce na entrada da rota e pode
+     estar no mato, o que legitimamente acende ESCONDIDO. O que este teste
+     trava é que ESCUDO ganha de tudo que for só posição. */
+  vharn.esc = 17;
+  const et = g.estadoDaPeca(vharn);
+  ok(et && /ESCUDO/.test(et.txt),
+     `Vharn com 17 de escudo mostra ${et ? et.txt : "nada"} na peça — `
+     + `o jogador bate e não tem como saber por que não saiu dano`);
+});
+
+teste("a ficha do Time mostra o número do escudo, como já mostra marcado e carregado", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] });
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");
+  vharn.esc = 17;
+  ok(/escudo 17/.test(g.fichaHTML(vharn, false)),
+     "a gaveta do Time não diz quanto escudo o herói tem");
+});
+
+/* ═══════════════ v25 — efeito com prazo e controle de área ═══════════════ */
+
+const cenaDot = () => cena({ times: [["kaross", "kurr", "arden", "cael", "torvald"],
+                                     ["vharn", "grumo", "nira", "vesper", "gorm"]] });
+
+teste("sangramento cobra no início do turno da vítima, e só uma vez por rodada", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo");
+  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  const v0 = vitima.vida;
+
+  g.J.vez = 0; g.iniciaTurno();
+  eq(vitima.vida, v0, "o efeito cobrou no turno do ADVERSÁRIO — a âncora está errada");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 3, "o sangramento não cobrou no início do turno da vítima");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 6, "a segunda rodada de sangramento não cobrou");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 6, "o sangramento cobrou uma terceira vez — não tinha prazo");
+  eq(vitima.dots.length, 0, "o efeito não saiu da lista depois de vencer");
+});
+
+teste("o efeito com prazo ignora armadura e escudo — é o golpe que já chegou", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");          // 3 de armadura, e aqui com escudo cheio
+  vharn.esc = 20;
+  g.poeDot(vharn, c.heroi(0, "topo"), "veneno", 3, 2);
+  const v0 = vharn.vida, e0 = vharn.esc;
+
+  /* `cobraDots` direto, e NÃO `iniciaTurno`: o turno começa expirando o escudo
+     (regra da v21), e por esse caminho o escudo sumiria sem o veneno ter
+     encostado nele — o teste passaria medindo a coisa errada. */
+  g.cobraDots(1);
+  eq(vharn.vida, v0 - 3, "a armadura ou o escudo comeram o veneno");
+  eq(vharn.esc, e0, "o veneno gastou escudo — ele deveria passar por dentro");
+});
+
+teste("reaplicar o mesmo efeito renova o prazo, não empilha um segundo", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo"), autor = c.heroi(0, "topo");
+  g.poeDot(vitima, autor, "sangramento", 2, 2);
+  g.poeDot(vitima, autor, "sangramento", 3, 2);
+  eq(vitima.dots.length, 1, "empilhou dois sangramentos — vira dano instantâneo com passos extras");
+  eq(vitima.dots[0].dano, 3, "renovar deveria ficar com o maior dano");
+});
+
+teste("morrer limpa o efeito — o respawn devolve o herói inteiro", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo");
+  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  g.mata(vitima, c.heroi(0, "topo"));
+  eq(vitima.dots.length, 0, "o sangramento sobreviveu à morte e cobraria de novo no respawn");
+});
+
+teste("quem começa o turno na zona inimiga é envenenado; a própria zona não machuca", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const meu = c.heroi(0, "meio"), dele = c.heroi(1, "meio");
+  const alvoHex = [5, 5];
+  c.poe(dele, alvoHex); c.poe(meu, alvoHex);
+  g.poeZona(0, alvoHex, { tipo: "veneno", dano: 2, raio: 1, n: "Tapeçaria", dono: meu });
+
+  g.J.vez = 1; g.zonasCobram(1);
+  ok(dele.dots.length, "o inimigo parado na zona não recebeu o efeito");
+
+  g.J.vez = 0; g.zonasCobram(0);
+  eq(meu.dots.length, 0, "a própria zona envenenou quem a criou");
+});
+
+teste("a zona gasta prazo por turno do adversário, mesmo sem pegar ninguém", () => {
+  const c = cenaDot();
+  const g = c.g;
+  g.poeZona(0, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "zona", dono: c.heroi(0, "meio") });
+  eq(g.J.zonas.length, 1, "a zona não entrou no tabuleiro");
+
+  /* o turno do DONO não gasta carga — senão a zona morreria sem nunca vigiar */
+  g.zonasCobram(0);
+  eq(g.J.zonas.length, 1, "o turno do próprio dono consumiu o prazo da zona");
+
+  for (let i = 0; i < g.ZONA_TURNOS; i++) g.zonasCobram(1);
+  eq(g.J.zonas.length, 0,
+     `a zona sobreviveu aos ${g.ZONA_TURNOS} turnos adversários de prazo`);
+});
+
+/* A simetria que a v20 já teve de aprender nas ondas: o prazo contado em RODADA
+   dava à zona de quem joga primeiro dois turnos adversários de cobrança e à do
+   segundo apenas um. Medido: 53,3% para quem começa contra 51,6% com as zonas
+   desligadas. Contado em turnos, os dois lados recebem o mesmo — e este teste é
+   o que impede a contagem de voltar a ser por rodada. */
+teste("a zona do primeiro e a do segundo jogador vigiam o mesmo tanto de turnos", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const conta = dono => {
+    g.J.zonas = [];
+    g.poeZona(dono, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "z", dono: c.heroi(dono, "meio") });
+    let vigiou = 0;
+    /* a rodada é sempre A → C; quem criou já teve o próprio turno nesta rodada */
+    for (let rodada = 0; rodada < 6 && g.J.zonas.length; rodada++)
+      for (const t of [0, 1]) {
+        if (rodada === 0 && t <= dono) continue;      // o turno de quem criou já passou
+        if (!g.J.zonas.length) break;
+        if (t !== dono) vigiou++;
+        g.zonasCobram(t);
+      }
+    return vigiou;
+  };
+  eq(conta(0), conta(1),
+     `a zona de quem joga primeiro vigia ${conta(0)} turnos do adversário e a do segundo `
+     + `vigia ${conta(1)} — vantagem estrutural de ordem, o erro que a v20 corrigiu nas ondas`);
+});
+
+/* ═══════════════ v25 — a base trata, e o cerco interrompe ═══════════════ */
+
+teste("herói ferido na própria base se trata a cada rodada", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.BASE[0][0]);
+  h.vida = 5;
+  /* inimigos longe: ninguém cercando */
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "a base não tratou o herói");
+  g.curaDeBase();
+  eq(h.vida, 5 + 2 * g.CURA_BASE, "a base tratou só uma vez sem ninguém por perto");
+});
+
+teste("com inimigo a 2 hexágonos, a base trata UMA vez e só volta quando ele sai", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(0, "topo"), inimigo = c.heroi(1, "topo");
+  c.poe(h, g.BASE[0][0]);
+  h.vida = 5;
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  /* o cerco: um inimigo a exatamente 2 de distância */
+  const perto = g.vizinhos(...h.pos).flatMap(v => g.vizinhos(...v))
+                 .find(p => g.noTab(...p) && g.dist(...p, ...h.pos) === 2);
+  ok(perto, "não achei casa a 2 de distância da base");
+  c.poe(inimigo, perto);
+
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a primeira cura deveria sair mesmo assim");
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a cura veio de novo — a base virou poço infinito");
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a cura continuou vindo");
+
+  /* ele sai de perto: a torneira volta */
+  c.poe(inimigo, g.BASE[1][0]);
+  g.curaDeBase();
+  eq(h.vida, 5 + 2 * g.CURA_BASE, "o inimigo saiu de perto e a cura não voltou");
+});
+
+teste("a base não trata quem está longe dela, nem quem está SEM CURA", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const fora = c.heroi(0, "meio"), naBase = c.heroi(0, "topo");
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  c.poe(fora, [5, 5]); fora.vida = 5;
+  c.poe(naBase, g.BASE[0][0]); naBase.vida = 5; naBase.semCura = 2;
+
+  g.curaDeBase();
+  eq(fora.vida, 5, "curou um herói que não estava na base");
+  eq(naBase.vida, 5, "a base tratou um herói marcado como SEM CURA");
+});
+
+/* ═══════════════ v25 — o Reforço não pode ser o Poder mais barato ═══════════════ */
+
+/* RELATO: "não tô conseguindo comprar os itens de buff, além disso tá mto barato".
+   Medido em 600 partidas (sim/ouro.js): um herói termina com 61 de ouro e o
+   build de 3 itens mais caro que ele consegue vestir custa 25 — sobram 36. Com a
+   curva antiga (6, +2), esses 36 compravam QUATRO Reforços: 6+8+10+12 = 36, ou
+   +4 de Poder permanente. Nenhum item da loja dá mais de +2, e o Reforço não tem
+   teto. Era o Poder mais barato do jogo, e por larga margem.
+
+   O teste não trava um preço — trava a RELAÇÃO, que é o que não pode voltar a
+   inverter: uma unidade de Poder pelo Reforço nunca custa menos que a mesma
+   unidade comprada em item. */
+teste("o Reforço nunca é a fonte de Poder mais barata da loja", () => {
+  const c = cena();
+  const g = c.g;
+  const h = g.J.times[0].herois[0];
+
+  const reforco = g.GASTOS.find(x => x.id === "reforco");
+  ok(reforco, "não achei o Reforço na prateleira de gasto de ouro");
+
+  /* o item de Poder mais barato por ponto de Poder */
+  const porPonto = g.ITENS.filter(it => it.ef && it.ef.poder)
+                          .map(it => it.o / it.ef.poder);
+  ok(porPonto.length, "nenhum item de Poder na loja");
+  const itemMaisBarato = Math.min(...porPonto);
+
+  h.reforcos = 0;
+  const primeiro = g.precoGasto(reforco, h);
+  ok(primeiro >= itemMaisBarato,
+     `o primeiro Reforço custa ${primeiro} por +1 de Poder e o item mais barato `
+     + `custa ${itemMaisBarato} pelo mesmo ponto — o gasto tardio saiu mais barato que a loja`);
+});
+
+teste("a sobra de ouro de uma partida não compra mais de dois Reforços", () => {
+  const c = cena();
+  const g = c.g;
+  const h = g.J.times[0].herois[0];
+  const reforco = g.GASTOS.find(x => x.id === "reforco");
+
+  /* 36 é a sobra medida em 600 partidas: renda de 61 menos o build mais caro (25) */
+  const SOBRA = 36;
+  let bolso = SOBRA, comprados = 0;
+  for (h.reforcos = 0; ; h.reforcos++) {
+    const preco = g.precoGasto(reforco, h);
+    if (preco > bolso) break;
+    bolso -= preco; comprados++;
+  }
+  ok(comprados <= 2,
+     `a sobra de ${SOBRA} de ouro compra ${comprados} Reforços (+${comprados} de Poder permanente) `
+     + `— o ouro tardio vira estatística em vez de escolha`);
+});
+
+/* O efeito com prazo nasceu na BÁSICA do Kaross e do Kurr, e sim/habs.js pegou o
+   problema na hora: com sangramento de graça em todo golpe, o Talho (dado 1)
+   passava a valer MAIS que a Puxada (dado 3) — a habilidade do meio deixava de
+   pagar o próprio dado, que é a regra fechada na v23. Movido para o slot de
+   controle, o Kaross foi de −1 para +5.
+
+   A regra que fica: efeito com prazo é escolha, não passiva. Ele custa um dado
+   médio ou alto, e por isso pode ser forte. */
+teste("efeito com prazo mora no slot de controle ou na Ultimate, nunca na básica", () => {
+  const c = cena();
+  const g = c.g;
+  const naBasica = Object.values(g.CATALOGO)
+    .filter(def => def.habs[0].ef.dot || def.habs[0].ef.zona)
+    .map(def => def.n);
+  eq(naBasica.length, 0,
+     `${naBasica.join(", ")} aplica efeito com prazo na BÁSICA — com dado 1 ele vira `
+     + `passiva de todo golpe e faz a habilidade do meio deixar de pagar o próprio dado`);
+});
+
+teste("quem aplicou o efeito leva o ouro da morte, mesmo na última cobrança", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo"), autor = c.heroi(0, "topo"), outro = c.heroi(0, "meio");
+  /* o outro colado na vítima: se o crédito escorregar, é para ele que vai */
+  c.poe(vitima, [5, 5]); c.poe(outro, [5, 6]); c.poe(autor, g.BASE[0][0]);
+
+  g.poeDot(vitima, autor, "sangramento", 3, 1);   // 1 rodada: a cobrança que mata é a última
+  vitima.vida = 2;
+  const ouro0 = autor.ouro, ouroOutro0 = outro.ouro;
+
+  g.cobraDots(1);
+  ok(vitima.morto, "o sangramento não matou a vítima");
+  eq(autor.ouro, ouro0 + 4, "o ouro da morte não foi para quem aplicou o sangramento");
+  eq(outro.ouro, ouroOutro0, "o crédito escorregou para o inimigo mais próximo");
+});
+
+teste("a IA sai de cima de uma zona inimiga em vez de ficar apanhando", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(1, "meio");
+  c.poe(h, [5, 5]);
+  /* ninguém colado, para não disputar a decisão com "caça" ou "recua" */
+  g.J.times[0].herois.forEach(o => c.poe(o, g.BASE[0][0]));
+
+  const semZona = g.iaDestino(h, 1);
+  g.poeZona(0, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "zona", dono: c.heroi(0, "meio") });
+  const comZona = g.iaDestino(h, 1);
+
+  ok(comZona && comZona.motivo === "sai da zona",
+     `com veneno no chão a IA decidiu "${comZona ? comZona.motivo : "nada"}" `
+     + `(sem zona era "${semZona ? semZona.motivo : "nada"}") — território negado que a IA ignora não nega nada`);
+  ok(g.dist(...comZona.p, 5, 5) > 1 || !g.J.zonas.some(z => g.dist(...comZona.p, ...z.pos) <= z.raio),
+     "a IA fugiu para dentro da mesma zona");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

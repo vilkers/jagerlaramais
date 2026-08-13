@@ -16,6 +16,205 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v25 — dois botões mortos, o escudo invisível e o tempo entrando no jogo · 2026-08-13
+
+Cinco itens de playtest. Dois eram bug — e os dois eram **de tela, não de regra**,
+que é o padrão que este lote deixa registrado: o motor estava certo e o jogador
+não tinha como saber.
+
+### O botão de comprar buff não fazia nada
+
+**O relato:** *"não tô conseguindo comprar os itens de buff"*.
+
+**A causa, de leitura direta.** A prateleira *Gastar ouro* desenha os botões com
+`class="itC"` **e** `data-g`. O handler dos itens era ligado por
+`querySelectorAll(".itC")` — que pega as **duas** prateleiras — e, por ser ligado
+depois, **sobrescrevia** o clique do gasto. Clicar em Reforço caía no corpo de
+compra de item, `ITEM[undefined]` dava `undefined` e `it.o` estourava
+`TypeError`. Quatro botões mortos: Reforço, Requisição, Leva de Ferro e
+Sentinela.
+
+**Corrigido** trocando o seletor para `[data-i]`. A classe continua sendo de
+aparência; quem manda no clique é o dado. É a armadilha nº 2 do `ESTADO.md`
+(seletor pegando o que não devia) em roupa nova — antes foi `id` entre `<section>`
+e container, agora foi `class` entre duas prateleiras.
+
+### O escudo era invisível
+
+**O relato:** *"dei 2 ataques contra o Vharn e não deu dano nem tirou escudo"*.
+
+**Reproduzido no harness, e o motor estava certo:** Muralha dá **17** de escudo
+num herói de 25; dois golpes de 6 levaram o escudo de 17 → 11 → 5 e a vida ficou
+em 25/25. Absorção correta, expiração correta.
+
+**O defeito era a tela, em dois lugares ao mesmo tempo:**
+
+| Onde | O quê |
+|---|---|
+| `estadoDaPeca` | listava seis estados e **escudo não era um deles** — justamente a lista cujo trabalho é responder *"por que meu golpe não fez nada?"* |
+| `revela()` | só emitia número flutuante quando o escudo **subia**. Descendo, nada |
+
+E como a vida não mudou, não havia número de dano nem tremida. **Um golpe
+inteiramente absorvido produzia zero feedback.** Da cadeira do jogador, o ataque
+não aconteceu.
+
+Agora: **ESCUDO** na peça (logo depois de INTOCÁVEL, antes de MARCADO — decide se
+vale dar o golpe), `escudo 17` na gaveta do Time, e o escudo que desce sai como
+`⛨−6` com a peça tremendo igual a um golpe que entrou.
+
+### Efeito com prazo — sangramento e veneno
+
+**O pedido:** *"hab que causem efeito com tempo tipo sangramento ou envenenamento
+que causa dano por 2 rodadas"*.
+
+Até aqui todo golpe resolvia no próprio turno: a única forma de pressionar alguém
+era estar do lado dele com dado na mão. O efeito com prazo é a primeira coisa do
+jogo que continua trabalhando depois que o dado acabou.
+
+- **Cobra no início do turno da vítima**, uma vez por rodada — a mesma âncora de
+  escudo, prisão e buff, então os dois lados têm sempre a mesma exposição.
+- **Ignora armadura e escudo.** Não é o golpe chegando, é o golpe que já chegou.
+  A consequência de desenho é a que faltava: contra um Vharn com 17 de escudo e 4
+  de armadura não existia resposta nenhuma, e agora existe uma classe de dano que
+  passa por dentro. Em troca, o número é pequeno e não escala com o dado.
+- **Reaplicar renova**, não empilha. Empilhar transformaria o efeito em dano
+  instantâneo com passos extras, que é o oposto do que ele é.
+- **Morrer limpa.**
+
+### Zonas — controle de área de verdade
+
+**O pedido:** *"quero habilidades de controle de área"*.
+
+`area`, `danoVizinhos` e `danoRaio` já existiam, mas todos acertam quem está lá
+**no instante do golpe** e acabam ali: são explosões, não território. A **zona**
+fica no chão e envenena quem **começa o turno dentro** — muda por onde o
+adversário anda mesmo nas rodadas em que ninguém gasta dado.
+
+**O prazo da zona é contado em TURNOS DO ADVERSÁRIO, não em rodadas** — e essa
+distinção é a parte importante. A zona cobra no início do turno de quem está
+dentro, então a criada por quem joga **primeiro** pegaria o adversário já na
+mesma rodada, e a do segundo só na rodada seguinte: com prazo de 2 rodadas, uma
+cobrava dois turnos adversários e a outra, um. **É exatamente o erro que a v20 já
+corrigiu nas ondas** (comparar presença no fim da rodada dava 42% para quem
+começa). Contando turnos, os dois lados recebem o mesmo número de exposições por
+construção, e há teste travando isso.
+
+### As sete habilidades
+
+| Herói | Habilidade | Slot | O que ganhou |
+|---|---|---|---|
+| Kaross | Puxada | controle | sangramento 2/rodada × 2 |
+| Kurr | Rastro | controle | sangramento 1/rodada × 2 |
+| Xhera | Investir | controle | sangramento 2/rodada × 2 |
+| Cael | Armadilha | controle | zona raio 1, veneno 1 |
+| Ilva | Véu de Névoa | controle | zona raio 1, veneno 1 |
+| Arden | Tribunal | Ultimate | zona raio 1, veneno 2 |
+| Nira | Tapeçaria | Ultimate | zona raio 1, veneno 2 |
+
+**O sangramento nasceu na BÁSICA do Kaross e do Kurr, e `sim/habs.js` matou a
+ideia na hora:** com efeito de graça em todo golpe, o Talho (dado 1) passava a
+valer mais que a Puxada (dado 3), e a habilidade do meio deixava de pagar o
+próprio dado — a regra fechada na v23. Movido para o slot de controle, o Kaross
+foi de **−1 para +5**. A regra que fica: **efeito com prazo é escolha, não
+passiva.** Custa dado médio ou alto, e por isso pode ser forte. Há teste.
+
+### A base trata, e o cerco interrompe
+
+**O pedido:** *"o herói na base se cura um pouco por rodada, porém se tiver um
+inimigo a 2 hexágonos dele só cura 1x até ele sair de perto"* — implementado como
+descrito.
+
+Não havia cura de base nenhuma: o único jeito de recuperar vida cheia era
+**morrer**, e o respawn era a cura mais barata do jogo, que é o incentivo errado.
+Agora **3 por rodada** na própria base, e voltar custa movimento.
+
+A trava é a parte que importa. Com inimigo a **2 casas ou menos**, o herói se
+trata **uma vez** e para até o cerco sair de perto. Sem ela, recuar viraria poço
+de vida infinito e mergulhar na base deixaria de ser decisão.
+
+### O Reforço era o Poder mais barato do jogo
+
+**O relato:** *"além disso tá mto barato"*. Medido com um instrumento novo,
+**`sim/ouro.js`**, em 600 partidas:
+
+| | |
+|---|---|
+| Ouro que um herói acumula na partida | **61** |
+| Build completo mais caro (3 itens) | **25** |
+| Sobra | **36** |
+
+Com a curva antiga (6, +2) essa sobra pagava **quatro** Reforços — 6+8+10+12 = 36,
+ou **+4 de Poder permanente**. Nenhum item da loja dá mais de +2, e todos ocupam
+um dos três slots; o Reforço não ocupa nada e não tem teto. **Curva 6+2 → 10+4:**
+a mesma sobra compra dois, e o terceiro exige guardar em vez de gastar. O que se
+comprou não foi número, foi escolha.
+
+**O que este número NÃO resolve, e está medido:** a renda paga o build **2,4×**.
+Mexer no preço de um gasto não fecha uma torneira aberta. `sim/ouro.js` já traz
+`farma=`, `agiu=` e `matar=` para o grupo testar a renda quando quiser decidir —
+ver `docs/DECISOES-PENDENTES.md`.
+
+### A bateria estava medindo o confronto, não a ordem
+
+**O achado mais importante deste lote, e ele não veio de relato nenhum** — veio de
+o número não fechar.
+
+`sim/bateria.js` sempre rodou **um confronto fixo**: vharn/nyx/solenne/vesper/mirrha
+contra kaross/grumo/zhet/cael/torvald. Dez dos vinte heróis, repartidos
+fixamente entre os lados. Para mudança **estrutural** (mapa, torre, onda, ouro,
+respawn) isso não atrapalha — ela cai igual nos dois lados. Para mudança que toca
+**herói**, cai só do lado em que aquele herói está.
+
+Das sete habilidades da v25, **duas estavam no time 1 (Kaross e Cael) e nenhuma
+no time 0.** A bateria acusou "quem começa" subindo de 51,2% para 53,5% com
+z=6,60, e **eu cheguei a concluir que a v25 tinha custado 2 pontos de equilíbrio
+de ordem.** Não tinha: o que eu media era o confronto que eu mesmo desequilibrei.
+
+**`times=espelho`** põe os mesmos cinco heróis nos dois lados. Aí a única
+diferença que sobra é quem joga primeiro — que é o que a métrica diz medir:
+
+| Braço (espelhado, n=9000 cada) | quem começa |
+|---|---|
+| v25 completa | 52,98% |
+| v25 com as três mecânicas desligadas | 52,73% |
+| **diferença** | **+0,24 ponto · z=0,33 — ruído** |
+
+**As mecânicas novas não movem o equilíbrio de ordem.** Duração mediana: 23 nos
+dois braços — a cura de base não alongou a partida.
+
+**E fica um número novo para o grupo:** no confronto espelhado, "quem começa"
+mede **~52,9%**, e não os ~51% históricos. Os 51% eram do confronto assimétrico —
+a composição de um lado compensava parte da vantagem de ordem. O item 1 de
+`DECISOES-PENDENTES.md` foi atualizado com isso.
+
+### Erros meus nesta sessão, registrados de propósito
+
+1. **Li ruído como sinal, e depois li sinal como ruído.** Com braços de n=3000,
+   `zonas=off` deu 51,6% (abaixo do build) e me convenceu de uma assimetria de
+   zona; refeito depois da correção, deu 53,0% (**acima**). O braço inverteu de
+   sinal — assinatura de ruído. Depois, a n=9000, li 53,5% como regressão real da
+   v25 quando era o confronto. **A assimetria de zona que corrigi é real, mas foi
+   achada LENDO o código, não medindo** — e a correção vale pelo raciocínio.
+2. **Dois testes meus nasceram errados.** Um checava se o veneno gastava escudo
+   chamando `iniciaTurno`, que expira o escudo por regra: o teste passaria medindo
+   a coisa errada. Outro exigia etiqueta nula num herói que nasce no mato e
+   legitimamente acende ESCONDIDO.
+3. **O heurístico da IA para sair da zona não funcionava.** Eu procurava saída
+   entre os vizinhos, mas zona de raio 1 cobre a casa **e** as seis em volta — não
+   havia vizinho limpo, e a IA desistia. O teste pegou.
+4. **O crédito da morte por sangramento ia para o herói errado.** Eu lia o autor
+   depois de filtrar a lista de efeitos, e a cobrança que mata é justamente a que
+   tira o efeito da lista — o ouro ia para o inimigo mais próximo. Achado na
+   auditoria, antes de commitar.
+
+### Texto do jogo que estava mentindo (de novo)
+
+O guia dizia *"uma Ward acende os dois matos de uma vez"*, o que a regra da v22
+desfez — ward só enxerga mato de dentro do mato. Ficou registrado na v24 e
+**continua sem conserto**, porque é de outro lote.
+
+---
+
 ## v24 — o Dragão cabe em dois dados · 2026-08-13
 
 Um número só, medido sozinho de propósito. A v23 fechou com três regras novas no

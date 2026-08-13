@@ -116,6 +116,16 @@ button:disabled{cursor:not-allowed}
 /* as casas que a ward acende — a resposta a "sinalizar no mapa onde ele tá" */
 #mapa .hx.wardado{stroke:var(--brass-dim);stroke-width:1.1;stroke-dasharray:3 3}
 #mapa .hx.wardado:not(.cego){fill:#16221B}
+/* ZONA — território negado, desenhado no chão e não como anel (o anel de raio 3
+   da ward já inflou o getBBox e encolheu o mapa inteiro uma vez; ver v23).
+   As duas se distinguem por cor porque são informações opostas: a minha é
+   terreno que eu controlo, a dele é terreno onde eu apanho por ficar parado.
+   A do inimigo ganha traço mais forte — é a que muda a jogada. */
+#mapa .hx.zona-min{fill:#1B2A22;stroke:var(--vivo);stroke-width:1;stroke-dasharray:2 2.4;opacity:.95}
+#mapa .hx.zona-ini{fill:#2E1A1A;stroke:var(--dano);stroke-width:1.4;stroke-dasharray:2 2}
+#mapa .hx.zona-ini.cego,#mapa .hx.zona-min.cego{fill:var(--ground-2)}
+@keyframes zonaPulsa{0%,100%{stroke-opacity:.55}50%{stroke-opacity:1}}
+#mapa .hx.zona-ini{animation:zonaPulsa 1.8s ease-in-out infinite}
 #mapa .ward .w-bg{fill:var(--ground-2);stroke:var(--brass);stroke-width:1.3}
 #mapa .ward .w-olho{fill:var(--brass)}
 #mapa .ward .w-cd{font-family:var(--mono);font-size:4.6px;text-anchor:middle;

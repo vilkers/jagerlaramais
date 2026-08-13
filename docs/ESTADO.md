@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v24 (o Dragão cabe em dois dados) · **Atualizado em:** 2026-08-13
+**Versão:** v25 (o tempo entra no jogo) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -39,11 +39,15 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
+| Efeito com prazo | **sangramento** e **veneno**: cobram no **início do turno da vítima**, 1×/rodada, e **ignoram armadura e escudo**. Reaplicar **renova**, não empilha. Morrer limpa. Mora no **slot de controle ou na Ultimate — nunca na básica** |
+| Zona | efeito posto no **chão**: quem **começa o turno dentro** é envenenado. Prazo em **turnos do adversário** (2), nunca em rodadas — senão a zona de quem joga primeiro vigia o dobro |
+| Cura de base | **3 por rodada** na própria base. Com inimigo a **2 ou menos**, trata **1 vez** e para até ele sair de perto |
 | Alcance | teto de **4**, itens incluídos |
 | Quem começa | **cara ou coroa** no início da partida |
 | Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
-| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
-| Vantagem de quem começa | **51,2%** (n=6000: 50,9 · 51,4). A/B da v24 com a vida do Dragão como única variável deu 51,9% com vida 4 contra 51,2% com vida 3 — z=0,75, ruído |
+| Gasto de ouro tardio | **Reforço** (**10, +4** por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
+| Vantagem de quem começa | **~52,9%** no confronto **espelhado** (n=9000), que é o único jeito de medir ORDEM. Os ~51% históricos vinham do confronto fixo e assimétrico da bateria — ver `times=espelho` |
+| Economia | herói acumula **61** de ouro na partida; o build de 3 itens mais caro custa **25**. A renda paga o build **2,4×** — medido em `sim/ouro.js` |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **27 de mato** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
@@ -66,10 +70,11 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 85 testes de regressão — um por bug já relatado
+node sim/testes.js        # 103 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói
+node sim/ouro.js 600      # economia: renda por herói contra o preço do que dá para comprar
 node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
 ```
 
@@ -137,7 +142,16 @@ arte/mapa/mapa.jpg   O mapa ilustrado
 docs/                Regras, design e decisões. Leia na ordem numerada.
 ```
 
-## Seis armadilhas que já custaram tempo
+## Sete armadilhas que já custaram tempo
+
+**0. `sim/bateria.js` roda UM confronto fixo — e isso a cega para mudança de herói.**
+São sempre vharn/nyx/solenne/vesper/mirrha contra kaross/grumo/zhet/cael/torvald: dez dos vinte
+heróis, repartidos fixamente entre os lados. Mudança **estrutural** (mapa, torre, onda, ouro,
+respawn) cai igual nos dois e a medição vale. Mudança que toca **herói, habilidade ou item** cai
+só de um lado, e aí "quem começa" mede o confronto, não a ordem. Na v25 isso custou uma conclusão
+inteira: duas das sete habilidades novas estavam no time 1 e nenhuma no time 0, a bateria acusou
+53,5% com z=6,60 e eu quase registrei uma regressão que não existia. **Use `times=espelho` sempre
+que a mudança tocar herói.**
 
 **1. `poderTotal`, `armTotal` e `ehAgil` são `const`.** Reatribuir lança `TypeError` e **mata o
 script inteiro dali para baixo, sem erro visível no console** — o sintoma é uma função que "não
