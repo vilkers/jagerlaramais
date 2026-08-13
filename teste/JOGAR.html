@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit a2014c1 2026-08-13
+     commit c559078 2026-08-13
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -812,7 +812,7 @@ vharn:{n:"Vharn",ep:"o Muro de Ferro",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
   vida:25,poder:3,arm:3,alc:1,
   habs:[{n:"Golpe de Escudo",f:1,alvo:"in",ef:{dano:1}},
         {n:"Provocar",f:3,alvo:"in",ef:{dano:1,puxar:1,prende:1}},
-        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:11,prendeVizinhos:1}}]},
+        {n:"Muralha",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1}}]},
 
 kaross:{n:"Kaross",ep:"o Carrasco",pos:"topo",cls:"Lutador",ref:"Darius",
   vida:22,poder:3,arm:2,alc:1,
@@ -937,14 +937,14 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
 gorm:{n:"Gorm",ep:"o Portão",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
   vida:25,poder:3,arm:4,alc:1,
   habs:[{n:"Empurrão",f:1,alvo:"in",ef:{dano:1,empurrar:1}},
-        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:7}},
+        {n:"Anteparo",f:1,alvo:"al",ef:{escudo:4}},
         {n:"Barreira",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
   vida:18,poder:2,arm:2,alc:3,
   habs:[{n:"Presságio",f:1,alvo:"eu",ef:{ward:1}},
         {n:"Empréstimo",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:9}}]}
+        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5}}]}
 };
 
 /* ═══════════ O CATÁLOGO COMPLETO ═══════════
@@ -1837,9 +1837,47 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    O Barão continua em 4 de propósito. É ele que vira a mesa, e a assimetria
    agora diz na mecânica o que a lore já dizia: o Dragão se acumula, o Barão se
    conquista. */
+/* ---------- OS DOIS MORADORES CONTAM COISAS DIFERENTES (v26) ----------
+   O Dragão conta GOLPES: vida 3, Ultimate tira 2 e básica tira 1, o dado não
+   entra na conta. É o objetivo de cedo, e a regra de contagem é o que o mantém
+   legível na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa.
+
+   O BARÃO conta DANO, pela mesma regra de qualquer herói: `porDano` liga
+   `round(Força × dano × escala) + Poder − Armadura`, com respingo valendo metade
+   e `danoFixo` ignorando armadura — exatamente como contra um herói. Ele tem
+   **16 de vida e 3 de ARMADURA**, e a armadura é a peça que importa. A primeira
+   tentativa foi vida 22 e armadura 1, e ela resolvia o problema errado: com
+   armadura baixa todo dado contribui proporcionalmente, então cinco cutucadas
+   fracas derrubam o Barão igual a dois golpes bons — vida alta vira só uma barra
+   mais comprida, não uma exigência de time.
+
+   Com armadura 3 e Poder 3, uma básica de dado 2 tira 2 e uma Ultimate de dado 6
+   tira 8: QUATRO VEZES mais. É isso que obriga a comprometer o dado bom de vários
+   heróis ao mesmo tempo, que é como o objetivo grande funciona no gênero. E 16
+   fica ABAIXO da vida de todos os 20 heróis (o menor tem 18): o Barão não precisa
+   ser o saco de pancada mais gordo da mesa para exigir um grupo.
+
+   Fechar num turno pede 4 dos 5 heróis — `16 ÷ (7 − 3)`. Medido: 55,9% de Barões
+   fechados contra 56,6% da regra que contava golpes.
+
+   Por que os dois não são iguais: contar golpes achata tudo — com o Dragão, o 1
+   e o 6 no dado de uma básica valem o mesmo, e é aceitável num alvo de 3 que
+   morre em dois dados. Num alvo grande, achatar apaga a decisão inteira: o
+   Barão passa a premiar o dado que você comprometeu nele, e as três Ultimates de
+   `danoFixo` (Julgamento, Ato Final, Sentença) ganham no poço o mesmo papel que
+   já tinham contra tanque.
+
+   O número foi VARRIDO antes de entrar, com `sim/epicos.js baraodano= baraoarm=`,
+   e a dificuldade não mudou: 57,0% de Barões fechados contra 53,8% e 55,4% de
+   duas execuções do build que contava golpes — dentro da oscilação do próprio
+   controle. Detalhe importante e honesto sobre essa medição no patch note da
+   v26: o agente da bateria só compromete dado quando fecha no mesmo turno, e
+   isso QUANTIZA o resultado em degraus inteiros de heróis necessários. 22/1 cai
+   no mesmo degrau (4 heróis) do Barão antigo — afinar mais fino que o degrau
+   seria ajustar contra o agente, não contra o jogo. */
 const EPICO={
   dragao:{n:"Dragão", vida:3, revide:2, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:4, revide:4, volta:4, pre:"a Fúria do Barão"}
+  barao: {n:"Barão",  vida:16, arm:3, porDano:1, revide:4, volta:4, pre:"a Fúria do Barão"}
 };
 /* Rodadas medidas em sim/epicos.js, 600 partidas por variante:
      · Barão na 8 dava ao Dragão só 3 rodadas de janela — ele caía em 1,3%;
@@ -1871,7 +1909,13 @@ const DADIVAS=[
    porque:"Dobra a velocidade de derrubar estrutura."}
 ];
 const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
-const BARAO_ESCUDO=7;
+/* 7 → 4 na v26. A carta SEMPRE disse "4 de escudo" e o motor entregava 7: o
+   jogador escolhia a dádiva lendo um número e recebia outro. E 7 por herói por
+   turno, com cinco heróis e duas rodadas, somava 70 de escudo — quase três heróis
+   inteiros de vida, de graça, num jogo em que o maior herói tem 25. Com 4 são 40,
+   que ainda "compra as brigas que você não podia comprar" sem apagar duas rodadas
+   de combate. */
+const BARAO_ESCUDO=4;
 const BARAO_ARIETE=1;      /* dano somado ao golpe em estrutura */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
 const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
@@ -2539,7 +2583,15 @@ function danoEmEntidade(quem,alvo,bruto,txt,ehUlt,ignoraArm){
      caminho por onde ele chegou. Antes o respingo entrava sempre como 1, então
      o Cerco do Torvald (que é Ultimate) tirava 1 do Dragão enquanto uma
      Ultimate mirada tirava 2. Mesma habilidade, peso diferente por acidente. */
-  if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,ehUlt?GOLPE_ULT:GOLPE_HAB,txt?` com ${txt}`:"");
+  if(ehEpico(alvo)){
+    const d=EPICO[alvo.id];
+    /* morador que conta dano leva o respingo pela mesma conta de um herói —
+       `bruto` já chega dividido de quem chamou. Armadura entra aqui porque o
+       respingo não passa por `golpeNoPoco`. */
+    const golpe = d.porDano ? Math.max(1,bruto-(ignoraArm?0:(d.arm||0)))
+                            : (ehUlt?GOLPE_ULT:GOLPE_HAB);
+    return golpeiaEpico(quem,alvo,golpe,txt?` com ${txt}`:"");
+  }
   aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm);
 }
 function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
@@ -3118,6 +3170,23 @@ function atacaNexus(lado){
    pode agora levar pancada por DOIS caminhos: mirado (atacaEpico, gasta dado) ou
    de respingo (usaHab, sem gastar dado a mais). Antes só existia o mirado, e o
    respingo o atravessava — ver `inimigosNosHex`. */
+/* QUANTO ESTE GOLPE TIRA DO MORADOR — um lugar só, de propósito.
+   O combate e a IA calculavam isto separado, e enquanto os dois moradores
+   contavam golpes ninguém percebia. Com o Barão contando dano, a divergência
+   apareceria na hora: a IA avaliaria "fecho com este golpe?" em golpes enquanto
+   o motor cobraria em dano, e ela largaria o Barão achando que nunca fecha.
+   Qualquer caminho novo até o poço deve passar por aqui. */
+function golpeNoPoco(h,hb,slot,F,ep){
+  const d=EPICO[ep.id];
+  if(!d.porDano) return slot===2?GOLPE_ULT:GOLPE_HAB;
+  const ef=hb.ef;
+  /* dano garantido ignora armadura no poço pelo mesmo motivo que ignora num
+     herói — é a função dele, e é o que dá às três Ultimates fixas um papel aqui */
+  if(ef.danoFixo) return ef.danoFixo;
+  const bruto=Math.round(F*(ef.dano||1)*escalaDe(slot))
+             +poderTotal(h)+(h.recarga||0)+dupla(h)+(ef.extra||0);
+  return Math.max(1,bruto-(d.arm||0));
+}
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
   ep.vida-=golpe;
@@ -3144,7 +3213,8 @@ function atacaEpico(ep){
      objetivo grande premiava o dado pequeno. Com 2, derrubar o poço em uma rodada
      exige que alguém queime a ultimate nele em vez de num herói: é a escolha que
      faz o objetivo pesar. Testado na mesa antes de entrar. */
-  golpeiaEpico(h,ep,habAtual===2?GOLPE_ULT:GOLPE_HAB,` com ${hb.n}`);
+  golpeiaEpico(h,ep,golpeNoPoco(h,hb,habAtual,J.dados[di].v,ep),` com ${hb.n}`);
+  if(EPICO[ep.id].porDano) h.recarga=0;   // a carga foi gasta no golpe, como em usaHab
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
@@ -3932,8 +4002,8 @@ function abreManual(){
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
       <p>Na <b>rodada 5</b> desce o <b>Dragão</b>: <b>3 de vida</b>, revida 2. Cai em <b>dois dados</b> — uma Ultimate e uma básica — se dois heróis comprarem a briga no mesmo turno. Levar dá a <b>Herança do Dragão</b>: <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
-      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. São <b>4 de vida</b> e revida 4: encostar nele custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
-      <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
+      <p><b>No Dragão</b> a conta é de <b>golpes</b>, e não de dano: básica ofensiva tira <b>1</b> e Ultimate tira <b>2</b>, com qualquer dado. Ele desce na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa — contar golpes é o que o mantém legível ali. O poço é <b>sem dono</b>: Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section><h4>Rotação do Caçador</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
       <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
@@ -4258,7 +4328,7 @@ function iaJogadas(t){
            ainda cobra revide: por isso só pontua alto quando fecha, ou quando o
            poço já está tão baixo que a próxima rodada decide. */
         if(epVivo&&alvosEpico.includes(ep)){
-          const golpe=i===2?GOLPE_ULT:GOLPE_HAB;
+          const golpe=golpeNoPoco(h,hb,i,F,ep);
           const fecha=ep.vida<=golpe;
           const revideMata=EPICO[ep.id].revide>=h.vida;
           let nota = fecha ? 320 : (ep.vida<=golpe*2 ? 90 : 22);
