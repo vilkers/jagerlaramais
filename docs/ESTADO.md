@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v26 (o Barão apanha como herói) · **Atualizado em:** 2026-08-13
+**Versão:** v28 (a rotação do Caçador) · **Atualizado em:** 2026-08-13
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -29,6 +29,8 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
 | Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
+| Ultimates perfurantes | Julgamento, Ato Final e Sentença **escalam** (`dano 0,8 × 1,25 + Poder`) e **ignoram Armadura**. Eram `danoFixo 8`, travadas desde a v19 |
+| Alvos no mesmo hexágono | o toque abre **janela de escolha** (herói, torre, poço, Nexus). Antes o alvo de toque do herói escondia o Nexus e travava o fim de partida |
 | Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
@@ -39,6 +41,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
+| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, o destino do próprio Caçador; no seu turno ele **anda até 3 casas de graça** para lá. **Nunca teleporta** — foi o erro da v18. Bônus só **se chegar**: acampamento próprio +3 de ouro · neutro +1 de Poder · inimigo +4 de ouro · poço +1 por golpe no poço |
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
@@ -73,7 +76,7 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 112 testes de regressão — um por bug já relatado
+node sim/testes.js        # 122 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói

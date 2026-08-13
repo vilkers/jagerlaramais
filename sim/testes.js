@@ -1508,6 +1508,144 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      + `— deixou de custar o segundo dado, e com ele o dilema`);
 });
 
+/* ═══════════════ v28 — a rotação do Caçador ═══════════════ */
+
+/* No início da rodada os dois escolhem, às cegas, para onde o próprio Caçador
+   vai; no seu turno ele migra e o destino decide o bônus.
+
+   A v18 já teve uma "rotação" e ela foi DESFEITA na v19: lá o Caçador saía do
+   tabuleiro e reaparecia noutra entrada de selva. Estes testes existem para essa
+   versão não voltar — a peça anda de verdade, casa a casa, e continua no mapa. */
+
+const cenaSelva = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                                       ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+                          .mov(0).vez(0);
+
+teste("o Caçador anda no mapa até o destino — nunca some do tabuleiro", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  ok(h, "não achei o Caçador do time 0");
+
+  const destino = g.J.camps.find(x => x.t === 0).pos;
+
+  /* casa aberta a uma distância que exige andar, mas cabe nos passos de graça.
+     Nada de partir do canto da base: lá o herói tem só duas vizinhas e o próprio
+     time ocupa as duas — caso real, coberto no teste seguinte. */
+  const partida = [];
+  for (let r = 0; r < g.LINS; r++) for (let cc = 0; cc < g.COLS; cc++) {
+    if (!g.noTab(cc, r) || g.em(cc, r)) continue;
+    const d = g.dist(cc, r, ...destino);
+    if (d >= 2 && d <= g.ROTACAO_PASSOS) partida.push([cc, r]);
+  }
+  ok(partida.length, "não achei casa de partida adequada");
+  c.poe(h, partida[0]);
+  const de = [...h.pos];
+  const d0 = g.dist(...de, ...destino);
+
+  g.J.rotacao[0] = "proprio";
+  g.migraCacador(0);
+
+  ok(g.noTab(...h.pos), "o Caçador saiu do tabuleiro — foi exatamente o erro da v18");
+  const andou = g.dist(...de, ...h.pos);
+  ok(andou > 0, "a rotação não moveu o Caçador");
+  ok(andou <= g.ROTACAO_PASSOS,
+     `andou ${andou} casas com teto de ${g.ROTACAO_PASSOS} — isso é teleporte, não rotação`);
+  ok(g.dist(...h.pos, ...destino) < d0, "andou sem se aproximar do destino");
+});
+
+/* O Caçador ilhado pelo próprio time no canto da base é caso real: aquele
+   hexágono tem duas vizinhas e os cinco heróis começam empilhados por perto.
+   A rotação não pode reagir a isso pulando por cima — foi o erro da v18. */
+teste("Caçador cercado pelo próprio time não teleporta: fica onde dá", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  c.poe(h, g.BASE[0][0]);
+  /* fecha as duas saídas com aliados */
+  const saidas = g.vizinhos(...h.pos).filter(p => g.noTab(...p));
+  const aliados = g.J.times[0].herois.filter(x => x !== h);
+  saidas.forEach((p, i) => { if (aliados[i]) c.poe(aliados[i], p); });
+
+  const de = [...h.pos];
+  g.J.rotacao[0] = "proprio";
+  g.migraCacador(0);
+  eq(g.dist(...de, ...h.pos), 0, "pulou por cima do próprio time — é o teleporte da v18 de volta");
+  ok(g.noTab(...h.pos), "saiu do tabuleiro");
+});
+
+teste("o bônus só sai se o Caçador CHEGAR", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const destino = g.J.camps.find(x => x.t === 0).pos;
+
+  /* longe de propósito: mais que os passos de graça */
+  const longe = [];
+  for (let r = 0; r < g.LINS; r++) for (let cc = 0; cc < g.COLS; cc++)
+    if (g.noTab(cc, r) && !g.em(cc, r) && g.dist(cc, r, ...destino) > g.ROTACAO_PASSOS + 3) longe.push([cc, r]);
+  ok(longe.length, "não achei casa longe do acampamento");
+  c.poe(h, longe[0]);
+
+  const ouro0 = h.ouro;
+  g.J.rotacao[0] = "proprio";
+  g.migraCacador(0);
+  eq(h.ouro, ouro0, "pagou o bônus sem o Caçador ter chegado — a aposta errada tem de custar");
+
+  /* agora colado: chega e recebe */
+  c.poe(h, g.vizinhos(...destino).find(p => g.noTab(...p) && !g.em(...p)));
+  g.J.rotacao[0] = "proprio";
+  g.migraCacador(0);
+  ok(h.ouro > ouro0, "chegou ao acampamento próprio e não recebeu o bônus");
+});
+
+teste("cada destino entrega o próprio bônus, e o do poço soma no golpe", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+
+  /* neutro: +1 de Poder, e some no próximo turno como qualquer buff */
+  const p0 = g.poderTotal(h);
+  c.poe(h, g.vizinhos(...g.J.camps.find(x => x.t === -1).pos).find(p => g.noTab(...p) && !g.em(...p)));
+  g.J.rotacao[0] = "neutro"; g.migraCacador(0);
+  eq(g.poderTotal(h), p0 + 1, "o destino neutro não deu +1 de Poder");
+
+  /* poço: o golpe no poço vale +1 */
+  const c2 = cenaSelva();
+  const g2 = c2.g;
+  const h2 = g2.cacadorDe(0);
+  g2.J.poco.id = "dragao"; g2.J.poco.vida = g2.J.poco.vidaMax = 99;
+  const semFoco = g2.golpeNoPoco(h2, h2.habs[0], 0, 4, g2.J.poco);
+  c2.poe(h2, g2.vizinhos(...g2.POCO).find(p => g2.noTab(...p) && !g2.em(...p)));
+  g2.J.rotacao[0] = "poco"; g2.migraCacador(0);
+  ok(h2.focoPoco, "o Caçador chegou ao poço e não ganhou o foco");
+  eq(g2.golpeNoPoco(h2, h2.habs[0], 0, 4, g2.J.poco), semFoco + 1,
+     "o foco no poço não somou +1 no golpe");
+});
+
+teste("a escolha da rodada é consumida — não vale para a rodada seguinte", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  c.poe(h, g.vizinhos(...g.J.camps.find(x => x.t === 0).pos).find(p => g.noTab(...p) && !g.em(...p)));
+  g.J.rotacao[0] = "proprio";
+  g.migraCacador(0);
+  eq(g.J.rotacao[0], null, "a escolha ficou pendurada e migraria de novo de graça");
+  const ouro = h.ouro;
+  g.migraCacador(0);
+  eq(h.ouro, ouro, "migrou de novo sem escolha nova — bônus infinito");
+});
+
+teste("a IA escolhe um destino válido e nunca fica sem resposta", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const ids = g.ROTACOES.map(r => r.id);
+  ok(ids.includes(g.iaEscolheRotacao(0)), "a IA devolveu um destino que não existe");
+  /* sem Caçador vivo ela não pode travar */
+  g.cacadorDe(0).morto = 2;
+  ok(ids.includes(g.iaEscolheRotacao(0)), "sem Caçador vivo a IA não devolveu destino");
+});
+
 /* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
 
 /* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da

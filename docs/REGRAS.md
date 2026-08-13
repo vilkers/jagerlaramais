@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 26** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 28** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -137,8 +137,15 @@ próprio time** ganha **+1 de Armadura**. A torre do adversário não protege qu
 está mergulhando nela, e o bônus **cai junto com a torre**. É a diferença entre
 brigar em casa e brigar no vão da rota.
 
-**Dano garantido:** três Ultimates (Julgamento, Ato Final, Sentença) causam um
-número fixo e **ignoram Armadura**. São o melhor golpe do jogo contra tanque.
+**Dano perfurante:** três Ultimates (Julgamento, Ato Final, Sentença) **ignoram
+Armadura**. Elas escalam como qualquer outra (`Força × 0,8 × 1,25 + Poder`), mas
+com multiplicador reduzido — é o preço do dano que passa por dentro. Contra alvo
+sem armadura rendem menos que uma Ultimate comum; contra tanque, mais. Até a v26
+eram número fixo e não cresciam com nada.
+
+**Dois alvos no mesmo hexágono:** herói e estrutura dividem casa o tempo todo
+(defensor em cima do Nexus, herói em cima da própria torre). O toque abre uma
+**janela perguntando em quem bater**. Com um alvo só, resolve direto.
 
 **Morte:** quem matou leva **4 de ouro**. O morto volta na base, com a vida
 cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
@@ -163,6 +170,26 @@ cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
 | Intocável | Não recebe dano nenhum |
 | Marca | Soma dano no próximo golpe recebido |
 | Área | Respinga nos vizinhos — **inclusive no morador do poço** |
+
+---
+
+## 6.1 · Rotação do Caçador
+
+No **início de cada rodada** os dois jogadores escolhem, **escondido um do
+outro**, para onde o próprio Caçador vai. No **seu turno** ele anda até **3 casas
+de graça** naquela direção — sem tocar no Dado Mestre.
+
+**Ele não teleporta.** Anda casa a casa, continua no mapa, continua interceptável
+e continua ocupando hexágono. Se o caminho estiver fechado, contorna; se não
+alcançar, não ganha nada.
+
+| Destino | Bônus, e só ao chegar |
+|---|---|
+| Acampamento próprio | +3 de ouro |
+| Acampamento neutro | +1 de Poder até o seu próximo turno |
+| Acampamento inimigo | +4 de ouro roubado |
+| O poço | os seus golpes no poço valem +1 nesta rodada |
+
 
 ---
 

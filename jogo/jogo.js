@@ -435,6 +435,136 @@ const VISAO_ONDA=2;       /* a onda é o creep: enxerga onde está empurrando */
 const VISAO_WARD=3;       /* ward vê mais que herói — é o que a torna comprável */
 const WARD_RODADAS=3;     /* e ela apaga sozinha */
 
+/* A escolha, no início da rodada. Os dois escolhem ANTES de qualquer um jogar, e
+   um não vê o do outro — é a aposta às cegas que dá sal à mecânica. Em hotseat
+   isso são duas telas em sequência; contra a IA, só a do humano.
+   A escolha só aparece se o time ainda TEM Caçador vivo: pedir aposta a quem não
+   tem peça para mover é pedir clique por nada. */
+function abreRotacoes(){
+  if(!J||J.fim!==null)return;
+  const humanos=[0,1].filter(t=>!(simMode||(aiMode&&t===1)));
+  [0,1].forEach(t=>{ if(!humanos.includes(t)) J.rotacao[t]=cacadorDe(t)?iaEscolheRotacao(t):null; });
+  const fila=humanos.filter(t=>cacadorDe(t));
+  if(!fila.length) return pinta();
+  perguntaRotacao(fila,0);
+}
+function perguntaRotacao(fila,i){
+  if(i>=fila.length){ pinta(); return; }
+  const t=fila[i], h=cacadorDe(t);
+  const bts=ROTACOES.map(r=>{
+    const destino=r.onde(t);
+    const d=destino?dist(...h.pos,...destino):99;
+    const chega=d<=ROTACAO_PASSOS+1;
+    return `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
+      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span>
+      <br><span style="font-size:12px;opacity:${chega?".75":".55"}">
+      ${d} de distância — ${chega?"dá para chegar nesta rodada":"longe demais, não chega"}</span></button>`;
+  }).join("");
+  abre(`<span class="et">Rotação do Caçador · rodada ${J.rodada}</span>
+    <h2 class="t${t}">${NOMES[t]}: para onde vai ${h.n}?</h2>
+    <p>Ele anda <b>${ROTACAO_PASSOS} casas de graça</b> no início do seu turno.
+    O outro jogador <b>não vê</b> a sua escolha — e você não vê a dele.
+    <b>Só ganha o bônus se chegar.</b></p>${bts}`);
+  G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>{
+    J.rotacao[t]=b.dataset.r; fecha(); perguntaRotacao(fila,i+1); });
+}
+
+/* ---------- ROTAÇÃO DO CAÇADOR ----------
+   No início de cada rodada os DOIS jogadores escolhem, escondido um do outro,
+   para onde o próprio Caçador vai. No seu turno ele migra para lá, e o destino
+   decide o bônus. A graça é a aposta às cegas: você compromete o Caçador antes
+   de ver o que o outro fez com o dele.
+
+   AVISO DE HISTÓRIA, e ele é o motivo do desenho ser este. A v18 já teve uma
+   "rotação do Caçador" e ela foi DESFEITA na v19 (ver docs/DECISOES-PENDENTES,
+   item 6): lá o Caçador gastava uma ação, SAÍA DO TABULEIRO e reaparecia noutra
+   entrada de selva no turno seguinte. A correção veio do Vinicius — a peça tem
+   de continuar existindo num lugar real, e o que muda é quem enxerga.
+
+   Por isso aqui NÃO HÁ TELEPORTE. O Caçador anda de verdade, no mapa, até
+   ROTACAO_PASSOS casas na direção escolhida, de graça (sem tocar no Dado
+   Mestre). Ele continua interceptável, continua ocupando casa, continua
+   aparecendo ao sair do mato. O que a rotação compra é TEMPO, não ubiquidade —
+   e é o que faz dela uma decisão em vez de um botão. */
+const ROTACAO_PASSOS=3;
+const ROTACOES=[
+  {id:"proprio", n:"Acampamento próprio", ico:"⛰",
+   d:"Farm seguro. +3 de ouro ao chegar.",
+   onde:t=>J.camps.find(c=>c.t===t).pos,
+   bonus:(h,t)=>{ h.ouro+=3; return "+3 de ouro"; }},
+  {id:"neutro", n:"Acampamento neutro", ico:"◈",
+   d:"A disputa do meio. +1 de Poder até o seu próximo turno.",
+   onde:()=>J.camps.find(c=>c.t===-1).pos,
+   bonus:(h)=>{ h.extraPoder+=1; h.buffP=(h.buffP||0)+1; return "+1 de Poder"; }},
+  {id:"invasao", n:"Acampamento inimigo", ico:"⚔",
+   d:"Invasão. +4 de ouro, mas você termina o passo dentro da casa do outro.",
+   onde:t=>J.camps.find(c=>c.t===1-t).pos,
+   bonus:(h)=>{ h.ouro+=4; return "+4 de ouro roubado"; }},
+  {id:"poco", n:"O poço", ico:"☠",
+   d:"Objetivo. Os seus golpes no poço valem +1 nesta rodada.",
+   onde:()=>POCO,
+   bonus:(h)=>{ h.focoPoco=1; return "golpes no poço valem +1"; }}
+];
+const ROTACAO=Object.fromEntries(ROTACOES.map(r=>[r.id,r]));
+const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
+
+/* Um passo na direção do destino. Prefere a casa livre que APROXIMA; se não
+   houver nenhuma, aceita uma de mesma distância para contornar.
+
+   O contorno não é firula. Sem ele, medido: saindo da própria base o Caçador
+   tem uma só casa que aproxima, e no começo da partida ela está ocupada por um
+   aliado — a rotação inteira não saía do lugar por causa do próprio time. Ficar
+   preso atrás do adversário é informação; ficar preso atrás do seu suporte é só
+   frustração. `visitadas` impede o vaivém entre duas casas de mesma distância. */
+function passoNaDirecao(h,destino,visitadas){
+  const atual=dist(...h.pos,...destino);
+  const livre=p=>noTab(...p)&&!em(...p)&&!(visitadas&&visitadas.has(k(...p)));
+  const perto=vizinhos(...h.pos).filter(p=>livre(p)&&dist(...p,...destino)<atual)
+    .sort((a,b)=>dist(...a,...destino)-dist(...b,...destino));
+  if(perto.length) return perto[0];
+  return vizinhos(...h.pos).filter(p=>livre(p)&&dist(...p,...destino)===atual)[0]||null;
+}
+/* A migração, no início do turno do dono. Anda de graça e só ganha o bônus se
+   CHEGAR — comprometer o Caçador e não chegar é o custo da aposta errada. */
+function migraCacador(t){
+  const id=J.rotacao&&J.rotacao[t];
+  if(!id||!ROTACAO[id])return;
+  const h=cacadorDe(t);
+  if(!h)return;
+  const r=ROTACAO[id], destino=r.onde(t);
+  if(!destino)return;
+  let andou=0;
+  const visitadas=new Set([k(...h.pos)]);
+  for(let i=0;i<ROTACAO_PASSOS;i++){
+    const p=passoNaDirecao(h,destino,visitadas);
+    if(!p)break;
+    visitadas.add(k(...p));
+    const de=[...h.pos]; h.pos=[...p]; andou++;
+    animaMovimento(h,de);
+    coletaAcampamento(h);
+  }
+  if(andou) reg(t?"c":"a",`${h.n} rotaciona para ${r.n} — ${andou} casa${andou>1?"s":""} de graça`);
+  if(dist(...h.pos,...destino)<=1){
+    const txt=r.bonus(h,t);
+    reg(t?"c":"a",`${h.n} chegou: ${r.n} — ${txt}`);
+    fx(h.pos,r.ico,"esc");
+  }else if(andou){
+    reg("b",`${h.n} não alcançou ${r.n} nesta rodada — sem bônus`);
+  }
+  J.rotacao[t]=null;
+}
+/* A IA escolhe pelo estado do mapa, e não ao acaso: poço aberto e perto puxa;
+   atrás em ouro puxa farm; senão invade. */
+function iaEscolheRotacao(t){
+  const h=cacadorDe(t);
+  if(!h) return "proprio";
+  if(J.poco.vida>0&&dist(...h.pos,...POCO)<=ROTACAO_PASSOS+2) return "poco";
+  const meu=J.times[t].herois.reduce((a,x)=>a+x.ouro,0);
+  const dele=J.times[1-t].herois.reduce((a,x)=>a+x.ouro,0);
+  if(meu<dele) return "proprio";
+  return "invasao";
+}
+
 /* ---------- EFEITO AO LONGO DO TEMPO ----------
    Sangramento e envenenamento. O jogo só tinha dano instantâneo: todo golpe
    resolvia no próprio turno, e por isso a única forma de pressionar alguém era
@@ -831,7 +961,7 @@ function novo(){
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
           pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0,
-          dots:[], curouSitiado:0};
+          dots:[], curouSitiado:0, focoPoco:0};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -845,7 +975,7 @@ function novo(){
       {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
       {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
     ],
-    zonas:[],
+    zonas:[], rotacao:[null,null],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -960,6 +1090,7 @@ function expiraDoTime(t){
     if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
     if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
+    h.focoPoco=0;
   });
 }
 function iniciaTurno(){
@@ -969,6 +1100,7 @@ function iniciaTurno(){
      na hora, e não só na rodada seguinte. Sem isso dava para entrar e sair da
      zona no mesmo turno sem custo nenhum, e território que não cobra não nega
      nada. */
+  migraCacador(t);          // a rotação escolhida no início da rodada acontece aqui
   zonasCobram(t);
   cobraDots(t);
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
@@ -1170,6 +1302,7 @@ function fimDaRodada(){
      é medida em `node sim/bateria.js` — a compensação é decisão do grupo (ver
      docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
+  abreRotacoes();           // os dois escolhem para onde o Caçador vai, às cegas
   atualizaAcampamentos();
   /* O poço reabre com o morador da vez — e o BARÃO NÃO ESPERA VAGA.
      Até a v19 a troca só acontecia com o poço vazio (`p.vida<=0`), e a
@@ -2076,16 +2209,20 @@ function atacaNexus(lado){
    Qualquer caminho novo até o poço deve passar por aqui. */
 function golpeNoPoco(h,hb,slot,F,ep){
   const d=EPICO[ep.id];
-  if(!d.porDano) return slot===2?GOLPE_ULT:GOLPE_HAB;
+  /* o foco da Rotação do Caçador vale nos DOIS moradores — o `return` antecipado
+     do Dragão pulava o bônus e fazia o destino "poço" não servir para nada na
+     metade da partida em que o Dragão é o morador */
+  const foco=h.focoPoco?1:0;
+  if(!d.porDano) return (slot===2?GOLPE_ULT:GOLPE_HAB)+foco;
   const ef=hb.ef;
   const bruto=Math.round(F*(ef.dano||1)*escalaDe(slot))
              +poderTotal(h)+(h.recarga||0)+dupla(h)+(ef.extra||0);
   /* perfurante ignora a armadura do poço pelo mesmo motivo que ignora a de um
      herói — é a função dela, e é o que dá a essas Ultimates um papel contra o
      Barão, que tem 3 de armadura */
-  if(ef.danoFixo) return ef.danoFixo;
-  if(ef.perfura)  return Math.max(1,bruto);
-  return Math.max(1,bruto-(d.arm||0));
+  if(ef.danoFixo) return ef.danoFixo+foco;
+  if(ef.perfura)  return Math.max(1,bruto+foco);
+  return Math.max(1,bruto+foco-(d.arm||0));
 }
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
@@ -2960,7 +3097,15 @@ function abreManual(){
       <p>Na <b>rodada 5</b> desce o <b>Dragão</b>: <b>3 de vida</b>, revida 2. Cai em <b>dois dados</b> — uma Ultimate e uma básica — se dois heróis comprarem a briga no mesmo turno. Levar dá a <b>Herança do Dragão</b>: <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
       <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
       <p><b>No Dragão</b> a conta é de <b>golpes</b>, e não de dano: básica ofensiva tira <b>1</b> e Ultimate tira <b>2</b>, com qualquer dado. Ele desce na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa — contar golpes é o que o mantém legível ali. O poço é <b>sem dono</b>: Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
-    <section><h4>Rotação do Caçador</h4>
+    <section class="destaque"><h4>Rotação do Caçador</h4>
+      <p>No <b>início de cada rodada</b> os dois jogadores escolhem, <b>escondido um do outro</b>, para onde o próprio Caçador vai. No <b>seu turno</b> ele anda até <b>3 casas de graça</b> naquela direção — sem gastar o Dado Mestre.</p>
+      <p><b>Ele não teleporta:</b> anda casa a casa, continua no mapa e continua podendo ser interceptado. Se o caminho fechar, contorna; se não alcançar, <b>não ganha bônus nenhum</b>. É esse o preço da aposta errada.</p>
+      <table><tr><td>⛰ <b>Acampamento próprio</b></td><td>+3 de ouro</td></tr>
+      <tr><td>◈ <b>Acampamento neutro</b></td><td>+1 de Poder até o seu próximo turno</td></tr>
+      <tr><td>⚔ <b>Acampamento inimigo</b></td><td>+4 de ouro roubado</td></tr>
+      <tr><td>☠ <b>O poço</b></td><td>seus golpes no poço valem +1 nesta rodada</td></tr></table>
+      <p style="margin-top:7px">Você escolhe <b>antes</b> de ver o que o adversário fez com o Caçador dele. É aí que mora o jogo.</p></section>
+    <section><h4>O Caçador e o mato</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
       <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
       <p>Quem ataca <b>saindo do mato sem ter sido visto</b> ganha <b>+2 de Força</b> no golpe. É a <b>Emboscada</b>, e é o motivo de valer a pena a espera.</p>
@@ -3971,6 +4116,7 @@ function limpaBuffs(){
     if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
     if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
+    h.focoPoco=0;
   });
 }
 
