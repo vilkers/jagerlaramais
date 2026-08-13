@@ -44,7 +44,7 @@ solenne:{n:"Solenne",ep:"a Voz do Arcano",pos:"meio",cls:"Mago",ref:"Lux / Syndr
   vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Feixe",f:1,alvo:"in",ef:{dano:1}},
         {n:"Prisma",f:4,alvo:"in",ef:{dano:1,area:1}},
-        {n:"Julgamento",f:6,alvo:"in",ef:{danoFixo:8}}]},
+        {n:"Julgamento",f:6,alvo:"in",ef:{dano:0.8,perfura:1}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
   vida:18,poder:4,arm:1,alc:1,agil:1,
@@ -62,7 +62,7 @@ cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
   vida:18,poder:3,arm:1,alc:3,
   habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
         {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2,zona:{tipo:"veneno",dano:1,raio:1}}},
-        {n:"Sentença",f:5,alvo:"in",ef:{danoFixo:8}}]},
+        {n:"Sentença",f:5,alvo:"in",ef:{dano:0.8,perfura:1}}]},
 
 mirrha:{n:"Mirrha",ep:"a Guardiã de Ecos",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
   vida:20,poder:2,arm:2,alc:3,
@@ -137,7 +137,7 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
   vida:18,poder:3,arm:1,alc:3,patamar:1,
   habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,marca:3}},
         {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:6}},
-        {n:"Ato Final",f:5,alvo:"in",ef:{danoFixo:8}}]},
+        {n:"Ato Final",f:5,alvo:"in",ef:{dano:0.8,perfura:1}}]},
 
 /* ─────────── SUPORTE · A Memória · 4 arquétipos ─────────── */
 /* mirrha = curandeira · torvald = gancho com visão  (ambos em jogo/index.html) */
@@ -165,6 +165,8 @@ function textoHab(hb){
   const e = hb.ef, p = [];
   if(e.dano)           p.push(`Dano = <b>Força + Poder − Armadura</b>${e.dano>1?`, <b>${e.dano} vezes</b>`:""}`);
   if(e.danoFixo)       p.push(`Dano fixo de <b>${e.danoFixo}</b>, ignora a Força`);
+  if(e.perfura)        p.push("<b>Perfurante</b> — <b>ignora a Armadura</b> do alvo. "
+                              +"Em troca, escala mais devagar que uma Ultimate comum");
   if(e.extra)          p.push(`<b>+${e.extra}</b> de dano`);
   if(e.bonusFerido)    p.push(`<b>+${e.bonusFerido}</b> se o alvo já estiver ferido`);
   if(e.executa)        p.push(`Elimina na hora um alvo com <b>${e.executa}</b> ou menos de vida`);

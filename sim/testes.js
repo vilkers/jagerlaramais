@@ -1508,6 +1508,116 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      + `— deixou de custar o segundo dado, e com ele o dilema`);
 });
 
+/* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
+
+/* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da
+   força e poder".
+
+   Correto, e o histórico explica sem justificar: Julgamento, Ato Final e Sentença
+   viraram `danoFixo` na v19 porque estavam PIORES que a própria básica, e travar
+   o número com "ignora armadura" foi o conserto rápido. O preço era este — elas
+   pararam no tempo: não crescem com dado, com Poder, com item, com Reforço nem
+   com a Herança do Dragão, enquanto a básica do mesmo herói cresce com tudo isso.
+   Numa partida longa a Ultimate virava a jogada pior.
+
+   Agora elas escalam como qualquer outra E continuam ignorando armadura — mas com
+   multiplicador REDUZIDO (0,8), que é o preço do dano que passa por dentro. Contra
+   alvo sem armadura rendem menos que uma Ultimate comum; contra alvo blindado,
+   mais. É a identidade de dano verdadeiro do gênero, e não um upgrade grátis. */
+teste("as Ultimates perfurantes crescem com o dado e com o Poder", () => {
+  const c = cena();
+  const g = c.g;
+  const perfurantes = Object.entries(g.CATALOGO)
+    .filter(([id, d]) => d.habs[2].ef.perfura)
+    .map(([id, d]) => d.n);
+  ok(perfurantes.length >= 3,
+     `esperava ao menos 3 Ultimates perfurantes, achei ${perfurantes.length}`);
+
+  Object.values(g.CATALOGO).forEach(def => {
+    const u = def.habs[2];
+    if (!u.ef.perfura) return;
+    ok(!u.ef.danoFixo, `${def.n}: ${u.n} continua com danoFixo — não escala com nada`);
+    ok(u.ef.dano, `${def.n}: ${u.n} é perfurante mas não tem dano que escale`);
+    /* a comparação é da FÓRMULA, e não da faixa legal de dado: o Julgamento
+       exige 6, então "dado mínimo contra dado 6" nele compara 6 com 6. */
+    const comDado = F => Math.round(F * u.ef.dano * g.ESCALA_ULT) + def.poder;
+    ok(comDado(6) > comDado(1),
+       `${def.n}: ${u.n} entrega o mesmo com dado 1 e com dado 6 — continua travada`);
+    const comPoder = P => Math.round(6 * u.ef.dano * g.ESCALA_ULT) + P;
+    ok(comPoder(def.poder + 2) > comPoder(def.poder),
+       `${def.n}: ${u.n} não responde a Poder — item e Reforço não a alcançam`);
+  });
+});
+
+teste("dano perfurante rende menos que Ultimate comum contra alvo sem armadura", () => {
+  const c = cena();
+  const g = c.g;
+  Object.values(g.CATALOGO).forEach(def => {
+    const u = def.habs[2];
+    if (!u.ef.perfura) return;
+    const perf = Math.round(6 * u.ef.dano * g.ESCALA_ULT) + def.poder;
+    const comum = Math.round(6 * 1 * g.ESCALA_ULT) + def.poder;   // a mesma Ultimate sem perfurar
+    ok(perf < comum,
+       `${def.n}: ${u.n} perfura E entrega ${perf} contra os ${comum} de uma Ultimate comum `
+       + `— passar por dentro da armadura tem de custar alguma coisa`);
+  });
+});
+
+/* ═══════════════ v27 — o alvo escondido embaixo do outro ═══════════════ */
+
+/* RELATO: "eu estava com todos os creeps na base e ele com os heróis dentro do
+   nexus, eu não conseguia dar dano no nexus pra acabar a partida, e os creeps
+   tão não".
+
+   Empate travado, e as duas metades se alimentavam. A ÚLTIMA MURALHA (v23) diz
+   que com o Nexus em 1 a onda só passa se NÃO houver herói defendendo — então a
+   onda parava, de propósito, esperando o herói fechar. Só que na tela o Nexus
+   desenha o alvo de toque com raio 9 e o herói com raio 15,5, e o herói é
+   desenhado DEPOIS: um defensor parado em cima do Nexus cobria o alvo dele por
+   inteiro. A regra exigia o golpe de herói e a tela não deixava dar o golpe.
+
+   A correção é a pedida: quando mais de um alvo divide o mesmo hexágono, o
+   toque abre uma janela perguntando em quem se está batendo. */
+teste("herói em cima do Nexus não esconde o Nexus — os dois viram opção de alvo", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const lado = 1;
+  /* rota aberta e Nexus no último ponto: o cenário exato do relato */
+  g.J.torres.filter(t => t.t === lado).forEach(t => { t.vida = 0; });
+  g.J.nexus[lado] = 1;
+
+  const defensor = c.heroi(1, "topo");
+  c.poe(defensor, g.BASE[lado][0]);              // defensor EM CIMA do Nexus
+
+  const atacante = c.heroi(0, "meio");           // Solenne, alcance 3
+  const perto = g.vizinhos(...g.BASE[lado][0]).find(v => g.noTab(...v) && !g.em(...v));
+  ok(perto, "não achei casa livre ao lado do Nexus");
+  c.poe(atacante, perto);
+
+  c.mira(atacante, 0);
+  const lista = g.alvosNoHex(...g.BASE[lado][0]);
+  const tipos = lista.map(a => a.tipo);
+  ok(tipos.includes("nexus"),
+     `o hexágono do Nexus com um defensor em cima ofereceu ${JSON.stringify(tipos)} — `
+     + `o Nexus sumiu como alvo e a partida não tem como terminar`);
+  ok(tipos.includes("heroi"), "o defensor deixou de ser alvo");
+  ok(lista.length > 1, "com dois alvos no mesmo hexágono a janela de escolha precisa abrir");
+});
+
+teste("com um alvo só no hexágono, nada de janela — o toque resolve direto", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const alvo = c.heroi(1, "topo"), atacante = c.heroi(0, "topo");
+  c.poe(alvo, [5, 5]);
+  c.poe(atacante, g.vizinhos(5, 5).find(v => g.noTab(...v) && !g.em(...v)));
+  c.mira(atacante, 0);
+  eq(g.alvosNoHex(5, 5).length, 1, "hexágono com um alvo só não deveria abrir escolha");
+});
+
 /* ═══════════════ v26 — o Barão apanha como herói ═══════════════ */
 
 /* Cada morador conta uma coisa, e é de propósito. O Dragão conta GOLPES
@@ -1640,16 +1750,17 @@ teste("a Égide entrega exatamente o escudo que a própria carta promete", () =>
      `a carta promete ${prometido[1]} de escudo e o motor entrega ${g.BARAO_ESCUDO}`);
 });
 
-teste("dano garantido ignora a armadura do Barão, como ignora a de um herói", () => {
+teste("Ultimate perfurante ignora a armadura do Barão, como ignora a de um herói", () => {
   const c = cenaPoco("barao", 99);
   const g = c.g;
-  /* Solenne: Julgamento é danoFixo 8 */
-  const s = c.heroi(0, "meio");
+  const s = c.heroi(0, "meio");          // Solenne: Julgamento é perfurante
   const ult = s.habs[2];
-  ok(ult.ef.danoFixo, "a Ultimate da Solenne deixou de ser dano fixo");
+  ok(ult.ef.perfura, "a Ultimate da Solenne deixou de ser perfurante");
   c.poe(s, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
-  eq(golpeNoPoco(c, s, 2, 6), ult.ef.danoFixo,
-     "a armadura do Barão comeu parte do dano garantido");
+
+  const esperado = Math.round(6 * ult.ef.dano * g.ESCALA_ULT) + g.poderTotal(s);
+  eq(golpeNoPoco(c, s, 2, 6), esperado,
+     `a armadura ${g.EPICO.barao.arm} do Barão comeu parte do dano perfurante`);
 });
 
 /* Quando os dois moradores contavam golpes, o motor e a IA podiam calcular o

@@ -1401,12 +1401,12 @@ function usaHab(alvo){
     if(ef.extra)d+=ef.extra;
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
-    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo);
+    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo||!!ef.perfura);
     /* o efeito com prazo entra DEPOIS do dano e só se o alvo sobreviveu: pendurar
        sangramento num defunto não faz sentido e ainda sujaria o crédito da morte */
     if(ef.dot&&!alvo.morto) poeDot(alvo,h,ef.dot.tipo,ef.dot.dano,ef.dot.rodadas);
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
-      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo));
+      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo||!!ef.perfura));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
     h.recarga=0;
   }else reg(J.vez?"c":"a",txt);
@@ -1949,7 +1949,10 @@ function dadoPara(hb){
 
 function escolheHeroi(h){
   if(cliqueBloqueado||J.fase!=="jogando")return;
-  if(modo==="mirar"&&alvos.includes(h)) return confirmaHab(h);
+  /* passa pelo desempate: se houver estrutura embaixo deste herói (defensor em
+     cima do Nexus, herói em cima da própria torre), o jogador escolhe em vez de
+     o maior alvo de toque decidir por ele */
+  if(modo==="mirar"&&alvos.includes(h)) return tocaAlvo(...h.pos);
   if(h.t!==J.vez||h.morto){ // inspeciona o adversário sem mudar de estado
     abreCarta(h); return;
   }
@@ -2075,11 +2078,13 @@ function golpeNoPoco(h,hb,slot,F,ep){
   const d=EPICO[ep.id];
   if(!d.porDano) return slot===2?GOLPE_ULT:GOLPE_HAB;
   const ef=hb.ef;
-  /* dano garantido ignora armadura no poço pelo mesmo motivo que ignora num
-     herói — é a função dele, e é o que dá às três Ultimates fixas um papel aqui */
-  if(ef.danoFixo) return ef.danoFixo;
   const bruto=Math.round(F*(ef.dano||1)*escalaDe(slot))
              +poderTotal(h)+(h.recarga||0)+dupla(h)+(ef.extra||0);
+  /* perfurante ignora a armadura do poço pelo mesmo motivo que ignora a de um
+     herói — é a função dela, e é o que dá a essas Ultimates um papel contra o
+     Barão, que tem 3 de armadura */
+  if(ef.danoFixo) return ef.danoFixo;
+  if(ef.perfura)  return Math.max(1,bruto);
   return Math.max(1,bruto-(d.arm||0));
 }
 function golpeiaEpico(h,ep,golpe,comoTxt){
@@ -2096,6 +2101,62 @@ function golpeiaEpico(h,ep,golpe,comoTxt){
   const levou=Math.min(d.revide,h.vida-1);
   if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
     fx(h.pos,-levou,"dano"); tremer(h); }
+}
+/* ---------- QUEM ESTÁ NESTE HEXÁGONO, AFINAL ----------
+   Herói e estrutura dividem hexágono o tempo todo: defensor em cima do Nexus,
+   herói em cima da própria torre, e o morador do poço com alguém colado. Até a
+   v26 o desempate era o TAMANHO DO ALVO DE TOQUE — criatura com raio 15,5,
+   estrutura com raio 9 — e o herói ainda era desenhado por cima. Na prática a
+   estrutura ficava inalcançável, e o relato foi o pior caso possível:
+
+     "eu estava com todos os creeps na base e ele com os heróis dentro do nexus,
+      eu não conseguia dar dano no nexus pra acabar a partida"
+
+   Empate travado, porque a ÚLTIMA MURALHA (v23) segura a onda de propósito
+   esperando o golpe de herói — e a tela não deixava dar esse golpe. Regra e
+   interface se contradiziam.
+
+   Agora o hexágono devolve TODOS os alvos válidos que estão nele, e quem escolhe
+   é o jogador. Com um alvo só nada muda: o toque resolve direto, sem janela. */
+function alvosNoHex(c,r){
+  const out=[];
+  alvos.forEach(o=>{ if(o.pos[0]===c&&o.pos[1]===r)
+    out.push({tipo:"heroi",v:o,n:o.n,d:`${Math.max(0,o.vida)}/${o.vidaMax} de vida`
+      +(o.esc>0?` · escudo ${o.esc}`:"")}); });
+  alvosTorre.forEach(tr=>{ const p=ROTAS[tr.rota][tr.i];
+    if(p[0]===c&&p[1]===r) out.push({tipo:"torre",v:tr,n:`Torre ${tr.rota}`,
+      d:`${Math.max(0,tr.vida)}/${VIDA_TORRE} de vida · revida ${REVIDE_TORRE}`}); });
+  alvosEpico.forEach(ep=>{ if(k(c,r)===POCO_K)
+    out.push({tipo:"epico",v:ep,n:EPICO[ep.id].n,
+      d:`${Math.max(0,ep.vida)}/${ep.vidaMax} de vida · revida ${EPICO[ep.id].revide}`}); });
+  if(alvoNexus!==null&&BASE[alvoNexus].some(([bc,br])=>bc===c&&br===r))
+    out.push({tipo:"nexus",v:alvoNexus,n:`Nexus ${NOMES[alvoNexus]}`,
+      d:`${Math.max(0,J.nexus[alvoNexus])}/${VIDA_NEXUS} — é a vitória`});
+  return out;
+}
+function executaAlvo(a){
+  if(a.tipo==="nexus")      atacaNexus(a.v);
+  else if(a.tipo==="torre") atacaTorre(a.v);
+  else if(a.tipo==="epico") atacaEpico(a.v);
+  else                      confirmaHab(a.v);
+}
+/* O toque num hexágono durante a mira. Um alvo resolve direto; dois ou mais
+   abrem a escolha, porque adivinhar por baixo do dedo é como o bug nasceu. */
+function tocaAlvo(c,r){
+  const lista=alvosNoHex(c,r);
+  if(!lista.length)return;
+  if(lista.length===1) return executaAlvo(lista[0]);
+  const ICONE={heroi:"⚔",torre:"⌂",epico:"☠",nexus:"◈"};
+  const bts=lista.map((a,i)=>`<button class="grande escAlvo" data-i="${i}"
+      style="font-size:15px;padding:12px;text-align:left">
+      ${ICONE[a.tipo]||"•"} ${a.n}<br><span style="font-size:12.5px;opacity:.8">${a.d}</span></button>`).join("");
+  abre(`<span class="et">Mesmo hexágono</span><h2>Bater em quem?</h2>
+    <p>Há <b>${lista.length} alvos</b> nesta casa.</p>${bts}
+    <button class="grande" id="escAlvoX"
+      style="background:none;border:1px solid var(--line);color:var(--ink-2)">cancelar</button>`);
+  G("telacx").querySelectorAll(".escAlvo").forEach(b=>b.onclick=()=>{
+    fecha(); executaAlvo(lista[+b.dataset.i]); });
+  G("escAlvoX").onclick=()=>{ fecha(); pinta(); };
 }
 function atacaEpico(ep){
   if(!selHeroi||habAtual===null)return;
@@ -2463,7 +2524,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando){ g.onclick=()=>{vibra(10);atacaEpico(ep);}; alvoDeToque(g,x,y); }
+    if(mirando){ g.onclick=()=>{vibra(10);tocaAlvo(...POCO);}; alvoDeToque(g,x,y); }
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -2471,9 +2532,9 @@ function desenhaMapa(){
     const mirando=alvoNexus===t;
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
-    if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
+    if(mirando) nx.onclick=()=>{vibra(12);tocaAlvo(...BASE[t][0]);};
     gM.appendChild(nx);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);},R_TOQUE_ESTRUTURA);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);tocaAlvo(...BASE[t][0]);},R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;

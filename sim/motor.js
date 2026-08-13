@@ -113,6 +113,7 @@ const PONTE = `
   get ESCALA_ULT(){return ESCALA_ULT},
   respawnAgora:()=>respawnAgora(), fimDaRodada:()=>fimDaRodada(),
   golpeNoPoco:(h,hb,slot,F,ep)=>golpeNoPoco(h,hb,slot,F,ep),
+  alvosNoHex:(c,r)=>alvosNoHex(c,r), tocaAlvo:(c,r)=>tocaAlvo(c,r),
   poeDot:(a,q,t,d,r)=>poeDot(a,q,t,d,r), cobraDots:t=>cobraDots(t),
   poeZona:(t,p,z)=>poeZona(t,p,z), zonasCobram:t=>zonasCobram(t),
   curaDeBase:()=>curaDeBase(),

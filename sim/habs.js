@@ -28,7 +28,10 @@ const ALVOS = +process.argv[2] || 1;    // quantos inimigos a área pega
 function valor(ef, F, P, escala) {
   const golpe = mult => Math.max(1, Math.round(F * mult * escala) + P - ARM);
   let v = 0;
-  if (ef.dano) v += golpe(ef.dano);
+  /* perfurante não desconta armadura — `golpe()` desconta, então tem conta própria */
+  if (ef.dano) v += ef.perfura
+    ? Math.max(1, Math.round(F * ef.dano * escala) + P)
+    : golpe(ef.dano);
   if (ef.danoFixo) v += ef.danoFixo;              // ignora armadura
   if (ef.extra) v += ef.extra;
   if (ef.escudo) v += F + ef.escudo;
