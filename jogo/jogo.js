@@ -1822,15 +1822,24 @@ function descreve(h,hb,F){
      aprende a não confiar na ficha */
   const esc=escalaDe(h.habs.indexOf(hb));
   const t=[];
+  /* NUNCA MOSTRAR FÓRMULA. Relato do playtest: "o ult do Catarino tá a fórmula,
+     quero já o resultado do dano". Ela aparecia quando não havia dado utilizável
+     na mesa (`F` nulo) — justamente na habilidade apagada, que é quando o jogador
+     mais precisa saber quanto ela daria para decidir se vale guardar o dado.
+     Sem dado, mostra o INTERVALO do dado mínimo dela até o 6. */
+  const golpe=d=>Math.round(d*e.dano*esc)+p+(e.extra||0);
+  const faixa=()=>{ const lo=golpe(hb.f), hi=golpe(6);
+                    return lo===hi?`${lo} de dano`:`${lo} a ${hi} de dano`; };
   if(e.danoFixo) t.push(`${e.danoFixo} de dano garantido · ignora armadura`);
   else if(e.dano){
-    const base=F!=null?Math.round(F*e.dano*esc)+p+(e.extra||0):null;
-    t.push(base!=null?`~${base} de dano`:(esc>1?`Força × ${esc} + ${p} de dano`:`Força + ${p} de dano`));
+    t.push((F!=null?`~${golpe(F)} de dano`:faixa())
+          +(e.perfura?" · ignora armadura":""));
   }
   if(e.area) t.push("respinga nos vizinhos");
   if(e.danoVizinhos) t.push("dano em todos os vizinhos");
   if(e.danoRaio) t.push(`dano em todos até ${e.danoRaio} casas`);
-  if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo:"Força+"+e.escudo}`);
+  if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo
+     :(hb.f+e.escudo===6+e.escudo?String(6+e.escudo):`${hb.f+e.escudo} a ${6+e.escudo}`)}`);
   if(e.cura) t.push(`cura ${e.cura}`);
   if(e.ouro) t.push(`+${e.ouro} de ouro`);
   if(e.recarga) t.push(`próximo golpe +${e.recarga}`);

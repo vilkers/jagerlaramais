@@ -114,6 +114,7 @@ const PONTE = `
   respawnAgora:()=>respawnAgora(), fimDaRodada:()=>fimDaRodada(),
   golpeNoPoco:(h,hb,slot,F,ep)=>golpeNoPoco(h,hb,slot,F,ep),
   alvosNoHex:(c,r)=>alvosNoHex(c,r), tocaAlvo:(c,r)=>tocaAlvo(c,r),
+  descreve:(h,hb,F)=>descreve(h,hb,F),
   migraCacador:t=>migraCacador(t), cacadorDe:t=>cacadorDe(t),
   iaEscolheRotacao:t=>iaEscolheRotacao(t), abreRotacoes:()=>abreRotacoes(),
   get ROTACOES(){return ROTACOES}, get ROTACAO_PASSOS(){return ROTACAO_PASSOS},
