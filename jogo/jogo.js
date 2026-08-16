@@ -435,6 +435,142 @@ const VISAO_ONDA=2;       /* a onda é o creep: enxerga onde está empurrando */
 const VISAO_WARD=3;       /* ward vê mais que herói — é o que a torna comprável */
 const WARD_RODADAS=3;     /* e ela apaga sozinha */
 
+/* ---------- ROTAÇÃO DO CAÇADOR ----------
+   No início de cada rodada os DOIS jogadores escolhem, escondido um do outro,
+   PARA QUE REGIÃO o próprio Caçador vai: Topo, Meio, Baixo ou Selva. Ele é
+   reposicionado na hora, sempre DENTRO DA SELVA, na parte dela colada à região
+   escolhida — nunca dentro da rota.
+
+   AVISO DE HISTÓRIA, e ele precisa ser lido antes de mexer aqui. A v18 teve uma
+   rotação em que o Caçador SAÍA DO TABULEIRO e reaparecia noutra entrada de
+   selva; a v19 a desfez, por correção do Vinicius — a peça tem de continuar
+   existindo num lugar real, e o que muda é quem enxerga. Da v28 até a v37 a
+   rotação era ANDAR: até 3 casas de graça na direção do destino, interceptável.
+
+   Esta versão volta a reposicionar de imediato, a pedido do Vilker (v38). A
+   diferença para a v18 — e é ela que mantém a correção do Vinicius de pé — é que
+   o Caçador NUNCA sai do tabuleiro: ele deixa uma casa real e ocupa outra casa
+   real no mesmo instante, continua bloqueando passagem, continua coletando
+   acampamento e continua aparecendo ao sair do mato. O que ele deixa de ser é
+   interceptável no caminho, porque caminho não há mais.
+
+   A ocultação não é ficha nem declaração: é a névoa. A casa de pouso é sempre
+   mato, e mato só se enxerga de dentro. Quem quiser saber onde o Caçador
+   inimigo caiu põe ward lá — a informação está presa à POSIÇÃO, nunca ao botão
+   que o outro apertou. */
+
+/* ---------- OS QUATRO PONTOS DA SELVA ----------
+   Derivados da planta existente, nunca escritos à mão: mudou o mapa, eles se
+   recolocam sozinhos. O mapa NÃO é alterado para caber a mecânica.
+
+   Cada time tem os seus quatro, e os do time 1 são o ESPELHO dos do time 0 —
+   escritos uma vez, girados uma vez, como manda o resto do arquivo. Fazer a
+   conta duas vezes daria dois resultados diferentes no desempate e a simetria
+   morreria sem ninguém ver.
+
+   POR QUE POR TIME. "A selva mais perto do Topo" não quer dizer nada sozinha: a
+   rota de cima atravessa o mapa inteiro, e a casa mais perto dela existe dos
+   dois lados do rio. Sem âncora de time, escolher "Topo" jogaria um dos dois
+   Caçadores dentro da selva do adversário todas as rodadas.
+
+   · topo / meio / baixo — a casa de mato colada na rota (primeiro critério) e,
+     entre as coladas, a mais perto do VÃO NEUTRO daquela rota, que é onde ela é
+     disputada. É o ponto de onde se sai para o gank.
+   · selva — o CENTRO da própria selva: a casa que minimiza a distância até a
+     mais longe das três âncoras de rota. É o entroncamento de onde se alcança
+     qualquer rota, e é para lá que se olha o poço. Medir pelo centro do
+     TABULEIRO foi tentado primeiro e caía sempre na mesma casa da âncora do
+     meio — quatro botões e três lugares. As âncoras de rota ficam de fora da
+     disputa por construção, então "Selva" nunca repete "Meio".
+
+   O ESPELHO TROCA TOPO POR BAIXO. `gira` leva a rota de cima na de baixo
+   (`L_BOT` é literalmente `L_TOPO` girada), então o espelho da âncora de topo do
+   time 0 é a âncora de BAIXO do time 1. Espelhar topo em topo colocava a âncora
+   do time 1 a seis casas da rota que ela deveria vigiar — foi o primeiro
+   resultado impresso desta função, e o motivo desta nota existir. */
+const _MATO_P=[...MATO].map(s=>{const[c,r]=s.split(",").map(Number);return[c,r];});
+const _meuLado=(p,t)=>_distBase(p,t)<_distBase(p,1-t);
+const _distCorredor=(p,nome)=>Math.min(...CORREDOR[nome].map(q=>dist(...p,...q)));
+const _ancoraRota=(nome,t)=>{
+  const vao=ROTAS[nome][centroRota(nome)];
+  return _MATO_P.filter(p=>_meuLado(p,t))
+    .sort((a,b)=>_distCorredor(a,nome)-_distCorredor(b,nome)
+              || dist(...a,...vao)-dist(...b,...vao)
+              || a[0]-b[0] || a[1]-b[1])[0]||null;
+};
+const _ancoraSelva=(t,rotas)=>{
+  const alvos=Object.values(rotas).filter(Boolean);
+  const usados=new Set(alvos.map(p=>k(...p)));
+  const raio=p=>alvos.length?Math.max(...alvos.map(q=>dist(...p,...q))):0;
+  return _MATO_P.filter(p=>_meuLado(p,t)&&!usados.has(k(...p)))
+    .sort((a,b)=>raio(a)-raio(b)
+              || dist(...a,..._MEIO_TAB)-dist(...b,..._MEIO_TAB)
+              || a[0]-b[0] || a[1]-b[1])[0]||null;
+};
+const SELVA_PONTOS=(()=>{
+  const meu={topo:_ancoraRota("topo",0), meio:_ancoraRota("meio",0), baixo:_ancoraRota("baixo",0)};
+  meu.selva=_ancoraSelva(0,meu);
+  const esp=p=>p?gira(...p):null;
+  /* topo↔baixo na virada: ver a nota do espelho, acima */
+  const dele={topo:esp(meu.baixo), meio:esp(meu.meio),
+              baixo:esp(meu.topo), selva:esp(meu.selva)};
+  return [meu,dele];
+})();
+
+const REGIOES=[
+  {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima."},
+  {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio."},
+  {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo."},
+  {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço."}
+];
+const REGIAO=Object.fromEntries(REGIOES.map(r=>[r.id,r]));
+const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
+
+/* Casa onde o Caçador PODE pousar: dentro do tabuleiro, dentro da selva e vazia.
+   `MATO` já é o que sobra depois de base, poço, corredor de rota e rio — então
+   uma casa de mato nunca é rota, nunca é base e nunca é estrutura. A própria
+   casa do Caçador conta como livre: escolher a região onde ele já está não pode
+   falhar por ele estar no lugar. */
+const casaDeSelvaLivre=(p,h)=>{
+  if(!noTab(...p)||!MATO.has(k(...p)))return false;
+  const o=em(...p);
+  return !o||o===h;
+};
+/* O ponto preferencial da região; se estiver ocupado ou inválido, a casa de
+   selva válida mais próxima DENTRO DA MESMA REGIÃO (o próprio lado). Só se o
+   lado inteiro estiver tomado é que aceita qualquer mato — cinco heróis não
+   enchem dezenove casas, mas travar a partida por isso seria pior que o desvio. */
+function pousoNaSelva(t,regiao,h){
+  const alvo=SELVA_PONTOS[t]&&SELVA_PONTOS[t][regiao];
+  if(!alvo)return null;
+  if(casaDeSelvaLivre(alvo,h))return alvo;
+  const perto=l=>l.sort((a,b)=>dist(...a,...alvo)-dist(...b,...alvo)||a[0]-b[0]||a[1]-b[1])[0]||null;
+  const livres=_MATO_P.filter(p=>casaDeSelvaLivre(p,h));
+  return perto(livres.filter(p=>_meuLado(p,t)))||perto(livres);
+}
+
+/* O reposicionamento. Sem animação de percurso de propósito: não há percurso, e
+   uma animação deslizando pelo mapa entregaria a casa de pouso a quem não tem
+   visão dela. */
+function reposicionaCacador(t,regiao){
+  if(!REGIAO[regiao])return null;
+  const h=cacadorDe(t);
+  if(!h)return null;
+  const destino=pousoNaSelva(t,regiao,h);
+  if(!destino)return null;
+  h.pos=[...destino];
+  return destino;
+}
+/* A escolha e o reposicionamento são a mesma coisa, e é isto que o resto do
+   motor chama. NADA vai para o log: o log é lido pelos dois jogadores, e uma
+   linha dizendo "o Caçador foi para o Topo" entregaria de graça exatamente a
+   informação que a névoa existe para cobrar. Quem escolheu já sabe — clicou. */
+function escolheRotacao(t,regiao){
+  if(!REGIAO[regiao])return null;
+  J.rotacao[t]=regiao;                 /* registro da rodada; ninguém desenha */
+  return reposicionaCacador(t,regiao);
+}
+
 /* A escolha, no início da rodada. Os dois escolhem ANTES de qualquer um jogar, e
    um não vê o do outro — é a aposta às cegas que dá sal à mecânica. Em hotseat
    isso são duas telas em sequência; contra a IA, só a do humano.
@@ -442,130 +578,100 @@ const WARD_RODADAS=3;     /* e ela apaga sozinha */
    tem peça para mover é pedir clique por nada. */
 function abreRotacoes(){
   if(!J||J.fim!==null)return;
+  J.rotacao=[null,null];
   const humanos=[0,1].filter(t=>!(simMode||(aiMode&&t===1)));
-  [0,1].forEach(t=>{ if(!humanos.includes(t)) J.rotacao[t]=cacadorDe(t)?iaEscolheRotacao(t):null; });
+  [0,1].forEach(t=>{ if(!humanos.includes(t)&&cacadorDe(t)) escolheRotacao(t,iaEscolheRotacao(t)); });
   const fila=humanos.filter(t=>cacadorDe(t));
   if(!fila.length) return pinta();
   perguntaRotacao(fila,0);
 }
+
+/* O relógio. A partida NUNCA pode ficar parada esperando esta decisão — sem
+   escolha em ROTACAO_SEGUNDOS, a Selva é escolhida sozinha e o jogo segue. */
+const ROTACAO_SEGUNDOS=10;
+let _rotRelogio=null;
+function paraRelogioRotacao(){ if(_rotRelogio){ clearInterval(_rotRelogio); _rotRelogio=null; } }
 function perguntaRotacao(fila,i){
+  paraRelogioRotacao();
   if(i>=fila.length){ pinta(); return; }
   const t=fila[i], h=cacadorDe(t);
-  const bts=ROTACOES.map(r=>{
-    const destino=r.onde(t);
-    const d=destino?dist(...h.pos,...destino):99;
-    const chega=d<=ROTACAO_PASSOS+1;
-    return `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
-      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span>
-      <br><span style="font-size:12px;opacity:${chega?".75":".55"}">
-      ${d} de distância — ${chega?"dá para chegar nesta rodada":"longe demais, não chega"}</span></button>`;
-  }).join("");
+  if(!h) return perguntaRotacao(fila,i+1);
+  const bts=REGIOES.map(r=>
+    `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
+      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span></button>`).join("");
+  const legenda=s=>`Escolha em <b>${s}</b>s — sem escolha, ele vai para a Selva`;
   abre(`<span class="et">Rotação do Caçador · rodada ${J.rodada}</span>
-    <h2 class="t${t}">${NOMES[t]}: para onde vai ${h.n}?</h2>
-    <p>Ele anda <b>${ROTACAO_PASSOS} casas de graça</b> no início do seu turno.
-    O outro jogador <b>não vê</b> a sua escolha — e você não vê a dele.
-    <b>Só ganha o bônus se chegar.</b></p>${bts}`);
-  G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>{
-    J.rotacao[t]=b.dataset.r; fecha(); perguntaRotacao(fila,i+1); });
+    <h2 class="t${t}">${NOMES[t]}: para que região vai ${h.n}?</h2>
+    <p>Ele reaparece <b>dentro da selva</b>, na parte dela colada à região escolhida —
+    <b>nunca dentro da rota</b>. O outro jogador <b>não vê</b> a sua escolha: para saber
+    onde ele caiu é preciso ter visão daquele mato.</p>
+    <p id="rotRel" style="opacity:.8;font-size:13px">${legenda(ROTACAO_SEGUNDOS)}</p>${bts}`);
+  const escolhe=(id,porTempo)=>{
+    paraRelogioRotacao(); fecha();
+    escolheRotacao(t,id);
+    if(porTempo) toast(`Tempo esgotado — ${h.n} foi para o centro da Selva`,"aviso");
+    perguntaRotacao(fila,i+1);
+  };
+  G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>escolhe(b.dataset.r,false));
+  let resta=ROTACAO_SEGUNDOS;
+  _rotRelogio=setInterval(()=>{
+    if(!J||J.fim!==null){ paraRelogioRotacao(); return; }
+    const el=G("rotRel");
+    if(!el){ paraRelogioRotacao(); return; }   /* a tela saiu por outro caminho */
+    resta--;
+    if(resta<=0) return escolhe("selva",true);
+    el.innerHTML=legenda(resta);
+  },1000);
 }
 
-/* ---------- ROTAÇÃO DO CAÇADOR ----------
-   No início de cada rodada os DOIS jogadores escolhem, escondido um do outro,
-   para onde o próprio Caçador vai. No seu turno ele migra para lá, e o destino
-   decide o bônus. A graça é a aposta às cegas: você compromete o Caçador antes
-   de ver o que o outro fez com o dele.
+/* A IA escolhe pelo ESTADO DO MAPA, e obedece à mesma névoa que o humano: só
+   entram na conta os inimigos que ela de fato enxerga (`visivelPara`). Uma IA
+   que lesse o mapa inteiro daria gank perfeito em herói escondido e a névoa
+   deixaria de ser jogo para quem joga contra ela.
 
-   AVISO DE HISTÓRIA, e ele é o motivo do desenho ser este. A v18 já teve uma
-   "rotação do Caçador" e ela foi DESFEITA na v19 (ver docs/DECISOES-PENDENTES,
-   item 6): lá o Caçador gastava uma ação, SAÍA DO TABULEIRO e reaparecia noutra
-   entrada de selva no turno seguinte. A correção veio do Vinicius — a peça tem
-   de continuar existindo num lugar real, e o que muda é quem enxerga.
-
-   Por isso aqui NÃO HÁ TELEPORTE. O Caçador anda de verdade, no mapa, até
-   ROTACAO_PASSOS casas na direção escolhida, de graça (sem tocar no Dado
-   Mestre). Ele continua interceptável, continua ocupando casa, continua
-   aparecendo ao sair do mato. O que a rotação compra é TEMPO, não ubiquidade —
-   e é o que faz dela uma decisão em vez de um botão. */
-const ROTACAO_PASSOS=3;
-const ROTACOES=[
-  {id:"proprio", n:"Acampamento próprio", ico:"⛰",
-   d:"Farm seguro. +3 de ouro ao chegar.",
-   onde:t=>J.camps.find(c=>c.t===t).pos,
-   bonus:(h,t)=>{ h.ouro+=3; return "+3 de ouro"; }},
-  {id:"neutro", n:"Acampamento neutro", ico:"◈",
-   d:"A disputa do meio. +1 de Poder até o seu próximo turno.",
-   onde:()=>J.camps.find(c=>c.t===-1).pos,
-   bonus:(h)=>{ h.extraPoder+=1; h.buffP=(h.buffP||0)+1; return "+1 de Poder"; }},
-  {id:"invasao", n:"Acampamento inimigo", ico:"⚔",
-   d:"Invasão. +4 de ouro, mas você termina o passo dentro da casa do outro.",
-   onde:t=>J.camps.find(c=>c.t===1-t).pos,
-   bonus:(h)=>{ h.ouro+=4; return "+4 de ouro roubado"; }},
-  {id:"poco", n:"O poço", ico:"☠",
-   d:"Objetivo. Os seus golpes no poço valem +1 nesta rodada.",
-   onde:()=>POCO,
-   bonus:(h)=>{ h.focoPoco=1; return "golpes no poço valem +1"; }}
-];
-const ROTACAO=Object.fromEntries(ROTACOES.map(r=>[r.id,r]));
-const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
-
-/* Um passo na direção do destino. Prefere a casa livre que APROXIMA; se não
-   houver nenhuma, aceita uma de mesma distância para contornar.
-
-   O contorno não é firula. Sem ele, medido: saindo da própria base o Caçador
-   tem uma só casa que aproxima, e no começo da partida ela está ocupada por um
-   aliado — a rotação inteira não saía do lugar por causa do próprio time. Ficar
-   preso atrás do adversário é informação; ficar preso atrás do seu suporte é só
-   frustração. `visitadas` impede o vaivém entre duas casas de mesma distância. */
-function passoNaDirecao(h,destino,visitadas){
-  const atual=dist(...h.pos,...destino);
-  const livre=p=>noTab(...p)&&!em(...p)&&!(visitadas&&visitadas.has(k(...p)));
-  const perto=vizinhos(...h.pos).filter(p=>livre(p)&&dist(...p,...destino)<atual)
-    .sort((a,b)=>dist(...a,...destino)-dist(...b,...destino));
-  if(perto.length) return perto[0];
-  return vizinhos(...h.pos).filter(p=>livre(p)&&dist(...p,...destino)===atual)[0]||null;
-}
-/* A migração, no início do turno do dono. Anda de graça e só ganha o bônus se
-   CHEGAR — comprometer o Caçador e não chegar é o custo da aposta errada. */
-function migraCacador(t){
-  const id=J.rotacao&&J.rotacao[t];
-  if(!id||!ROTACAO[id])return;
-  const h=cacadorDe(t);
-  if(!h)return;
-  const r=ROTACAO[id], destino=r.onde(t);
-  if(!destino)return;
-  let andou=0;
-  const visitadas=new Set([k(...h.pos)]);
-  for(let i=0;i<ROTACAO_PASSOS;i++){
-    const p=passoNaDirecao(h,destino,visitadas);
-    if(!p)break;
-    visitadas.add(k(...p));
-    const de=[...h.pos]; h.pos=[...p]; andou++;
-    animaMovimento(h,de);
-    coletaAcampamento(h);
-  }
-  if(andou) reg(t?"c":"a",`${h.n} rotaciona para ${r.n} — ${andou} casa${andou>1?"s":""} de graça`);
-  if(dist(...h.pos,...destino)<=1){
-    const txt=r.bonus(h,t);
-    reg(t?"c":"a",`${h.n} chegou: ${r.n} — ${txt}`);
-    fx(h.pos,r.ico,"esc");
-  }else if(andou){
-    reg("b",`${h.n} não alcançou ${r.n} nesta rodada — sem bônus`);
-  }
-  J.rotacao[t]=null;
-}
-/* A IA escolhe pelo estado do mapa, e não ao acaso: poço aberto e perto puxa;
-   atrás em ouro puxa farm; senão invade. */
+   Não é uma IA nova — é uma nota por região, no mesmo estilo do resto do
+   arquivo: inimigo exposto perto do ponto de pouso puxa gank, aliado por perto
+   soma porque gank de um só não fecha, torre própria ferida puxa defesa, e o
+   poço puxa a Selva com peso maior quando o morador é o Barão. */
 function iaEscolheRotacao(t){
   const h=cacadorDe(t);
-  if(!h) return "proprio";
+  if(!h) return "selva";
   /* o Aprendiz aposta no acaso — e é aposta de verdade, não sabotagem: às vezes
-     acerta o destino certo, como quem ainda não leu o mapa */
-  if(!IA().rotacaoBoa) return ROTACOES[Math.floor(Math.random()*ROTACOES.length)].id;
-  if(J.poco.vida>0&&dist(...h.pos,...POCO)<=ROTACAO_PASSOS+2) return "poco";
-  const meu=J.times[t].herois.reduce((a,x)=>a+x.ouro,0);
-  const dele=J.times[1-t].herois.reduce((a,x)=>a+x.ouro,0);
-  if(meu<dele) return "proprio";
-  return "invasao";
+     acerta a região certa, como quem ainda não leu o mapa */
+  if(!IA().rotacaoBoa) return REGIOES[Math.floor(Math.random()*REGIOES.length)].id;
+  const inimigos=J.times[1-t].herois.filter(x=>!x.morto&&visivelPara(x,t));
+  const aliados=J.times[t].herois.filter(x=>!x.morto&&x!==h);
+  const nota=id=>{
+    const a=SELVA_PONTOS[t][id];
+    if(!a) return -99;
+    if(id==="selva"){
+      let s=2;                                        /* piso: a selva sempre serve */
+      if(J.poco.vida>0){
+        s+=(J.poco.id==="barao"?6:3);                 /* o Barão vale a rodada inteira */
+        s+=aliados.filter(x=>dist(...x.pos,...POCO)<=4).length;  /* objetivo é de grupo */
+      }
+      const neutro=J.camps.find(c=>c.t===-1);
+      if(neutro&&!em(...neutro.pos)) s+=1;
+      return s;
+    }
+    /* A nota da rota é medida NA ROTA, não no ponto de pouso. Os quatro pontos
+       ficam a poucas casas uns dos outros — medir "inimigo perto do pouso"
+       fazia a mesma isca contar para duas regiões, e o desempate alfabético
+       decidia o gank. `naRota` é inequívoco: ou o herói está no corredor
+       daquela rota, ou está colado nele. */
+    const naRota=p=>_distCorredor(p,id)<=1;
+    let s=0;
+    inimigos.filter(x=>naRota(x.pos)).forEach(x=>{
+      s+=3;
+      s+=Math.round(3*(1-Math.max(0,x.vida)/x.vidaMax));   /* ferido vale mais */
+      if(!sobTorreAmiga(x)) s+=2;                          /* longe da torre dele */
+    });
+    s+=aliados.filter(x=>naRota(x.pos)).length*2;          /* gank de um só não fecha */
+    const minhas=J.torres.filter(x=>x.rota===id&&x.t===t&&x.vida>0);
+    if(minhas.some(x=>x.vida<VIDA_TORRE)) s+=2;            /* a minha torre apanhando */
+    return s;
+  };
+  return REGIOES.map(r=>r.id).sort((x,y)=>nota(y)-nota(x)||x.localeCompare(y))[0];
 }
 
 /* ---------- EFEITO AO LONGO DO TEMPO ----------
@@ -1133,7 +1239,8 @@ function iniciaTurno(){
      na hora, e não só na rodada seguinte. Sem isso dava para entrar e sair da
      zona no mesmo turno sem custo nenhum, e território que não cobra não nega
      nada. */
-  migraCacador(t);          // a rotação escolhida no início da rodada acontece aqui
+  /* a rotação NÃO mora mais aqui: desde a v38 o Caçador é reposicionado no
+     instante da escolha, no início da rodada, e não no início do turno do dono */
   zonasCobram(t);
   cobraDots(t);
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
@@ -3140,13 +3247,14 @@ function abreManual(){
       <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
       <p><b>No Dragão</b> a conta é de <b>golpes</b>, e não de dano: básica ofensiva tira <b>1</b> e Ultimate tira <b>2</b>, com qualquer dado. Ele desce na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa — contar golpes é o que o mantém legível ali. O poço é <b>sem dono</b>: Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section class="destaque"><h4>Rotação do Caçador</h4>
-      <p>No <b>início de cada rodada</b> os dois jogadores escolhem, <b>escondido um do outro</b>, para onde o próprio Caçador vai. No <b>seu turno</b> ele anda até <b>3 casas de graça</b> naquela direção — sem gastar o Dado Mestre.</p>
-      <p><b>Ele não teleporta:</b> anda casa a casa, continua no mapa e continua podendo ser interceptado. Se o caminho fechar, contorna; se não alcançar, <b>não ganha bônus nenhum</b>. É esse o preço da aposta errada.</p>
-      <table><tr><td>⛰ <b>Acampamento próprio</b></td><td>+3 de ouro</td></tr>
-      <tr><td>◈ <b>Acampamento neutro</b></td><td>+1 de Poder até o seu próximo turno</td></tr>
-      <tr><td>⚔ <b>Acampamento inimigo</b></td><td>+4 de ouro roubado</td></tr>
-      <tr><td>☠ <b>O poço</b></td><td>seus golpes no poço valem +1 nesta rodada</td></tr></table>
-      <p style="margin-top:7px">Você escolhe <b>antes</b> de ver o que o adversário fez com o Caçador dele. É aí que mora o jogo.</p></section>
+      <p>No <b>início de cada rodada</b> os dois jogadores escolhem, <b>escondido um do outro</b>, para que <b>região</b> o próprio Caçador vai. Ele é reposicionado <b>na hora</b>, e isso <b>não gasta o Dado Mestre</b> nem a ação dele.</p>
+      <p><b>Ele reaparece sempre dentro da selva</b> — na parte dela colada à região escolhida —, <b>nunca dentro da rota</b>. Se aquela casa estiver ocupada, ele pousa na casa de selva válida mais próxima.</p>
+      <table><tr><td>▲ <b>Topo</b></td><td>a selva colada à rota de cima</td></tr>
+      <tr><td>◆ <b>Meio</b></td><td>a selva colada à rota do meio</td></tr>
+      <tr><td>▼ <b>Baixo</b></td><td>a selva colada à rota de baixo</td></tr>
+      <tr><td>❦ <b>Selva</b></td><td>o centro da sua selva, de frente para o poço</td></tr></table>
+      <p style="margin-top:7px">Você tem <b>10 segundos</b> para decidir. Sem escolha, ele vai sozinho para a <b>Selva</b> — a partida nunca fica parada esperando.</p>
+      <p>O adversário <b>não recebe aviso nenhum</b> de qual botão você apertou. Para saber onde o seu Caçador caiu, ele precisa ter <b>visão daquele mato</b> — de olho ou de <b>ward</b>. A informação está presa à <b>posição</b>, não à escolha.</p></section>
     <section><h4>O Caçador e o mato</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
       <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
@@ -3178,7 +3286,7 @@ const PASSOS=[
    ok:null},
   {t:"Duas rotas mexem nos seus dados:<br><br><b>Topo</b> dá <b>Placas</b> — ajusta um dado em ±1 ou re-rola.<br><b>Meio</b> dá <b>Prioridade</b> — um dado de ação a mais.<br><br>Ganhar essas rotas é o que faz sua ultimate sair na hora certa.",
    ok:null},
-  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo para onde ele vai, e a carta só vira <b>no fim do turno do adversário</b>.<br><br>É o blefe do gank. Use.",
+  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo a <b>região</b> dele — <b>Topo, Meio, Baixo ou Selva</b> — e ele reaparece na hora, sempre <b>dentro do mato</b> daquela região.<br><br>O outro não vê a sua escolha: só descobre onde ele está se tiver <b>visão daquele mato</b>. É o blefe do gank. Use.",
    ok:null},
   {t:"É isso. Encerre o turno e jogue.<br><br>O <b>?</b> lá em cima abre o manual completo a qualquer momento.",
    ok:null, fim:true}

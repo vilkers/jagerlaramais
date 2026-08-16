@@ -1530,144 +1530,446 @@ teste("com o time inteiro morto a IA não joga carta — e não derruba a partid
      `a IA estourou com o time morto: ${estourou && estourou.message}`);
 });
 
-/* ═══════════════ v28 — a rotação do Caçador ═══════════════ */
+/* ═══════════════ v38 — a rotação do Caçador por REGIÃO ═══════════════ */
 
-/* No início da rodada os dois escolhem, às cegas, para onde o próprio Caçador
-   vai; no seu turno ele migra e o destino decide o bônus.
+/* No início da rodada os dois escolhem, às cegas, PARA QUE REGIÃO o próprio
+   Caçador vai: Topo, Meio, Baixo ou Selva. Ele é reposicionado na hora, sempre
+   dentro da SELVA, na parte dela colada à região escolhida.
 
-   A v18 já teve uma "rotação" e ela foi DESFEITA na v19: lá o Caçador saía do
-   tabuleiro e reaparecia noutra entrada de selva. Estes testes existem para essa
-   versão não voltar — a peça anda de verdade, casa a casa, e continua no mapa. */
+   HISTÓRIA, porque estes testes mudaram de lado e isso precisa ficar escrito.
+   Até a v37 a rotação era ANDAR — até 3 casas de graça — e havia dois testes
+   aqui travando o teleporte, herdados da correção que o Vinicius fez na v19
+   contra o desenho da v18. A v38 reintroduz o reposicionamento imediato, a
+   pedido do Vilker, e aqueles dois testes saíram junto.
+
+   O que continua travado, e é a metade da correção do Vinicius que segue de pé:
+   o Caçador NUNCA sai do tabuleiro, nunca pousa fora da selva e nunca pousa em
+   cima de outra peça. Os testes abaixo cobrem exatamente isso. */
 
 const cenaSelva = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
                                        ["vharn", "grumo", "zhet", "cael", "gorm"]] })
                           .mov(0).vez(0);
 
-teste("o Caçador anda no mapa até o destino — nunca some do tabuleiro", () => {
+const REGS = ["topo", "meio", "baixo", "selva"];
+
+/* ---------- as quatro regiões, uma por uma ---------- */
+
+REGS.forEach(reg => {
+  teste(`escolher ${reg.toUpperCase()} põe o Caçador na selva daquela região`, () => {
+    const c = cenaSelva();
+    const g = c.g;
+    const h = g.cacadorDe(0);
+    ok(h, "não achei o Caçador do time 0");
+
+    const alvo = g.SELVA_PONTOS[0][reg];
+    ok(alvo, `a região ${reg} não tem ponto derivado`);
+
+    g.escolheRotacao(0, reg);
+
+    eq(g.dist(...h.pos, ...alvo), 0,
+       `escolheu ${reg} e não pousou no ponto daquela região`);
+    ok(g.MATO.has(g.k(...h.pos)), "pousou fora da selva");
+    ok(g.noTab(...h.pos), "saiu do tabuleiro — foi o erro da v18");
+  });
+});
+
+teste("o Caçador NUNCA pousa dentro da rota, em nenhuma das quatro regiões", () => {
+  const g = cenaSelva().g;
+  [0, 1].forEach(t => REGS.forEach(reg => {
+    const h = g.cacadorDe(t);
+    g.escolheRotacao(t, reg);
+    const K = g.k(...h.pos);
+    ok(!g.LANE.has(K),
+       `time ${t}, região ${reg}: pousou em ${K}, que é corredor de rota`);
+    ok(g.MATO.has(K), `time ${t}, região ${reg}: pousou em ${K}, que não é selva`);
+  }));
+});
+
+teste("Topo, Meio e Baixo pousam colados na PRÓPRIA rota; Selva no centro", () => {
+  const g = cenaSelva().g;
+  [0, 1].forEach(t => {
+    ["topo", "meio", "baixo"].forEach(reg => {
+      const p = g.SELVA_PONTOS[t][reg];
+      const d = Math.min(...g.CORREDOR[reg].map(q => g.dist(...p, ...q)));
+      eq(d, 1, `time ${t}: o ponto de ${reg} está a ${d} da rota ${reg} — devia encostar`);
+    });
+    /* o ponto da Selva não é o de nenhuma rota */
+    const s = g.k(...g.SELVA_PONTOS[t].selva);
+    ["topo", "meio", "baixo"].forEach(reg =>
+      ok(s !== g.k(...g.SELVA_PONTOS[t][reg]),
+         `time ${t}: o ponto da Selva repete o ponto de ${reg} — quatro botões, três lugares`));
+  });
+});
+
+teste("cada time pousa no PRÓPRIO lado, e os oito pontos são espelho exato", () => {
+  const g = cenaSelva().g;
+  const dBase = (p, t) => Math.min(...g.BASE[t].map(b => g.dist(...b, ...p)));
+  [0, 1].forEach(t => REGS.forEach(reg => {
+    const p = g.SELVA_PONTOS[t][reg];
+    ok(dBase(p, t) < dBase(p, 1 - t),
+       `time ${t}, região ${reg}: o ponto ${g.k(...p)} está mais perto da base inimiga`);
+  }));
+  /* `gira` leva a rota de cima na de baixo — o espelho troca topo por baixo */
+  const par = { topo: "baixo", baixo: "topo", meio: "meio", selva: "selva" };
+  REGS.forEach(reg => {
+    const esp = g.gira(...g.SELVA_PONTOS[0][reg]);
+    const alvo = g.SELVA_PONTOS[1][par[reg]];
+    eq(g.k(...esp), g.k(...alvo),
+       `o ponto de ${reg} do time 0 não espelha o de ${par[reg]} do time 1`);
+  });
+});
+
+/* ---------- casa ocupada, casa inválida ---------- */
+
+teste("ponto preferencial OCUPADO: pousa na casa de selva válida mais próxima", () => {
   const c = cenaSelva();
   const g = c.g;
   const h = g.cacadorDe(0);
-  ok(h, "não achei o Caçador do time 0");
+  const alvo = g.SELVA_PONTOS[0].topo;
 
-  const destino = g.J.camps.find(x => x.t === 0).pos;
+  /* um aliado sentado exatamente no ponto preferencial */
+  const bloqueio = g.J.times[0].herois.find(x => x !== h);
+  c.poe(bloqueio, alvo);
 
-  /* casa aberta a uma distância que exige andar, mas cabe nos passos de graça.
-     Nada de partir do canto da base: lá o herói tem só duas vizinhas e o próprio
-     time ocupa as duas — caso real, coberto no teste seguinte. */
-  const partida = [];
-  for (let r = 0; r < g.LINS; r++) for (let cc = 0; cc < g.COLS; cc++) {
-    if (!g.noTab(cc, r) || g.em(cc, r)) continue;
-    const d = g.dist(cc, r, ...destino);
-    if (d >= 2 && d <= g.ROTACAO_PASSOS) partida.push([cc, r]);
-  }
-  ok(partida.length, "não achei casa de partida adequada");
-  c.poe(h, partida[0]);
+  g.escolheRotacao(0, "topo");
+
+  ok(g.dist(...h.pos, ...alvo) > 0, "pousou em cima de outra peça");
+  ok(g.MATO.has(g.k(...h.pos)), "desviou para fora da selva");
+  ok(!g.LANE.has(g.k(...h.pos)), "desviou para dentro da rota");
+  eq(g.em(...h.pos), h, "a casa de pouso tem outra peça");
+});
+
+teste("ponto preferencial cercado de ocupados: continua achando casa de selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const alvo = g.SELVA_PONTOS[0].meio;
+
+  /* enche o ponto e todas as vizinhas de selva com o resto do time */
+  const encher = [alvo, ...g.vizinhos(...alvo).filter(p => g.MATO.has(g.k(...p)))];
+  const outros = g.J.times[0].herois.filter(x => x !== h)
+                  .concat(g.J.times[1].herois);
+  encher.forEach((p, i) => { if (outros[i]) c.poe(outros[i], p); });
+
+  g.escolheRotacao(0, "meio");
+
+  ok(g.MATO.has(g.k(...h.pos)), "com o ponto cercado, pousou fora da selva");
+  eq(g.em(...h.pos), h, "pousou em cima de outra peça");
+});
+
+teste("escolher a região onde o Caçador JÁ está não falha por ele ocupar a casa", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const alvo = g.SELVA_PONTOS[0].selva;
+  c.poe(h, alvo);
+  g.escolheRotacao(0, "selva");
+  eq(g.dist(...h.pos, ...alvo), 0, "saiu do lugar certo por estar nele");
+});
+
+teste("o reposicionamento não altera o mapa", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const antes = {
+    mato: [...g.MATO].sort().join("|"),
+    lane: [...g.LANE.keys()].sort().join("|"),
+    poco: g.k(...g.POCO),
+    torres: g.J.torres.map(t => `${t.rota}${t.i}${t.t}${t.vida}`).join("|")
+  };
+  [0, 1].forEach(t => REGS.forEach(reg => g.escolheRotacao(t, reg)));
+  eq([...g.MATO].sort().join("|"), antes.mato, "a selva mudou de forma");
+  eq([...g.LANE.keys()].sort().join("|"), antes.lane, "as rotas mudaram de forma");
+  eq(g.k(...g.POCO), antes.poco, "o poço mudou de casa");
+  eq(g.J.torres.map(t => `${t.rota}${t.i}${t.t}${t.vida}`).join("|"), antes.torres, "as torres mudaram");
+});
+
+teste("depois de reposicionado o Caçador age normalmente", () => {
+  const c = cenaSelva().dados(6, 6, 6).mov(3).vez(0);
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.escolheRotacao(0, "topo");
   const de = [...h.pos];
-  const d0 = g.dist(...de, ...destino);
 
-  g.J.rotacao[0] = "proprio";
-  g.migraCacador(0);
+  /* anda: a peça continua sendo uma peça comum depois do pouso */
+  const livre = g.vizinhos(...h.pos).find(p => g.noTab(...p) && !g.em(...p));
+  ok(livre, "o Caçador pousou sem nenhuma vizinha livre");
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.moveAte(...livre);
+  ok(g.dist(...de, ...h.pos) > 0, "não conseguiu andar depois de reposicionado");
 
-  ok(g.noTab(...h.pos), "o Caçador saiu do tabuleiro — foi exatamente o erro da v18");
-  const andou = g.dist(...de, ...h.pos);
-  ok(andou > 0, "a rotação não moveu o Caçador");
-  ok(andou <= g.ROTACAO_PASSOS,
-     `andou ${andou} casas com teto de ${g.ROTACAO_PASSOS} — isso é teleporte, não rotação`);
-  ok(g.dist(...h.pos, ...destino) < d0, "andou sem se aproximar do destino");
+  /* e bate: um inimigo colado toma dano da básica */
+  const alvo = g.J.times[1].herois.find(x => !x.morto);
+  c.poe(alvo, g.vizinhos(...h.pos).find(p => g.noTab(...p) && !g.em(...p)));
+  const v0 = alvo.vida;
+  c.usa(h, 0, alvo);
+  ok(alvo.vida < v0, "a básica não saiu depois do reposicionamento");
 });
 
-/* O Caçador ilhado pelo próprio time no canto da base é caso real: aquele
-   hexágono tem duas vizinhas e os cinco heróis começam empilhados por perto.
-   A rotação não pode reagir a isso pulando por cima — foi o erro da v18. */
-teste("Caçador cercado pelo próprio time não teleporta: fica onde dá", () => {
+/* ---------- o relógio de 10 segundos ---------- */
+
+teste("sem escolha em 10 segundos, o Caçador vai sozinho para a Selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;          // hotseat: os dois são humanos
+  const h = g.cacadorDe(0);
+  const centro = g.SELVA_PONTOS[0].selva;
+  c.poe(h, g.BASE[0][0]);                        // longe do centro da selva
+
+  eq(g.ROTACAO_SEGUNDOS, 10, "o prazo deixou de ser 10 segundos");
+
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "a tela da rotação abriu sem relógio — a partida pode travar esperando");
+  eq(rel.ms, 1000, "o relógio não bate de segundo em segundo");
+
+  /* nove tiques: ainda não escolheu nada */
+  for (let i = 0; i < 9; i++) rel.fn();
+  eq(g.dist(...h.pos, ...centro) === 0, false, "reposicionou antes do prazo acabar");
+
+  rel.fn();                                      // o décimo
+  eq(g.dist(...h.pos, ...centro), 0, "o timeout não mandou o Caçador para o centro da Selva");
+  eq(g.J.rotacao[0], "selva", "o timeout não registrou a Selva como escolha");
+});
+
+teste("o timeout usa exatamente o mesmo caminho da escolha manual", () => {
+  const a = cenaSelva(), b = cenaSelva();
+  a.g.simMode = false; a.g.aiMode = false;
+  a.poe(a.g.cacadorDe(0), a.g.BASE[0][0]);
+  b.poe(b.g.cacadorDe(0), b.g.BASE[0][0]);
+
+  a.g.abreRotacoes();
+  const rel = a.g.__timers.filter(t => t.vivo).pop();
+  for (let i = 0; i < 10; i++) rel.fn();
+
+  b.g.escolheRotacao(0, "selva");               // manual
+
+  eq(a.g.k(...a.g.cacadorDe(0).pos), b.g.k(...b.g.cacadorDe(0).pos),
+     "timeout e escolha manual pousam em casas diferentes");
+});
+
+teste("escolher desliga o relógio — ele não dispara depois", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  const h = g.cacadorDe(0);
+
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "não abriu relógio");
+
+  g.escolheRotacao(0, "topo");                   // o jogador escolheu
+  g.paraRelogioRotacao();                        // é o que o clique faz
+  eq(rel.vivo, false, "o relógio continuou vivo depois da escolha");
+
+  const pouso = g.k(...h.pos);
+  for (let i = 0; i < 20; i++) if (rel.vivo) rel.fn();
+  eq(g.k(...h.pos), pouso, "o relógio disparou depois da escolha e mudou o Caçador de lugar");
+});
+
+teste("com a partida encerrada o relógio se desliga em vez de reposicionar", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  const h = g.cacadorDe(0);
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  const pouso = g.k(...h.pos);
+  g.J.fim = 0;
+  for (let i = 0; i < 15; i++) if (rel.vivo) rel.fn();
+  eq(g.k(...h.pos), pouso, "mexeu no Caçador com a partida já encerrada");
+});
+
+/* ---------- escolha secreta ---------- */
+
+teste("a escolha é secreta: nada no log entrega a região", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const antes = g.J.log.length;
+  REGS.forEach(reg => g.escolheRotacao(0, reg));
+  const novas = g.J.log.slice(0, g.J.log.length - antes).map(l => l.txt).join(" ").toLowerCase();
+  ["topo", "meio", "baixo", "selva", "rotaci"].forEach(palavra =>
+    ok(!novas.includes(palavra),
+       `o log entregou a região do Caçador: achei "${palavra}" em "${novas}"`));
+});
+
+teste("Caçador fora da visão inimiga continua escondido depois de pousar", () => {
   const c = cenaSelva();
   const g = c.g;
   const h = g.cacadorDe(0);
-  c.poe(h, g.BASE[0][0]);
-  /* fecha as duas saídas com aliados */
-  const saidas = g.vizinhos(...h.pos).filter(p => g.noTab(...p));
-  const aliados = g.J.times[0].herois.filter(x => x !== h);
-  saidas.forEach((p, i) => { if (aliados[i]) c.poe(aliados[i], p); });
-
-  const de = [...h.pos];
-  g.J.rotacao[0] = "proprio";
-  g.migraCacador(0);
-  eq(g.dist(...de, ...h.pos), 0, "pulou por cima do próprio time — é o teleporte da v18 de volta");
-  ok(g.noTab(...h.pos), "saiu do tabuleiro");
+  /* o time 1 inteiro na própria base, longe da selva do time 0 */
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
+  g.escolheRotacao(0, "topo");
+  ok(g.MATO.has(g.k(...h.pos)), "não pousou no mato");
+  ok(!g.visivelPara(h, 1), "o adversário enxergou o Caçador sem ter visão do mato");
 });
 
-teste("o bônus só sai se o Caçador CHEGAR", () => {
+teste("com ward na casa de pouso, o adversário VÊ o Caçador — a posição é a informação", () => {
   const c = cenaSelva();
   const g = c.g;
   const h = g.cacadorDe(0);
-  const destino = g.J.camps.find(x => x.t === 0).pos;
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
 
-  /* longe de propósito: mais que os passos de graça */
-  const longe = [];
-  for (let r = 0; r < g.LINS; r++) for (let cc = 0; cc < g.COLS; cc++)
-    if (g.noTab(cc, r) && !g.em(cc, r) && g.dist(cc, r, ...destino) > g.ROTACAO_PASSOS + 3) longe.push([cc, r]);
-  ok(longe.length, "não achei casa longe do acampamento");
-  c.poe(h, longe[0]);
+  const alvo = g.SELVA_PONTOS[0].topo;
+  g.poeWard(1, alvo);                            // ward do time 1 exatamente ali
+  g.escolheRotacao(0, "topo");
 
-  const ouro0 = h.ouro;
-  g.J.rotacao[0] = "proprio";
-  g.migraCacador(0);
-  eq(h.ouro, ouro0, "pagou o bônus sem o Caçador ter chegado — a aposta errada tem de custar");
-
-  /* agora colado: chega e recebe */
-  c.poe(h, g.vizinhos(...destino).find(p => g.noTab(...p) && !g.em(...p)));
-  g.J.rotacao[0] = "proprio";
-  g.migraCacador(0);
-  ok(h.ouro > ouro0, "chegou ao acampamento próprio e não recebeu o bônus");
+  eq(g.dist(...h.pos, ...alvo), 0, "não pousou no ponto esperado");
+  ok(g.visivelPara(h, 1), "a ward estava em cima do Caçador e não o revelou");
 });
 
-teste("cada destino entrega o próprio bônus, e o do poço soma no golpe", () => {
+teste("ward em OUTRA região não revela: o que revela é a posição, não a escolha", () => {
   const c = cenaSelva();
   const g = c.g;
   const h = g.cacadorDe(0);
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
 
-  /* neutro: +1 de Poder, e some no próximo turno como qualquer buff */
-  const p0 = g.poderTotal(h);
-  c.poe(h, g.vizinhos(...g.J.camps.find(x => x.t === -1).pos).find(p => g.noTab(...p) && !g.em(...p)));
-  g.J.rotacao[0] = "neutro"; g.migraCacador(0);
-  eq(g.poderTotal(h), p0 + 1, "o destino neutro não deu +1 de Poder");
+  g.poeWard(1, g.SELVA_PONTOS[0].baixo);         // vigiando a região errada
+  g.escolheRotacao(0, "topo");
 
-  /* poço: o golpe no poço vale +1 */
-  const c2 = cenaSelva();
-  const g2 = c2.g;
-  const h2 = g2.cacadorDe(0);
-  g2.J.poco.id = "dragao"; g2.J.poco.vida = g2.J.poco.vidaMax = 99;
-  const semFoco = g2.golpeNoPoco(h2, h2.habs[0], 0, 4, g2.J.poco);
-  c2.poe(h2, g2.vizinhos(...g2.POCO).find(p => g2.noTab(...p) && !g2.em(...p)));
-  g2.J.rotacao[0] = "poco"; g2.migraCacador(0);
-  ok(h2.focoPoco, "o Caçador chegou ao poço e não ganhou o foco");
-  eq(g2.golpeNoPoco(h2, h2.habs[0], 0, 4, g2.J.poco), semFoco + 1,
+  ok(!g.visivelPara(h, 1),
+     "a ward numa região revelou o Caçador que foi para outra — informação de ficha, não de posição");
+});
+
+/* ---------- a IA ---------- */
+
+teste("a IA só devolve Topo, Meio, Baixo ou Selva, e nunca fica sem resposta", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const ids = g.REGIOES.map(r => r.id);
+  eq(ids.sort().join(","), "baixo,meio,selva,topo", "o menu de regiões não é o dos quatro");
+
+  Object.keys(g.NIVEIS_IA).forEach(nivel => {
+    g.nivelIA = nivel;
+    for (let i = 0; i < 40; i++)
+      ok(ids.includes(g.iaEscolheRotacao(1)), `nível ${nivel}: destino fora do menu`);
+  });
+  g.nivelIA = "dificil";
+  g.cacadorDe(1).morto = 2;
+  ok(ids.includes(g.iaEscolheRotacao(1)), "sem Caçador vivo a IA não devolveu região");
+});
+
+teste("a IA usa a mesma mecânica de pouso do jogador", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  const reg = g.iaEscolheRotacao(1);
+  g.escolheRotacao(1, reg);
+  eq(g.k(...h.pos), g.k(...g.SELVA_PONTOS[1][reg]),
+     "a IA pousou em casa diferente da que o mesmo botão daria ao jogador");
+  ok(g.MATO.has(g.k(...h.pos)), "a IA pousou fora da selva");
+  ok(!g.LANE.has(g.k(...h.pos)), "a IA pousou dentro da rota");
+});
+
+teste("a IA escolhe a rota onde há gank, e cada uma das três é alcançável", () => {
+  const g = cenaSelva().g;
+  g.nivelIA = "dificil";
+  ["topo", "meio", "baixo"].forEach(reg => {
+    const c2 = cenaSelva();
+    const g2 = c2.g;
+    g2.nivelIA = "dificil";
+    /* o time 0 inteiro fora do caminho, e um herói dele ferido e exposto
+       colado no ponto de pouso da IA naquela rota */
+    g2.J.times[0].herois.forEach(x => c2.poe(x, g2.BASE[0][0]));
+    const isca = g2.J.times[0].herois[0];
+    /* na ROTA, no vão disputado — é o que "gank no topo" quer dizer */
+    const corr = g2.CORREDOR[reg].filter(p => g2.noTab(...p) && !g2.em(...p));
+    ok(corr.length, `a rota ${reg} não tem casa livre`);
+    const vao = g2.ROTAS[reg][Math.floor(g2.ROTAS[reg].length / 2)];
+    c2.poe(isca, corr.sort((a, b) => g2.dist(...a, ...vao) - g2.dist(...b, ...vao))[0]);
+    isca.vida = 1;
+    /* a IA precisa ENXERGAR a isca — senão, e corretamente, ela a ignora */
+    g2.poeWard(1, isca.pos);
+    g2.J.poco.vida = 0;                          // sem objetivo puxando para a Selva
+    eq(g2.iaEscolheRotacao(1), reg,
+       `com alvo ferido e visível em ${reg}, a IA foi para outro lugar`);
+  });
+});
+
+teste("a IA não enxerga através da névoa para decidir a rotação", () => {
+  /* A isca tem de ficar num MATO colado à rota do topo: rota aberta é visível de
+     torre e de onda, e ali a IA enxerga sem ward nenhuma — de direito. O mato só
+     se vê de dentro, então é lá que dá para separar "decidiu vendo" de
+     "decidiu adivinhando". */
+  const monta = () => {
+    const c = cenaSelva(), g = c.g;
+    g.nivelIA = "dificil";
+    g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+    g.J.wards = [];
+    g.J.poco.vida = 0;                                  // sem objetivo puxando para a Selva
+    return { c, g };
+  };
+  /* uma casa de mato colada ao topo e fora da visão do time 1 */
+  const escolhe = g => [...g.MATO].map(K => K.split(",").map(Number))
+    .filter(p => Math.min(...g.CORREDOR.topo.map(q => g.dist(...p, ...q))) <= 1)
+    .filter(p => !g.enxergaCasa(1, ...p) && !g.em(...p))[0];
+
+  const base = monta();
+  const casa = escolhe(base.g);
+  ok(casa, "não achei mato colado ao topo e escondido do time 1");
+
+  const roda = comWard => {
+    const { c, g } = monta();
+    const isca = g.J.times[0].herois[0];
+    c.poe(isca, casa);
+    isca.vida = 1;
+    if (comWard) g.poeWard(1, casa);
+    ok(g.visivelPara(isca, 1) === comWard,
+       `a visibilidade da isca não é a esperada (ward=${comWard})`);
+    return g.iaEscolheRotacao(1);
+  };
+
+  eq(roda(true), "topo", "com ward em cima do alvo a IA não foi ao gank");
+  ok(roda(false) !== "topo",
+     "sem visão do alvo a IA foi ao gank mesmo assim — está lendo através da névoa");
+});
+
+teste("com o Barão de pé e o mapa quieto, a IA vai para a Selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  /* ninguém visível em rota nenhuma */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+  g.J.wards = [];
+  g.J.poco.id = "barao"; g.J.poco.vida = 16;
+  eq(g.iaEscolheRotacao(1), "selva", "com o Barão vivo e nada nas rotas, a IA não foi à Selva");
+});
+
+teste("o Aprendiz sorteia entre as quatro regiões — e só entre elas", () => {
+  const g = cenaSelva().g;
+  g.nivelIA = "facil";
+  const vistos = new Set();
+  for (let i = 0; i < 300; i++) vistos.add(g.iaEscolheRotacao(1));
+  ok([...vistos].every(x => REGS.includes(x)), `sorteou fora do menu: ${[...vistos]}`);
+  ok(vistos.size >= 3, `o sorteio do Aprendiz só produziu ${vistos.size} regiões em 300 tentativas`);
+});
+
+/* ---------- o que saiu junto ---------- */
+
+teste("as opções antigas de destino não existem mais no menu", () => {
+  const g = cenaSelva().g;
+  const ids = g.REGIOES.map(r => r.id);
+  ["proprio", "neutro", "invasao", "poco"].forEach(velho =>
+    ok(!ids.includes(velho), `o destino antigo "${velho}" continua no menu da rotação`));
+  ok(!("migraCacador" in g), "migraCacador continua exposto — a rotação por passos não saiu inteira");
+});
+
+/* O foco no poço deixou de ser bônus de rotação junto com o destino "poço", mas
+   o +1 no golpe continua existindo no motor. Este teste guarda a regra, agora
+   sem passar pela rotação — era a única cobertura que ela tinha. */
+teste("o foco no poço soma +1 no golpe, venha ele de onde vier", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 99;
+  const semFoco = g.golpeNoPoco(h, h.habs[0], 0, 4, g.J.poco);
+  h.focoPoco = 1;
+  eq(g.golpeNoPoco(h, h.habs[0], 0, 4, g.J.poco), semFoco + 1,
      "o foco no poço não somou +1 no golpe");
 });
-
-teste("a escolha da rodada é consumida — não vale para a rodada seguinte", () => {
-  const c = cenaSelva();
-  const g = c.g;
-  const h = g.cacadorDe(0);
-  c.poe(h, g.vizinhos(...g.J.camps.find(x => x.t === 0).pos).find(p => g.noTab(...p) && !g.em(...p)));
-  g.J.rotacao[0] = "proprio";
-  g.migraCacador(0);
-  eq(g.J.rotacao[0], null, "a escolha ficou pendurada e migraria de novo de graça");
-  const ouro = h.ouro;
-  g.migraCacador(0);
-  eq(h.ouro, ouro, "migrou de novo sem escolha nova — bônus infinito");
-});
-
-teste("a IA escolhe um destino válido e nunca fica sem resposta", () => {
-  const c = cenaSelva();
-  const g = c.g;
-  const ids = g.ROTACOES.map(r => r.id);
-  ok(ids.includes(g.iaEscolheRotacao(0)), "a IA devolveu um destino que não existe");
-  /* sem Caçador vivo ela não pode travar */
-  g.cacadorDe(0).morto = 2;
-  ok(ids.includes(g.iaEscolheRotacao(0)), "sem Caçador vivo a IA não devolveu destino");
-});
-
 /* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
 
 /* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da

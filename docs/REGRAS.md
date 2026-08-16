@@ -176,19 +176,45 @@ cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
 ## 6.1 · Rotação do Caçador
 
 No **início de cada rodada** os dois jogadores escolhem, **escondido um do
-outro**, para onde o próprio Caçador vai. No **seu turno** ele anda até **3 casas
-de graça** naquela direção — sem tocar no Dado Mestre.
+outro**, para que **região** o próprio Caçador vai. Ele é **reposicionado na
+hora** — não gasta o Dado Mestre nem a ação dele.
 
-**Ele não teleporta.** Anda casa a casa, continua no mapa, continua interceptável
-e continua ocupando hexágono. Se o caminho estiver fechado, contorna; se não
-alcançar, não ganha nada.
+**Ele reaparece sempre dentro da selva**, na parte dela colada à região
+escolhida, e **nunca dentro da rota**.
 
-| Destino | Bônus, e só ao chegar |
+| Escolha | Onde ele reaparece |
 |---|---|
-| Acampamento próprio | +3 de ouro |
-| Acampamento neutro | +1 de Poder até o seu próximo turno |
-| Acampamento inimigo | +4 de ouro roubado |
-| O poço | os seus golpes no poço valem +1 nesta rodada |
+| **Topo** | a casa de selva colada à rota de cima, do próprio lado |
+| **Meio** | a casa de selva colada à rota do meio, do próprio lado |
+| **Baixo** | a casa de selva colada à rota de baixo, do próprio lado |
+| **Selva** | o centro da própria selva |
+
+As quatro casas são **derivadas da planta do mapa**, não escritas à mão, e as do
+time 1 são o **espelho** das do time 0 — `gira` leva a rota de cima na de baixo,
+então o espelho de "Topo" é "Baixo".
+
+**Casa ocupada ou inválida:** pousa na casa de selva válida mais próxima, dentro
+da mesma região. Nunca em rota, nunca em base, nunca em cima de outra peça,
+nunca fora do tabuleiro.
+
+**10 segundos para decidir.** Sem escolha, vai sozinho para a **Selva** — a
+partida nunca fica parada esperando.
+
+**A escolha é secreta.** O adversário não recebe aviso nenhum de qual região foi
+escolhida, e nada vai para o log. Para saber onde o Caçador caiu ele precisa ter
+**visão daquele mato** — de olho ou de ward. A informação está presa à
+**posição**, nunca ao botão.
+
+> **História.** A v18 teve uma rotação em que o Caçador **saía do tabuleiro** e
+> reaparecia noutra entrada de selva; a v19 desfez, por correção do Vinicius. Da
+> v28 à v37 a rotação era **andar** até 3 casas de graça, interceptável. A v38
+> voltou ao reposicionamento imediato, a pedido do Vilker. A metade da correção
+> do Vinicius que **continua de pé**: o Caçador nunca deixa de estar num lugar
+> real do tabuleiro. O que ele deixou de ser é interceptável no caminho.
+>
+> Os bônus de destino (+3 de ouro, +1 de Poder, +4 roubados, +1 no golpe do poço)
+> **saíram junto** com os destinos que os davam. O Caçador ainda coleta
+> acampamento **por ocupação**, como qualquer herói.
 
 
 ---

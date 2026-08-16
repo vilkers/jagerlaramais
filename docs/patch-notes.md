@@ -16,6 +16,120 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v38 — a rotação do Caçador vira escolha de REGIÃO · 2026-08-16
+
+Pedido do Vilker, em especificação escrita. A rotação deixa de ser uma aposta em
+**quatro destinos com bônus** e passa a ser uma escolha de **quatro regiões do
+mapa**, com reposicionamento imediato.
+
+### O que mudou
+
+**O menu.** Saíram `Acampamento próprio`, `Acampamento neutro`, `Acampamento
+inimigo` e `O poço`. Entraram **Topo · Meio · Baixo · Selva**.
+
+**O movimento.** Era **andar até 3 casas de graça** na direção do destino, ao
+início do turno do dono. Agora é **reposicionamento imediato**, no instante da
+escolha, no início da rodada. `migraCacador`, `passoNaDirecao` e
+`ROTACAO_PASSOS` saíram do motor.
+
+**Onde ele cai.** Sempre **dentro da selva**, na parte dela colada à região
+escolhida, e **nunca dentro da rota**. As quatro casas são **derivadas da planta
+do mapa**, não escritas à mão — o mapa não foi alterado em uma casa sequer para
+caber a mecânica.
+
+| Região | Time 0 | Time 1 |
+|---|---|---|
+| Topo | `[2,3]` | `[3,2]` |
+| Meio | `[4,4]` | `[6,6]` |
+| Baixo | `[7,8]` | `[7,7]` |
+| Selva | `[5,7]` | `[4,3]` |
+
+As três de rota ficam a **exatamente 1 casa** do corredor da própria rota, no
+ponto mais perto do **vão neutro** — que é onde a rota é disputada. A de Selva é
+a casa que minimiza a distância até a mais longe das outras três: o
+entroncamento de onde se alcança qualquer rota.
+
+**Os bônus saíram junto com os destinos.** +3 de ouro, +1 de Poder, +4 roubados e
++1 por golpe no poço deixam de existir. A rotação não paga mais nada — o que ela
+entrega é **posição**. O Caçador continua coletando acampamento **por ocupação**,
+como qualquer herói.
+
+**Relógio de 10 segundos.** Sem escolha, a **Selva** é escolhida sozinha, com
+aviso na tela, e a partida segue. Nunca trava esperando decisão.
+
+**A escolha é secreta, e agora de verdade.** Nada da rotação vai para o `log` —
+o log é lido pelos dois jogadores em hotseat, e uma linha dizendo "o Caçador foi
+para o Topo" entregava de graça exatamente a informação que a névoa existe para
+cobrar. Não há animação de percurso pelo mesmo motivo.
+
+**A IA** escolhe por nota de região: inimigo **visível** na rota (ferido e longe
+da torre dele valem mais), aliado na mesma rota (gank de um só não fecha), torre
+própria ferida, e o poço puxando a Selva — com peso maior para o Barão que para
+o Dragão. Ela lê a rota pelo **corredor**, não pelo ponto de pouso: os quatro
+pontos ficam a poucas casas uns dos outros, e medir "inimigo perto do pouso"
+fazia a mesma isca contar para duas regiões, com o desempate alfabético
+decidindo o gank. O Aprendiz continua sorteando.
+
+### Por quê
+
+Foi pedido assim. A justificativa registrada do pedido é que a escolha do
+Caçador passe a ser sobre **onde estar no mapa**, e não sobre qual bônus
+arrecadar.
+
+### O que isso quebra
+
+**Esta entrada desfaz metade da correção do Vinicius na v19, e isso precisa
+ficar escrito.** A v18 teve uma rotação em que o Caçador **saía do tabuleiro** e
+reaparecia noutra entrada de selva; a v19 a desfez. Dois testes existiam desde a
+v28 só para aquele desenho não voltar, e **os dois foram removidos aqui**:
+
+- `o Caçador anda no mapa até o destino — nunca some do tabuleiro`
+- `Caçador cercado pelo próprio time não teleporta: fica onde dá`
+
+A metade da correção que **continua de pé**, e agora com teste próprio: o
+Caçador **nunca deixa de estar num lugar real** do tabuleiro. Ele larga uma casa
+e ocupa outra no mesmo instante, continua bloqueando passagem, continua
+coletando acampamento e continua aparecendo ao sair do mato. O que ele deixou de
+ser é **interceptável no caminho** — porque caminho não há mais.
+
+**Uma previsão do handoff anterior não se confirmou, e isso vale mais registrado
+que calado.** Ele dava o Barão em **59,1%** de fechamento e apontava o `+1 por
+golpe` do destino "poço" como a causa do drift, com a recomendação de mexer nesse
+`+1` caso o Barão caísse fácil demais no playtest. O `+1` **deixou de existir
+nesta versão**, e o Barão foi a **58,4%** (n=1425): 0,7 ponto, dentro do ruído.
+
+Ou seja: **o `+1` do destino "poço" não era a causa do drift do Barão.** A
+alavanca recomendada pelo handoff acabou de ser puxada até o fim e o número não
+se mexeu — quem quiser mover o Barão vai ter de procurar em outro lugar. O
+`DECISOES-PENDENTES` herda essa pergunta em aberto.
+
+**Também mudou o alcance da mecânica:** antes, comprometer o Caçador e não
+chegar era o custo da aposta errada. Agora ele **sempre chega**. A aposta
+continua às cegas, mas o preço de errar passou a ser só de posição.
+
+### Medição
+
+Rodado com `times=espelho`, obrigatório porque a mudança toca herói.
+
+| | Antes (v37) | Agora (v38) |
+|---|---|---|
+| Testes de regressão | 123 | **145** — 6 da rotação antiga saíram, 28 novos entraram |
+| Quem começa (espelho) | ~52,9% | **52,4%** (n=4500, z=3,19) |
+| Barão fechado | 59,1% | **58,4%** (n=1425) |
+| Dragão fechado | — | 33,8% (n=845) |
+| Duração mediana | — | 24 rodadas |
+| Mestre × Aprendiz | — | 72,5% (n=600, z=11,02) |
+
+Nem "quem começa" nem o Barão saíram do lugar: as duas diferenças são menores que
+o ruído da própria bateria. Tabuleiro segue simétrico (`sim/simetria.js`).
+
+Jogo aberto no Chromium de verdade: tela das quatro regiões, contagem regressiva
+de 10 a 1, timeout pousando no centro da selva, clique manual pousando no ponto
+do Topo, relógio morto não disparando depois, e 6 turnos contra a IA — **sem um
+erro de console**.
+
+---
+
 ## v31 — as rotas certas, e os nomes certos · 2026-08-13
 
 Correção da v30. Eu tinha deduzido quatro rotas e batizado quatro personagens

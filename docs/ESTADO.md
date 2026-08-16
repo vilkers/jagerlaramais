@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v31 (rotas e nomes corrigidos) · **Atualizado em:** 2026-08-13
+**Versão:** v38 (rotação do Caçador por região) · **Atualizado em:** 2026-08-16
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -42,7 +42,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
 | Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz |
-| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, o destino do próprio Caçador; no seu turno ele **anda até 3 casas de graça** para lá. **Nunca teleporta** — foi o erro da v18. Bônus só **se chegar**: acampamento próprio +3 de ouro · neutro +1 de Poder · inimigo +4 de ouro · poço +1 por golpe no poço |
+| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva** — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Sem bônus de destino** — saíram junto com os destinos na v38. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |

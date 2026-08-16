@@ -38,6 +38,7 @@ function elemento() {
 }
 
 function contextoDOM() {
+  const timers = [];
   const doc = {
     getElementById: () => elemento(),
     createElement: () => elemento(),
@@ -53,6 +54,13 @@ function contextoDOM() {
     performance: { now: () => Date.now() },
     setTimeout: () => 0,
     clearTimeout(){},
+    /* O relógio da rotação do Caçador é um `setInterval`. Um stub que engole a
+       chamada deixaria o timeout de 10 segundos sem teste possível — então aqui
+       ele GUARDA o callback, e o teste dispara os tiques na mão. Determinístico,
+       sem esperar tempo de parede. */
+    setInterval: (fn, ms) => { timers.push({ fn, ms, vivo: true }); return timers.length; },
+    clearInterval: id => { const t = timers[id - 1]; if (t) t.vivo = false; },
+    __timers: timers,
     Math, JSON, Date, Object, Array, String, Number, Boolean, Set, Map, Promise, Error
   };
 }
@@ -103,7 +111,7 @@ const PONTE = `
   get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
   get CAMP_NEUTRO_LADOS(){return CAMP_NEUTRO_LADOS}, get GASTOS(){return GASTOS},
   visivelPara:(h,t)=>visivelPara(h,t), escondido:h=>escondido(h),
-  ehMato:(c,r)=>ehMato(c,r), get MATO(){return MATO},
+  ehMato:(c,r)=>ehMato(c,r), get MATO(){return MATO}, gira:(c,r)=>gira(c,r),
   reveladoPorAtaque:h=>reveladoPorAtaque(h),
   sobTorreAmiga:h=>sobTorreAmiga(h), get ARM_TORRE(){return ARM_TORRE},
   plantaSentinela:h=>plantaSentinela(h), usaGasto:(id,h,t)=>usaGasto(id,h,t),
@@ -115,9 +123,15 @@ const PONTE = `
   golpeNoPoco:(h,hb,slot,F,ep)=>golpeNoPoco(h,hb,slot,F,ep),
   alvosNoHex:(c,r)=>alvosNoHex(c,r), tocaAlvo:(c,r)=>tocaAlvo(c,r),
   descreve:(h,hb,F)=>descreve(h,hb,F),
-  migraCacador:t=>migraCacador(t), cacadorDe:t=>cacadorDe(t),
+  cacadorDe:t=>cacadorDe(t),
   iaEscolheRotacao:t=>iaEscolheRotacao(t), abreRotacoes:()=>abreRotacoes(),
-  get ROTACOES(){return ROTACOES}, get ROTACAO_PASSOS(){return ROTACAO_PASSOS},
+  escolheRotacao:(t,r)=>escolheRotacao(t,r), paraRelogioRotacao:()=>paraRelogioRotacao(),
+  reposicionaCacador:(t,r)=>reposicionaCacador(t,r),
+  pousoNaSelva:(t,r,h)=>pousoNaSelva(t,r,h),
+  casaDeSelvaLivre:(p,h)=>casaDeSelvaLivre(p,h),
+  get REGIOES(){return REGIOES}, get SELVA_PONTOS(){return SELVA_PONTOS},
+  get ROTACAO_SEGUNDOS(){return ROTACAO_SEGUNDOS},
+  get CORREDOR(){return CORREDOR}, get LANE(){return LANE},
   get NIVEIS_IA(){return NIVEIS_IA},
   get nivelIA(){return nivelIA}, set nivelIA(v){nivelIA=v},
   iaMelhorJogada:(t,m)=>iaMelhorJogada(t,m), iaJogadas:t=>iaJogadas(t),

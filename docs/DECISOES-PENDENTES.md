@@ -168,6 +168,34 @@ névoa virar decisão é o terreno participar dela.
 
 ---
 
+## 12. O `+1` do destino "poço" NÃO era a causa do drift do Barão (v38)
+
+O handoff da sessão v23→v37 registrava o Barão em **59,1%** de fechamento, notava
+que ele tinha subido depois da Rotação do Caçador e recomendava, se o Barão
+caísse fácil demais no playtest, **mexer no `+1` do destino "poço"** em vez de na
+vida dele.
+
+A v38 removeu os destinos com bônus por completo, e com eles o `+1`. Medido em
+`sim/epicos.js 2500`:
+
+| | v37 | v38 (sem o `+1`) |
+|---|---|---|
+| Barão fechado | 59,1% | **58,4%** (n=1425) |
+
+**0,7 ponto — dentro do ruído.** A alavanca que o handoff recomendava foi puxada
+até o fim e o número não se mexeu.
+
+Fica em aberto, portanto, a pergunta que o handoff julgava respondida: **o que
+levou o Barão de ~54,6% (v23) a ~59% não foi o destino "poço".** Candidatos que
+mudaram no mesmo intervalo e nunca foram isolados: a vida 16 / armadura 3 da v26
+(que o fez apanhar como herói), o teto de escudo 12 e a Égide 7→4 da mesma
+versão, e a janela de escolha de alvo da v27.
+
+**Como medir:** uma variante de cada vez, sempre com `times=espelho`.
+`sim/epicos.js` aceita `baraodano=`, `baraoarm=` e `baraogolpe=on`.
+
+---
+
 ## 7. Dragão e Barão — RESPONDIDO, e o preço estava errado
 
 O item dizia que a bateria não conseguia responder se os épicos criavam dilema.
