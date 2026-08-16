@@ -164,11 +164,38 @@ button:disabled{cursor:not-allowed}
 #mapa .hx.mover:active{fill:#F2C25C;fill-opacity:.55}
 #mapa .estrada{fill:none;stroke:var(--estrada);stroke-width:5;stroke-opacity:.30;
   stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
-#mapa .torre{stroke-width:1.7;fill:var(--ground);fill-opacity:.6}
-#mapa .torre.t0{stroke:var(--azul)} #mapa .torre.t1{stroke:var(--carmim)}
-#mapa .torre.caiu{stroke:var(--ink-3);stroke-dasharray:2 2;fill-opacity:.12}
-#mapa .nexus{fill:var(--ground);fill-opacity:.75;stroke-width:2.2}
-#mapa .nexus.t0{stroke:var(--azul-2)} #mapa .nexus.t1{stroke:var(--carmim-2)}
+/* ── TORRE: sistema defensivo improvisado (direção de arte, item 22) ──
+   Poste + chapa + farol + antena + botijão. A cor de time vive na LUZ e no
+   contorno, não pintando a estrutura inteira — item 23 reserva azul e carmim
+   para comunicação de gameplay. */
+#mapa .torre .t-sombra{fill:#000;opacity:.18;stroke:none}
+#mapa .torre .t-chapa{fill:#6E6355;stroke:#2F2718;stroke-width:.9}
+#mapa .torre .t-poste{fill:#8A8073;stroke:#2F2718;stroke-width:.9}
+#mapa .torre .t-farol{fill:#C7BCA6;stroke:#2F2718;stroke-width:1}
+#mapa .torre .t-botijao{fill:#D8942F;stroke:#2F2718;stroke-width:.8}
+#mapa .torre .t-antena{stroke:#4A4237;stroke-width:1.1}
+#mapa .torre .t-luz{stroke:none}
+#mapa .torre.t0 .t-luz{fill:var(--azul-2)} #mapa .torre.t1 .t-luz{fill:var(--carmim-2)}
+#mapa .torre.t0 .t-farol{stroke:var(--azul)} #mapa .torre.t1 .t-farol{stroke:var(--carmim)}
+/* caída: o farol apagou e sobra o poste torto — a casa continua contando história */
+#mapa .torre.caiu{opacity:.5}
+#mapa .torre.caiu .t-poste{fill:#776E62}
+#mapa .torre.alvo .t-farol{stroke:var(--dano);stroke-width:1.8}
+
+/* ── NEXUS: o coração energético da comunidade (item 24) ──
+   Gerador de sucata com a bobina vazando verde-limão. LARGO e BAIXO, contra a
+   torre que é alta e estreita: o item 24 pede que os dois não se confundam. */
+#mapa .nexus .n-sombra{fill:#000;opacity:.2;stroke:none}
+#mapa .nexus .n-caixa{fill:#7C7264;stroke:#2A2318;stroke-width:1.4}
+#mapa .nexus .n-tampa{fill:#5E5548;stroke:none}
+#mapa .nexus .n-pistao{fill:#9A8F7E;stroke:#2A2318;stroke-width:.8}
+#mapa .nexus .n-escape{fill:#8A5A32;stroke:#2A2318;stroke-width:.8}
+#mapa .nexus .n-antena{stroke:#3E3527;stroke-width:1.2}
+#mapa .nexus .n-bobina{fill:#3B3A2A;stroke:var(--limao);stroke-width:1.4}
+#mapa .nexus .n-nucleo{fill:var(--limao);stroke:none}
+#mapa .nexus.t0 .n-caixa{stroke:var(--azul)} #mapa .nexus.t1 .n-caixa{stroke:var(--carmim)}
+#mapa .nexus.alvo .n-caixa{stroke:var(--dano);stroke-width:2.2}
+#mapa .tvida.n-vida{fill:#F2ECDC}
 #mapa .tvida{font-family:var(--mono);font-size:6.4px;text-anchor:middle;pointer-events:none;fill:var(--ink)}
 #mapa .frente{fill:none;stroke:var(--brass);stroke-width:1.5;stroke-dasharray:2.5 2.2;pointer-events:none;opacity:.85}
 /* ── poço épico ── território de ninguém, e por isso latão e não cor de time */

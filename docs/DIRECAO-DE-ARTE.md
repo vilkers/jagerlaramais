@@ -320,19 +320,37 @@ produção de arte são da trilha de criação** (Vilker + ChatGPT, em `visual-l
 | §3 não sobrecarregar | **feito no 2D** — só as 6 casas bloqueadas têm objeto |
 | §8, §9, §33 paleta de dia | **feito no 2D** — céu, cimento bege, vegetação viva, névoa quente |
 | §10 sucata não é marrom | **feito no 2D** — ônibus amarelo, carro vermelho com porta azul, caixa-d'água azul |
-| §14 verde-limão pontual | **parcial** — só no poço, por enquanto |
+| §14 verde-limão pontual | **parcial** — poço e núcleo do Nexus |
 | §19 rotas abertas | **feito no 2D** |
 | §21 rio como canal urbano | **parcial** — cor de concreto com água; falta o desenho do canal |
 | §20 selva urbana | **parcial** — vegetação e obstáculos; falta quintal, muro, beco |
-| §22 torres improvisadas | **pendente** — silhueta atual é genérica |
-| §24 Nexus como gerador | **pendente** |
-| §25 Dragão → rato de esgoto | **pendente** — troca de nome, arte e covil |
-| §26 Barão → boi mecânico | **pendente** — troca de nome, arte e espaço |
+| §22 torres improvisadas | **feito no 2D** — poste + chapa + farol + antena + botijão. Alta e estreita; caída, o farol apaga e o poste torto fica |
+| §24 Nexus como gerador | **feito no 2D** — caixa de chapa, bobina vazando verde-limão, pistões, escapamento e antena. **Largo e baixo** contra a torre alta e estreita, que é o que o item 24 pede |
+| §25 Dragão → rato de esgoto | **pendente, esperando o NOME** — ver nota abaixo |
+| §26 Barão → boi mecânico | **pendente, esperando o NOME** — ver nota abaixo |
 | §27 acampamentos com história | **pendente** |
 | §6, §13, §16–18 cotidiano, magia, gambiarra, humor | **pendente** — dependem de arte |
 | §29–32 miniaturas 3D, escala, câmera | **não iniciado** — exige engine 3D (WebGL) e modelos que ainda não existem. Quebra a regra do "vanilla" do `CLAUDE.md`; é decisão de escopo do grupo |
 
-**Atenção ao §25 e §26.** Trocar Dragão por rato e Barão por boi mexe em nome de
-regra, texto de carta, glossário e nome de arquivo de arte — o glossário é lei
-(`docs/glossario.md`), então a troca precisa ser feita de uma vez e por inteiro,
-não aos pedaços.
+**Atenção ao §25 e §26 — está parado esperando o nome, de propósito.**
+
+Trocar Dragão por rato e Barão por boi mexe em nome de regra, texto de carta,
+glossário e nome de arquivo de arte: são ~54 usos em `jogo/jogo.js`, 43 em
+`sim/testes.js` e 10 em `guia/index.html`. A troca precisa ser feita **de uma vez
+e por inteiro**, não aos pedaços.
+
+Mas o que trava não é o tamanho — é **de quem é a decisão**. A regra 7 do handoff
+da sessão anterior diz, com o preço já pago: *"nomear personagem é trilha de
+CRIAÇÃO, não sua. Pergunte em vez de deduzir."* Naquela sessão foram inventados 4
+nomes e deduzidas 4 rotas; erraram-se 3 nomes e 4 rotas, e custou uma versão
+inteira para corrigir.
+
+O documento dá o **conceito** ("rato maluco de esgoto", "boi mecânico"), não o
+**nome próprio**. Enquanto o nome não vier do Vilker, os dois seguem como
+`Dragão` e `Barão` na tela.
+
+**Quando o nome vier, o `id` interno NÃO muda.** `dragao` e `barao` continuam
+sendo as chaves — é a mesma decisão tomada na v30 para os dez heróis
+substituídos: mantendo a chave, os testes seguem verdes e toda a medição
+anterior continua comparável. Muda o nome de exibição, o epíteto, o texto da
+dádiva e a arte em `arte/monstros/<id>.jpg`.

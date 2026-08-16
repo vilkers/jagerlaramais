@@ -2981,12 +2981,31 @@ function desenhaMapa(){
     const[x,y]=centro(...ROTAS[t.rota][t.i]);
     const mirando=torreS.has(t);
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira-torre"}));
-    const rc=el("rect",{x:x-6,y:y-6,width:12,height:12,transform:`rotate(45 ${x} ${y})`,
-      class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
+    /* TORRE — item 22 da direção de arte: não é torre medieval, é um SISTEMA
+       DEFENSIVO IMPROVISADO. Poste de rua com uma chapa de base, um farol
+       apontado para a rota e uma antena amarrada em cima. A silhueta é o que
+       importa: alta, estreita e com a cabeça pesada — reconhecível de relance e
+       impossível de confundir com o Nexus, que é largo e baixo.
+       Caída, o farol apaga e o poste torto fica no lugar — a casa continua
+       contando história em vez de virar buraco. */
+    const rc=el("g",{class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
+    const caiu=t.vida<=0;
+    rc.appendChild(el("ellipse",{cx:x,cy:y+7.5,rx:8,ry:2.6,class:"t-sombra"}));
+    rc.appendChild(el("rect",{x:x-7,y:y+4.4,width:14,height:3.4,rx:1,class:"t-chapa"}));
+    if(caiu){
+      rc.appendChild(el("rect",{x:x-1.6,y:y-3,width:3.2,height:8,rx:1,
+        transform:`rotate(24 ${x} ${y+5})`,class:"t-poste"}));
+    }else{
+      rc.appendChild(el("rect",{x:x-1.7,y:y-7.5,width:3.4,height:12,rx:1,class:"t-poste"}));
+      rc.appendChild(el("rect",{x:x-5.6,y:y-11.5,width:11.2,height:5.4,rx:1.6,class:"t-farol"}));
+      rc.appendChild(el("circle",{cx:x,cy:y-8.8,r:1.7,class:"t-luz"}));
+      rc.appendChild(el("line",{x1:x+3.4,y1:y-11,x2:x+6.2,y2:y-15.4,class:"t-antena"}));
+      rc.appendChild(el("rect",{x:x-6.2,y:y-1.6,width:3.2,height:4,rx:.8,class:"t-botijao"}));
+    }
     if(mirando) rc.onclick=()=>{if(mesaTravada())return;vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
-    if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
+    if(t.vida>0){const v=el("text",{x:x,y:y+7.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
     const[x,y]=centro(...l[Math.max(0,Math.min(l.length-1,J.frentes[nome]))]);
@@ -3024,11 +3043,26 @@ function desenhaMapa(){
     const[x,y]=centro(...BASE[t][0]);
     const mirando=alvoNexus===t;
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
-    const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
+    /* NEXUS — item 24: o CORAÇÃO ENERGÉTICO da comunidade. Não é cristal, não é
+       castelo, não é construção futurista. É uma invenção enorme feita de
+       gerador, sucata e energia do cataclisma: caixa larga de chapa, bobina no
+       meio vazando verde-limão, escapamento e antena.
+       LARGO E BAIXO de propósito, contra a torre que é alta e estreita — item 24
+       pede explicitamente que os dois não se confundam. */
+    const nx=el("g",{class:"nexus t"+t+(mirando?" alvo":"")});
+    nx.appendChild(el("ellipse",{cx:x,cy:y+8.6,rx:13,ry:3.2,class:"n-sombra"}));
+    nx.appendChild(el("rect",{x:x-12,y:y-5.4,width:24,height:13.4,rx:2.4,class:"n-caixa"}));
+    nx.appendChild(el("rect",{x:x-12,y:y-5.4,width:24,height:3.2,rx:1.6,class:"n-tampa"}));
+    nx.appendChild(el("circle",{cx:x,cy:y+1.6,r:4.6,class:"n-bobina"}));
+    nx.appendChild(el("circle",{cx:x,cy:y+1.6,r:2.2,class:"n-nucleo"}));
+    [-8.2,8.2].forEach(dx=>
+      nx.appendChild(el("rect",{x:x+dx-1.4,y:y-1,width:2.8,height:6.4,rx:.8,class:"n-pistao"})));
+    nx.appendChild(el("rect",{x:x+6.4,y:y-10.4,width:3,height:5.2,rx:1,class:"n-escape"}));
+    nx.appendChild(el("line",{x1:x-6.6,y1:y-5.4,x2:x-9,y2:y-12.6,class:"n-antena"}));
     if(mirando) nx.onclick=()=>{if(mesaTravada())return;vibra(12);tocaAlvo(...BASE[t][0]);};
     gM.appendChild(nx);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);tocaAlvo(...BASE[t][0]);},R_TOQUE_ESTRUTURA);
-    const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
+    const v=el("text",{x:x,y:y+3.2,class:"tvida n-vida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
     g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:2}));

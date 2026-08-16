@@ -16,6 +16,58 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v41 — torres e Nexus deixam de ser genéricos · 2026-08-16
+
+Continuação da direção de arte, itens 22 e 24, ainda no tabuleiro 2D.
+
+### Torre — sistema defensivo improvisado
+
+Era um **quadrado girado 45°**. Virou **poste de rua** com chapa de base, farol
+apontado para a rota, antena amarrada em cima e um botijão preso na haste.
+
+**Alta e estreita** de propósito. Caída, o farol apaga e sobra o poste torto — a
+casa continua contando história em vez de virar buraco.
+
+A cor de time vive na **luz do farol** e no contorno, não pintando a estrutura
+inteira: item 23 reserva azul e carmim para comunicação de gameplay.
+
+### Nexus — o coração energético da comunidade
+
+Era um **círculo**. Virou um **gerador de sucata**: caixa de chapa larga, bobina
+no meio vazando **verde-limão**, dois pistões, escapamento enferrujado e antena.
+
+**Largo e baixo**, contra a torre que é alta e estreita — o item 24 pede
+explicitamente que os dois não se confundam, e forma é o que separa os dois de
+relance melhor que cor.
+
+O verde-limão do núcleo é a segunda aparição da energia do cataclisma no mapa (a
+primeira é o poço). Item 14: a cor vale pela raridade.
+
+### O que NÃO foi feito, e por quê
+
+**§25 (Dragão → rato de esgoto) e §26 (Barão → boi mecânico) ficaram parados de
+propósito.**
+
+O documento dá o conceito, não o nome próprio. A regra 7 do handoff anterior diz,
+com o preço já pago: *"nomear personagem é trilha de CRIAÇÃO, não sua. Pergunte
+em vez de deduzir."* Naquela sessão foram inventados 4 nomes e deduzidas 4 rotas;
+erraram-se 3 e 4, e custou uma versão inteira.
+
+São ~54 usos em `jogo.js`, 43 em `sim/testes.js` e 10 em `guia/index.html` — a
+troca tem de ser feita de uma vez, e com o nome certo. Quando vier, o `id`
+interno **não muda** (`dragao`, `barao`), pela mesma decisão da v30: mantendo a
+chave, os testes seguem verdes e a medição anterior continua comparável.
+
+**§27 (acampamentos com história)** também segue pendente — continuam dois
+círculos com rótulo.
+
+### Medição
+
+Nenhum número mudou: é desenho. 165 testes passando. Jogo aberto no Chromium sem
+erro de console, com torre e Nexus legíveis e distintos.
+
+---
+
 ## v40 — dois relatos do Vilker · 2026-08-16
 
 ### RELATO 1 — "na vez da IA eu ainda consigo clicar nas opções de ação e movimento dela"
