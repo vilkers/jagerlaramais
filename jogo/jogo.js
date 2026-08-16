@@ -131,7 +131,12 @@ const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 const N=11;
 const COLS=N,LINS=N,R=19;
 const k=(c,r)=>c+","+r;
-const centro=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
+/* LAYOUT PLANO — a posição do hexágono na planta, sem câmera nenhuma.
+   É esta que as DERIVAÇÕES usam (rota do meio, poço, acampamentos). Ela não pode
+   mudar nunca: o item 1 da direção de arte diz que a planta é oficial, e a rota
+   do meio é escolhida por distância a uma reta calculada aqui. Mexer nela move
+   hexágono, que é justamente o que não se faz. A câmera mora em `centro`. */
+const centroPlano=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
 const dist=(c1,r1,c2,r2)=>{const ax=c1-(r1-(r1&1))/2,ay=-ax-r1,bx=c2-(r2-(r2&1))/2,by=-bx-r2;
   return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(r1-r2));};
 
@@ -188,13 +193,13 @@ const L_MEIO=(()=>{
      partida em duas, e a onda atravessava o buraco. Apareceu só em N ímpar sem
      centro (11), porque em 9 a casa fixa escondia o defeito. */
   const paraR=fixo?fixo[1]:(LINS/2-1);
-  const[x1,y1]=centro(...BASE[0][1]),[x2,y2]=centro(...BASE[1][1]),L=Math.hypot(y2-y1,x2-x1);
+  const[x1,y1]=centroPlano(...BASE[0][1]),[x2,y2]=centroPlano(...BASE[1][1]),L=Math.hypot(y2-y1,x2-x1);
   const meia=[];
   for(let r=LINS-2;r>paraR;r--){
     let m=null,d0=1e9;
     for(let c=0;c<COLS;c++){
       if(!noTab(c,r)||ocup.has(k(c,r)))continue;
-      const[x,y]=centro(c,r),d=Math.abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/L;
+      const[x,y]=centroPlano(c,r),d=Math.abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/L;
       if(d<d0){d0=d;m=[c,r];}
     }
     if(!m)continue;
@@ -613,6 +618,57 @@ const _BLOQ=(()=>{
 const BLOQUEADO=_BLOQ.set;
 const OBSTACULO=_BLOQ.tipos;                 /* casa → que coisa está ali */
 const ehBloqueado=(c,r)=>BLOQUEADO.has(k(c,r));
+
+/* ══════════════════ A CÂMERA ══════════════════
+   §32 da direção de arte: câmera ELEVADA e ISOMÉTRICA, de jogo de miniaturas,
+   com boa parte do mapa visível de uma vez. Nada de perspectiva baixa e
+   cinematográfica durante o gameplay.
+
+   Projeção AXONOMÉTRICA, e é ela que faz o tabuleiro virar diorama: o eixo Y é
+   comprimido por `ISO_Y` (a inclinação da câmera) e a ALTURA do terreno vira
+   deslocamento para cima. Cada hexágono deixa de ser um recorte e passa a ser
+   uma LAJE com espessura — tampo em cima, parede na frente.
+
+   Por que axonométrica e não perspectiva de verdade: aqui a régua do jogo é
+   contar hexágono (§2 e o teste de legibilidade do §36). Em projeção paralela
+   todo hexágono tem o mesmo tamanho na tela, de qualquer canto do mapa, e o
+   texto continua reto e nítido em qualquer zoom. Perspectiva encolheria o fundo
+   e quebraria exatamente a coisa que o documento manda preservar.
+
+   A altura NÃO muda a planta. Distância, movimento, alcance e visão continuam
+   sendo calculados em hexágono, na planta plana — a altura é só o que a câmera
+   mostra. Ver `centroPlano`. */
+/* 0,75 e não os 0,577 do isométrico puro: o Vilker joga em CELULAR, em retrato.
+   Com a compressão do isométrico exato o tabuleiro vira uma faixa larga e baixa,
+   sobra tela vazia em cima e embaixo, e o hexágono encolhe — que é o oposto do
+   "grandes, fáceis de contar" do §2. 0,75 é uma câmera um pouco mais alta:
+   ainda claramente elevada e com volume, e o mapa ocupa a tela. */
+const ISO_Y=0.75;
+const ESPESSURA=7.5;       /* a parede visível da laje, abaixo do tampo */
+/* O relevo conta a história do terreno: o canal é afundado, a rua é o nível da
+   cidade, a selva cresceu por cima, e o poço é boca de galeria — um buraco. */
+const ALTURA_TERRENO={rio:0, poco:1.5, rota:4, base:5.5, mato:6.5, bloq:6.5};
+function terrenoDe(c,r){
+  const K=k(c,r);
+  if(BASE_S.has(K))return "base";
+  if(K===POCO_K)return "poco";
+  if(BLOQUEADO.has(K))return "bloq";
+  if(MATO.has(K))return "mato";
+  if(LANE.has(K))return "rota";
+  return "rio";
+}
+const alturaDe=(c,r)=>ALTURA_TERRENO[terrenoDe(c,r)];
+/* A POSIÇÃO NA TELA — o ponto no TAMPO da laje. Tudo o que é desenhado em cima
+   de um hexágono (peça, torre, Nexus, acampamento, ward, número) usa esta, e por
+   isso pousa sozinho na superfície certa, na altura certa. */
+const centro=(c,r)=>{const[x,y]=centroPlano(c,r);return[x,y*ISO_Y-alturaDe(c,r)];};
+/* os seis cantos do TAMPO, já comprimidos pela câmera */
+const cantosTampo=(c,r)=>{
+  const[x,y]=centro(c,r), p=[];
+  for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);
+    p.push([x+R*Math.cos(a), y+R*ISO_Y*Math.sin(a)]);}
+  return p;
+};
 
 /* ---------- DISTÂNCIA ANDANDO ----------
    `dist` continua sendo a distância em linha reta e continua valendo para
@@ -2032,7 +2088,8 @@ const svg=document.getElementById("mapa");
    as casas que existem — a borda sem par não entra e não vira margem morta. */
 (()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){ if(!noTab(c,r))continue;
-    const[x,y]=centro(c,r); x0=Math.min(x0,x-R);y0=Math.min(y0,y-R);x1=Math.max(x1,x+R);y1=Math.max(y1,y+R); }
+    const[x,y]=centro(c,r); x0=Math.min(x0,x-R);y0=Math.min(y0,y-R*ISO_Y-16);
+      x1=Math.max(x1,x+R);y1=Math.max(y1,y+R*ISO_Y+ESPESSURA+2); }
   const m=6;
   svg.setAttribute("viewBox",`${(x0-m).toFixed(1)} ${(y0-m).toFixed(1)} ${(x1-x0+2*m).toFixed(1)} ${(y1-y0+2*m).toFixed(1)}`);
 })();
@@ -2919,8 +2976,25 @@ function desenhaMapa(){
     if(zonaDele.has(k(c,r)))cls+=" zona-ini";
     else if(zonaMinha.has(k(c,r)))cls+=" zona-min";
     if(moverS.has(k(c,r)))cls+=" mover";
-    const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
-      p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
+    /* A LAJE. O tampo é o hexágono comprimido pela câmera; a parede são as três
+       arestas da FRENTE, descidas até o chão comum. Quem está mais atrás é
+       desenhado primeiro (o laço já varre por linha, que é a ordem de
+       profundidade), então a parede de quem está na frente cobre corretamente.
+
+       A PAREDE NÃO RECEBE CLIQUE. Todo o toque continua no tampo, com o mesmo
+       `data-hex` e o mesmo `onclick` de antes — a laje é decoração por baixo, e
+       por isso a mudança de câmera não mexeu em uma linha de hit-test. */
+    const cantos=cantosTampo(c,r);
+    const fundo=alturaDe(c,r)+ESPESSURA;
+    const[,cy]=centro(c,r);
+    for(let i=0;i<6;i++){
+      const a=cantos[i], b=cantos[(i+1)%6];
+      if((a[1]+b[1])/2 <= cy) continue;          // aresta de trás: não aparece
+      gH.appendChild(el("polygon",{class:"parede "+cls.replace("hx ",""),
+        points:[a,b,[b[0],b[1]+fundo],[a[0],a[1]+fundo]]
+          .map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ")}));
+    }
+    const p=cantos.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1));
     const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
     if(moverS.has(k(c,r))) hx.onclick=()=>{ if(mesaTravada())return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
@@ -3067,8 +3141,13 @@ function desenhaMapa(){
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
     g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:2}));
     const t=el("text",{x:x,y:y+2.2});t.textContent=txt;g.appendChild(t);gM.appendChild(g);};
-  rot("TOPO",centro(...L_TOPO[6])[0],11);
-  rot("BAIXO",centro(...L_BOT[2])[0],275);
+  /* os rótulos das rotas eram Y ESCRITO À MÃO (11 e 275), em coordenada da
+     planta plana. Com a câmera do §32 aquele 275 caía muito abaixo do tabuleiro
+     e inflava o `viewBox` por `getBBox`, encolhendo o mapa inteiro para caber
+     numa faixa vazia. Agora saem da própria rota, já projetada. */
+  const foraDaRota=(l,i,d)=>{const[x,y]=centro(...l[i]);return[x,y+d*(R*ISO_Y+13)];};
+  rot("TOPO",...foraDaRota(L_TOPO,6,-1));
+  rot("BAIXO",...foraDaRota(L_BOT,L_BOT.length-7,1));
   rot("MEIO",...centro(3,2));
 
   /* WARDS do lado que olha. Antes era só um pontinho com o prazo embaixo, e a

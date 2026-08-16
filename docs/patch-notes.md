@@ -16,6 +16,91 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v42 — a câmera do §32: o tabuleiro vira diorama · 2026-08-16
+
+Pedido: "agora fazer a mudança de 2D para 3D". Esta entrada entrega **a câmera e
+o tabuleiro**; as miniaturas 3D dos heróis ficam travadas em asset, e o porquê
+está no fim.
+
+### A câmera
+
+Projeção **axonométrica**, que é literalmente o que o §32 pede — câmera elevada,
+isométrica, de jogo de miniaturas, com boa parte do mapa visível de uma vez.
+
+Cada hexágono deixou de ser um recorte e virou uma **laje**: tampo comprimido
+pela câmera, e as três arestas da frente descidas até o chão como parede. O
+relevo conta a história do terreno:
+
+| Terreno | Altura | Por quê |
+|---|---|---|
+| Rio | 0 | canal urbano, afundado (§21) |
+| Poço | 1,5 | boca de galeria — é um buraco (§25) |
+| Rota | 4 | o nível da rua |
+| Base | 5,5 | |
+| Selva e bloqueado | 6,5 | a vegetação cresceu por cima do concreto (§12) |
+
+**Por que axonométrica e não perspectiva de verdade:** aqui a régua é contar
+hexágono (§2, e o teste de legibilidade do §36). Em projeção paralela todo
+hexágono tem o mesmo tamanho na tela, de qualquer canto do mapa, e o texto
+continua reto e nítido em qualquer zoom. Perspectiva encolheria o fundo e
+quebraria exatamente o que o documento manda preservar.
+
+**A compressão é 0,75, não os 0,577 do isométrico exato.** O Vilker joga em
+celular, em retrato: com a compressão do isométrico puro o tabuleiro vira uma
+faixa larga e baixa, sobra tela vazia e o hexágono encolhe — o oposto do
+"grandes, fáceis de contar" do §2.
+
+**A altura não mexe na planta.** Distância, movimento, alcance e visão continuam
+calculados em hexágono, na planta plana. A separação é explícita no código:
+`centroPlano` é o layout que as derivações usam (a rota do meio é escolhida por
+distância a uma reta calculada ali, então mexer nele MOVERIA hexágono), e
+`centro` é a mesma coisa vista pela câmera. Item 1 preservado.
+
+### Dois defeitos que apareceram por causa disso
+
+**Os rótulos das rotas tinham Y escrito à mão** (11 e 275, em coordenada plana).
+Com a câmera, o 275 caía muito abaixo do tabuleiro, inflava o `viewBox` via
+`getBBox` e **encolhia o mapa inteiro** para caber numa faixa vazia. Agora saem
+da própria rota, já projetada.
+
+**A decoração estava comendo o clique.** Um teste de clique real na tela
+(Playwright, não harness) mostrou que tocar uma casa para andar batia no **poste
+da torre**, não no hexágono. O defeito é mais velho que a torre nova — o losango
+anterior também ficava em cima do centro da casa —, só ficou grande o bastante
+para aparecer quando a torre ganhou altura.
+
+Regra nova, e vale para o cenário todo: **torre, Nexus, acampamento, rótulo e
+poço vazio são transparentes ao toque.** Quem recebe clique é o tampo do
+hexágono e, quando a estrutura é alvo válido, o círculo que `alvoDeToque` põe por
+cima. Estrutura mirada volta a aceitar clique nela mesma.
+
+A parede da laje nasceu com `pointer-events:none` pelo mesmo motivo: todo o
+hit-test continua no tampo, com o mesmo `data-hex` e o mesmo `onclick` de antes.
+**A mudança de câmera não alterou uma linha de hit-test.**
+
+### O que NÃO entrou: as miniaturas 3D (§29)
+
+Não é falta de esforço, é **falta de asset**. Faltam os modelos tridimensionais
+dos 20 heróis, e o §29 proíbe a saída fácil — retrato, token 2D, sprite,
+billboard e foto sobre base **não servem como solução final** — enquanto o §28
+proíbe redesenhar personagem. Não há como a trilha de mecânica inventar esses
+modelos sem quebrar uma das duas regras.
+
+E há uma segunda trava, que é de governança e não minha para revogar: **qualquer
+biblioteca 3D quebra o "vanilla, sem npm, sem CDN"** do `CLAUDE.md`.
+
+O tabuleiro foi escrito pronto para receber malha: base, sombra, ordem de
+profundidade e hit-test já existem e não precisam mudar quando os modelos
+chegarem de `visual-lab/`.
+
+### Medição
+
+Nenhum número de regra mudou — é câmera. 165 testes passando. No Chromium:
+clique real acertando o hexágono certo, névoa correta, 10 passos de partida
+contra a IA sem um erro de console.
+
+---
+
 ## v41 — torres e Nexus deixam de ser genéricos · 2026-08-16
 
 Continuação da direção de arte, itens 22 e 24, ainda no tabuleiro 2D.

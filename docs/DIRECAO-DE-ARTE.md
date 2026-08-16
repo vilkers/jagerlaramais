@@ -330,7 +330,9 @@ produção de arte são da trilha de criação** (Vilker + ChatGPT, em `visual-l
 | §26 Barão → boi mecânico | **pendente, esperando o NOME** — ver nota abaixo |
 | §27 acampamentos com história | **pendente** |
 | §6, §13, §16–18 cotidiano, magia, gambiarra, humor | **pendente** — dependem de arte |
-| §29–32 miniaturas 3D, escala, câmera | **não iniciado** — exige engine 3D (WebGL) e modelos que ainda não existem. Quebra a regra do "vanilla" do `CLAUDE.md`; é decisão de escopo do grupo |
+| §32 câmera elevada e isométrica | **feito** — projeção axonométrica, hexágono virou laje com tampo e parede, relevo por terreno |
+| §31 obstáculo não esconde personagem | **feito** — as peças são desenhadas por último e nunca ficam atrás de cenário |
+| §29–30 miniaturas 3D e escala | **travado em asset, não em código** — ver nota abaixo |
 
 **Atenção ao §25 e §26 — está parado esperando o nome, de propósito.**
 
@@ -354,3 +356,22 @@ sendo as chaves — é a mesma decisão tomada na v30 para os dez heróis
 substituídos: mantendo a chave, os testes seguem verdes e toda a medição
 anterior continua comparável. Muda o nome de exibição, o epíteto, o texto da
 dádiva e a arte em `arte/monstros/<id>.jpg`.
+
+**Sobre o §29 (miniaturas 3D) — o que trava não é esforço, é asset.**
+
+A câmera do §32 já é a que o documento pede, e o tabuleiro já é um diorama com
+volume. O que falta é a outra metade: **modelos tridimensionais dos 20 heróis**,
+que não existem. E o §29 é explícito em proibir a saída fácil — retrato, token
+2D, sprite, billboard ou foto sobre base **não servem como solução final** —, ao
+mesmo tempo que o §28 proíbe redesenhar personagem. Ou seja: não há como a trilha
+de mecânica inventar esses modelos sem quebrar uma das duas regras.
+
+Hoje a peça no tabuleiro é o retrato do herói numa base circular com a cor do
+time. É exatamente o que o §29 chama de provisório, e está marcado como tal.
+
+**O caminho, quando os modelos existirem em `visual-lab/`:** trocar a peça por
+uma malha, mantendo base, sombra e a ordem de desenho que já existem. A câmera,
+o relevo, a profundidade e o hit-test não precisam mudar — foram escritos para
+isso. A decisão que sobra para o grupo é qual engine (WebGL puro ou biblioteca
+vendorizada), porque **qualquer biblioteca 3D quebra a regra do "vanilla, sem
+npm, sem CDN"** do `CLAUDE.md`, e essa regra não é minha para revogar.

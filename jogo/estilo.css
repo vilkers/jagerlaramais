@@ -164,6 +164,20 @@ button:disabled{cursor:not-allowed}
 #mapa .hx.mover:active{fill:#F2C25C;fill-opacity:.55}
 #mapa .estrada{fill:none;stroke:var(--estrada);stroke-width:5;stroke-opacity:.30;
   stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+/* ══════════ DECORAÇÃO NÃO COME CLIQUE ══════════
+   Achado por teste de clique real na tela: com a torre alta do item 22, o poste
+   passou a cobrir o CENTRO do hexágono, e um toque para andar até ali batia no
+   poste em vez de na casa. O defeito é mais velho que a torre nova — o losango
+   anterior também ficava em cima do centro —, só ficou grande o bastante para
+   aparecer.
+
+   Regra: tudo o que é desenho de cenário é transparente ao toque. Quem recebe
+   clique é o TAMPO do hexágono e, quando a estrutura é alvo válido, o círculo de
+   toque que `alvoDeToque` põe por cima. Estrutura mirada volta a aceitar o
+   clique nela mesma — é justamente aí que se quer acertá-la. */
+#mapa .torre,#mapa .nexus,#mapa .camp,#mapa .rotulo,#mapa .poco-vazio{pointer-events:none}
+#mapa .torre.alvo,#mapa .nexus.alvo{pointer-events:auto;cursor:pointer}
+
 /* ── TORRE: sistema defensivo improvisado (direção de arte, item 22) ──
    Poste + chapa + farol + antena + botijão. A cor de time vive na LUZ e no
    contorno, não pintando a estrutura inteira — item 23 reserva azul e carmim
@@ -214,6 +228,21 @@ button:disabled{cursor:not-allowed}
 #mapa .rotulo rect{fill:var(--ground-2);stroke:var(--line);stroke-width:.7}
 #mapa .rotulo text{font-family:var(--carto);font-size:5.4px;letter-spacing:.18em;
   fill:var(--ink-3);text-anchor:middle;pointer-events:none}
+
+/* ══════════ A LAJE — a parede de cada hexágono ══════════
+   A câmera do §32 transformou cada hexágono numa laje com espessura. A parede é
+   a MESMA cor do tampo, escurecida: é a face que a luz do sol não pega, e é ela
+   que faz o tabuleiro ler como objeto em cima da mesa em vez de recorte.
+   Sem clique, sem contorno — quem recebe toque é o tampo. */
+#mapa .parede{stroke:none;pointer-events:none}
+#mapa .parede.rota{fill:#8E8474}
+#mapa .parede.selva{fill:#527238}
+#mapa .parede.rio{fill:#67807E}
+#mapa .parede.base0{fill:#3A6A8C}
+#mapa .parede.base1{fill:#8C4238}
+#mapa .parede.poco{fill:#4C5548}
+#mapa .parede.bloq{fill:#5E4E36}
+#mapa .parede.cego{fill:#332E27}
 
 /* ══════════ HEXÁGONO BLOQUEADO ══════════
    Item 4 e 5 da direção de arte: a casa é intransitável, e o obstáculo é o
