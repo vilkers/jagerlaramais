@@ -219,6 +219,44 @@ escolhida, e nada vai para o log. Para saber onde o Caçador caiu ele precisa te
 
 ---
 
+## 6.2 · Hexágonos bloqueados
+
+Algumas casas da **selva** são fisicamente bloqueadas. **Herói não entra e não
+atravessa.** Elas existem para a selva deixar de ser campo aberto e virar
+**corredor** — entrada, atalho, caminho de Caçador, lugar de emboscada.
+
+**O obstáculo é o próprio hexágono**, e ele conta a história do mundo: ônibus
+abandonado, carros empilhados, caixa-d'água. Nunca pedra genérica.
+
+| | |
+|---|---|
+| Quantas | **6** — 3 pares espelhados, de 27 casas de selva |
+| Onde | **só na selva** — rota, base, rio e poço nunca bloqueiam |
+| Nunca em | acampamento, ponto de pouso do Caçador, vizinha do poço |
+| Visão | **bloqueiam**, como todo mato |
+| Empurrão/puxão | não jogam ninguém para dentro |
+| Ward | não se planta dentro |
+| Lampejo | **passa por cima**, mas não pousa dentro — é salto |
+
+**Andar passa a ter duas réguas.** `distância` continua sendo a linha reta e
+continua valendo para **alcance de habilidade** — o ônibus para o pé, não o tiro.
+Para **andar**, a régua é o caminho que contorna o obstáculo: a casa atrás do
+ônibus pode estar a 2 de distância e a 4 de caminhada, e o herói paga 4.
+
+**Herói não bloqueia caminho** — só o obstáculo. Continua valendo passar por cima
+de aliado e de inimigo, como sempre foi.
+
+**A planta não mudou.** Nenhum hexágono nasceu, sumiu ou trocou de lugar; o que
+mudou é quais casas são caminháveis. São 116 hexágonos, como antes.
+
+**As seis são derivadas da planta, não escritas à mão**, e passam por duas
+travas: o tabuleiro continua inteiro (toda casa alcança toda casa) e a selva
+continua com as **mesmas duas regiões** que já tinha. Bloquear a casa errada
+partia a selva em ilhas e prendia o Caçador no próprio quintal — aconteceu na
+primeira tentativa, com `[2,5]`.
+
+---
+
 ## 7 · Duração de efeitos
 
 **Uma regra para todos:** escudo, buff de Poder, buff de Armadura, Ágil,

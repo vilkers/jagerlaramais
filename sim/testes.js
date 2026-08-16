@@ -1970,6 +1970,300 @@ teste("o foco no poço soma +1 no golpe, venha ele de onde vier", () => {
   eq(g.golpeNoPoco(h, h.habs[0], 0, 4, g.J.poco), semFoco + 1,
      "o foco no poço não somou +1 no golpe");
 });
+/* ═══════════════ v39 — hexágonos bloqueados na selva ═══════════════ */
+
+/* Item 4 e 5 da direção de arte: algumas casas da selva são fisicamente
+   bloqueadas, e o obstáculo é o próprio hexágono. Elas existem para a selva
+   virar corredor em vez de campo aberto.
+
+   O item 1 da mesma direção diz que a PLANTA NÃO MUDA. Os dois convivem porque
+   bloquear é sobre quais casas são caminháveis, não sobre onde os hexágonos
+   estão — e o primeiro teste daqui existe para provar isso. */
+
+const cenaBloq = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                                      ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+                         .mov(6).vez(0);
+
+teste("a planta do mapa não mudou: mesmos hexágonos, rotas, torres e poço", () => {
+  const g = cenaBloq().g;
+  let casas = 0;
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++) if (g.noTab(c, r)) casas++;
+  eq(casas, 116, "o número de hexágonos do tabuleiro mudou");
+  eq(g.COLS, 11, "largura do tabuleiro mudou");
+  eq(g.LINS, 11, "altura do tabuleiro mudou");
+  eq(g.MATO.size, 27, "o tamanho da selva mudou");
+  eq(g.k(...g.POCO), "8,8", "o poço saiu do lugar");
+  eq(g.J.torres.length, 12, "o número de torres mudou");
+  /* nenhuma bloqueada é rota, base, rio ou poço */
+  [...g.BLOQUEADO].forEach(K => {
+    ok(g.MATO.has(K), `a casa bloqueada ${K} não é selva`);
+    ok(!g.LANE.has(K), `a casa bloqueada ${K} é corredor de rota`);
+    ok(K !== g.k(...g.POCO), "o poço foi bloqueado");
+  });
+});
+
+teste("bloqueada nenhuma cai em acampamento nem em ponto de pouso do Caçador", () => {
+  const g = cenaBloq().g;
+  const pousos = new Set([0, 1].flatMap(t =>
+    ["topo", "meio", "baixo", "selva"].map(i => g.k(...g.SELVA_PONTOS[t][i]))));
+  const acampas = new Set([
+    ...g.CAMP_NEUTRO_LADOS.map(p => g.k(...p)),
+    g.k(...g.CAMP_AZUL), g.k(...g.gira(...g.CAMP_AZUL))
+  ]);
+  [...g.BLOQUEADO].forEach(K => {
+    ok(!pousos.has(K), `a casa bloqueada ${K} é ponto de pouso do Caçador`);
+    ok(!acampas.has(K), `a casa bloqueada ${K} é acampamento`);
+  });
+  /* e o poço continua acessível: nenhuma vizinha dele bloqueada */
+  g.vizinhos(...g.POCO).forEach(p =>
+    ok(!g.ehBloqueado(...p), `a vizinha ${g.k(...p)} do poço foi bloqueada — o objetivo fica sem porta`));
+});
+
+teste("as casas bloqueadas são espelho exato umas das outras", () => {
+  const g = cenaBloq().g;
+  ok(g.BLOQUEADO.size > 0, "não há casa bloqueada nenhuma");
+  eq(g.BLOQUEADO.size % 2, 0, "número ímpar de bloqueadas — alguma ficou sem espelho");
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    const e = g.gira(c, r);
+    ok(g.BLOQUEADO.has(g.k(...e)),
+       `a casa ${K} está bloqueada e o espelho dela ${g.k(...e)} não — um lado anda mais que o outro`);
+  });
+});
+
+teste("obstáculo não encosta em obstáculo — é contorno, não muralha", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    const vizinhaBloq = g.vizinhos(c, r).find(p => g.ehBloqueado(...p));
+    ok(!vizinhaBloq,
+       `${K} encosta em ${vizinhaBloq && g.k(...vizinhaBloq)} — dois obstáculos juntos viram parede`);
+  });
+});
+
+teste("o tabuleiro continua inteiro: toda casa livre alcança toda casa livre", () => {
+  const g = cenaBloq().g;
+  const livres = [];
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++)
+    if (g.noTab(c, r) && !g.ehBloqueado(c, r)) livres.push([c, r]);
+  const d = g.passosDe(livres[0]);
+  const presas = livres.filter(p => !d.has(g.k(...p)));
+  eq(presas.length, 0, `${presas.length} casas ficaram inalcançáveis: ${presas.slice(0, 5).map(p => g.k(...p))}`);
+});
+
+teste("a selva continua inteira — o bloqueio estreita corredor, não parte em ilhas", () => {
+  const g = cenaBloq().g;
+  /* componentes do grafo de mato, com e sem os bloqueios */
+  const comps = usaBloqueio => {
+    const livres = [...g.MATO].map(K => K.split(",").map(Number))
+      .filter(p => !(usaBloqueio && g.ehBloqueado(...p)));
+    const chaves = new Set(livres.map(p => g.k(...p)));
+    const vis = new Set(); let n = 0;
+    livres.forEach(p0 => {
+      if (vis.has(g.k(...p0))) return;
+      n++; const f = [p0]; vis.add(g.k(...p0));
+      while (f.length) {
+        const p = f.pop();
+        g.vizinhos(...p).forEach(v => {
+          const kk = g.k(...v);
+          if (chaves.has(kk) && !vis.has(kk)) { vis.add(kk); f.push(v); }
+        });
+      }
+    });
+    return n;
+  };
+  eq(comps(true), comps(false),
+     "o bloqueio partiu a selva em mais regiões do que ela tinha — o Caçador fica preso no quintal");
+});
+
+teste("cada casa bloqueada tem um obstáculo declarado — nada de pedra genérica", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K =>
+    ok(g.OBSTACULO[K], `a casa bloqueada ${K} não diz o que está em cima dela`));
+  /* o par espelhado carrega o mesmo objeto: silhueta igual dos dois lados */
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    eq(g.OBSTACULO[g.k(...g.gira(c, r))], g.OBSTACULO[K],
+       `${K} e o espelho dele têm obstáculos diferentes`);
+  });
+});
+
+/* ---------- o herói não entra ---------- */
+
+teste("casa bloqueada nunca aparece entre os destinos de movimento", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* colado numa bloqueada, com movimento de sobra */
+  const alvo = [...g.BLOQUEADO].map(K => K.split(",").map(Number))[0];
+  const perto = g.vizinhos(...alvo).find(p => g.noTab(...p) && !g.em(...p) && !g.ehBloqueado(...p));
+  ok(perto, "a casa bloqueada não tem vizinha livre");
+  c.poe(h, perto);
+
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  const achou = g.mover.find(p => g.ehBloqueado(...p));
+  ok(!achou, `o obstáculo ${achou && g.k(...achou)} entrou na lista de destinos`);
+
+  /* e o caminho direto também é recusado */
+  const antes = g.k(...h.pos);
+  g.moveAte(...alvo);
+  eq(g.k(...h.pos), antes, "o herói entrou no hexágono bloqueado");
+});
+
+teste("o herói não ATRAVESSA: a casa atrás do obstáculo custa o contorno", () => {
+  const g = cenaBloq().g;
+  /* procura um par (casa livre, casa livre) cuja reta passe por um obstáculo */
+  let achado = null;
+  for (const K of g.BLOQUEADO) {
+    const [bc, br] = K.split(",").map(Number);
+    const viz = g.vizinhos(bc, br).filter(p => !g.ehBloqueado(...p) && g.noTab(...p));
+    for (const a of viz) for (const b of viz) {
+      if (g.k(...a) === g.k(...b)) continue;
+      const reta = g.dist(...a, ...b);
+      const anda = g.passosAte(a, b);
+      if (anda !== null && anda > reta) { achado = { a, b, reta, anda, obst: K }; break; }
+    }
+    if (achado) break;
+  }
+  ok(achado, "não achei nenhum par cuja reta atravesse um obstáculo — o bloqueio não está criando contorno");
+  ok(achado.anda > achado.reta,
+     `andando ${achado.anda} e em linha reta ${achado.reta}: o obstáculo ${achado.obst} não está sendo contornado`);
+});
+
+teste("moveAte cobra o caminho andado, não a linha reta", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* acha um destino cujo contorno custe mais que a reta */
+  let par = null;
+  for (const K of g.BLOQUEADO) {
+    const [bc, br] = K.split(",").map(Number);
+    const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p));
+    for (const a of viz) for (const b of viz) {
+      if (g.k(...a) === g.k(...b)) continue;
+      const anda = g.passosAte(a, b);
+      if (anda !== null && anda > g.dist(...a, ...b)) { par = { a, b, anda }; break; }
+    }
+    if (par) break;
+  }
+  ok(par, "não achei par com contorno");
+
+  g.J.times[0].herois.concat(g.J.times[1].herois).forEach((x, i) => {
+    if (x !== h) c.poe(x, g.BASE[x.t][0]);
+  });
+  c.poe(h, par.a);
+  h.agilUsado = 1;                                  // tira o desconto do Ágil da conta
+  g.J.mov = { v: 9, rest: 9 };
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  g.moveAte(...par.b);
+  eq(g.k(...h.pos), g.k(...par.b), "não chegou ao destino");
+  eq(9 - g.J.mov.rest, par.anda,
+     `pagou ${9 - g.J.mov.rest} por um caminho de ${par.anda} passos — está cobrando a reta`);
+});
+
+teste("a IA contorna o obstáculo em vez de travar contra ele", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  /* põe a IA colada num obstáculo, com o destino do outro lado dele */
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p) && !g.em(...p));
+  ok(viz.length >= 2, "obstáculo sem duas vizinhas livres");
+  c.poe(h, viz[0]);
+
+  const de = [...h.pos];
+  const ate = g.passosDe(viz[1]);
+  const antes = ate.get(g.k(...de));
+
+  /* um passo de movimento pela mesma régua que a IA usa */
+  g.J.vez = 1; g.J.mov = { v: 3, rest: 3 };
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  const passo = g.mover.filter(p => g.dist(...h.pos, ...p) === 1)
+    .sort((a, b) => (ate.get(g.k(...a)) ?? 99) - (ate.get(g.k(...b)) ?? 99))[0];
+  ok(passo, "não sobrou nenhum passo possível");
+  ok(!g.ehBloqueado(...passo), "o passo escolhido é dentro do obstáculo");
+  ok((ate.get(g.k(...passo)) ?? 99) < antes,
+     "nenhum passo aproxima do destino — a IA travaria contra o obstáculo");
+});
+
+/* ---------- as outras formas de entrar numa casa ---------- */
+
+teste("o Caçador nunca pousa em casa bloqueada, em nenhuma das quatro regiões", () => {
+  const g = cenaBloq().g;
+  [0, 1].forEach(t => ["topo", "meio", "baixo", "selva"].forEach(reg => {
+    const h = g.cacadorDe(t);
+    g.escolheRotacao(t, reg);
+    ok(!g.ehBloqueado(...h.pos),
+       `time ${t}, região ${reg}: o Caçador pousou dentro do obstáculo ${g.k(...h.pos)}`);
+  }));
+});
+
+teste("o pouso desvia quando o ponto preferencial vira obstáculo", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* nenhum ponto de pouso é bloqueado por construção — então o teste é que o
+     desvio existe e continua caindo em selva livre mesmo com o mapa apertado */
+  const outros = g.J.times[0].herois.filter(x => x !== h).concat(g.J.times[1].herois);
+  outros.forEach((x, i) => {
+    const alvo = g.SELVA_PONTOS[0].topo;
+    if (i === 0) c.poe(x, alvo);
+  });
+  g.escolheRotacao(0, "topo");
+  ok(g.MATO.has(g.k(...h.pos)), "desviou para fora da selva");
+  ok(!g.ehBloqueado(...h.pos), "desviou para dentro de um obstáculo");
+  eq(g.em(...h.pos), h, "desviou para cima de outra peça");
+});
+
+teste("empurrar e puxar não jogam ninguém para dentro do obstáculo", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p));
+  ok(viz.length >= 2, "obstáculo sem vizinhas livres");
+
+  const alvo = g.J.times[1].herois.find(x => !x.morto);
+  const empurrador = g.J.times[0].herois.find(x => !x.morto);
+  /* alvo colado ao obstáculo, empurrador do lado oposto: o empurrão aponta
+     exatamente para dentro da casa bloqueada */
+  c.poe(alvo, viz[0]);
+  const oposto = g.vizinhos(...viz[0]).find(p => g.noTab(...p) && !g.em(...p) && g.k(...p) !== K);
+  c.poe(empurrador, oposto);
+  for (let i = 0; i < 6; i++) {
+    g.desloca(alvo, empurrador.pos, +1, 1);
+    ok(!g.ehBloqueado(...alvo.pos), `empurrão ${i + 1} jogou o alvo para dentro de ${g.k(...alvo.pos)}`);
+    g.desloca(alvo, empurrador.pos, -1, 1);
+    ok(!g.ehBloqueado(...alvo.pos), `puxão ${i + 1} jogou o alvo para dentro de ${g.k(...alvo.pos)}`);
+  }
+});
+
+teste("ward não é plantada dentro do obstáculo", () => {
+  const g = cenaBloq().g;
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  g.J.times[0].wards = [];
+  g.poeWard(0, [bc, br]);
+  eq((g.J.times[0].wards || []).length, 0, "plantou ward dentro de um hexágono bloqueado");
+  /* e numa casa livre continua funcionando */
+  const livre = g.vizinhos(bc, br).find(p => !g.ehBloqueado(...p) && g.noTab(...p));
+  g.poeWard(0, livre);
+  eq(g.J.times[0].wards.length, 1, "parou de plantar ward em casa válida");
+});
+
+teste("o obstáculo continua bloqueando visão, como todo mato", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    ok(g.ehMato(c, r), `${K} deixou de contar como mato e passou a ser transparente`);
+  });
+});
+
 /* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
 
 /* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da

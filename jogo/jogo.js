@@ -391,6 +391,11 @@ const _distBase=(p,t)=>Math.min(...BASE[t].map(([c,r])=>dist(c,r,...p)));
 
    As duas continuam equidistantes das bases — a justiça não é sorteada, só o
    lado é. `CAMP_NEUTRO_LADOS` guarda as duas; `sorteiaNeutro()` escolhe. */
+/* os dois de time moram aqui, junto do neutro: eram declarados 600 linhas
+   abaixo, longe dos outros acampamentos, e a lista de hexágonos bloqueados
+   (que precisa saber onde eles estão para não bloqueá-los) não os enxergava */
+const CAMP_AZUL=[3,4];
+const CAMP_CARMIM=gira(...CAMP_AZUL);
 const CAMP_NEUTRO_LADOS=(()=>{
   const meio=[(COLS-1)/2,(LINS-1)/2];
   const justas=[];
@@ -517,6 +522,130 @@ const SELVA_PONTOS=(()=>{
   return [meu,dele];
 })();
 
+/* ---------- HEXÁGONOS BLOQUEADOS ----------
+   Direção de arte, item 4 e 5 (ver docs/DIRECAO-DE-ARTE.md): algumas casas da
+   selva são fisicamente bloqueadas. Herói não entra nem atravessa. Elas existem
+   para a selva deixar de ser um campo aberto e virar CORREDOR — entrada, atalho,
+   caminho de Caçador, lugar de emboscada.
+
+   O obstáculo é o próprio hexágono, e ele conta a história do mundo: ônibus
+   abandonado, carros empilhados, caixa-d'água sobre laje. Nada de pedra genérica.
+
+   NÃO MUDA A PLANTA. Nenhum hexágono nasce, some ou troca de lugar; o que muda é
+   quais casas são caminháveis. A geometria continua sendo a da versão 2D — item
+   1 da direção de arte.
+
+   COMO SÃO ESCOLHIDAS, e por que não estão escritas à mão:
+   · só mato — rota, base, rio e poço nunca bloqueiam;
+   · nunca um ponto de pouso do Caçador, nunca um acampamento (incluindo os DOIS
+     lados possíveis do neutro, porque o lado é sorteado por partida e a lista
+     aqui é fixa), nunca o poço nem vizinha dele;
+   · escritas para um lado e ESPELHADAS para o outro, como todo o resto do mapa;
+   · nunca encostadas umas nas outras — obstáculo isolado vira contorno,
+     obstáculo em fila vira muralha;
+   · e as duas travas que importam: o tabuleiro continua inteiro (toda casa
+     alcança toda casa) e a SELVA continua com as mesmas duas regiões que já
+     tinha. Bloquear a casa errada partia a selva em ilhas e o Caçador ficava
+     preso no próprio quintal — aconteceu na primeira tentativa, com `[2,5]`.
+
+   A ordem de preferência é o grau: casa com mais vizinhas de mato está no meio
+   de um bolsão aberto, e é bloqueando ela que o bolsão vira corredor.
+
+   O alvo é BLOQUEIOS_ALVO por lado, mas a lista satura sozinha antes disso — com
+   as travas acima, o mapa 11×11 comporta 3 pares. Aumentar o alvo não força mais
+   bloqueio; afrouxar as travas, sim, e é aí que a selva se parte. */
+const BLOQUEIOS_ALVO=3;
+const OBSTACULOS_TIPOS=["onibus","carros","caixadagua"];
+const _BLOQ=(()=>{
+  const proibidas=new Set([
+    ...[0,1].flatMap(t=>Object.values(SELVA_PONTOS[t]).filter(Boolean).map(p=>k(...p))),
+    ...CAMP_NEUTRO_LADOS.map(p=>k(...p)),
+    k(...CAMP_AZUL), k(...gira(...CAMP_AZUL)),
+    POCO_K, ...vizinhos(...POCO).map(p=>k(...p))
+  ]);
+  const grau=p=>vizinhos(...p).filter(v=>MATO.has(k(...v))).length;
+  /* componentes do grafo de MATO, ignorando as bloqueadas */
+  const comps=bloq=>{
+    const livres=_MATO_P.filter(p=>!bloq.has(k(...p)));
+    const vis=new Set(); let n=0;
+    for(const p0 of livres){
+      if(vis.has(k(...p0)))continue;
+      n++; const f=[p0]; vis.add(k(...p0));
+      while(f.length){ const p=f.pop();
+        vizinhos(...p).forEach(v=>{ const kk=k(...v);
+          if(MATO.has(kk)&&!bloq.has(kk)&&!vis.has(kk)){ vis.add(kk); f.push(v); } }); }
+    }
+    return n;
+  };
+  /* tabuleiro inteiro alcançável a pé */
+  const inteiro=bloq=>{
+    const todas=[];
+    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
+      if(noTab(c,r)&&!bloq.has(k(c,r))) todas.push([c,r]);
+    if(!todas.length) return false;
+    const vis=new Set([k(...todas[0])]); const f=[todas[0]];
+    while(f.length){ const p=f.pop();
+      vizinhos(...p).forEach(v=>{ const kk=k(...v);
+        if(!bloq.has(kk)&&!vis.has(kk)){ vis.add(kk); f.push(v); } }); }
+    return vis.size===todas.length;
+  };
+  const COMPS0=comps(new Set());
+  const bloq=new Set(); const tipos={}; let i=0;
+  const candidatas=_MATO_P
+    .filter(p=>!proibidas.has(k(...p))&&_meuLado(p,0))
+    .sort((a,b)=>grau(b)-grau(a)||a[0]-b[0]||a[1]-b[1]);
+  for(const p of candidatas){
+    if(i>=BLOQUEIOS_ALVO)break;
+    const e=gira(...p);
+    if(!MATO.has(k(...e))||proibidas.has(k(...e)))continue;
+    if(bloq.has(k(...p))||bloq.has(k(...e)))continue;
+    const encosta=q=>vizinhos(...q).some(v=>bloq.has(k(...v)));
+    if(encosta(p)||encosta(e))continue;
+    const tent=new Set([...bloq,k(...p),k(...e)]);
+    if(!inteiro(tent)||comps(tent)!==COMPS0)continue;
+    bloq.add(k(...p)); bloq.add(k(...e));
+    const tipo=OBSTACULOS_TIPOS[i%OBSTACULOS_TIPOS.length];
+    tipos[k(...p)]=tipo; tipos[k(...e)]=tipo;
+    i++;
+  }
+  return {set:bloq,tipos};
+})();
+const BLOQUEADO=_BLOQ.set;
+const OBSTACULO=_BLOQ.tipos;                 /* casa → que coisa está ali */
+const ehBloqueado=(c,r)=>BLOQUEADO.has(k(c,r));
+
+/* ---------- DISTÂNCIA ANDANDO ----------
+   `dist` continua sendo a distância em linha reta e continua valendo para
+   ALCANCE DE HABILIDADE — o ônibus para o pé, não o tiro. Para andar, a régua
+   passa a ser esta: busca em largura que CONTORNA o hexágono bloqueado.
+
+   Sem isto o obstáculo seria enfeite. O movimento deste jogo sempre foi por
+   distância, não por caminho: `calcula` aceitava qualquer casa dentro do
+   alcance e `moveAte` levava direto. O herói simplesmente passaria por cima do
+   ônibus, e "corredor" não existiria em regra nenhuma.
+
+   Herói NÃO bloqueia caminho — só o obstáculo. Continua valendo que se passa por
+   cima de aliado e de inimigo; o que mudou é que não se passa por cima de casa
+   bloqueada. Era assim antes para todo mundo e continua assim para gente. */
+function passosDe(de){
+  const d=new Map([[k(...de),0]]);
+  let borda=[de];
+  while(borda.length){
+    const prox=[];
+    for(const p of borda){
+      const n=d.get(k(...p))+1;
+      for(const v of vizinhos(...p)){
+        const kk=k(...v);
+        if(BLOQUEADO.has(kk)||d.has(kk))continue;
+        d.set(kk,n); prox.push(v);
+      }
+    }
+    borda=prox;
+  }
+  return d;
+}
+/* quantos passos de `de` até `ate`, contornando obstáculo — `null` se não há caminho */
+const passosAte=(de,ate)=>{ const v=passosDe(de).get(k(...ate)); return v===undefined?null:v; };
 const REGIOES=[
   {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima."},
   {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio."},
@@ -532,7 +661,7 @@ const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="sel
    casa do Caçador conta como livre: escolher a região onde ele já está não pode
    falhar por ele estar no lugar. */
 const casaDeSelvaLivre=(p,h)=>{
-  if(!noTab(...p)||!MATO.has(k(...p)))return false;
+  if(!noTab(...p)||!MATO.has(k(...p))||BLOQUEADO.has(k(...p)))return false;
   const o=em(...p);
   return !o||o===h;
 };
@@ -841,6 +970,7 @@ const ladoDaTela=()=>aiMode?0:J.vez;
    com posição e prazo. É o que a faz interagir com a visão por raio: ela acende
    um pedaço do tabuleiro onde você não tem ninguém. */
 function poeWard(t,pos){
+  if(ehBloqueado(...pos))return;             /* não se planta ward dentro do ônibus */
   const tm=J.times[t];
   tm.wards=tm.wards||[];
   tm.wards.push({pos:[...pos],rodadas:WARD_RODADAS});
@@ -933,8 +1063,6 @@ function expiraWards(){
   });
 }
 
-const CAMP_AZUL=[3,4];
-const CAMP_CARMIM=gira(...CAMP_AZUL);
 
 /* Dragão compõe, Barão vira a mesa — a distinção do MOBA, ver docs/00-anatomia-moba.md.
    `volta` é quantas rodadas depois de morrer o poço reabre. `revide` é o preço de
@@ -1478,7 +1606,12 @@ function moveAte(c,r){
      de 1 em 1 hexágono, todo passo custava zero: movimento infinito. Agora o
      desconto vale uma vez por turno, e `agilUsado` expira com o resto. */
   const temDesconto = ehAgil(h) && !h.agilUsado;
-  const d=dist(...h.pos,c,r), custo=Math.max(0,d-(temDesconto?1:0));
+  /* o preço é o do CAMINHO, não o da linha reta: quem contorna o obstáculo paga
+     o contorno. Sem isto, alcance e custo discordavam e o herói chegava de graça
+     numa casa que a régua já dizia estar longe. */
+  const andando=passosAte(h.pos,[c,r]);
+  if(andando===null)return;                 // sem caminho: obstáculo fecha de vez
+  const d=andando, custo=Math.max(0,d-(temDesconto?1:0));
   if(temDesconto&&d>0) h.agilUsado=1;
   if(custo>J.mov.rest)return;
   h.pos=[c,r]; J.mov.rest-=custo;
@@ -1713,7 +1846,7 @@ function desloca(alvo,de,dir,n=1){
   for(let p=0;p<n;p++){
     const atual=dist(...alvo.pos,...de);
     const passo=vizinhos(...alvo.pos)
-      .filter(v=>!em(...v))
+      .filter(v=>!em(...v)&&!ehBloqueado(...v))   /* não se empurra ninguém para dentro do ônibus */
       .map(v=>[v,dist(...v,...de)])
       .filter(([,d])=>dir<0 ? d<atual : d>atual)
       .sort((a,b)=>dir<0 ? a[1]-b[1] : b[1]-a[1])[0];
@@ -2135,10 +2268,13 @@ function calcula(){
   mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+((ehAgil(selHeroi)&&!selHeroi.agilUsado)?1:0);
+    /* a régua é ANDANDO, contornando obstáculo — casa atrás de um ônibus pode
+       estar a 2 em linha reta e a 4 a pé, e é o 4 que vale */
+    const passos=passosDe(selHeroi.pos);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(!noTab(c,r)||em(c,r))continue;   // casa fora do tabuleiro não é destino
-      const d=dist(...selHeroi.pos,c,r);
-      if(d>0&&d<=teto) mover.push([c,r]);
+      if(!noTab(c,r)||em(c,r)||ehBloqueado(c,r))continue;  // fora do tabuleiro, ocupada ou obstáculo
+      const d=passos.get(k(c,r));
+      if(d!==undefined&&d>0&&d<=teto) mover.push([c,r]);
     }
   }
   /* o Lampejo pinta as mesmas casas verdes do mover, mas com outra régua:
@@ -2146,7 +2282,8 @@ function calcula(){
      da base inimiga — de lá o Nexus ficaria a um salto de distância. */
   if(modo==="lampejo"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&temFeitico(selHeroi.t)){
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(!noTab(c,r)||em(c,r))continue;
+      /* o Lampejo é salto: passa POR CIMA do obstáculo, mas não pousa nele */
+      if(!noTab(c,r)||em(c,r)||ehBloqueado(c,r))continue;
       if(BASE_S.get(k(c,r))===1-selHeroi.t)continue;
       const d=dist(...selHeroi.pos,c,r);
       if(d>0&&d<=LAMPEJO_ALC) mover.push([c,r]);
@@ -2155,7 +2292,7 @@ function calcula(){
   /* Recuo: uma casa, de graça, ignorando movimento restante e prisão — é uma
      carta de reação, e o ponto dela é justamente escapar de onde você travou. */
   if(modo==="recuo"&&selHeroi&&!selHeroi.morto){
-    mover=vizinhos(...selHeroi.pos).filter(([c,r])=>noTab(c,r)&&!em(c,r)
+    mover=vizinhos(...selHeroi.pos).filter(([c,r])=>noTab(c,r)&&!em(c,r)&&!ehBloqueado(c,r)
       &&BASE_S.get(k(c,r))!==1-selHeroi.t);
   }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
@@ -2739,6 +2876,7 @@ function desenhaMapa(){
        seria invisível — e névoa que não se vê é só herói sumindo sem explicação. */
     /* o poço fica de fora: é objetivo compartilhado, e a vida do morador tem de
        ser legível para os dois lados o tempo todo. */
+    if(ehBloqueado(c,r))cls+=" bloq";
     if(k(c,r)!==POCO_K&&!enxergaCasa(ladoDaTela(),c,r)) cls+=" cego";
     if(wardS.has(k(c,r)))cls+=" wardado";
     if(zonaDele.has(k(c,r)))cls+=" zona-ini";
@@ -2750,6 +2888,38 @@ function desenhaMapa(){
     if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
+  /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
+     mundo, não uma pedra genérica. Silhueta simples de propósito: o jogador tem
+     de reconhecer "não passo aqui" de relance, e detalhe demais numa casa de 19
+     de raio vira sujeira (item 3). Casa sem visão apaga o objeto junto — casa
+     que não se vê não entrega o que tem dentro. */
+  BLOQUEADO.forEach(K=>{
+    const [bc,br]=K.split(",").map(Number);
+    const [x,y]=centro(bc,br);
+    const tipo=OBSTACULO[K]||"carros";
+    const escondido=!enxergaCasa(ladoDaTela(),bc,br);
+    const g=el("g",{class:"obst "+tipo+(escondido?" escondido":"")});
+    g.appendChild(el("ellipse",{cx:x,cy:y+8,rx:12,ry:3.6,class:"sombra"}));
+    if(tipo==="onibus"){
+      g.appendChild(el("rect",{x:x-13,y:y-7,width:26,height:13,rx:2.6,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-13,y:y-1.6,width:26,height:2.9,class:"faixa"}));
+      [-9.6,-4.2,1.2,6.6].forEach(dx=>
+        g.appendChild(el("rect",{x:x+dx,y:y-5.4,width:4,height:3.4,class:"vidro"})));
+      g.appendChild(el("rect",{x:x+9,y:y+1.4,width:4,height:4.2,class:"ferrugem"}));
+    } else if(tipo==="carros"){
+      g.appendChild(el("rect",{x:x-12,y:y-0.6,width:23,height:8.4,rx:2.6,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-9,y:y-8.4,width:19,height:7.8,rx:2.6,class:"cima"}));
+      g.appendChild(el("rect",{x:x-5.4,y:y-7,width:6,height:3.6,class:"vidro"}));
+      g.appendChild(el("rect",{x:x+6.4,y:y+4.2,width:4,height:3.4,class:"ferrugem"}));
+    } else {
+      g.appendChild(el("line",{x1:x-6,y1:y+7,x2:x-5,y2:y-1,class:"perna"}));
+      g.appendChild(el("line",{x1:x+6,y1:y+7,x2:x+5,y2:y-1,class:"perna"}));
+      g.appendChild(el("rect",{x:x-9,y:y-9,width:18,height:10.4,rx:3,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-6.4,y:y-11,width:12.8,height:2.8,rx:1.4,class:"tampa"}));
+    }
+    gM.appendChild(g);
+  });
+
   [[BASE[0][0],L_TOPO,BASE[1][0]],[BASE[0][1],L_MEIO,BASE[1][1]],[BASE[0][1],L_BOT,BASE[1][1]]]
     .forEach(([a,l,b])=>gE.appendChild(el("polyline",
       {points:[a,...l,b].map(p=>centro(...p).map(n=>n.toFixed(1)).join(",")).join(" "),class:"estrada"})));
@@ -3259,7 +3429,11 @@ function abreManual(){
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
       <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
       <p>Quem ataca <b>saindo do mato sem ter sido visto</b> ganha <b>+2 de Força</b> no golpe. É a <b>Emboscada</b>, e é o motivo de valer a pena a espera.</p>
-      <p>A resposta é <b>presença</b>: mande alguém para o mato e ele acende. Uma <b>Ward</b> acende os dois de uma vez. A pergunta que o jogo faz o tempo todo é essa — vale uma peça vigiando o mato, ou ela faz mais pressionando a rota?</p></section>
+      <p>A resposta é <b>presença</b>: mande alguém para o mato e ele acende. Uma <b>Ward</b> acende o mato <b>onde ela está plantada</b> — ward na rota não enxerga mato nenhum. A pergunta que o jogo faz o tempo todo é essa — vale uma peça vigiando o mato, ou ela faz mais pressionando a rota?</p></section>
+    <section class="destaque"><h4>As casas bloqueadas</h4>
+      <p>Algumas casas da selva têm <b>um ônibus abandonado, carros empilhados ou uma caixa-d'água</b> em cima. Elas são <b>mais escuras</b> e têm o objeto desenhado: <b>ninguém entra e ninguém atravessa</b>.</p>
+      <p>Elas não são enfeite — são o que transforma a selva de campo aberto em <b>corredor</b>. A casa do outro lado do ônibus pode estar a <b>2 de distância e a 4 de caminhada</b>, e é a caminhada que você paga. Dá para emboscar quem vem pelo corredor, e dá para perder o gank por ter escolhido o lado errado do obstáculo.</p>
+      <p>Elas também <b>bloqueiam visão</b>, como todo mato. E <b>nenhuma rota é bloqueada</b>: as três continuam abertas de ponta a ponta.</p></section>
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
@@ -3984,12 +4158,19 @@ async function iaExecutaTurno(){
       for(const h of candidatos){
         const dest=iaDestino(h,lado);
         if(!dest)continue;
-        const agora=dist(...h.pos,...dest.p);
+        /* a régua da IA é a mesma do jogador: passos ANDANDO. Com distância em
+           linha reta ela encostava no obstáculo e parava — nenhuma vizinha
+           reduzia a reta, e o herói ficava tremendo contra o ônibus a partida
+           inteira. É o mesmo defeito que o contorno do `passoNaDirecao` cobria
+           na rotação antiga. */
+        const ate=passosDe(dest.p);
+        const anda=p=>{const v=ate.get(k(...p));return v===undefined?99:v;};
+        const agora=anda(h.pos);
         if(agora===0)continue;
         selHeroi=h; modo="mover"; calcula();
         const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
-          .sort((a,b)=>dist(...a,...dest.p)-dist(...b,...dest.p))[0];
-        if(umPasso&&dist(...umPasso,...dest.p)<agora){
+          .sort((a,b)=>anda(a)-anda(b))[0];
+        if(umPasso&&anda(umPasso)<agora){
           if(aiMode) falaIA(`${h.n} ${dest.motivo}`);
           moveAte(...umPasso);
           passos.set(h.id,(passos.get(h.id)||0)+1);

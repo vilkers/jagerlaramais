@@ -16,6 +16,114 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v39 — hexágonos bloqueados, e o tabuleiro passa a ser de dia · 2026-08-16
+
+Primeira entrega da direção de arte do Vilker (`docs/DIRECAO-DE-ARTE.md`, agora
+canon no repositório). Duas frentes: a **regra** escondida no item 4 do
+documento, e a **repintura** do tabuleiro 2D existente. Miniaturas 3D não
+entraram — exigem engine e modelos que não existem, e são decisão de escopo do
+grupo.
+
+### O que mudou — regra
+
+**Seis casas da selva viraram obstáculo.** Herói não entra e não atravessa. Três
+pares espelhados, com **ônibus abandonado, carros empilhados e caixa-d'água** em
+cima — o obstáculo é o próprio hexágono, e conta a história do mundo.
+
+| | |
+|---|---|
+| Casas bloqueadas | **6** de 27 de selva · selva livre 27 → **21** |
+| Onde | só mato. Nunca rota, base, rio, poço, acampamento, ponto de pouso do Caçador ou vizinha do poço |
+| Visão | continuam bloqueando, como todo mato |
+| Ward, empurrão, puxão, pouso do Caçador | nenhum entra |
+| Lampejo | passa **por cima**, não pousa dentro — é salto |
+
+**Andar passou a ter duas réguas, e esta é a mudança de verdade.** `distância`
+continua sendo a linha reta e continua valendo para **alcance de habilidade** — o
+ônibus para o pé, não o tiro. Para **andar**, a régua virou o caminho que
+contorna o obstáculo.
+
+Sem isso o obstáculo seria enfeite: o movimento deste jogo sempre foi por
+distância e não por caminho — `calcula` aceitava qualquer casa no alcance e
+`moveAte` levava direto. O herói passaria por cima do ônibus e "corredor" não
+existiria em regra nenhuma. **Herói continua não bloqueando caminho**; só o
+obstáculo bloqueia.
+
+A IA anda pela mesma régua. Com linha reta ela encostava no obstáculo e parava —
+nenhuma vizinha reduzia a reta, e o herói ficava tremendo contra o ônibus a
+partida inteira.
+
+**As seis são derivadas da planta, não escritas à mão**, e passam por duas travas
+que valem mais que a escolha: o tabuleiro continua inteiro (toda casa alcança
+toda casa) e a **selva continua com as mesmas duas regiões** que já tinha.
+Bloquear a casa errada partia a selva em ilhas e prendia o Caçador no próprio
+quintal — aconteceu na primeira tentativa, com `[2,5]`, e o teste que trava isso
+nasceu daí. Com as travas, o mapa 11×11 comporta 3 pares e satura sozinho.
+
+**A planta não mudou.** 116 hexágonos, mesmas rotas, mesmas torres, mesmo poço —
+item 1 da direção de arte, com teste de regressão em cima.
+
+### O que mudou — pintura
+
+O tabuleiro era escuro (`#0B120F` de fundo, selva `#101A15`). A direção de arte
+pede o contrário: **dia claro e quente, céu azul, cores**. O chrome do app
+continua escuro **de propósito** — o tabuleiro virou o objeto iluminado sobre a
+mesa, e o contraste faz ele ser o assunto da tela.
+
+| | Era | É |
+|---|---|---|
+| Rota | `#3B5147` verde-chumbo | `#C3B7A4` concreto claro |
+| Selva | `#101A15` quase preto | `#7FA65C` vegetação viva |
+| Rio | `#173540` | `#8FB0AE` canal de concreto |
+| Névoa | `#070C0A` | `#4C453B` escura mas **quente** |
+| Fundo | preto | céu azul → cimento bege |
+| Traço do hexágono | `.9` fraco | `1.1` forte — item 2, tem de dar para contar |
+
+**Sucata não é marrom** (item 10): ônibus amarelo com faixa vermelha, carros
+empilhados vermelhos com porta azul, caixa-d'água azul. **Verde-limão** entrou
+como assinatura da energia do cataclisma, e por enquanto só no poço — a cor vale
+pela raridade.
+
+Casa bloqueada tem chão bem mais escuro que a rota: "não passo aqui" tem de ser
+lido antes de o jogador tentar. Objeto em casa sem visão apaga junto com ela.
+
+### O que isso quebra
+
+**A partida ficou mais curta e os épicos, menos disputados.** Obstáculo custa
+movimento, e movimento gasto contornando é movimento que não foi para o poço.
+
+| | v38 | v39 |
+|---|---|---|
+| Duração mediana | 24 rodadas | **22** |
+| Barões por partida | 1,07 | **0,93** |
+| Dragões por partida | 0,35 | **0,31** |
+| Ações por partida | 60,6 | **57,2** |
+
+Nenhum desses é grave, mas o conjunto anda numa direção só — **menos tempo, menos
+objetivo**. Se o playtest achar que o poço ficou irrelevante, a alavanca barata é
+`BLOQUEIOS_ALVO` (baixar de 3 para 2 tira um par de cada lado), e não o preço do
+Barão, que acabou de ser medido duas vezes sem se mexer.
+
+**Também corrigi um texto que mentia desde a v22.** O painel *Como jogar* dizia
+que "uma Ward acende os dois matos de uma vez" — a regra do mato da v22 desfez
+isso e o texto ficou. Estava no parágrafo vizinho ao que eu tinha de reescrever.
+Agora diz o certo: ward acende o mato **onde ela está plantada**.
+
+### Medição
+
+Rodado com `times=espelho`.
+
+| | v38 | v39 |
+|---|---|---|
+| Testes de regressão | 145 | **161** (16 novos, todos do bloqueio) |
+| Quem começa (espelho) | 52,4% | **52,8%** (n=4500, z=3,73) |
+| Tabuleiro simétrico | sim | sim |
+
+Jogo aberto no Chromium: tabuleiro de dia, os seis obstáculos legíveis em três
+pares espelhados, névoa apagando objeto junto com a casa, sem erro de console.
+
+---
+
 ## v38 — a rotação do Caçador vira escolha de REGIÃO · 2026-08-16
 
 Pedido do Vilker, em especificação escrita. A rotação deixa de ser uma aposta em
