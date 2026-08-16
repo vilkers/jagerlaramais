@@ -1465,6 +1465,1438 @@ teste("nenhuma Ultimate entrega menos que a básica do próprio herói", () => {
   });
 });
 
+/* ═══════════════ v24 — o preço do Dragão ═══════════════ */
+
+/* Medido em 1500 partidas antes de mexer: o Dragão morria em 21,5% das partidas
+   em que aparecia, e `sim/epicos.js` imprimia "muito tentado e pouco fechado".
+   O pedágio foi descartado por medição, não por gosto — `revide=off` deu 21,7%,
+   ou seja, nada. O que segurava era a VIDA: com 4, matar exigia duas Ultimates
+   no mesmo poço, e a janela do Dragão (rodada 5 até a 12, quando o Barão toma o
+   lugar) quase nunca comportava as duas.
+
+   Este teste trava o preço nos dois sentidos, que é onde mora o dilema:
+   caber em dois dados, e nunca em um. */
+teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .mov(0).vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");           // Kaross: básica e Ultimate miram inimigo
+  const livre = g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v));
+  ok(livre, "não achei casa livre colada no poço");
+  c.poe(h, livre);
+
+  /* GOLPE_HAB e GOLPE_ULT são `const` de script e não saem pela ponte, então o
+     peso de cada golpe se mede batendo — num poço fundo demais para morrer no
+     meio da medição e falsear o segundo golpe. */
+  const peso = i => {
+    g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 99;
+    h.agiu = 0; h.vida = g.CATALOGO[h.id].vida; c.dados(6, 6, 6);
+    const v0 = g.J.poco.vida;
+    c.mira(h, i); g.atacaEpico(g.J.poco);
+    return v0 - g.J.poco.vida;
+  };
+  const pesoUlt = peso(2), pesoBas = peso(0);
+  ok(pesoUlt > 0 && pesoBas > 0, "o golpe no poço não tirou vida nenhuma");
+
+  const vida = g.EPICO.dragao.vida;
+  ok(vida <= pesoUlt + pesoBas,
+     `o Dragão tem ${vida} de vida e não cai em Ultimate + básica `
+     + `(${pesoUlt}+${pesoBas}=${pesoUlt + pesoBas}) — caro demais para a janela dele`);
+  ok(vida > pesoUlt,
+     `o Dragão tem ${vida} de vida e cai numa Ultimate sozinha (${pesoUlt}) `
+     + `— deixou de custar o segundo dado, e com ele o dilema`);
+});
+
+/* ═══════════════ v29 — níveis da IA, e o crash do time inteiro morto ═══════════════ */
+
+/* Achado dirigindo a IA de verdade em sim/niveis.js: com o TIME INTEIRO morto,
+   `iaJogaCartas` escolhia como alvo o herói vivo mais saudável — que não existe —
+   e seguia jogando a carta com `selHeroi` indefinido. A primeira carta de ward
+   estourava `TypeError: Cannot read properties of undefined (reading 'pos')` e a
+   partida MORRIA. Time inteiro no respawn ao mesmo tempo é situação comum no fim
+   de partida, não caso de borda. */
+teste("com o time inteiro morto a IA não joga carta — e não derruba a partida", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  g.J.times[0].herois.forEach(h => { h.morto = 2; h.vida = 0; });
+  g.maos[0] = g.baralho.slice(0, 3);            // mão cheia, para ela querer jogar
+
+  let estourou = null;
+  try { g.iaJogaCartas(0); } catch (e) { estourou = e; }
+  eq(estourou, null,
+     `a IA estourou com o time morto: ${estourou && estourou.message}`);
+});
+
+/* ═══════════════ v38 — a rotação do Caçador por REGIÃO ═══════════════ */
+
+/* No início da rodada os dois escolhem, às cegas, PARA QUE REGIÃO o próprio
+   Caçador vai: Topo, Meio, Baixo ou Selva. Ele é reposicionado na hora, sempre
+   dentro da SELVA, na parte dela colada à região escolhida.
+
+   HISTÓRIA, porque estes testes mudaram de lado e isso precisa ficar escrito.
+   Até a v37 a rotação era ANDAR — até 3 casas de graça — e havia dois testes
+   aqui travando o teleporte, herdados da correção que o Vinicius fez na v19
+   contra o desenho da v18. A v38 reintroduz o reposicionamento imediato, a
+   pedido do Vilker, e aqueles dois testes saíram junto.
+
+   O que continua travado, e é a metade da correção do Vinicius que segue de pé:
+   o Caçador NUNCA sai do tabuleiro, nunca pousa fora da selva e nunca pousa em
+   cima de outra peça. Os testes abaixo cobrem exatamente isso. */
+
+const cenaSelva = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                                       ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+                          .mov(0).vez(0);
+
+const REGS = ["topo", "meio", "baixo", "selva"];
+
+/* ---------- as quatro regiões, uma por uma ---------- */
+
+REGS.forEach(reg => {
+  teste(`escolher ${reg.toUpperCase()} põe o Caçador na selva daquela região`, () => {
+    const c = cenaSelva();
+    const g = c.g;
+    const h = g.cacadorDe(0);
+    ok(h, "não achei o Caçador do time 0");
+
+    const alvo = g.SELVA_PONTOS[0][reg];
+    ok(alvo, `a região ${reg} não tem ponto derivado`);
+
+    g.escolheRotacao(0, reg);
+
+    eq(g.dist(...h.pos, ...alvo), 0,
+       `escolheu ${reg} e não pousou no ponto daquela região`);
+    ok(g.MATO.has(g.k(...h.pos)), "pousou fora da selva");
+    ok(g.noTab(...h.pos), "saiu do tabuleiro — foi o erro da v18");
+  });
+});
+
+teste("o Caçador NUNCA pousa dentro da rota, em nenhuma das quatro regiões", () => {
+  const g = cenaSelva().g;
+  [0, 1].forEach(t => REGS.forEach(reg => {
+    const h = g.cacadorDe(t);
+    g.escolheRotacao(t, reg);
+    const K = g.k(...h.pos);
+    ok(!g.LANE.has(K),
+       `time ${t}, região ${reg}: pousou em ${K}, que é corredor de rota`);
+    ok(g.MATO.has(K), `time ${t}, região ${reg}: pousou em ${K}, que não é selva`);
+  }));
+});
+
+teste("Topo, Meio e Baixo pousam colados na PRÓPRIA rota; Selva no centro", () => {
+  const g = cenaSelva().g;
+  [0, 1].forEach(t => {
+    ["topo", "meio", "baixo"].forEach(reg => {
+      const p = g.SELVA_PONTOS[t][reg];
+      const d = Math.min(...g.CORREDOR[reg].map(q => g.dist(...p, ...q)));
+      eq(d, 1, `time ${t}: o ponto de ${reg} está a ${d} da rota ${reg} — devia encostar`);
+    });
+    /* o ponto da Selva não é o de nenhuma rota */
+    const s = g.k(...g.SELVA_PONTOS[t].selva);
+    ["topo", "meio", "baixo"].forEach(reg =>
+      ok(s !== g.k(...g.SELVA_PONTOS[t][reg]),
+         `time ${t}: o ponto da Selva repete o ponto de ${reg} — quatro botões, três lugares`));
+  });
+});
+
+teste("cada time pousa no PRÓPRIO lado, e os oito pontos são espelho exato", () => {
+  const g = cenaSelva().g;
+  const dBase = (p, t) => Math.min(...g.BASE[t].map(b => g.dist(...b, ...p)));
+  [0, 1].forEach(t => REGS.forEach(reg => {
+    const p = g.SELVA_PONTOS[t][reg];
+    ok(dBase(p, t) < dBase(p, 1 - t),
+       `time ${t}, região ${reg}: o ponto ${g.k(...p)} está mais perto da base inimiga`);
+  }));
+  /* `gira` leva a rota de cima na de baixo — o espelho troca topo por baixo */
+  const par = { topo: "baixo", baixo: "topo", meio: "meio", selva: "selva" };
+  REGS.forEach(reg => {
+    const esp = g.gira(...g.SELVA_PONTOS[0][reg]);
+    const alvo = g.SELVA_PONTOS[1][par[reg]];
+    eq(g.k(...esp), g.k(...alvo),
+       `o ponto de ${reg} do time 0 não espelha o de ${par[reg]} do time 1`);
+  });
+});
+
+/* ---------- casa ocupada, casa inválida ---------- */
+
+teste("ponto preferencial OCUPADO: pousa na casa de selva válida mais próxima", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const alvo = g.SELVA_PONTOS[0].topo;
+
+  /* um aliado sentado exatamente no ponto preferencial */
+  const bloqueio = g.J.times[0].herois.find(x => x !== h);
+  c.poe(bloqueio, alvo);
+
+  g.escolheRotacao(0, "topo");
+
+  ok(g.dist(...h.pos, ...alvo) > 0, "pousou em cima de outra peça");
+  ok(g.MATO.has(g.k(...h.pos)), "desviou para fora da selva");
+  ok(!g.LANE.has(g.k(...h.pos)), "desviou para dentro da rota");
+  eq(g.em(...h.pos), h, "a casa de pouso tem outra peça");
+});
+
+teste("ponto preferencial cercado de ocupados: continua achando casa de selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const alvo = g.SELVA_PONTOS[0].meio;
+
+  /* enche o ponto e todas as vizinhas de selva com o resto do time */
+  const encher = [alvo, ...g.vizinhos(...alvo).filter(p => g.MATO.has(g.k(...p)))];
+  const outros = g.J.times[0].herois.filter(x => x !== h)
+                  .concat(g.J.times[1].herois);
+  encher.forEach((p, i) => { if (outros[i]) c.poe(outros[i], p); });
+
+  g.escolheRotacao(0, "meio");
+
+  ok(g.MATO.has(g.k(...h.pos)), "com o ponto cercado, pousou fora da selva");
+  eq(g.em(...h.pos), h, "pousou em cima de outra peça");
+});
+
+teste("escolher a região onde o Caçador JÁ está não falha por ele ocupar a casa", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const alvo = g.SELVA_PONTOS[0].selva;
+  c.poe(h, alvo);
+  g.escolheRotacao(0, "selva");
+  eq(g.dist(...h.pos, ...alvo), 0, "saiu do lugar certo por estar nele");
+});
+
+teste("o reposicionamento não altera o mapa", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const antes = {
+    mato: [...g.MATO].sort().join("|"),
+    lane: [...g.LANE.keys()].sort().join("|"),
+    poco: g.k(...g.POCO),
+    torres: g.J.torres.map(t => `${t.rota}${t.i}${t.t}${t.vida}`).join("|")
+  };
+  [0, 1].forEach(t => REGS.forEach(reg => g.escolheRotacao(t, reg)));
+  eq([...g.MATO].sort().join("|"), antes.mato, "a selva mudou de forma");
+  eq([...g.LANE.keys()].sort().join("|"), antes.lane, "as rotas mudaram de forma");
+  eq(g.k(...g.POCO), antes.poco, "o poço mudou de casa");
+  eq(g.J.torres.map(t => `${t.rota}${t.i}${t.t}${t.vida}`).join("|"), antes.torres, "as torres mudaram");
+});
+
+teste("depois de reposicionado o Caçador age normalmente", () => {
+  const c = cenaSelva().dados(6, 6, 6).mov(3).vez(0);
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.escolheRotacao(0, "topo");
+  const de = [...h.pos];
+
+  /* anda: a peça continua sendo uma peça comum depois do pouso */
+  const livre = g.vizinhos(...h.pos).find(p => g.noTab(...p) && !g.em(...p));
+  ok(livre, "o Caçador pousou sem nenhuma vizinha livre");
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.moveAte(...livre);
+  ok(g.dist(...de, ...h.pos) > 0, "não conseguiu andar depois de reposicionado");
+
+  /* e bate: um inimigo colado toma dano da básica */
+  const alvo = g.J.times[1].herois.find(x => !x.morto);
+  c.poe(alvo, g.vizinhos(...h.pos).find(p => g.noTab(...p) && !g.em(...p)));
+  const v0 = alvo.vida;
+  c.usa(h, 0, alvo);
+  ok(alvo.vida < v0, "a básica não saiu depois do reposicionamento");
+});
+
+/* ---------- o relógio de 10 segundos ---------- */
+
+teste("sem escolha em 10 segundos, o Caçador vai sozinho para a Selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;          // hotseat: os dois são humanos
+  const h = g.cacadorDe(0);
+  const centro = g.SELVA_PONTOS[0].selva;
+  c.poe(h, g.BASE[0][0]);                        // longe do centro da selva
+
+  eq(g.ROTACAO_SEGUNDOS, 10, "o prazo deixou de ser 10 segundos");
+
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "a tela da rotação abriu sem relógio — a partida pode travar esperando");
+  eq(rel.ms, 1000, "o relógio não bate de segundo em segundo");
+
+  /* nove tiques: ainda não escolheu nada */
+  for (let i = 0; i < 9; i++) rel.fn();
+  eq(g.dist(...h.pos, ...centro) === 0, false, "reposicionou antes do prazo acabar");
+
+  rel.fn();                                      // o décimo
+  eq(g.dist(...h.pos, ...centro), 0, "o timeout não mandou o Caçador para o centro da Selva");
+  eq(g.J.rotacao[0], "selva", "o timeout não registrou a Selva como escolha");
+});
+
+teste("o timeout usa exatamente o mesmo caminho da escolha manual", () => {
+  const a = cenaSelva(), b = cenaSelva();
+  a.g.simMode = false; a.g.aiMode = false;
+  a.poe(a.g.cacadorDe(0), a.g.BASE[0][0]);
+  b.poe(b.g.cacadorDe(0), b.g.BASE[0][0]);
+
+  a.g.abreRotacoes();
+  const rel = a.g.__timers.filter(t => t.vivo).pop();
+  for (let i = 0; i < 10; i++) rel.fn();
+
+  b.g.escolheRotacao(0, "selva");               // manual
+
+  eq(a.g.k(...a.g.cacadorDe(0).pos), b.g.k(...b.g.cacadorDe(0).pos),
+     "timeout e escolha manual pousam em casas diferentes");
+});
+
+teste("escolher desliga o relógio — ele não dispara depois", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  const h = g.cacadorDe(0);
+
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "não abriu relógio");
+
+  g.escolheRotacao(0, "topo");                   // o jogador escolheu
+  g.paraRelogioRotacao();                        // é o que o clique faz
+  eq(rel.vivo, false, "o relógio continuou vivo depois da escolha");
+
+  const pouso = g.k(...h.pos);
+  for (let i = 0; i < 20; i++) if (rel.vivo) rel.fn();
+  eq(g.k(...h.pos), pouso, "o relógio disparou depois da escolha e mudou o Caçador de lugar");
+});
+
+teste("com a partida encerrada o relógio se desliga em vez de reposicionar", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  const h = g.cacadorDe(0);
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  const pouso = g.k(...h.pos);
+  g.J.fim = 0;
+  for (let i = 0; i < 15; i++) if (rel.vivo) rel.fn();
+  eq(g.k(...h.pos), pouso, "mexeu no Caçador com a partida já encerrada");
+});
+
+/* ---------- escolha secreta ---------- */
+
+teste("a escolha é secreta: nada no log entrega a região", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const antes = g.J.log.length;
+  REGS.forEach(reg => g.escolheRotacao(0, reg));
+  const novas = g.J.log.slice(0, g.J.log.length - antes).map(l => l.txt).join(" ").toLowerCase();
+  ["topo", "meio", "baixo", "selva", "rotaci"].forEach(palavra =>
+    ok(!novas.includes(palavra),
+       `o log entregou a região do Caçador: achei "${palavra}" em "${novas}"`));
+});
+
+teste("Caçador fora da visão inimiga continua escondido depois de pousar", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* o time 1 inteiro na própria base, longe da selva do time 0 */
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
+  g.escolheRotacao(0, "topo");
+  ok(g.MATO.has(g.k(...h.pos)), "não pousou no mato");
+  ok(!g.visivelPara(h, 1), "o adversário enxergou o Caçador sem ter visão do mato");
+});
+
+teste("com ward na casa de pouso, o adversário VÊ o Caçador — a posição é a informação", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
+
+  const alvo = g.SELVA_PONTOS[0].topo;
+  g.poeWard(1, alvo);                            // ward do time 1 exatamente ali
+  g.escolheRotacao(0, "topo");
+
+  eq(g.dist(...h.pos, ...alvo), 0, "não pousou no ponto esperado");
+  ok(g.visivelPara(h, 1), "a ward estava em cima do Caçador e não o revelou");
+});
+
+teste("ward em OUTRA região não revela: o que revela é a posição, não a escolha", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.J.times[1].herois.forEach(x => c.poe(x, g.BASE[1][0]));
+  g.J.wards = [];
+
+  g.poeWard(1, g.SELVA_PONTOS[0].baixo);         // vigiando a região errada
+  g.escolheRotacao(0, "topo");
+
+  ok(!g.visivelPara(h, 1),
+     "a ward numa região revelou o Caçador que foi para outra — informação de ficha, não de posição");
+});
+
+/* ---------- a IA ---------- */
+
+teste("a IA só devolve Topo, Meio, Baixo ou Selva, e nunca fica sem resposta", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const ids = g.REGIOES.map(r => r.id);
+  eq(ids.sort().join(","), "baixo,meio,selva,topo", "o menu de regiões não é o dos quatro");
+
+  Object.keys(g.NIVEIS_IA).forEach(nivel => {
+    g.nivelIA = nivel;
+    for (let i = 0; i < 40; i++)
+      ok(ids.includes(g.iaEscolheRotacao(1)), `nível ${nivel}: destino fora do menu`);
+  });
+  g.nivelIA = "dificil";
+  g.cacadorDe(1).morto = 2;
+  ok(ids.includes(g.iaEscolheRotacao(1)), "sem Caçador vivo a IA não devolveu região");
+});
+
+teste("a IA usa a mesma mecânica de pouso do jogador", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  const reg = g.iaEscolheRotacao(1);
+  g.escolheRotacao(1, reg);
+  eq(g.k(...h.pos), g.k(...g.SELVA_PONTOS[1][reg]),
+     "a IA pousou em casa diferente da que o mesmo botão daria ao jogador");
+  ok(g.MATO.has(g.k(...h.pos)), "a IA pousou fora da selva");
+  ok(!g.LANE.has(g.k(...h.pos)), "a IA pousou dentro da rota");
+});
+
+teste("a IA escolhe a rota onde há gank, e cada uma das três é alcançável", () => {
+  const g = cenaSelva().g;
+  g.nivelIA = "dificil";
+  ["topo", "meio", "baixo"].forEach(reg => {
+    const c2 = cenaSelva();
+    const g2 = c2.g;
+    g2.nivelIA = "dificil";
+    /* o time 0 inteiro fora do caminho, e um herói dele ferido e exposto
+       colado no ponto de pouso da IA naquela rota */
+    g2.J.times[0].herois.forEach(x => c2.poe(x, g2.BASE[0][0]));
+    const isca = g2.J.times[0].herois[0];
+    /* na ROTA, no vão disputado — é o que "gank no topo" quer dizer */
+    const corr = g2.CORREDOR[reg].filter(p => g2.noTab(...p) && !g2.em(...p));
+    ok(corr.length, `a rota ${reg} não tem casa livre`);
+    const vao = g2.ROTAS[reg][Math.floor(g2.ROTAS[reg].length / 2)];
+    c2.poe(isca, corr.sort((a, b) => g2.dist(...a, ...vao) - g2.dist(...b, ...vao))[0]);
+    isca.vida = 1;
+    /* a IA precisa ENXERGAR a isca — senão, e corretamente, ela a ignora */
+    g2.poeWard(1, isca.pos);
+    g2.J.poco.vida = 0;                          // sem objetivo puxando para a Selva
+    eq(g2.iaEscolheRotacao(1), reg,
+       `com alvo ferido e visível em ${reg}, a IA foi para outro lugar`);
+  });
+});
+
+teste("a IA não enxerga através da névoa para decidir a rotação", () => {
+  /* A isca tem de ficar num MATO colado à rota do topo: rota aberta é visível de
+     torre e de onda, e ali a IA enxerga sem ward nenhuma — de direito. O mato só
+     se vê de dentro, então é lá que dá para separar "decidiu vendo" de
+     "decidiu adivinhando". */
+  const monta = () => {
+    const c = cenaSelva(), g = c.g;
+    g.nivelIA = "dificil";
+    g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+    g.J.wards = [];
+    g.J.poco.vida = 0;                                  // sem objetivo puxando para a Selva
+    return { c, g };
+  };
+  /* uma casa de mato colada ao topo e fora da visão do time 1 */
+  const escolhe = g => [...g.MATO].map(K => K.split(",").map(Number))
+    .filter(p => Math.min(...g.CORREDOR.topo.map(q => g.dist(...p, ...q))) <= 1)
+    .filter(p => !g.enxergaCasa(1, ...p) && !g.em(...p))[0];
+
+  const base = monta();
+  const casa = escolhe(base.g);
+  ok(casa, "não achei mato colado ao topo e escondido do time 1");
+
+  const roda = comWard => {
+    const { c, g } = monta();
+    const isca = g.J.times[0].herois[0];
+    c.poe(isca, casa);
+    isca.vida = 1;
+    if (comWard) g.poeWard(1, casa);
+    ok(g.visivelPara(isca, 1) === comWard,
+       `a visibilidade da isca não é a esperada (ward=${comWard})`);
+    return g.iaEscolheRotacao(1);
+  };
+
+  eq(roda(true), "topo", "com ward em cima do alvo a IA não foi ao gank");
+  ok(roda(false) !== "topo",
+     "sem visão do alvo a IA foi ao gank mesmo assim — está lendo através da névoa");
+});
+
+teste("com o Barão de pé e o mapa quieto, a IA vai para a Selva", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  /* ninguém visível em rota nenhuma */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+  g.J.wards = [];
+  g.J.poco.id = "barao"; g.J.poco.vida = 16;
+  eq(g.iaEscolheRotacao(1), "selva", "com o Barão vivo e nada nas rotas, a IA não foi à Selva");
+});
+
+teste("o Aprendiz sorteia entre as quatro regiões — e só entre elas", () => {
+  const g = cenaSelva().g;
+  g.nivelIA = "facil";
+  const vistos = new Set();
+  for (let i = 0; i < 300; i++) vistos.add(g.iaEscolheRotacao(1));
+  ok([...vistos].every(x => REGS.includes(x)), `sorteou fora do menu: ${[...vistos]}`);
+  ok(vistos.size >= 3, `o sorteio do Aprendiz só produziu ${vistos.size} regiões em 300 tentativas`);
+});
+
+/* ---------- o que saiu junto ---------- */
+
+teste("as opções antigas de destino não existem mais no menu", () => {
+  const g = cenaSelva().g;
+  const ids = g.REGIOES.map(r => r.id);
+  ["proprio", "neutro", "invasao", "poco"].forEach(velho =>
+    ok(!ids.includes(velho), `o destino antigo "${velho}" continua no menu da rotação`));
+  ok(!("migraCacador" in g), "migraCacador continua exposto — a rotação por passos não saiu inteira");
+});
+
+/* O foco no poço deixou de ser bônus de rotação junto com o destino "poço", mas
+   o +1 no golpe continua existindo no motor. Este teste guarda a regra, agora
+   sem passar pela rotação — era a única cobertura que ela tinha. */
+teste("o foco no poço soma +1 no golpe, venha ele de onde vier", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 99;
+  const semFoco = g.golpeNoPoco(h, h.habs[0], 0, 4, g.J.poco);
+  h.focoPoco = 1;
+  eq(g.golpeNoPoco(h, h.habs[0], 0, 4, g.J.poco), semFoco + 1,
+     "o foco no poço não somou +1 no golpe");
+});
+/* ═══════════════ v39 — hexágonos bloqueados na selva ═══════════════ */
+
+/* Item 4 e 5 da direção de arte: algumas casas da selva são fisicamente
+   bloqueadas, e o obstáculo é o próprio hexágono. Elas existem para a selva
+   virar corredor em vez de campo aberto.
+
+   O item 1 da mesma direção diz que a PLANTA NÃO MUDA. Os dois convivem porque
+   bloquear é sobre quais casas são caminháveis, não sobre onde os hexágonos
+   estão — e o primeiro teste daqui existe para provar isso. */
+
+const cenaBloq = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                                      ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+                         .mov(6).vez(0);
+
+teste("a planta do mapa não mudou: mesmos hexágonos, rotas, torres e poço", () => {
+  const g = cenaBloq().g;
+  let casas = 0;
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++) if (g.noTab(c, r)) casas++;
+  eq(casas, 116, "o número de hexágonos do tabuleiro mudou");
+  eq(g.COLS, 11, "largura do tabuleiro mudou");
+  eq(g.LINS, 11, "altura do tabuleiro mudou");
+  eq(g.MATO.size, 27, "o tamanho da selva mudou");
+  eq(g.k(...g.POCO), "8,8", "o poço saiu do lugar");
+  eq(g.J.torres.length, 12, "o número de torres mudou");
+  /* nenhuma bloqueada é rota, base, rio ou poço */
+  [...g.BLOQUEADO].forEach(K => {
+    ok(g.MATO.has(K), `a casa bloqueada ${K} não é selva`);
+    ok(!g.LANE.has(K), `a casa bloqueada ${K} é corredor de rota`);
+    ok(K !== g.k(...g.POCO), "o poço foi bloqueado");
+  });
+});
+
+teste("bloqueada nenhuma cai em acampamento nem em ponto de pouso do Caçador", () => {
+  const g = cenaBloq().g;
+  const pousos = new Set([0, 1].flatMap(t =>
+    ["topo", "meio", "baixo", "selva"].map(i => g.k(...g.SELVA_PONTOS[t][i]))));
+  const acampas = new Set([
+    ...g.CAMP_NEUTRO_LADOS.map(p => g.k(...p)),
+    g.k(...g.CAMP_AZUL), g.k(...g.gira(...g.CAMP_AZUL))
+  ]);
+  [...g.BLOQUEADO].forEach(K => {
+    ok(!pousos.has(K), `a casa bloqueada ${K} é ponto de pouso do Caçador`);
+    ok(!acampas.has(K), `a casa bloqueada ${K} é acampamento`);
+  });
+  /* e o poço continua acessível: nenhuma vizinha dele bloqueada */
+  g.vizinhos(...g.POCO).forEach(p =>
+    ok(!g.ehBloqueado(...p), `a vizinha ${g.k(...p)} do poço foi bloqueada — o objetivo fica sem porta`));
+});
+
+teste("as casas bloqueadas são espelho exato umas das outras", () => {
+  const g = cenaBloq().g;
+  ok(g.BLOQUEADO.size > 0, "não há casa bloqueada nenhuma");
+  eq(g.BLOQUEADO.size % 2, 0, "número ímpar de bloqueadas — alguma ficou sem espelho");
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    const e = g.gira(c, r);
+    ok(g.BLOQUEADO.has(g.k(...e)),
+       `a casa ${K} está bloqueada e o espelho dela ${g.k(...e)} não — um lado anda mais que o outro`);
+  });
+});
+
+teste("obstáculo não encosta em obstáculo — é contorno, não muralha", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    const vizinhaBloq = g.vizinhos(c, r).find(p => g.ehBloqueado(...p));
+    ok(!vizinhaBloq,
+       `${K} encosta em ${vizinhaBloq && g.k(...vizinhaBloq)} — dois obstáculos juntos viram parede`);
+  });
+});
+
+teste("o tabuleiro continua inteiro: toda casa livre alcança toda casa livre", () => {
+  const g = cenaBloq().g;
+  const livres = [];
+  for (let r = 0; r < g.LINS; r++) for (let c = 0; c < g.COLS; c++)
+    if (g.noTab(c, r) && !g.ehBloqueado(c, r)) livres.push([c, r]);
+  const d = g.passosDe(livres[0]);
+  const presas = livres.filter(p => !d.has(g.k(...p)));
+  eq(presas.length, 0, `${presas.length} casas ficaram inalcançáveis: ${presas.slice(0, 5).map(p => g.k(...p))}`);
+});
+
+teste("a selva continua inteira — o bloqueio estreita corredor, não parte em ilhas", () => {
+  const g = cenaBloq().g;
+  /* componentes do grafo de mato, com e sem os bloqueios */
+  const comps = usaBloqueio => {
+    const livres = [...g.MATO].map(K => K.split(",").map(Number))
+      .filter(p => !(usaBloqueio && g.ehBloqueado(...p)));
+    const chaves = new Set(livres.map(p => g.k(...p)));
+    const vis = new Set(); let n = 0;
+    livres.forEach(p0 => {
+      if (vis.has(g.k(...p0))) return;
+      n++; const f = [p0]; vis.add(g.k(...p0));
+      while (f.length) {
+        const p = f.pop();
+        g.vizinhos(...p).forEach(v => {
+          const kk = g.k(...v);
+          if (chaves.has(kk) && !vis.has(kk)) { vis.add(kk); f.push(v); }
+        });
+      }
+    });
+    return n;
+  };
+  eq(comps(true), comps(false),
+     "o bloqueio partiu a selva em mais regiões do que ela tinha — o Caçador fica preso no quintal");
+});
+
+teste("cada casa bloqueada tem um obstáculo declarado — nada de pedra genérica", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K =>
+    ok(g.OBSTACULO[K], `a casa bloqueada ${K} não diz o que está em cima dela`));
+  /* o par espelhado carrega o mesmo objeto: silhueta igual dos dois lados */
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    eq(g.OBSTACULO[g.k(...g.gira(c, r))], g.OBSTACULO[K],
+       `${K} e o espelho dele têm obstáculos diferentes`);
+  });
+});
+
+/* ---------- o herói não entra ---------- */
+
+teste("casa bloqueada nunca aparece entre os destinos de movimento", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* colado numa bloqueada, com movimento de sobra */
+  const alvo = [...g.BLOQUEADO].map(K => K.split(",").map(Number))[0];
+  const perto = g.vizinhos(...alvo).find(p => g.noTab(...p) && !g.em(...p) && !g.ehBloqueado(...p));
+  ok(perto, "a casa bloqueada não tem vizinha livre");
+  c.poe(h, perto);
+
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  const achou = g.mover.find(p => g.ehBloqueado(...p));
+  ok(!achou, `o obstáculo ${achou && g.k(...achou)} entrou na lista de destinos`);
+
+  /* e o caminho direto também é recusado */
+  const antes = g.k(...h.pos);
+  g.moveAte(...alvo);
+  eq(g.k(...h.pos), antes, "o herói entrou no hexágono bloqueado");
+});
+
+teste("o herói não ATRAVESSA: a casa atrás do obstáculo custa o contorno", () => {
+  const g = cenaBloq().g;
+  /* procura um par (casa livre, casa livre) cuja reta passe por um obstáculo */
+  let achado = null;
+  for (const K of g.BLOQUEADO) {
+    const [bc, br] = K.split(",").map(Number);
+    const viz = g.vizinhos(bc, br).filter(p => !g.ehBloqueado(...p) && g.noTab(...p));
+    for (const a of viz) for (const b of viz) {
+      if (g.k(...a) === g.k(...b)) continue;
+      const reta = g.dist(...a, ...b);
+      const anda = g.passosAte(a, b);
+      if (anda !== null && anda > reta) { achado = { a, b, reta, anda, obst: K }; break; }
+    }
+    if (achado) break;
+  }
+  ok(achado, "não achei nenhum par cuja reta atravesse um obstáculo — o bloqueio não está criando contorno");
+  ok(achado.anda > achado.reta,
+     `andando ${achado.anda} e em linha reta ${achado.reta}: o obstáculo ${achado.obst} não está sendo contornado`);
+});
+
+teste("moveAte cobra o caminho andado, não a linha reta", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* acha um destino cujo contorno custe mais que a reta */
+  let par = null;
+  for (const K of g.BLOQUEADO) {
+    const [bc, br] = K.split(",").map(Number);
+    const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p));
+    for (const a of viz) for (const b of viz) {
+      if (g.k(...a) === g.k(...b)) continue;
+      const anda = g.passosAte(a, b);
+      if (anda !== null && anda > g.dist(...a, ...b)) { par = { a, b, anda }; break; }
+    }
+    if (par) break;
+  }
+  ok(par, "não achei par com contorno");
+
+  g.J.times[0].herois.concat(g.J.times[1].herois).forEach((x, i) => {
+    if (x !== h) c.poe(x, g.BASE[x.t][0]);
+  });
+  c.poe(h, par.a);
+  h.agilUsado = 1;                                  // tira o desconto do Ágil da conta
+  g.J.mov = { v: 9, rest: 9 };
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  g.moveAte(...par.b);
+  eq(g.k(...h.pos), g.k(...par.b), "não chegou ao destino");
+  eq(9 - g.J.mov.rest, par.anda,
+     `pagou ${9 - g.J.mov.rest} por um caminho de ${par.anda} passos — está cobrando a reta`);
+});
+
+teste("a IA contorna o obstáculo em vez de travar contra ele", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  /* põe a IA colada num obstáculo, com o destino do outro lado dele */
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p) && !g.em(...p));
+  ok(viz.length >= 2, "obstáculo sem duas vizinhas livres");
+  c.poe(h, viz[0]);
+
+  const de = [...h.pos];
+  const ate = g.passosDe(viz[1]);
+  const antes = ate.get(g.k(...de));
+
+  /* um passo de movimento pela mesma régua que a IA usa */
+  g.J.vez = 1; g.J.mov = { v: 3, rest: 3 };
+  g.selHeroi = h; g.limpaModo(); g.selHeroi = h;
+  g.modo = "mover"; g.calcula();
+  const passo = g.mover.filter(p => g.dist(...h.pos, ...p) === 1)
+    .sort((a, b) => (ate.get(g.k(...a)) ?? 99) - (ate.get(g.k(...b)) ?? 99))[0];
+  ok(passo, "não sobrou nenhum passo possível");
+  ok(!g.ehBloqueado(...passo), "o passo escolhido é dentro do obstáculo");
+  ok((ate.get(g.k(...passo)) ?? 99) < antes,
+     "nenhum passo aproxima do destino — a IA travaria contra o obstáculo");
+});
+
+/* ---------- as outras formas de entrar numa casa ---------- */
+
+teste("o Caçador nunca pousa em casa bloqueada, em nenhuma das quatro regiões", () => {
+  const g = cenaBloq().g;
+  [0, 1].forEach(t => ["topo", "meio", "baixo", "selva"].forEach(reg => {
+    const h = g.cacadorDe(t);
+    g.escolheRotacao(t, reg);
+    ok(!g.ehBloqueado(...h.pos),
+       `time ${t}, região ${reg}: o Caçador pousou dentro do obstáculo ${g.k(...h.pos)}`);
+  }));
+});
+
+teste("o pouso desvia quando o ponto preferencial vira obstáculo", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* nenhum ponto de pouso é bloqueado por construção — então o teste é que o
+     desvio existe e continua caindo em selva livre mesmo com o mapa apertado */
+  const outros = g.J.times[0].herois.filter(x => x !== h).concat(g.J.times[1].herois);
+  outros.forEach((x, i) => {
+    const alvo = g.SELVA_PONTOS[0].topo;
+    if (i === 0) c.poe(x, alvo);
+  });
+  g.escolheRotacao(0, "topo");
+  ok(g.MATO.has(g.k(...h.pos)), "desviou para fora da selva");
+  ok(!g.ehBloqueado(...h.pos), "desviou para dentro de um obstáculo");
+  eq(g.em(...h.pos), h, "desviou para cima de outra peça");
+});
+
+teste("empurrar e puxar não jogam ninguém para dentro do obstáculo", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  const viz = g.vizinhos(bc, br).filter(p => g.noTab(...p) && !g.ehBloqueado(...p));
+  ok(viz.length >= 2, "obstáculo sem vizinhas livres");
+
+  const alvo = g.J.times[1].herois.find(x => !x.morto);
+  const empurrador = g.J.times[0].herois.find(x => !x.morto);
+  /* alvo colado ao obstáculo, empurrador do lado oposto: o empurrão aponta
+     exatamente para dentro da casa bloqueada */
+  c.poe(alvo, viz[0]);
+  const oposto = g.vizinhos(...viz[0]).find(p => g.noTab(...p) && !g.em(...p) && g.k(...p) !== K);
+  c.poe(empurrador, oposto);
+  for (let i = 0; i < 6; i++) {
+    g.desloca(alvo, empurrador.pos, +1, 1);
+    ok(!g.ehBloqueado(...alvo.pos), `empurrão ${i + 1} jogou o alvo para dentro de ${g.k(...alvo.pos)}`);
+    g.desloca(alvo, empurrador.pos, -1, 1);
+    ok(!g.ehBloqueado(...alvo.pos), `puxão ${i + 1} jogou o alvo para dentro de ${g.k(...alvo.pos)}`);
+  }
+});
+
+teste("ward não é plantada dentro do obstáculo", () => {
+  const g = cenaBloq().g;
+  const K = [...g.BLOQUEADO][0];
+  const [bc, br] = K.split(",").map(Number);
+  g.J.times[0].wards = [];
+  g.poeWard(0, [bc, br]);
+  eq((g.J.times[0].wards || []).length, 0, "plantou ward dentro de um hexágono bloqueado");
+  /* e numa casa livre continua funcionando */
+  const livre = g.vizinhos(bc, br).find(p => !g.ehBloqueado(...p) && g.noTab(...p));
+  g.poeWard(0, livre);
+  eq(g.J.times[0].wards.length, 1, "parou de plantar ward em casa válida");
+});
+
+teste("o obstáculo continua bloqueando visão, como todo mato", () => {
+  const g = cenaBloq().g;
+  [...g.BLOQUEADO].forEach(K => {
+    const [c, r] = K.split(",").map(Number);
+    ok(g.ehMato(c, r), `${K} deixou de contar como mato e passou a ser transparente`);
+  });
+});
+
+/* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
+
+/* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da
+   força e poder".
+
+   Correto, e o histórico explica sem justificar: Julgamento, Ato Final e Sentença
+   viraram `danoFixo` na v19 porque estavam PIORES que a própria básica, e travar
+   o número com "ignora armadura" foi o conserto rápido. O preço era este — elas
+   pararam no tempo: não crescem com dado, com Poder, com item, com Reforço nem
+   com a Herança do Dragão, enquanto a básica do mesmo herói cresce com tudo isso.
+   Numa partida longa a Ultimate virava a jogada pior.
+
+   Agora elas escalam como qualquer outra E continuam ignorando armadura — mas com
+   multiplicador REDUZIDO (0,8), que é o preço do dano que passa por dentro. Contra
+   alvo sem armadura rendem menos que uma Ultimate comum; contra alvo blindado,
+   mais. É a identidade de dano verdadeiro do gênero, e não um upgrade grátis. */
+teste("as Ultimates perfurantes crescem com o dado e com o Poder", () => {
+  const c = cena();
+  const g = c.g;
+  const perfurantes = Object.entries(g.CATALOGO)
+    .filter(([id, d]) => d.habs[2].ef.perfura)
+    .map(([id, d]) => d.n);
+  ok(perfurantes.length >= 3,
+     `esperava ao menos 3 Ultimates perfurantes, achei ${perfurantes.length}`);
+
+  Object.values(g.CATALOGO).forEach(def => {
+    const u = def.habs[2];
+    if (!u.ef.perfura) return;
+    ok(!u.ef.danoFixo, `${def.n}: ${u.n} continua com danoFixo — não escala com nada`);
+    ok(u.ef.dano, `${def.n}: ${u.n} é perfurante mas não tem dano que escale`);
+    /* a comparação é da FÓRMULA, e não da faixa legal de dado: o Julgamento
+       exige 6, então "dado mínimo contra dado 6" nele compara 6 com 6. */
+    const comDado = F => Math.round(F * u.ef.dano * g.ESCALA_ULT) + def.poder;
+    ok(comDado(6) > comDado(1),
+       `${def.n}: ${u.n} entrega o mesmo com dado 1 e com dado 6 — continua travada`);
+    const comPoder = P => Math.round(6 * u.ef.dano * g.ESCALA_ULT) + P;
+    ok(comPoder(def.poder + 2) > comPoder(def.poder),
+       `${def.n}: ${u.n} não responde a Poder — item e Reforço não a alcançam`);
+  });
+});
+
+teste("dano perfurante rende menos que Ultimate comum contra alvo sem armadura", () => {
+  const c = cena();
+  const g = c.g;
+  Object.values(g.CATALOGO).forEach(def => {
+    const u = def.habs[2];
+    if (!u.ef.perfura) return;
+    const perf = Math.round(6 * u.ef.dano * g.ESCALA_ULT) + def.poder;
+    const comum = Math.round(6 * 1 * g.ESCALA_ULT) + def.poder;   // a mesma Ultimate sem perfurar
+    ok(perf < comum,
+       `${def.n}: ${u.n} perfura E entrega ${perf} contra os ${comum} de uma Ultimate comum `
+       + `— passar por dentro da armadura tem de custar alguma coisa`);
+  });
+});
+
+/* ═══════════════ v27 — o alvo escondido embaixo do outro ═══════════════ */
+
+/* RELATO: "eu estava com todos os creeps na base e ele com os heróis dentro do
+   nexus, eu não conseguia dar dano no nexus pra acabar a partida, e os creeps
+   tão não".
+
+   Empate travado, e as duas metades se alimentavam. A ÚLTIMA MURALHA (v23) diz
+   que com o Nexus em 1 a onda só passa se NÃO houver herói defendendo — então a
+   onda parava, de propósito, esperando o herói fechar. Só que na tela o Nexus
+   desenha o alvo de toque com raio 9 e o herói com raio 15,5, e o herói é
+   desenhado DEPOIS: um defensor parado em cima do Nexus cobria o alvo dele por
+   inteiro. A regra exigia o golpe de herói e a tela não deixava dar o golpe.
+
+   A correção é a pedida: quando mais de um alvo divide o mesmo hexágono, o
+   toque abre uma janela perguntando em quem se está batendo. */
+teste("herói em cima do Nexus não esconde o Nexus — os dois viram opção de alvo", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const lado = 1;
+  /* rota aberta e Nexus no último ponto: o cenário exato do relato */
+  g.J.torres.filter(t => t.t === lado).forEach(t => { t.vida = 0; });
+  g.J.nexus[lado] = 1;
+
+  const defensor = c.heroi(1, "topo");
+  c.poe(defensor, g.BASE[lado][0]);              // defensor EM CIMA do Nexus
+
+  const atacante = c.heroi(0, "meio");           // Solenne, alcance 3
+  const perto = g.vizinhos(...g.BASE[lado][0]).find(v => g.noTab(...v) && !g.em(...v));
+  ok(perto, "não achei casa livre ao lado do Nexus");
+  c.poe(atacante, perto);
+
+  c.mira(atacante, 0);
+  const lista = g.alvosNoHex(...g.BASE[lado][0]);
+  const tipos = lista.map(a => a.tipo);
+  ok(tipos.includes("nexus"),
+     `o hexágono do Nexus com um defensor em cima ofereceu ${JSON.stringify(tipos)} — `
+     + `o Nexus sumiu como alvo e a partida não tem como terminar`);
+  ok(tipos.includes("heroi"), "o defensor deixou de ser alvo");
+  ok(lista.length > 1, "com dois alvos no mesmo hexágono a janela de escolha precisa abrir");
+});
+
+teste("com um alvo só no hexágono, nada de janela — o toque resolve direto", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const alvo = c.heroi(1, "topo"), atacante = c.heroi(0, "topo");
+  c.poe(alvo, [5, 5]);
+  c.poe(atacante, g.vizinhos(5, 5).find(v => g.noTab(...v) && !g.em(...v)));
+  c.mira(atacante, 0);
+  eq(g.alvosNoHex(5, 5).length, 1, "hexágono com um alvo só não deveria abrir escolha");
+});
+
+/* ═══════════════ v26 — o Barão apanha como herói ═══════════════ */
+
+/* Cada morador conta uma coisa, e é de propósito. O Dragão conta GOLPES
+   (Ultimate 2, básica 1, o dado não entra); o Barão conta DANO, pela mesma
+   fórmula de qualquer herói. Estes testes travam os dois lados: sem o primeiro,
+   alguém "uniformiza" o Dragão; sem o segundo, o Barão volta a ser um contador. */
+
+const cenaPoco = (id, vida) => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+              .mov(0).vez(0);
+  const g = c.g;
+  g.J.rodada = id === "barao" ? 12 : 1;
+  g.J.poco.id = id;
+  g.J.poco.vidaMax = vida || g.EPICO[id].vida;
+  g.J.poco.vida = g.J.poco.vidaMax;
+  return c;
+};
+/* bate no poço com o herói `h` usando o slot `i` e o dado `dado`; devolve quanto saiu */
+function golpeNoPoco(c, h, i, dado) {
+  const g = c.g;
+  h.agiu = 0; h.vida = g.CATALOGO[h.id].vida;
+  c.dados(dado, dado, dado);
+  const v0 = g.J.poco.vida;
+  c.mira(h, i); g.atacaEpico(g.J.poco);
+  return v0 - g.J.poco.vida;
+}
+
+teste("o Barão apanha pela regra dos heróis — Força + Poder − Armadura", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");                      // Kaross: básica dano 1
+  const livre = g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v));
+  c.poe(h, livre);
+
+  const arm = g.EPICO.barao.arm || 0;
+  const P = g.poderTotal(h);
+  for (const dado of [2, 4, 6]) {
+    const esperado = Math.max(1, Math.round(dado * 1) + P - arm);
+    eq(golpeNoPoco(c, h, 0, dado), esperado,
+       `básica com dado ${dado} devia tirar ${esperado} do Barão (Força+Poder−Armadura)`);
+  }
+});
+
+teste("no Barão o dado importa; no Dragão, não", () => {
+  const cB = cenaPoco("barao", 99), gB = cB.g;
+  const hB = cB.heroi(0, "topo");
+  cB.poe(hB, gB.vizinhos(...gB.POCO).find(v => gB.noTab(...v) && !gB.em(...v)));
+  ok(golpeNoPoco(cB, hB, 0, 6) > golpeNoPoco(cB, hB, 0, 1),
+     "o Barão levou o mesmo de um dado 6 e de um dado 1 — ele voltou a contar golpes");
+
+  const cD = cenaPoco("dragao", 99), gD = cD.g;
+  const hD = cD.heroi(0, "topo");
+  cD.poe(hD, gD.vizinhos(...gD.POCO).find(v => gD.noTab(...v) && !gD.em(...v)));
+  eq(golpeNoPoco(cD, hD, 0, 6), golpeNoPoco(cD, hD, 0, 1),
+     "o Dragão passou a variar com o dado — ele conta GOLPES, e é assim de propósito");
+});
+
+teste("o Dragão continua em Ultimate 2 e básica 1", () => {
+  const c = cenaPoco("dragao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  eq(golpeNoPoco(c, h, 0, 6), 1, "a básica deixou de tirar 1 do Dragão");
+  eq(golpeNoPoco(c, h, 2, 6), 2, "a Ultimate deixou de tirar 2 do Dragão");
+});
+
+/* O QUE OBRIGA UM GRUPO É A ARMADURA, NÃO A VIDA.
+   A primeira tentativa deu ao Barão 22 de vida e 1 de armadura, e resolvia o
+   problema errado: com armadura baixa todo dado contribui proporcionalmente, e
+   cinco cutucadas fracas derrubam o objetivo igual a dois golpes comprometidos —
+   vida alta vira barra comprida, não exigência de time. Com armadura 3 o dado
+   fraco quase não conta, e é isso que faz o Barão pedir os dados bons de vários
+   heróis ao mesmo tempo. */
+teste("no Barão o dado bom vale muito mais que o fraco — é isso que exige um grupo", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+
+  const fraco = golpeNoPoco(c, h, 0, 2);      // básica, dado 2
+  const forte = golpeNoPoco(c, h, 2, 6);      // Ultimate, dado 6
+  ok(forte >= fraco * 3,
+     `Ultimate com dado 6 tira ${forte} e básica com dado 2 tira ${fraco} — só ${(forte / fraco).toFixed(1)}× `
+     + `de diferença. Sem esse degrau, cutucar com dado ruim vale tanto quanto comprometer o bom, `
+     + `e o Barão deixa de precisar de um grupo`);
+});
+
+teste("o Barão não é o saco de pancada mais gordo da mesa", () => {
+  const c = cena();
+  const g = c.g;
+  const menorHeroi = Math.min(...Object.values(g.CATALOGO).map(d => d.vida));
+  ok(g.EPICO.barao.vida < menorHeroi,
+     `o Barão tem ${g.EPICO.barao.vida} de vida e o herói mais frágil tem ${menorHeroi} — `
+     + `o objetivo passou a exigir grupo por ter barra comprida, que é o jeito preguiçoso`);
+  ok(g.EPICO.barao.arm >= 3,
+     `o Barão tem ${g.EPICO.barao.arm} de armadura — é a armadura, e não a vida, que faz o dado ruim não servir`);
+});
+
+/* Nenhum escudo pode valer um turno inteiro. A Muralha dava Força + 11, ou seja
+   17 num herói de 25 — 68% da vida máxima, de uma habilidade só. Isso não é
+   "absorve um golpe", é "ignore a rodada". Teto de 12: metade da vida do maior
+   herói do jogo e dois terços da do menor. */
+teste("nenhum escudo passa de 12 — metade da vida do maior herói", () => {
+  const c = cena();
+  const g = c.g;
+  const TETO = 12, DADO_MAX = 6;
+  const passaram = [];
+  Object.values(g.CATALOGO).forEach(def => def.habs.forEach(hb => {
+    if (!hb.ef.escudo) return;
+    const maximo = DADO_MAX + hb.ef.escudo;
+    if (maximo > TETO) passaram.push(`${def.n}/${hb.n} chega a ${maximo}`);
+  }));
+  eq(passaram.length, 0,
+     `escudo acima do teto de ${TETO}: ${passaram.join(", ")} — escudo desse tamanho `
+     + `não absorve um golpe, apaga um turno`);
+});
+
+/* A carta prometia 4 de escudo e o motor entregava 7. O jogador escolhia a
+   dádiva lendo um número e recebia outro — e 7 por herói por turno somava 70 de
+   escudo no time em duas rodadas. */
+teste("a Égide entrega exatamente o escudo que a própria carta promete", () => {
+  const c = cena();
+  const g = c.g;
+  const egide = g.DADIVAS.find(d => d.id === "egide");
+  ok(egide, "não achei a Égide entre as dádivas");
+  const prometido = /(\d+) de escudo/.exec(egide.d);
+  ok(prometido, `o texto da Égide não diz quanto escudo dá: "${egide.d}"`);
+  eq(g.BARAO_ESCUDO, +prometido[1],
+     `a carta promete ${prometido[1]} de escudo e o motor entrega ${g.BARAO_ESCUDO}`);
+});
+
+teste("Ultimate perfurante ignora a armadura do Barão, como ignora a de um herói", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const s = c.heroi(0, "meio");          // Solenne: Julgamento é perfurante
+  const ult = s.habs[2];
+  ok(ult.ef.perfura, "a Ultimate da Solenne deixou de ser perfurante");
+  c.poe(s, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+
+  const esperado = Math.round(6 * ult.ef.dano * g.ESCALA_ULT) + g.poderTotal(s);
+  eq(golpeNoPoco(c, s, 2, 6), esperado,
+     `a armadura ${g.EPICO.barao.arm} do Barão comeu parte do dano perfurante`);
+});
+
+/* Quando os dois moradores contavam golpes, o motor e a IA podiam calcular o
+   golpe em lugares diferentes sem ninguém notar. Com o Barão em dano, a
+   divergência viraria a IA achando que nunca fecha e largando o objetivo. */
+teste("a IA avalia o poço na mesma unidade em que o motor cobra", () => {
+  const c = cenaPoco("barao", 99);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
+  c.dados(5, 5, 5); h.agiu = 0;
+
+  const previsto = g.golpeNoPoco(h, h.habs[0], 0, 5, g.J.poco);
+  const saiu = golpeNoPoco(c, h, 0, 5);
+  eq(saiu, previsto,
+     "o que a IA usa para decidir não é o que o motor cobra — ela vai largar o Barão");
+});
+
+/* ═══════════════ v25 — a loja e o escudo que não apareciam ═══════════════ */
+
+/* RELATO: "não tô conseguindo comprar os itens de buff".
+   A prateleira "Gastar ouro" desenha os botões com class="itC" E data-g. O
+   handler dos itens era ligado por `querySelectorAll(".itC")`, que pega as DUAS
+   prateleiras, e como ele é ligado DEPOIS, sobrescrevia o handler do gasto.
+   Clicar em Reforço caía no corpo do item, `ITEM[undefined]` dava undefined e
+   `it.o` estourava TypeError: o botão simplesmente não fazia nada.
+
+   O teste lê do próprio fonte o seletor com que o handler de item é ligado e
+   confere que ele NÃO alcança nenhum botão de gasto. É o único jeito de pegar
+   este bug sem um DOM de verdade — e é a forma exata do erro. */
+teste("o seletor dos itens da loja não rouba o clique dos gastos de ouro", () => {
+  const fs = require("fs"), path = require("path");
+  const { RAIZ } = require("./motor.js");
+  const fonte = fs.readFileSync(path.join(RAIZ, "jogo/jogo.js"), "utf8");
+
+  const corpo = /function abreLoja\(\)\{[\s\S]*?\n\}/.exec(fonte);
+  ok(corpo, "não achei abreLoja no fonte");
+  const seletorItem = /querySelectorAll\("([^"]+)"\)\.forEach\(b=>b\.onclick=\(\)=>\{\s*const it=ITEM\[b\.dataset\.i\]/
+                        .exec(corpo[0]);
+  ok(seletorItem, "não achei o handler de compra de item dentro de abreLoja");
+
+  /* renderiza a loja de verdade e pega os botões que ela produz */
+  const c = cena();
+  const g = c.g;
+  let html = "";
+  g.abreSheet = (titulo, corpoHtml) => { html = corpoHtml; };
+  const h = g.J.times[0].herois[0];
+  h.ouro = 99;                              // dinheiro para as duas prateleiras acenderem
+  g.J.vez = 0;
+  g.abreLoja();
+
+  const botoes = html.match(/<button[^>]*>/g) || [];
+  const gastos = botoes.filter(b => /data-g="/.test(b));
+  ok(gastos.length, "a prateleira de gasto de ouro não apareceu na loja");
+
+  /* aplica o seletor lido do fonte — só as duas formas que abreLoja usa */
+  const alcanca = tag => seletorItem[1].startsWith(".")
+    ? new RegExp(`class="[^"]*\\b${seletorItem[1].slice(1)}\\b`).test(tag)
+    : new RegExp(`${seletorItem[1].replace(/[[\]]/g, "")}=`).test(tag);
+
+  const roubados = gastos.filter(alcanca);
+  eq(roubados.length, 0,
+     `o seletor '${seletorItem[1]}' dos itens também pega ${roubados.length} botão(ões) `
+     + `de gasto e sobrescreve o clique deles — Reforço vira botão morto`);
+});
+
+/* RELATO: "dei 2 ataques contra o Vharn e não deu dano nem tirou escudo".
+   O escudo absorvia certo — o que faltava era a tela dizer isso. A peça não
+   tem etiqueta de escudo (estadoDaPeca lista seis estados e escudo não é um
+   deles), e `revela()` só emite número flutuante quando o escudo SOBE. Como a
+   vida não muda num golpe absorvido, o ataque saía sem dano, sem tremida e sem
+   número: da cadeira do jogador, nada aconteceu. */
+teste("herói com escudo mostra ESCUDO na peça — senão o golpe absorvido some da tela", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] });
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");
+  /* nada de exigir etiqueta nula aqui: o Vharn nasce na entrada da rota e pode
+     estar no mato, o que legitimamente acende ESCONDIDO. O que este teste
+     trava é que ESCUDO ganha de tudo que for só posição. */
+  vharn.esc = 17;
+  const et = g.estadoDaPeca(vharn);
+  ok(et && /ESCUDO/.test(et.txt),
+     `Vharn com 17 de escudo mostra ${et ? et.txt : "nada"} na peça — `
+     + `o jogador bate e não tem como saber por que não saiu dano`);
+});
+
+teste("a ficha do Time mostra o número do escudo, como já mostra marcado e carregado", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] });
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");
+  vharn.esc = 17;
+  ok(/escudo 17/.test(g.fichaHTML(vharn, false)),
+     "a gaveta do Time não diz quanto escudo o herói tem");
+});
+
+/* ═══════════════ v25 — efeito com prazo e controle de área ═══════════════ */
+
+const cenaDot = () => cena({ times: [["kaross", "kurr", "arden", "cael", "torvald"],
+                                     ["vharn", "grumo", "nira", "vesper", "gorm"]] });
+
+teste("sangramento cobra no início do turno da vítima, e só uma vez por rodada", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo");
+  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  const v0 = vitima.vida;
+
+  g.J.vez = 0; g.iniciaTurno();
+  eq(vitima.vida, v0, "o efeito cobrou no turno do ADVERSÁRIO — a âncora está errada");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 3, "o sangramento não cobrou no início do turno da vítima");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 6, "a segunda rodada de sangramento não cobrou");
+
+  g.J.vez = 1; g.iniciaTurno();
+  eq(vitima.vida, v0 - 6, "o sangramento cobrou uma terceira vez — não tinha prazo");
+  eq(vitima.dots.length, 0, "o efeito não saiu da lista depois de vencer");
+});
+
+teste("o efeito com prazo ignora armadura e escudo — é o golpe que já chegou", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vharn = c.heroi(1, "topo");          // 3 de armadura, e aqui com escudo cheio
+  vharn.esc = 20;
+  g.poeDot(vharn, c.heroi(0, "topo"), "veneno", 3, 2);
+  const v0 = vharn.vida, e0 = vharn.esc;
+
+  /* `cobraDots` direto, e NÃO `iniciaTurno`: o turno começa expirando o escudo
+     (regra da v21), e por esse caminho o escudo sumiria sem o veneno ter
+     encostado nele — o teste passaria medindo a coisa errada. */
+  g.cobraDots(1);
+  eq(vharn.vida, v0 - 3, "a armadura ou o escudo comeram o veneno");
+  eq(vharn.esc, e0, "o veneno gastou escudo — ele deveria passar por dentro");
+});
+
+teste("reaplicar o mesmo efeito renova o prazo, não empilha um segundo", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo"), autor = c.heroi(0, "topo");
+  g.poeDot(vitima, autor, "sangramento", 2, 2);
+  g.poeDot(vitima, autor, "sangramento", 3, 2);
+  eq(vitima.dots.length, 1, "empilhou dois sangramentos — vira dano instantâneo com passos extras");
+  eq(vitima.dots[0].dano, 3, "renovar deveria ficar com o maior dano");
+});
+
+teste("morrer limpa o efeito — o respawn devolve o herói inteiro", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo");
+  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  g.mata(vitima, c.heroi(0, "topo"));
+  eq(vitima.dots.length, 0, "o sangramento sobreviveu à morte e cobraria de novo no respawn");
+});
+
+teste("quem começa o turno na zona inimiga é envenenado; a própria zona não machuca", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const meu = c.heroi(0, "meio"), dele = c.heroi(1, "meio");
+  const alvoHex = [5, 5];
+  c.poe(dele, alvoHex); c.poe(meu, alvoHex);
+  g.poeZona(0, alvoHex, { tipo: "veneno", dano: 2, raio: 1, n: "Tapeçaria", dono: meu });
+
+  g.J.vez = 1; g.zonasCobram(1);
+  ok(dele.dots.length, "o inimigo parado na zona não recebeu o efeito");
+
+  g.J.vez = 0; g.zonasCobram(0);
+  eq(meu.dots.length, 0, "a própria zona envenenou quem a criou");
+});
+
+teste("a zona gasta prazo por turno do adversário, mesmo sem pegar ninguém", () => {
+  const c = cenaDot();
+  const g = c.g;
+  g.poeZona(0, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "zona", dono: c.heroi(0, "meio") });
+  eq(g.J.zonas.length, 1, "a zona não entrou no tabuleiro");
+
+  /* o turno do DONO não gasta carga — senão a zona morreria sem nunca vigiar */
+  g.zonasCobram(0);
+  eq(g.J.zonas.length, 1, "o turno do próprio dono consumiu o prazo da zona");
+
+  for (let i = 0; i < g.ZONA_TURNOS; i++) g.zonasCobram(1);
+  eq(g.J.zonas.length, 0,
+     `a zona sobreviveu aos ${g.ZONA_TURNOS} turnos adversários de prazo`);
+});
+
+/* A simetria que a v20 já teve de aprender nas ondas: o prazo contado em RODADA
+   dava à zona de quem joga primeiro dois turnos adversários de cobrança e à do
+   segundo apenas um. Medido: 53,3% para quem começa contra 51,6% com as zonas
+   desligadas. Contado em turnos, os dois lados recebem o mesmo — e este teste é
+   o que impede a contagem de voltar a ser por rodada. */
+teste("a zona do primeiro e a do segundo jogador vigiam o mesmo tanto de turnos", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const conta = dono => {
+    g.J.zonas = [];
+    g.poeZona(dono, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "z", dono: c.heroi(dono, "meio") });
+    let vigiou = 0;
+    /* a rodada é sempre A → C; quem criou já teve o próprio turno nesta rodada */
+    for (let rodada = 0; rodada < 6 && g.J.zonas.length; rodada++)
+      for (const t of [0, 1]) {
+        if (rodada === 0 && t <= dono) continue;      // o turno de quem criou já passou
+        if (!g.J.zonas.length) break;
+        if (t !== dono) vigiou++;
+        g.zonasCobram(t);
+      }
+    return vigiou;
+  };
+  eq(conta(0), conta(1),
+     `a zona de quem joga primeiro vigia ${conta(0)} turnos do adversário e a do segundo `
+     + `vigia ${conta(1)} — vantagem estrutural de ordem, o erro que a v20 corrigiu nas ondas`);
+});
+
+/* ═══════════════ v25 — a base trata, e o cerco interrompe ═══════════════ */
+
+teste("herói ferido na própria base se trata a cada rodada", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  c.poe(h, g.BASE[0][0]);
+  h.vida = 5;
+  /* inimigos longe: ninguém cercando */
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "a base não tratou o herói");
+  g.curaDeBase();
+  eq(h.vida, 5 + 2 * g.CURA_BASE, "a base tratou só uma vez sem ninguém por perto");
+});
+
+teste("com inimigo a 2 hexágonos, a base trata UMA vez e só volta quando ele sai", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(0, "topo"), inimigo = c.heroi(1, "topo");
+  c.poe(h, g.BASE[0][0]);
+  h.vida = 5;
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  /* o cerco: um inimigo a exatamente 2 de distância */
+  const perto = g.vizinhos(...h.pos).flatMap(v => g.vizinhos(...v))
+                 .find(p => g.noTab(...p) && g.dist(...p, ...h.pos) === 2);
+  ok(perto, "não achei casa a 2 de distância da base");
+  c.poe(inimigo, perto);
+
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a primeira cura deveria sair mesmo assim");
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a cura veio de novo — a base virou poço infinito");
+  g.curaDeBase();
+  eq(h.vida, 5 + g.CURA_BASE, "cercado, a cura continuou vindo");
+
+  /* ele sai de perto: a torneira volta */
+  c.poe(inimigo, g.BASE[1][0]);
+  g.curaDeBase();
+  eq(h.vida, 5 + 2 * g.CURA_BASE, "o inimigo saiu de perto e a cura não voltou");
+});
+
+teste("a base não trata quem está longe dela, nem quem está SEM CURA", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const fora = c.heroi(0, "meio"), naBase = c.heroi(0, "topo");
+  g.J.times[1].herois.forEach(o => c.poe(o, g.BASE[1][0]));
+
+  c.poe(fora, [5, 5]); fora.vida = 5;
+  c.poe(naBase, g.BASE[0][0]); naBase.vida = 5; naBase.semCura = 2;
+
+  g.curaDeBase();
+  eq(fora.vida, 5, "curou um herói que não estava na base");
+  eq(naBase.vida, 5, "a base tratou um herói marcado como SEM CURA");
+});
+
+/* ═══════════════ v25 — o Reforço não pode ser o Poder mais barato ═══════════════ */
+
+/* RELATO: "não tô conseguindo comprar os itens de buff, além disso tá mto barato".
+   Medido em 600 partidas (sim/ouro.js): um herói termina com 61 de ouro e o
+   build de 3 itens mais caro que ele consegue vestir custa 25 — sobram 36. Com a
+   curva antiga (6, +2), esses 36 compravam QUATRO Reforços: 6+8+10+12 = 36, ou
+   +4 de Poder permanente. Nenhum item da loja dá mais de +2, e o Reforço não tem
+   teto. Era o Poder mais barato do jogo, e por larga margem.
+
+   O teste não trava um preço — trava a RELAÇÃO, que é o que não pode voltar a
+   inverter: uma unidade de Poder pelo Reforço nunca custa menos que a mesma
+   unidade comprada em item. */
+teste("o Reforço nunca é a fonte de Poder mais barata da loja", () => {
+  const c = cena();
+  const g = c.g;
+  const h = g.J.times[0].herois[0];
+
+  const reforco = g.GASTOS.find(x => x.id === "reforco");
+  ok(reforco, "não achei o Reforço na prateleira de gasto de ouro");
+
+  /* o item de Poder mais barato por ponto de Poder */
+  const porPonto = g.ITENS.filter(it => it.ef && it.ef.poder)
+                          .map(it => it.o / it.ef.poder);
+  ok(porPonto.length, "nenhum item de Poder na loja");
+  const itemMaisBarato = Math.min(...porPonto);
+
+  h.reforcos = 0;
+  const primeiro = g.precoGasto(reforco, h);
+  ok(primeiro >= itemMaisBarato,
+     `o primeiro Reforço custa ${primeiro} por +1 de Poder e o item mais barato `
+     + `custa ${itemMaisBarato} pelo mesmo ponto — o gasto tardio saiu mais barato que a loja`);
+});
+
+teste("a sobra de ouro de uma partida não compra mais de dois Reforços", () => {
+  const c = cena();
+  const g = c.g;
+  const h = g.J.times[0].herois[0];
+  const reforco = g.GASTOS.find(x => x.id === "reforco");
+
+  /* 36 é a sobra medida em 600 partidas: renda de 61 menos o build mais caro (25) */
+  const SOBRA = 36;
+  let bolso = SOBRA, comprados = 0;
+  for (h.reforcos = 0; ; h.reforcos++) {
+    const preco = g.precoGasto(reforco, h);
+    if (preco > bolso) break;
+    bolso -= preco; comprados++;
+  }
+  ok(comprados <= 2,
+     `a sobra de ${SOBRA} de ouro compra ${comprados} Reforços (+${comprados} de Poder permanente) `
+     + `— o ouro tardio vira estatística em vez de escolha`);
+});
+
+/* O efeito com prazo nasceu na BÁSICA do Kaross e do Kurr, e sim/habs.js pegou o
+   problema na hora: com sangramento de graça em todo golpe, o Talho (dado 1)
+   passava a valer MAIS que a Puxada (dado 3) — a habilidade do meio deixava de
+   pagar o próprio dado, que é a regra fechada na v23. Movido para o slot de
+   controle, o Kaross foi de −1 para +5.
+
+   A regra que fica: efeito com prazo é escolha, não passiva. Ele custa um dado
+   médio ou alto, e por isso pode ser forte. */
+teste("efeito com prazo mora no slot de controle ou na Ultimate, nunca na básica", () => {
+  const c = cena();
+  const g = c.g;
+  const naBasica = Object.values(g.CATALOGO)
+    .filter(def => def.habs[0].ef.dot || def.habs[0].ef.zona)
+    .map(def => def.n);
+  eq(naBasica.length, 0,
+     `${naBasica.join(", ")} aplica efeito com prazo na BÁSICA — com dado 1 ele vira `
+     + `passiva de todo golpe e faz a habilidade do meio deixar de pagar o próprio dado`);
+});
+
+teste("quem aplicou o efeito leva o ouro da morte, mesmo na última cobrança", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const vitima = c.heroi(1, "topo"), autor = c.heroi(0, "topo"), outro = c.heroi(0, "meio");
+  /* o outro colado na vítima: se o crédito escorregar, é para ele que vai */
+  c.poe(vitima, [5, 5]); c.poe(outro, [5, 6]); c.poe(autor, g.BASE[0][0]);
+
+  g.poeDot(vitima, autor, "sangramento", 3, 1);   // 1 rodada: a cobrança que mata é a última
+  vitima.vida = 2;
+  const ouro0 = autor.ouro, ouroOutro0 = outro.ouro;
+
+  g.cobraDots(1);
+  ok(vitima.morto, "o sangramento não matou a vítima");
+  eq(autor.ouro, ouro0 + 4, "o ouro da morte não foi para quem aplicou o sangramento");
+  eq(outro.ouro, ouroOutro0, "o crédito escorregou para o inimigo mais próximo");
+});
+
+teste("a IA sai de cima de uma zona inimiga em vez de ficar apanhando", () => {
+  const c = cenaDot();
+  const g = c.g;
+  const h = c.heroi(1, "meio");
+  c.poe(h, [5, 5]);
+  /* ninguém colado, para não disputar a decisão com "caça" ou "recua" */
+  g.J.times[0].herois.forEach(o => c.poe(o, g.BASE[0][0]));
+
+  const semZona = g.iaDestino(h, 1);
+  g.poeZona(0, [5, 5], { tipo: "veneno", dano: 2, raio: 1, n: "zona", dono: c.heroi(0, "meio") });
+  const comZona = g.iaDestino(h, 1);
+
+  ok(comZona && comZona.motivo === "sai da zona",
+     `com veneno no chão a IA decidiu "${comZona ? comZona.motivo : "nada"}" `
+     + `(sem zona era "${semZona ? semZona.motivo : "nada"}") — território negado que a IA ignora não nega nada`);
+  ok(g.dist(...comZona.p, 5, 5) > 1 || !g.J.zonas.some(z => g.dist(...comZona.p, ...z.pos) <= z.raio),
+     "a IA fugiu para dentro da mesma zona");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

@@ -28,7 +28,10 @@ const ALVOS = +process.argv[2] || 1;    // quantos inimigos a área pega
 function valor(ef, F, P, escala) {
   const golpe = mult => Math.max(1, Math.round(F * mult * escala) + P - ARM);
   let v = 0;
-  if (ef.dano) v += golpe(ef.dano);
+  /* perfurante não desconta armadura — `golpe()` desconta, então tem conta própria */
+  if (ef.dano) v += ef.perfura
+    ? Math.max(1, Math.round(F * ef.dano * escala) + P)
+    : golpe(ef.dano);
   if (ef.danoFixo) v += ef.danoFixo;              // ignora armadura
   if (ef.extra) v += ef.extra;
   if (ef.escudo) v += F + ef.escudo;
@@ -42,6 +45,17 @@ function valor(ef, F, P, escala) {
   if (ef.danoVizinhos) v += golpe(ef.danoVizinhos) * ALVOS;
   if (ef.danoRaio) v += golpe(1) * ALVOS;
   if (ef.area) v += golpe(ef.dano || 1) * 0.5;    // respingo em ~meio alvo
+  /* EFEITO COM PRAZO (v25). Vale o total, e vale CHEIO: ele não é valor
+     guardado como a marca — não depende de um segundo golpe acertar, cobra
+     sozinho no início de cada turno do alvo. E cobra por fora da armadura e do
+     escudo, então nem entra na conta de `golpe()`, que desconta ARM.
+     O único desconto é a morte do alvo antes de o prazo vencer, e a esse preço
+     o dano já foi feito de outro jeito. */
+  if (ef.dot) v += ef.dot.dano * ef.dot.rodadas;
+  /* ZONA vale metade do que cobraria cheia: ela só paga se o adversário estiver
+     (ou insistir em ficar) dentro. Território negado que o outro simplesmente
+     contorna vale o contorno, não o dano — e contornar é o resultado comum. */
+  if (ef.zona) v += ef.zona.dano * 2 * 0.5;
   return v;
 }
 

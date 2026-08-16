@@ -38,6 +38,7 @@ function elemento() {
 }
 
 function contextoDOM() {
+  const timers = [];
   const doc = {
     getElementById: () => elemento(),
     createElement: () => elemento(),
@@ -53,6 +54,13 @@ function contextoDOM() {
     performance: { now: () => Date.now() },
     setTimeout: () => 0,
     clearTimeout(){},
+    /* O relógio da rotação do Caçador é um `setInterval`. Um stub que engole a
+       chamada deixaria o timeout de 10 segundos sem teste possível — então aqui
+       ele GUARDA o callback, e o teste dispara os tiques na mão. Determinístico,
+       sem esperar tempo de parede. */
+    setInterval: (fn, ms) => { timers.push({ fn, ms, vivo: true }); return timers.length; },
+    clearInterval: id => { const t = timers[id - 1]; if (t) t.vivo = false; },
+    __timers: timers,
     Math, JSON, Date, Object, Array, String, Number, Boolean, Set, Map, Promise, Error
   };
 }
@@ -103,7 +111,7 @@ const PONTE = `
   get CAMP_NEUTRO(){return CAMP_NEUTRO}, get CAMP_AZUL(){return CAMP_AZUL},
   get CAMP_NEUTRO_LADOS(){return CAMP_NEUTRO_LADOS}, get GASTOS(){return GASTOS},
   visivelPara:(h,t)=>visivelPara(h,t), escondido:h=>escondido(h),
-  ehMato:(c,r)=>ehMato(c,r), get MATO(){return MATO},
+  ehMato:(c,r)=>ehMato(c,r), get MATO(){return MATO}, gira:(c,r)=>gira(c,r),
   reveladoPorAtaque:h=>reveladoPorAtaque(h),
   sobTorreAmiga:h=>sobTorreAmiga(h), get ARM_TORRE(){return ARM_TORRE},
   plantaSentinela:h=>plantaSentinela(h), usaGasto:(id,h,t)=>usaGasto(id,h,t),
@@ -112,8 +120,38 @@ const PONTE = `
   escalaDe:slot=>escalaDe(slot), get ESCALA_CTRL(){return ESCALA_CTRL},
   get ESCALA_ULT(){return ESCALA_ULT},
   respawnAgora:()=>respawnAgora(), fimDaRodada:()=>fimDaRodada(),
+  golpeNoPoco:(h,hb,slot,F,ep)=>golpeNoPoco(h,hb,slot,F,ep),
+  alvosNoHex:(c,r)=>alvosNoHex(c,r), tocaAlvo:(c,r)=>tocaAlvo(c,r),
+  descreve:(h,hb,F)=>descreve(h,hb,F),
+  cacadorDe:t=>cacadorDe(t),
+  iaEscolheRotacao:t=>iaEscolheRotacao(t), abreRotacoes:()=>abreRotacoes(),
+  escolheRotacao:(t,r)=>escolheRotacao(t,r), paraRelogioRotacao:()=>paraRelogioRotacao(),
+  reposicionaCacador:(t,r)=>reposicionaCacador(t,r),
+  pousoNaSelva:(t,r,h)=>pousoNaSelva(t,r,h),
+  casaDeSelvaLivre:(p,h)=>casaDeSelvaLivre(p,h),
+  get REGIOES(){return REGIOES}, get SELVA_PONTOS(){return SELVA_PONTOS},
+  get BLOQUEADO(){return BLOQUEADO}, get OBSTACULO(){return OBSTACULO},
+  ehBloqueado:(c,r)=>ehBloqueado(c,r),
+  passosDe:de=>passosDe(de), passosAte:(a,b)=>passosAte(a,b),
+  get BLOQUEIOS_ALVO(){return BLOQUEIOS_ALVO},
+  get ROTACAO_SEGUNDOS(){return ROTACAO_SEGUNDOS},
+  get CORREDOR(){return CORREDOR}, get LANE(){return LANE},
+  get NIVEIS_IA(){return NIVEIS_IA},
+  get nivelIA(){return nivelIA}, set nivelIA(v){nivelIA=v},
+  iaMelhorJogada:(t,m)=>iaMelhorJogada(t,m), iaJogadas:t=>iaJogadas(t),
+  iaDestino:(h,t)=>iaDestino(h,t), iaCompra:t=>iaCompra(t),
+  iaPlanejaAlcance:t=>iaPlanejaAlcance(t), iaJogaCartas:t=>iaJogaCartas(t),
+  encerraTurno:()=>encerraTurno(), moveAte:(c,r)=>moveAte(c,r),
+  limpaModo:()=>limpaModo(), calcula:()=>calcula(),
+  poeDot:(a,q,t,d,r)=>poeDot(a,q,t,d,r), cobraDots:t=>cobraDots(t),
+  poeZona:(t,p,z)=>poeZona(t,p,z), zonasCobram:t=>zonasCobram(t),
+  curaDeBase:()=>curaDeBase(),
+  get DOTS(){return DOTS}, get ZONA_TURNOS(){return ZONA_TURNOS},
+  get CURA_BASE(){return CURA_BASE}, get CERCO_RAIO(){return CERCO_RAIO},
+  iniciaTurno:()=>iniciaTurno(),
   enxergaCasa:(t,c,r)=>enxergaCasa(t,c,r), visaoDe:t=>visaoDe(t),
   poeWard:(t,p)=>poeWard(t,p), expiraWards:()=>expiraWards(),
+  desloca:(a,de,dir,n)=>desloca(a,de,dir,n), get CAMP_CARMIM(){return CAMP_CARMIM},
   ladoDaTela:()=>ladoDaTela(), colheAcampamentos:()=>colheAcampamentos(),
   iaInimigosVisiveis:t=>iaInimigosVisiveis(t),
   desempilha:()=>desempilha(),
@@ -121,6 +159,7 @@ const PONTE = `
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
   get DADIVAS(){return DADIVAS},     get BARAO_RODADAS(){return BARAO_RODADAS},
+  get BARAO_ESCUDO(){return BARAO_ESCUDO},
   get COLS(){return COLS},           get LINS(){return LINS},
   get VIDA_TORRE(){return VIDA_TORRE}, get VIDA_NEXUS(){return VIDA_NEXUS},
   dist:(...a)=>dist(...a), vizinhos:(...a)=>vizinhos(...a),

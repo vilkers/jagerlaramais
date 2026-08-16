@@ -168,6 +168,34 @@ névoa virar decisão é o terreno participar dela.
 
 ---
 
+## 12. O `+1` do destino "poço" NÃO era a causa do drift do Barão (v38)
+
+O handoff da sessão v23→v37 registrava o Barão em **59,1%** de fechamento, notava
+que ele tinha subido depois da Rotação do Caçador e recomendava, se o Barão
+caísse fácil demais no playtest, **mexer no `+1` do destino "poço"** em vez de na
+vida dele.
+
+A v38 removeu os destinos com bônus por completo, e com eles o `+1`. Medido em
+`sim/epicos.js 2500`:
+
+| | v37 | v38 (sem o `+1`) |
+|---|---|---|
+| Barão fechado | 59,1% | **58,4%** (n=1425) |
+
+**0,7 ponto — dentro do ruído.** A alavanca que o handoff recomendava foi puxada
+até o fim e o número não se mexeu.
+
+Fica em aberto, portanto, a pergunta que o handoff julgava respondida: **o que
+levou o Barão de ~54,6% (v23) a ~59% não foi o destino "poço".** Candidatos que
+mudaram no mesmo intervalo e nunca foram isolados: a vida 16 / armadura 3 da v26
+(que o fez apanhar como herói), o teto de escudo 12 e a Égide 7→4 da mesma
+versão, e a janela de escolha de alvo da v27.
+
+**Como medir:** uma variante de cada vez, sempre com `times=espelho`.
+`sim/epicos.js` aceita `baraodano=`, `baraoarm=` e `baraogolpe=on`.
+
+---
+
 ## 7. Dragão e Barão — RESPONDIDO, e o preço estava errado
 
 O item dizia que a bateria não conseguia responder se os épicos criavam dilema.
@@ -202,6 +230,95 @@ mexido na v23 de propósito — já entraram três regras no mesmo lote, e mudar
 preço do Dragão junto tornaria impossível dizer de quem é qualquer efeito medido
 depois. Fica como o **próximo número a testar sozinho**: vida 4 → 3, ou o revide
 dele, uma coisa de cada vez (`vdragao=` e `revide=off` já existem na bateria).
+
+**Fechado na v24 — era a vida, e o revide não era nada.** Testado sozinho, como
+o item pedia. As duas alavancas foram medidas separadas, n=1500 cada:
+
+| Variante | Dragão morto |
+|---|---|
+| build v23 | 21,5% |
+| `revide=off` | **21,7%** |
+| `rdragao=0` | 23,4% |
+| **`vdragao=3`** (o que entrou) | **33,1%** |
+| `barao=14` | 34,5%, mas o Barão some de 7% das partidas |
+
+**O revide foi descartado por medição:** zerá-lo devolve 0,2 ponto. Quem desiste
+do Dragão desiste **por dado gasto, não por vida perdida** — o custo que pesa é o
+turno que o herói não passou empurrando rota, e nenhum ajuste de pedágio alcança
+isso. Fica registrado porque a intuição contrária é forte e vai voltar.
+
+A vida foi para **3**: o Dragão cai em Ultimate + básica, dois dados, e continua
+sem cair numa Ultimate só. Fecha em 32,3% **sendo menos atacado que antes** (1,3
+golpes por partida contra 1,4) — converte, não vira farm. A vantagem de quem
+começa não se moveu (A/B de n=6000 por braço: 51,9% com vida 4, 51,2% com vida 3,
+z=0,75). Detalhes na v24 dos patch notes.
+
+---
+
+## 10. A renda de ouro nunca para — MEDIDO na v25, e não decidido
+
+Medido em 600 partidas com `sim/ouro.js`:
+
+| | |
+|---|---|
+| Ouro que um herói acumula na partida | **61** |
+| Build completo de 3 itens, o mais caro | **25** |
+| A loja inteira (22 itens) | 142 |
+| Sobra por herói | **36** |
+
+**A renda paga o build 2,4×.** A v25 encareceu o Reforço (6+2 → 10+4) porque com a
+curva antiga a sobra comprava quatro deles, ou +4 de Poder permanente — mais que
+qualquer item, sem ocupar slot e sem teto. Isso resolveu o Reforço; **não resolve a
+torneira.**
+
+Aviso que vem desde a v22 e agora tem número: **mexer no preço de um gasto não
+fecha uma torneira aberta.** Se ainda sobrar montanha de ouro no playtest, o ajuste
+é na renda.
+
+As três alavancas já existem em `sim/ouro.js` e não foram tocadas:
+
+- **`farma=N`** — hoje 3 por rodada para quem não recebe dado. É o grosso da renda:
+  com 3 dados para 5 heróis, dois heróis sempre farmam.
+- **`agiu=N`** — hoje 1 por rodada para quem age.
+- **`matar=N`** — hoje 4 por abate.
+
+**Recomendo `farma=2` como o primeiro a testar** (derruba a renda ~1/3 sem tocar em
+quem joga), e **sempre com `times=espelho`**, porque ouro muda o quanto cada lado
+compra e o confronto fixo da bateria contamina a leitura. **Decisão do grupo:** a
+renda é generosa de propósito (deixa todo mundo vestir o build que quer) ou está
+gerando ouro sem destino?
+
+---
+
+## 11. "Quem começa" tem dois números, e o histórico era o do confronto
+
+Achado na v25, e ele recalibra o item 1 deste arquivo.
+
+`sim/bateria.js` sempre rodou **um confronto fixo e assimétrico** — dez dos vinte
+heróis, repartidos entre os lados. Toda a série histórica de "quem começa"
+(42,0% → 46,8% → 48,6% → 51,1% → 51,2%) foi medida assim.
+
+Com **`times=espelho`** (os mesmos cinco heróis dos dois lados), que é o único
+arranjo em que a única diferença entre os jogadores é a ordem:
+
+| Arranjo | quem começa | n |
+|---|---|---|
+| confronto fixo (histórico) | ~51,2% | 6000 |
+| **espelhado** | **~52,9%** | 9000 |
+
+Os dois números estão certos e medem coisas diferentes. O espelhado mede **ordem**;
+o fixo mede **ordem + aquele confronto**, e a composição de um lado vinha
+compensando parte da vantagem de quem começa.
+
+**O que isso muda para o item 1:** a vantagem de ordem "residual" pode ser ~1,9
+ponto maior do que o registrado. **Não corrigi nada por causa disso** — mudar a
+compensação de ordem com base numa métrica que acabou de trocar de definição seria
+repetir o erro que este arquivo existe para evitar. **Decisão do grupo:** adotar o
+espelho como métrica oficial de ordem (e reavaliar o Primeiro Passo contra ela), ou
+manter o confronto fixo como referência histórica.
+
+Seja qual for, a regra prática já vale e está em `ESTADO.md`: **mudança que toca
+herói, habilidade ou item mede-se com `times=espelho`.**
 
 ---
 

@@ -38,7 +38,13 @@
      barao=N     rodada a partir da qual quem desce é o Barão (8 hoje)
      vdragao=N   vida do Dragão · vbarao=N vida do Barão
      heranca=N   Poder por Dragão levado · furia=N Poder da Fúria do Barão
-     ondas=off   a Fúria do Barão para de empurrar as ondas sozinha                */
+     ondas=off   a Fúria do Barão para de empurrar as ondas sozinha
+     curabase=N  quanto a base trata por rodada (3 hoje; 0 desliga)   — v25
+     dot=off     habilidade nenhuma aplica sangramento ou veneno      — v25
+     zonas=off   habilidade nenhuma cria zona no chão                 — v25
+     times=espelho  os dois lados jogam com os MESMOS cinco heróis.
+                 OBRIGATÓRIO quando a mudança toca herói, habilidade ou item:
+                 sem isto "quem começa" mede o confronto, não a ordem  — v25    */
 
 const { carrega } = require("./motor");
 const { jogaUma, resume, assimetria } = require("./agente");
@@ -112,6 +118,15 @@ if (opcoes.respawn === "fixo")                    // morte custa 2 rodadas do co
                "const RESPAWN_BASE=2, RESPAWN_MAX=2, RESPAWN_PASSO=8;"]);
 if (opcoes.revelar === "off")                    // atacar deixa de entregar a posição
   trocas.push([/const reveladoPorAtaque=h=>/, "const reveladoPorAtaque=h=>false&&"]);
+/* ---- v25: as três mecânicas novas, cada uma desligável sozinha ----
+   Sem isto não dá para dizer se um deslocamento medido veio da cura de base, do
+   efeito com prazo ou da zona — e o lote traz os três de uma vez. */
+if (opcoes.curabase !== undefined)
+  trocas.push([/const CURA_BASE=\d+;/, `const CURA_BASE=${+opcoes.curabase};`]);
+if (opcoes.dot === "off")
+  trocas.push([/if\(!alvo\|\|alvo\.morto\|\|!DOTS\[tipo\]\)return;/, "if(true)return;"]);
+if (opcoes.zonas === "off")
+  trocas.push([/J\.zonas=J\.zonas\|\|\[\];\n  J\.zonas\.push\(/, "J.zonas=J.zonas||[];\n  if(true)return; J.zonas.push("]);
 
 const rotulo = Object.keys(opcoes).length
   ? Object.entries(opcoes).map(([k, v]) => `${k}=${v}`).join(" ")
@@ -145,6 +160,28 @@ const aoIniciar = (comp || comp1)
   : null;
 
 const ctx = carrega(trocas);
+
+/* ---- times=espelho : a variante que faltava, e ela conserta uma cegueira ----
+   A bateria sempre rodou UM confronto fixo — vharn/nyx/solenne/vesper/mirrha
+   contra kaross/grumo/zhet/cael/torvald — com dez dos vinte heróis, repartidos
+   fixamente entre os lados. Enquanto uma mudança é ESTRUTURAL (mapa, torre,
+   onda, ouro, respawn) isso não atrapalha: ela cai igual nos dois.
+
+   Mas mudança que toca HERÓI cai só do lado em que aquele herói está, e aí
+   "quem começa" deixa de medir ordem e passa a medir o confronto que a própria
+   mudança desequilibrou. Foi o que aconteceu na v25: das sete habilidades
+   alteradas, duas (Kaross e Cael) estavam no time 1 e nenhuma no time 0 — a
+   bateria acusou 53% para quem começa e o número não era de ordem nenhuma.
+
+   Com `times=espelho` os dois lados recebem os MESMOS cinco heróis. Aí a única
+   diferença que sobra entre eles é quem joga primeiro, que é exatamente o que a
+   métrica diz medir. Use isto sempre que a mudança tocar herói, habilidade ou
+   item; sem isto, o resultado não tem endereço.                              */
+if (opcoes.times === "espelho") {
+  const espelho = ctx.TIMES[0];
+  ctx.TIMES = [espelho, [...espelho]];
+}
+
 const t0 = Date.now();
 const jogos = [];
 let naoTerminou = 0;

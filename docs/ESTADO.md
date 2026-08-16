@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v23 (o fim de partida volta a ser jogado) · **Atualizado em:** 2026-08-13
+**Versão:** v39 (hexágonos bloqueados e o tabuleiro de dia) · **Atualizado em:** 2026-08-16
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -22,28 +22,42 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 
 | | |
 |---|---|
-| Heróis no pool | **20** (4 por rota) — todos com arte |
+| Heróis no pool | **20** (4 por rota) · **10 substituídos na v30** — identidade nova sobre o mesmo chassi mecânico. Os `id` internos não mudaram, então a arte entra em `arte/herois/web/<id>.jpg` |
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
 | Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
 | Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
+| Ultimates perfurantes | Julgamento, Ato Final e Sentença **escalam** (`dano 0,8 × 1,25 + Poder`) e **ignoram Armadura**. Eram `danoFixo 8`, travadas desde a v19 |
+| Alvos no mesmo hexágono | o toque abre **janela de escolha** (herói, torre, poço, Nexus). Antes o alvo de toque do herói escondia o Nexus e travava o fim de partida |
 | Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
 | Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
-| Poço épico | casa **[8,8]** (derivada) · Dragão (4 de vida) até a rodada 12, **Barão (4) a partir da 12 — ele toma o poço mesmo com o Dragão vivo** · básica tira 1, Ultimate 2, respingo 1 |
+| Poço épico | casa **[8,8]** (derivada) · **Dragão** (3 de vida) até a rodada 12, **Barão a partir da 12 — toma o poço mesmo com o Dragão vivo** |
+| Dragão — como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1, o dado não entra. Cai em **Ultimate + básica**, nunca numa Ultimate só. Revide 2 |
+| Barão — como apanha | **conta DANO, pela regra dos heróis**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura. **16 de vida, 3 de armadura** — menos vida que qualquer herói; é a **armadura** que o faz exigir grupo (básica de dado 2 tira 2; Ultimate de dado 6 tira 8). Fechar num turno pede **4 dos 5**. Revide 4 |
+| Teto de escudo | **12** — metade da vida do maior herói. Muralha 17→12, Vento Contrário 15→11, Anteparo 13→10. Égide do Barão **4** por turno (era 7, e a própria carta já dizia 4) |
 | Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
+| Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz |
+| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva** — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Sem bônus de destino** — saíram junto com os destinos na v38. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
+| Efeito com prazo | **sangramento** e **veneno**: cobram no **início do turno da vítima**, 1×/rodada, e **ignoram armadura e escudo**. Reaplicar **renova**, não empilha. Morrer limpa. Mora no **slot de controle ou na Ultimate — nunca na básica** |
+| Zona | efeito posto no **chão**: quem **começa o turno dentro** é envenenado. Prazo em **turnos do adversário** (2), nunca em rodadas — senão a zona de quem joga primeiro vigia o dobro |
+| Cura de base | **3 por rodada** na própria base. Com inimigo a **2 ou menos**, trata **1 vez** e para até ele sair de perto |
 | Alcance | teto de **4**, itens incluídos |
 | Quem começa | **cara ou coroa** no início da partida |
 | Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
-| Gasto de ouro tardio | **Reforço** (6, +2 por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
-| Vantagem de quem começa | **51,1%** (n=6000, três execuções de 2000: 50,7 · 51,6 · 51,0 · z=1,76, dentro do ruído) |
+| Gasto de ouro tardio | **Reforço** (**10, +4** por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
+| Vantagem de quem começa | **~52,9%** no confronto **espelhado** (n=9000), que é o único jeito de medir ORDEM. Os ~51% históricos vinham do confronto fixo e assimétrico da bateria — ver `times=espelho` |
+| Economia | herói acumula **61** de ouro na partida; o build de 3 itens mais caro custa **25**. A renda paga o build **2,4×** — medido em `sim/ouro.js` |
+| Hexágonos bloqueados | **6** casas de selva (3 pares espelhados) com **ônibus, carros empilhados e caixa-d'água** em cima. Herói **não entra e não atravessa** — a selva virou corredor. Bloqueiam visão como todo mato; nunca em rota, base, acampamento, ponto de pouso ou vizinha do poço. Derivadas da planta, com trava de mapa inteiro e de selva inteira |
+| Andar × alcançar | **duas réguas.** `distância` (linha reta) vale para **alcance de habilidade**; para **andar**, vale o caminho que contorna o obstáculo. Herói não bloqueia caminho — só o obstáculo |
+| Direção de arte | `docs/DIRECAO-DE-ARTE.md` é **canon**: Brasil pós-cataclisma de gambiarra, dia claro, sucata colorida, verde-limão pontual. O tabuleiro 2D já está na paleta; 3D e miniaturas não começaram |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **27 de mato** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
@@ -66,10 +80,12 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 84 testes de regressão — um por bug já relatado
+node sim/testes.js        # 123 testes de regressão — um por bug já relatado
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói
+node sim/niveis.js 600    # os três níveis da IA jogando um contra o outro (IA de verdade)
+node sim/ouro.js 600      # economia: renda por herói contra o preço do que dá para comprar
 node teste/empacota.js    # regera teste/JOGAR.html, o arquivo único jogável
 ```
 
@@ -137,7 +153,16 @@ arte/mapa/mapa.jpg   O mapa ilustrado
 docs/                Regras, design e decisões. Leia na ordem numerada.
 ```
 
-## Seis armadilhas que já custaram tempo
+## Sete armadilhas que já custaram tempo
+
+**0. `sim/bateria.js` roda UM confronto fixo — e isso a cega para mudança de herói.**
+São sempre vharn/nyx/solenne/vesper/mirrha contra kaross/grumo/zhet/cael/torvald: dez dos vinte
+heróis, repartidos fixamente entre os lados. Mudança **estrutural** (mapa, torre, onda, ouro,
+respawn) cai igual nos dois e a medição vale. Mudança que toca **herói, habilidade ou item** cai
+só de um lado, e aí "quem começa" mede o confronto, não a ordem. Na v25 isso custou uma conclusão
+inteira: duas das sete habilidades novas estavam no time 1 e nenhuma no time 0, a bateria acusou
+53,5% com z=6,60 e eu quase registrei uma regressão que não existia. **Use `times=espelho` sempre
+que a mudança tocar herói.**
 
 **1. `poderTotal`, `armTotal` e `ehAgil` são `const`.** Reatribuir lança `TypeError` e **mata o
 script inteiro dali para baixo, sem erro visível no console** — o sintoma é uma função que "não

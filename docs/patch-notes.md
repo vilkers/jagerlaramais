@@ -16,6 +16,938 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v39 — hexágonos bloqueados, e o tabuleiro passa a ser de dia · 2026-08-16
+
+Primeira entrega da direção de arte do Vilker (`docs/DIRECAO-DE-ARTE.md`, agora
+canon no repositório). Duas frentes: a **regra** escondida no item 4 do
+documento, e a **repintura** do tabuleiro 2D existente. Miniaturas 3D não
+entraram — exigem engine e modelos que não existem, e são decisão de escopo do
+grupo.
+
+### O que mudou — regra
+
+**Seis casas da selva viraram obstáculo.** Herói não entra e não atravessa. Três
+pares espelhados, com **ônibus abandonado, carros empilhados e caixa-d'água** em
+cima — o obstáculo é o próprio hexágono, e conta a história do mundo.
+
+| | |
+|---|---|
+| Casas bloqueadas | **6** de 27 de selva · selva livre 27 → **21** |
+| Onde | só mato. Nunca rota, base, rio, poço, acampamento, ponto de pouso do Caçador ou vizinha do poço |
+| Visão | continuam bloqueando, como todo mato |
+| Ward, empurrão, puxão, pouso do Caçador | nenhum entra |
+| Lampejo | passa **por cima**, não pousa dentro — é salto |
+
+**Andar passou a ter duas réguas, e esta é a mudança de verdade.** `distância`
+continua sendo a linha reta e continua valendo para **alcance de habilidade** — o
+ônibus para o pé, não o tiro. Para **andar**, a régua virou o caminho que
+contorna o obstáculo.
+
+Sem isso o obstáculo seria enfeite: o movimento deste jogo sempre foi por
+distância e não por caminho — `calcula` aceitava qualquer casa no alcance e
+`moveAte` levava direto. O herói passaria por cima do ônibus e "corredor" não
+existiria em regra nenhuma. **Herói continua não bloqueando caminho**; só o
+obstáculo bloqueia.
+
+A IA anda pela mesma régua. Com linha reta ela encostava no obstáculo e parava —
+nenhuma vizinha reduzia a reta, e o herói ficava tremendo contra o ônibus a
+partida inteira.
+
+**As seis são derivadas da planta, não escritas à mão**, e passam por duas travas
+que valem mais que a escolha: o tabuleiro continua inteiro (toda casa alcança
+toda casa) e a **selva continua com as mesmas duas regiões** que já tinha.
+Bloquear a casa errada partia a selva em ilhas e prendia o Caçador no próprio
+quintal — aconteceu na primeira tentativa, com `[2,5]`, e o teste que trava isso
+nasceu daí. Com as travas, o mapa 11×11 comporta 3 pares e satura sozinho.
+
+**A planta não mudou.** 116 hexágonos, mesmas rotas, mesmas torres, mesmo poço —
+item 1 da direção de arte, com teste de regressão em cima.
+
+### O que mudou — pintura
+
+O tabuleiro era escuro (`#0B120F` de fundo, selva `#101A15`). A direção de arte
+pede o contrário: **dia claro e quente, céu azul, cores**. O chrome do app
+continua escuro **de propósito** — o tabuleiro virou o objeto iluminado sobre a
+mesa, e o contraste faz ele ser o assunto da tela.
+
+| | Era | É |
+|---|---|---|
+| Rota | `#3B5147` verde-chumbo | `#C3B7A4` concreto claro |
+| Selva | `#101A15` quase preto | `#7FA65C` vegetação viva |
+| Rio | `#173540` | `#8FB0AE` canal de concreto |
+| Névoa | `#070C0A` | `#4C453B` escura mas **quente** |
+| Fundo | preto | céu azul → cimento bege |
+| Traço do hexágono | `.9` fraco | `1.1` forte — item 2, tem de dar para contar |
+
+**Sucata não é marrom** (item 10): ônibus amarelo com faixa vermelha, carros
+empilhados vermelhos com porta azul, caixa-d'água azul. **Verde-limão** entrou
+como assinatura da energia do cataclisma, e por enquanto só no poço — a cor vale
+pela raridade.
+
+Casa bloqueada tem chão bem mais escuro que a rota: "não passo aqui" tem de ser
+lido antes de o jogador tentar. Objeto em casa sem visão apaga junto com ela.
+
+### O que isso quebra
+
+**A partida ficou mais curta e os épicos, menos disputados.** Obstáculo custa
+movimento, e movimento gasto contornando é movimento que não foi para o poço.
+
+| | v38 | v39 |
+|---|---|---|
+| Duração mediana | 24 rodadas | **22** |
+| Barões por partida | 1,07 | **0,93** |
+| Dragões por partida | 0,35 | **0,31** |
+| Ações por partida | 60,6 | **57,2** |
+
+Nenhum desses é grave, mas o conjunto anda numa direção só — **menos tempo, menos
+objetivo**. Se o playtest achar que o poço ficou irrelevante, a alavanca barata é
+`BLOQUEIOS_ALVO` (baixar de 3 para 2 tira um par de cada lado), e não o preço do
+Barão, que acabou de ser medido duas vezes sem se mexer.
+
+**Também corrigi um texto que mentia desde a v22.** O painel *Como jogar* dizia
+que "uma Ward acende os dois matos de uma vez" — a regra do mato da v22 desfez
+isso e o texto ficou. Estava no parágrafo vizinho ao que eu tinha de reescrever.
+Agora diz o certo: ward acende o mato **onde ela está plantada**.
+
+### Medição
+
+Rodado com `times=espelho`.
+
+| | v38 | v39 |
+|---|---|---|
+| Testes de regressão | 145 | **161** (16 novos, todos do bloqueio) |
+| Quem começa (espelho) | 52,4% | **52,8%** (n=4500, z=3,73) |
+| Tabuleiro simétrico | sim | sim |
+
+Jogo aberto no Chromium: tabuleiro de dia, os seis obstáculos legíveis em três
+pares espelhados, névoa apagando objeto junto com a casa, sem erro de console.
+
+---
+
+## v38 — a rotação do Caçador vira escolha de REGIÃO · 2026-08-16
+
+Pedido do Vilker, em especificação escrita. A rotação deixa de ser uma aposta em
+**quatro destinos com bônus** e passa a ser uma escolha de **quatro regiões do
+mapa**, com reposicionamento imediato.
+
+### O que mudou
+
+**O menu.** Saíram `Acampamento próprio`, `Acampamento neutro`, `Acampamento
+inimigo` e `O poço`. Entraram **Topo · Meio · Baixo · Selva**.
+
+**O movimento.** Era **andar até 3 casas de graça** na direção do destino, ao
+início do turno do dono. Agora é **reposicionamento imediato**, no instante da
+escolha, no início da rodada. `migraCacador`, `passoNaDirecao` e
+`ROTACAO_PASSOS` saíram do motor.
+
+**Onde ele cai.** Sempre **dentro da selva**, na parte dela colada à região
+escolhida, e **nunca dentro da rota**. As quatro casas são **derivadas da planta
+do mapa**, não escritas à mão — o mapa não foi alterado em uma casa sequer para
+caber a mecânica.
+
+| Região | Time 0 | Time 1 |
+|---|---|---|
+| Topo | `[2,3]` | `[3,2]` |
+| Meio | `[4,4]` | `[6,6]` |
+| Baixo | `[7,8]` | `[7,7]` |
+| Selva | `[5,7]` | `[4,3]` |
+
+As três de rota ficam a **exatamente 1 casa** do corredor da própria rota, no
+ponto mais perto do **vão neutro** — que é onde a rota é disputada. A de Selva é
+a casa que minimiza a distância até a mais longe das outras três: o
+entroncamento de onde se alcança qualquer rota.
+
+**Os bônus saíram junto com os destinos.** +3 de ouro, +1 de Poder, +4 roubados e
++1 por golpe no poço deixam de existir. A rotação não paga mais nada — o que ela
+entrega é **posição**. O Caçador continua coletando acampamento **por ocupação**,
+como qualquer herói.
+
+**Relógio de 10 segundos.** Sem escolha, a **Selva** é escolhida sozinha, com
+aviso na tela, e a partida segue. Nunca trava esperando decisão.
+
+**A escolha é secreta, e agora de verdade.** Nada da rotação vai para o `log` —
+o log é lido pelos dois jogadores em hotseat, e uma linha dizendo "o Caçador foi
+para o Topo" entregava de graça exatamente a informação que a névoa existe para
+cobrar. Não há animação de percurso pelo mesmo motivo.
+
+**A IA** escolhe por nota de região: inimigo **visível** na rota (ferido e longe
+da torre dele valem mais), aliado na mesma rota (gank de um só não fecha), torre
+própria ferida, e o poço puxando a Selva — com peso maior para o Barão que para
+o Dragão. Ela lê a rota pelo **corredor**, não pelo ponto de pouso: os quatro
+pontos ficam a poucas casas uns dos outros, e medir "inimigo perto do pouso"
+fazia a mesma isca contar para duas regiões, com o desempate alfabético
+decidindo o gank. O Aprendiz continua sorteando.
+
+### Por quê
+
+Foi pedido assim. A justificativa registrada do pedido é que a escolha do
+Caçador passe a ser sobre **onde estar no mapa**, e não sobre qual bônus
+arrecadar.
+
+### O que isso quebra
+
+**Esta entrada desfaz metade da correção do Vinicius na v19, e isso precisa
+ficar escrito.** A v18 teve uma rotação em que o Caçador **saía do tabuleiro** e
+reaparecia noutra entrada de selva; a v19 a desfez. Dois testes existiam desde a
+v28 só para aquele desenho não voltar, e **os dois foram removidos aqui**:
+
+- `o Caçador anda no mapa até o destino — nunca some do tabuleiro`
+- `Caçador cercado pelo próprio time não teleporta: fica onde dá`
+
+A metade da correção que **continua de pé**, e agora com teste próprio: o
+Caçador **nunca deixa de estar num lugar real** do tabuleiro. Ele larga uma casa
+e ocupa outra no mesmo instante, continua bloqueando passagem, continua
+coletando acampamento e continua aparecendo ao sair do mato. O que ele deixou de
+ser é **interceptável no caminho** — porque caminho não há mais.
+
+**Uma previsão do handoff anterior não se confirmou, e isso vale mais registrado
+que calado.** Ele dava o Barão em **59,1%** de fechamento e apontava o `+1 por
+golpe` do destino "poço" como a causa do drift, com a recomendação de mexer nesse
+`+1` caso o Barão caísse fácil demais no playtest. O `+1` **deixou de existir
+nesta versão**, e o Barão foi a **58,4%** (n=1425): 0,7 ponto, dentro do ruído.
+
+Ou seja: **o `+1` do destino "poço" não era a causa do drift do Barão.** A
+alavanca recomendada pelo handoff acabou de ser puxada até o fim e o número não
+se mexeu — quem quiser mover o Barão vai ter de procurar em outro lugar. O
+`DECISOES-PENDENTES` herda essa pergunta em aberto.
+
+**Também mudou o alcance da mecânica:** antes, comprometer o Caçador e não
+chegar era o custo da aposta errada. Agora ele **sempre chega**. A aposta
+continua às cegas, mas o preço de errar passou a ser só de posição.
+
+### Medição
+
+Rodado com `times=espelho`, obrigatório porque a mudança toca herói.
+
+| | Antes (v37) | Agora (v38) |
+|---|---|---|
+| Testes de regressão | 123 | **145** — 6 da rotação antiga saíram, 28 novos entraram |
+| Quem começa (espelho) | ~52,9% | **52,4%** (n=4500, z=3,19) |
+| Barão fechado | 59,1% | **58,4%** (n=1425) |
+| Dragão fechado | — | 33,8% (n=845) |
+| Duração mediana | — | 24 rodadas |
+| Mestre × Aprendiz | — | 72,5% (n=600, z=11,02) |
+
+Nem "quem começa" nem o Barão saíram do lugar: as duas diferenças são menores que
+o ruído da própria bateria. Tabuleiro segue simétrico (`sim/simetria.js`).
+
+Jogo aberto no Chromium de verdade: tela das quatro regiões, contagem regressiva
+de 10 a 1, timeout pousando no centro da selva, clique manual pousando no ponto
+do Topo, relógio morto não disparando depois, e 6 turnos contra a IA — **sem um
+erro de console**.
+
+---
+
+## v31 — as rotas certas, e os nomes certos · 2026-08-13
+
+Correção da v30. Eu tinha deduzido quatro rotas e batizado quatro personagens
+porque as fichas não traziam nem uma coisa nem outra. Vieram as duas informações,
+e **eu tinha errado quatro rotas e três nomes**.
+
+### Os nomes de verdade
+
+| Eu chamei de | É |
+|---|---|
+| Vovó do Chinelo | **Dona Chinela** |
+| Seu Coco | **Valti** |
+| Bombinha | **Catarino** |
+
+### As quatro rotas erradas
+
+| Personagem | Eu pus em | É |
+|---|---|---|
+| **Valti** | Suporte | **Jungle** |
+| **Gari Mago** | Suporte | **Mid** |
+| **Emerson Emo** | Mid | **Suporte** |
+| **Caramêlo 2.0** | Jungle | **Suporte** |
+
+**A rota é propriedade do chassi**, então trocar só o campo `pos` quebraria a
+distribuição de 4 heróis por rota. Cada um foi **remanejado para o chassi certo**,
+e a escolha de qual chassi dentro da rota não foi sorteio:
+
+- **Valti** herda o assassino de selva com **sangramento no slot de controle** — o
+  Talho de Facão é literalmente um facão que faz sangrar.
+- **Caramêlo** herda o suporte **corpo a corpo** (alcance 1, o mais duro do jogo):
+  cachorro é linha de frente, e a Ultimate dele já era `danoVizinhos +
+  prendeVizinhos`, que é o **Latido Caótico** da ficha ao pé da letra — *confunde
+  e afugenta inimigos em uma área*.
+- **Emerson** herda o suporte **encantador de alcance 3**: Ombro Amigo (escudo e
+  cura), Empresta o Fone (doa o dado) e **Ninguém Me Entende**, que aqui traz um
+  aliado caído de volta. A intensidade dele virou utilidade em vez de dano.
+- **Gari Mago** herda o mago de meio com **zona**: a Coleta Seletiva Suprema
+  espalha lixo que continua no chão cobrando de quem fica.
+
+Nenhum efeito foi alterado — só nome e a que chassi cada personagem se liga.
+123 testes, inalterados.
+
+### O mapa de arte mudou junto
+
+Quatro personagens trocaram de `id`, e é por `id` que a arte entra:
+
+| Personagem | Arquivo |
+|---|---|
+| O Taxista | `arte/herois/web/vharn.jpg` |
+| Dona Chinela | `kaross.jpg` |
+| Pombo Ciborgue | `nyx.jpg` |
+| **Valti** | **`kurr.jpg`** |
+| Parabólica Diabólica | `solenne.jpg` |
+| **Gari Mago** | **`nira.jpg`** |
+| Zé Griteco | `vesper.jpg` |
+| Catarino | `nessa.jpg` |
+| **Caramêlo 2.0** | **`gorm.jpg`** |
+| **Emerson Emo** | **`mirrha.jpg`** |
+
+---
+
+## v30 — dez heróis novos, mesmo chassi · 2026-08-13
+
+Dez personagens vindos das fichas de arte entram no lugar de dez do elenco.
+**Nenhum número de balanceamento mudou.**
+
+### O método: troca a identidade, mantém o chassi
+
+Cada personagem novo herda do substituído a **vida, o Poder, a Armadura, o
+alcance e o formato das três habilidades**. Só mudam nome, epíteto e o nome de
+cada habilidade.
+
+Não é preguiça — é o que o `CLAUDE.md` já manda: *o que nasce na criação entra em
+cima da base mecânica, nunca por cima dela*. Aqueles números carregam 29 versões
+de medição: a escala ×1,2 do slot de controle, a regra de que a habilidade do meio
+paga o próprio dado, o teto de escudo de 12, o efeito com prazo só em slot de
+controle, o dano perfurante a 0,8. Reescrever stats a partir das fichas jogaria
+tudo fora e exigiria remedir do zero.
+
+**Os `id` internos não mudaram**, e isso é decisão, não descuido. São 206
+referências espalhadas por 6 arquivos, incluindo os 123 testes e o confronto fixo
+da bateria. Mantendo a chave: os testes seguem verdes, **toda a medição anterior
+continua comparável** (a bateria roda mecanicamente os mesmos heróis) e a arte
+entra sozinha — basta soltar a imagem em `arte/herois/web/<id>.jpg`.
+
+### O elenco novo — 2 por rota, os 4 por rota preservados
+
+| Rota | Novo | `id` (chassi herdado) | Habilidades |
+|---|---|---|---|
+| topo | **O Taxista** | `vharn` | Martelo Carburado · Buzina Infernal · Escudo de Porta |
+| topo | **Vovó do Chinelo** | `kaross` | Chinelada · Puxão de Orelha · Chinelo Voador |
+| selva | **Caramêlo 2.0** | `kurr` | Mordida · Rastrear · Pulo Bobão |
+| selva | **Pombo Ciborgue** | `nyx` | Bicada · Voo Rasante · Rasante Final |
+| meio | **Emerson Emo** | `nira` | Acorde Menor · Riff da Angústia · Ninguém Me Entende |
+| meio | **Parabólica Diabólica** | `solenne` | Raio Diabólico · Interferência · Sinal Aberto |
+| adc | **Zé Griteco** | `vesper` | Ovada Surpresa · Encher o Pulmão · Caminhão Fantasma |
+| adc | **Bombinha** | `nessa` | Jato de Oxigênio · Puff de Emergência · Crise Alérgica |
+| sup | **Gari Mago** | `gorm` | Varrida Purificadora · Escudo Reciclável · Redemoinho Sustentável |
+| sup | **Seu Coco** | `mirrha` | Água de Coco · Passa o Canudo · Coco Gelado |
+
+Ficam: Ilva e Xhera (topo), Grumo e Pyk (selva), Zhet e Arden (meio), Cael e Corvo
+(adc), Torvald e Vidra (sup).
+
+**Os encaixes não foram sorteados.** O Taxista pegou o chassi do tanque iniciador
+porque a Buzina Infernal é literalmente `prendeVizinhos` e o Escudo de Porta é a
+Muralha. O Riff da Angústia do Emerson é `prende`, e **Uma Lágrima** — *"altera o
+terreno e reduz a visão"* — é exatamente a **zona** que entrou na v25, já embutida
+na Ultimate dele. O Gari Mago varre, escuda e faz redemoinho, que é Empurrão,
+Anteparo e Barreira sem trocar uma linha de efeito.
+
+### E um catálogo divergente a menos
+
+O **Laboratório de Dados** do guia tinha a lista de heróis e Forças mínimas
+**escrita à mão no HTML**. No instante em que os nomes mudaram ele passou a mentir:
+mostrava Vharn, Nyx, Solenne, Vesper e Mirrha com habilidades que não existem mais.
+Era o terceiro catálogo divergente que a regra do projeto manda não criar. Agora
+ele **deriva do `CATALOGO`** — muda lá, muda aqui.
+
+### O que fica em aberto
+
+**Quatro nomes são meus, não seus.** As fichas do vendedor de água de coco, do
+menino do cilindro, do pombo e da vovó não traziam nome, e eu batizei para poder
+entregar: **Seu Coco**, **Bombinha**, **Pombo Ciborgue** e **Vovó do Chinelo**.
+Nomear personagem é trilha de criação (`visual-lab/`), não minha — trocar é uma
+linha por herói em `data/catalogo.js`.
+
+**Duas rotas foram dedução minha:** Emerson Emo (Meio, pelo kit de controle e
+área) e o vendedor de coco (Suporte curandeiro, pela água de coco). As fichas não
+declaravam.
+
+**Falta a arte.** Os dez `.jpg` antigos continuam em `arte/herois/web/` e agora
+mostram o personagem errado. Nada quebra — `RETRATO()` já cai num retrato
+provisório —, mas até as imagens novas entrarem, o elenco novo aparece com a cara
+do antigo.
+
+123 testes, inalterados: nenhuma regra foi tocada.
+
+---
+
+## v29 — três níveis de IA, e um crash que só aparecia jogando · 2026-08-13
+
+**O pedido:** *"coloca 3 níveis de dificuldade da IA"*.
+
+**A regra que rege os três: dificuldade mexe na qualidade da decisão, nunca nos
+números.** A IA difícil não ganha dano, vida, ouro nem dado a mais, e não enxerga
+um hexágono além do que a névoa deixa — a v19 decidiu que ela obedece à mesma
+névoa, e nível não é desculpa para desfazer isso. IA que trapaceia ensina a regra
+errada: o jogador perde e não sabe o que fez de errado, porque não fez.
+
+| | **Aprendiz** | **Veterano** | **Mestre** |
+|---|---|---|---|
+| Chance de não pegar a melhor jogada | **40%** | 20% | **0** |
+| Piso de nota para agir | **26** (passivo) | 15 | 15 |
+| Planta ward | **não** | sim | sim |
+| Converte dado em movimento para chegar | **não** | sim | sim |
+| Volta para defender o Nexus | **não** | sim | sim |
+| Disputa o poço | **não** | sim | sim |
+| Rotação do Caçador | **ao acaso** | pelo mapa | pelo mapa |
+| Concentra fogo em quem está caindo | não | não | **sim** |
+
+`erro` é o coração: a chance de a IA **não pegar a melhor jogada da lista que ela
+mesma ordenou** — errar vendo a jogada certa, e não rolando dado escondido. Ela
+nunca escolhe abaixo do piso, senão viraria IA aleatória em vez de IA fraca.
+`minimo` é contraintuitivo de propósito: piso **alto** deixa a IA **passiva**,
+porque ela desdenha a jogada pequena que somada ganha partida.
+
+### Medidos, não afirmados
+
+**`sim/niveis.js`** dirige a IA **de verdade** nos dois lados — as outras medições
+usam o agente da bateria, que joga quase ao acaso e não é a IA do jogo. Os lados
+alternam a cada partida, senão o número misturaria "o Mestre é melhor" com a
+vantagem de ordem:
+
+| Confronto | Resultado | z |
+|---|---|---|
+| Mestre × Veterano | **55,8%** × 44,2% | 2,86 |
+| Veterano × Aprendiz | **72,7%** × 27,3% | 11,10 |
+| Mestre × Aprendiz | **71,5%** × 28,5% | 10,53 |
+
+O Aprendiz ganha **uma em cada quatro**, de propósito: nível fácil que nunca ganha
+não é fácil, é quebrado.
+
+**A primeira versão estava invertida, e a medição pegou.** O Mestre saiu com piso
+8 (supus que "mais ativo = melhor") e **perdia do Veterano, 40% × 60%, z=−2,83**.
+O comentário do próprio código já dizia o porquê: o piso existe para a IA guardar
+o dado em vez de gastar num golpe inútil. Piso 15 nos dois. O Aprendiz também
+nasceu quebrado — 97% a 3%, porque **não comprava item nenhum**; vinte rodadas sem
+loja não é jogar mal, é não jogar.
+
+### O crash que só aparecia jogando
+
+Com o **time inteiro morto**, `iaJogaCartas` escolhia como alvo "o herói vivo mais
+saudável" — que não existe — e jogava a carta com `selHeroi` indefinido. A
+primeira carta que lê a posição do herói estourava `TypeError` e **a partida
+morria**. Cinco heróis no respawn ao mesmo tempo é fim de partida normal.
+**Nenhuma medição anterior pegaria isto: a bateria nunca executa a IA do jogo.**
+
+123 testes.
+
+---
+
+## v28 — a rotação do Caçador · 2026-08-13
+
+**O pedido:** *"no início da rodada ambos os jogadores escolhem pra onde o jungle
+vai, e quando for seu turno o jungle migra pra aquela região, e dependendo de onde
+ele for ele ganha um bônus"*.
+
+No início da rodada os dois escolhem **escondido um do outro**; no seu turno o
+Caçador migra; o bônus só sai **se ele chegar**.
+
+| Destino | Bônus ao chegar |
+|---|---|
+| Acampamento próprio | +3 de ouro |
+| Acampamento neutro | +1 de Poder até o seu próximo turno |
+| Acampamento inimigo | +4 de ouro roubado |
+| O poço | seus golpes no poço valem **+1** nesta rodada |
+
+**Sem teleporte, e isso é o ponto.** Este jogo já teve uma rotação do Caçador: ela
+entrou na v18 e foi desfeita na v19 porque lá ele **saía do tabuleiro**. A
+correção veio do Vinicius — a peça continua existindo num lugar real, e o que muda
+é quem enxerga. Aqui ele **anda**, até 3 casas de graça, no mapa, interceptável.
+A rotação compra **tempo**, não ubiquidade. Dois testes existem só para a versão
+da v18 não voltar.
+
+**Dois consertos que a mecânica exigiu:** o Caçador ficava **preso atrás do próprio
+time** saindo do canto da base (agora contorna por casa de mesma distância), e o
+**foco no poço não valia contra o Dragão** — o `return` antecipado do morador que
+conta golpes pulava o bônus, zerando esse destino em metade da partida.
+
+**Medição:** ordem no espelho 53,04% (n=9000) contra 53,26% da v26 — ruído.
+Duração 23. **O Barão subiu de 54,7% para 59,1%** de fechamento: o destino "poço"
+soma +1 e a IA o escolhe sempre que está perto. Se no playtest ele cair fácil
+demais, **o primeiro número a mexer é esse +1**, não a vida dele.
+
+---
+
+## v27 — o alvo embaixo do outro, e as Ultimates travadas · 2026-08-13
+
+### O Nexus ficava intocável com um defensor em cima
+
+**O relato:** *"eu estava com todos os creeps na base e ele com os heróis dentro do
+nexus, eu não conseguia dar dano no nexus pra acabar a partida, e os creeps tão
+não"*.
+
+Empate travado, e as duas metades se alimentavam. A **última muralha** (v23)
+segura a onda de propósito com o Nexus em 1 enquanto houver defensor — ela
+**exige** o golpe de herói. Só que na tela o Nexus desenha alvo de toque com raio
+**9**, o herói com **15,5**, e o herói é desenhado **depois**: um defensor em cima
+do Nexus cobria o alvo por inteiro. **A regra pedia o golpe e a interface não
+deixava dar.**
+
+Agora, quando mais de um alvo divide o hexágono, o toque abre **janela
+perguntando em quem bater**, com vida e revide de cada um. Um alvo só resolve
+direto. Vale também para herói em cima da própria torre (relato da v15).
+
+### As Ultimates travadas voltam a crescer
+
+**O relato:** *"alguns ults tão travados em valores, não tá usando a regra de mult
+da força e poder"*.
+
+Julgamento, Ato Final e Sentença viraram `danoFixo` na v19 porque estavam
+**piores que a própria básica**. O preço foi pararem no tempo: não cresciam com
+dado, Poder, item, Reforço nem Herança, enquanto a básica do mesmo herói crescia
+com tudo. Em partida longa a Ultimate virava a jogada pior.
+
+Agora escalam **e** continuam ignorando armadura, com multiplicador **reduzido
+(0,8)** — o preço do dano que passa por dentro. Contra alvo sem armadura rendem
+menos que uma Ultimate comum; contra tanque, mais.
+
+| | Era | Ficou |
+|---|---|---|
+| Julgamento (dado 6) | 8, sempre | **9** · com +2 de Poder: **11** |
+| Sentença · Ato Final | 8, sempre | 8 a 9 · e crescem com Poder |
+
+Elas também ganham papel contra o Barão, que tem 3 de armadura desde a v26.
+
+---
+
+## v26 — o Barão apanha como herói, e os escudos deixam de apagar o turno · 2026-08-13
+
+Duas mudanças de regra, **simuladas antes de entrar** — os números foram varridos
+com `sim/epicos.js baraodano= baraoarm=` sem tocar em `jogo/jogo.js`, e só depois
+aplicados.
+
+### Os dois moradores passam a contar coisas diferentes
+
+| | Dragão | Barão |
+|---|---|---|
+| Vida | **3** | **16** |
+| Armadura | — | **3** |
+| Como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1 — o dado não entra | **conta DANO**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura |
+| Revide | 2 | 4 |
+
+**O Dragão não foi tocado.** Continua em Ultimate 2 e básica 1, e há teste
+travando isso nos dois sentidos — um exige que a básica tire 1 e a Ultimate 2,
+outro exige que o dado **não** mude o que ele leva.
+
+**Por que os dois não são iguais.** Contar golpes achata o dado: contra o Dragão
+o 1 e o 6 de uma básica valem o mesmo. Isso é aceitável num alvo de 3 que cai em
+dois dados, na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa.
+Num alvo grande, achatar apagaria a decisão inteira.
+
+### O que faz o Barão exigir um grupo é a ARMADURA, não a vida
+
+A primeira tentativa deu a ele **22 de vida e 1 de armadura** — perto do herói
+mais duro do jogo. Estava resolvendo o problema errado, e o retorno do playtest
+foi direto: *"não precisa ter a vida até a do maior herói do jogo, tem que ser
+equilibrado para necessitar de um grupo para levá-lo"*.
+
+Com armadura baixa, todo dado contribui proporcionalmente: cinco cutucadas fracas
+derrubam o objetivo igual a dois golpes comprometidos. Vida alta vira **barra
+comprida**, não exigência de time — é o jeito preguiçoso de fazer um chefe.
+
+**16 de vida e 3 de armadura.** Com Poder 3:
+
+| Golpe | Conta | Tira |
+|---|---|---|
+| básica, dado 2 | `2 + 3 − 3` | **2** |
+| básica, dado 6 | `6 + 3 − 3` | 6 |
+| Ultimate, dado 6 | `round(6 × 1,25) + 3 − 3` | **8** |
+
+**Quatro vezes** entre o pior e o melhor golpe. Cutucar com dado ruim quase não
+anda, e é isso — e não o tamanho da barra — que obriga a comprometer o dado bom de
+vários heróis ao mesmo tempo. Fechar num turno pede **4 dos 5 heróis** (`16 ÷ 4`).
+
+E **16 fica abaixo da vida de todos os 20 heróis** — o mais frágil tem 18. O
+objetivo não é mais o saco de pancada mais gordo da mesa. Há teste travando as
+duas pontas: o Barão tem menos vida que o herói mais frágil, e a Ultimate tira
+pelo menos 3× o que tira a básica de dado baixo.
+
+**Dificuldade preservada**, n=2500 por braço:
+
+| Regra | Barão morto | golpes | duração |
+|---|---|---|---|
+| golpes, vida 4 (v25) | 52,1% · 53,4% · 56,6% | 3,3–3,5 | 23 |
+| **dano, 16/3 (v26)** | **54,7%** | 3,1 | 23 |
+
+Dragão inalterado (34,8%). Ordem no confronto espelhado: **53,3%** (n=9000) contra
+52,98% da v25 — 0,3 ponto, ruído.
+
+### Os escudos apagavam o turno
+
+**O relato:** *"achei os valores dos buffs mto fortes"*.
+
+Confere. Heróis têm 18 a 25 de vida, e a Muralha do Vharn dava `Força + 11` — **17
+num herói de 25**, ou 68% da vida máxima, de uma habilidade só. Isso não é
+"absorve um golpe", é **ignore a rodada**. Foi exatamente o episódio que abriu a
+v25: dois ataques no Vharn sem tirar um ponto de vida.
+
+**Teto de 12** — metade da vida do maior herói do jogo, dois terços da do menor:
+
+| Escudo | Era (dado 6) | Ficou | % da vida de quem recebe |
+|---|---|---|---|
+| **Muralha** (Vharn) | Força + 11 = **17** | Força + 6 = **12** | 68% → **48%** |
+| **Vento Contrário** (Vidra) | Força + 9 = 15 | Força + 5 = **11** | 83% → **61%** |
+| **Anteparo** (Gorm) | Força + 7 = 13 | Força + 4 = **10** | 52% → **40%** |
+
+Os demais já estavam dentro (Sopro 10, Eco 11, Véu de Névoa 11, Reposicionar 10) e
+não foram tocados. A faixa inteira saiu de **10 a 17** para **10 a 12**, e há teste
+travando o teto.
+
+### A Égide entregava 7 e a carta prometia 4
+
+Achado ao auditar os buffs, e é o pior tipo de erro de balanceamento: **o jogador
+escolhia a dádiva lendo um número e recebia outro.** `const BARAO_ESCUDO=7`, com a
+carta dizendo *"Todos os seus heróis ganham 4 de escudo"*.
+
+E 7 não é 4 com folga: por herói, por turno, com cinco heróis e duas rodadas,
+somava **70 de escudo** — quase três heróis inteiros de vida, de graça, num jogo
+em que o maior tem 25. **Agora entrega 4, como sempre esteve escrito**, e são 40 —
+ainda a dádiva que "compra as brigas que você não podia comprar", sem apagar duas
+rodadas de combate. Há teste conferindo que o motor entrega o número que a própria
+carta promete.
+
+### O degrau que a medição tem, e que é preciso saber
+
+**O agente da bateria só compromete dado com o poço quando consegue FECHAR no
+mesmo turno** — decisão de desenho antiga e documentada. A consequência é que a
+medição do poço é **quantizada em degraus inteiros de heróis necessários**:
+
+| Heróis necessários | Configurações | Barão morto |
+|---|---|---|
+| 4 | 16/3 · 22/1 · 24/0 · 18/2 | 55–58% |
+| 5 | 25/1 · 27/1 · 25/2 | 44–46% |
+
+Passar de 4 para 5 derruba 10 pontos de uma vez, porque precisar dos cinco livres é
+muito mais raro que precisar de quatro. **Leitura de vida do poço acima de ~5
+golpes típicos mede o agente desistindo, e não o objetivo** — foi por isso que a
+primeira varredura mostrou um penhasco entre vida 30 e 36 que não existe no jogo.
+
+### Duas correções de unidade que a mudança exigiu
+
+Enquanto os dois moradores contavam golpes, motor e IA podiam calcular o golpe em
+lugares diferentes sem ninguém notar. Com o Barão em dano, a divergência viraria a
+IA achando que nunca fecha e **largando o objetivo**:
+
+- **`iaJogadas`** avaliava `ep.vida <= (i===2?GOLPE_ULT:GOLPE_HAB)` — em golpes,
+  enquanto o motor cobraria em dano;
+- **o agente de simulação** avaliava `ep.vida <= podemAgir.length` — e teria
+  reportado "ninguém quer o Barão" quando o que houve foi o agente ficar cego para
+  a unidade.
+
+O cálculo virou **uma função só**, `golpeNoPoco(h,hb,slot,F,ep)`, usada pelo golpe
+mirado e pela IA, com teste conferindo que o que a IA usa para decidir é o que o
+motor cobra. O agente de simulação ganhou a mesma conta, e a mudança é **no-op**
+para morador que conta golpes — verificado antes de medir qualquer coisa.
+
+112 testes.
+
+---
+
+## v25 — dois botões mortos, o escudo invisível e o tempo entrando no jogo · 2026-08-13
+
+Cinco itens de playtest. Dois eram bug — e os dois eram **de tela, não de regra**,
+que é o padrão que este lote deixa registrado: o motor estava certo e o jogador
+não tinha como saber.
+
+### O botão de comprar buff não fazia nada
+
+**O relato:** *"não tô conseguindo comprar os itens de buff"*.
+
+**A causa, de leitura direta.** A prateleira *Gastar ouro* desenha os botões com
+`class="itC"` **e** `data-g`. O handler dos itens era ligado por
+`querySelectorAll(".itC")` — que pega as **duas** prateleiras — e, por ser ligado
+depois, **sobrescrevia** o clique do gasto. Clicar em Reforço caía no corpo de
+compra de item, `ITEM[undefined]` dava `undefined` e `it.o` estourava
+`TypeError`. Quatro botões mortos: Reforço, Requisição, Leva de Ferro e
+Sentinela.
+
+**Corrigido** trocando o seletor para `[data-i]`. A classe continua sendo de
+aparência; quem manda no clique é o dado. É a armadilha nº 2 do `ESTADO.md`
+(seletor pegando o que não devia) em roupa nova — antes foi `id` entre `<section>`
+e container, agora foi `class` entre duas prateleiras.
+
+### O escudo era invisível
+
+**O relato:** *"dei 2 ataques contra o Vharn e não deu dano nem tirou escudo"*.
+
+**Reproduzido no harness, e o motor estava certo:** Muralha dá **17** de escudo
+num herói de 25; dois golpes de 6 levaram o escudo de 17 → 11 → 5 e a vida ficou
+em 25/25. Absorção correta, expiração correta.
+
+**O defeito era a tela, em dois lugares ao mesmo tempo:**
+
+| Onde | O quê |
+|---|---|
+| `estadoDaPeca` | listava seis estados e **escudo não era um deles** — justamente a lista cujo trabalho é responder *"por que meu golpe não fez nada?"* |
+| `revela()` | só emitia número flutuante quando o escudo **subia**. Descendo, nada |
+
+E como a vida não mudou, não havia número de dano nem tremida. **Um golpe
+inteiramente absorvido produzia zero feedback.** Da cadeira do jogador, o ataque
+não aconteceu.
+
+Agora: **ESCUDO** na peça (logo depois de INTOCÁVEL, antes de MARCADO — decide se
+vale dar o golpe), `escudo 17` na gaveta do Time, e o escudo que desce sai como
+`⛨−6` com a peça tremendo igual a um golpe que entrou.
+
+### Efeito com prazo — sangramento e veneno
+
+**O pedido:** *"hab que causem efeito com tempo tipo sangramento ou envenenamento
+que causa dano por 2 rodadas"*.
+
+Até aqui todo golpe resolvia no próprio turno: a única forma de pressionar alguém
+era estar do lado dele com dado na mão. O efeito com prazo é a primeira coisa do
+jogo que continua trabalhando depois que o dado acabou.
+
+- **Cobra no início do turno da vítima**, uma vez por rodada — a mesma âncora de
+  escudo, prisão e buff, então os dois lados têm sempre a mesma exposição.
+- **Ignora armadura e escudo.** Não é o golpe chegando, é o golpe que já chegou.
+  A consequência de desenho é a que faltava: contra um Vharn com 17 de escudo e 4
+  de armadura não existia resposta nenhuma, e agora existe uma classe de dano que
+  passa por dentro. Em troca, o número é pequeno e não escala com o dado.
+- **Reaplicar renova**, não empilha. Empilhar transformaria o efeito em dano
+  instantâneo com passos extras, que é o oposto do que ele é.
+- **Morrer limpa.**
+
+### Zonas — controle de área de verdade
+
+**O pedido:** *"quero habilidades de controle de área"*.
+
+`area`, `danoVizinhos` e `danoRaio` já existiam, mas todos acertam quem está lá
+**no instante do golpe** e acabam ali: são explosões, não território. A **zona**
+fica no chão e envenena quem **começa o turno dentro** — muda por onde o
+adversário anda mesmo nas rodadas em que ninguém gasta dado.
+
+**O prazo da zona é contado em TURNOS DO ADVERSÁRIO, não em rodadas** — e essa
+distinção é a parte importante. A zona cobra no início do turno de quem está
+dentro, então a criada por quem joga **primeiro** pegaria o adversário já na
+mesma rodada, e a do segundo só na rodada seguinte: com prazo de 2 rodadas, uma
+cobrava dois turnos adversários e a outra, um. **É exatamente o erro que a v20 já
+corrigiu nas ondas** (comparar presença no fim da rodada dava 42% para quem
+começa). Contando turnos, os dois lados recebem o mesmo número de exposições por
+construção, e há teste travando isso.
+
+### As sete habilidades
+
+| Herói | Habilidade | Slot | O que ganhou |
+|---|---|---|---|
+| Kaross | Puxada | controle | sangramento 2/rodada × 2 |
+| Kurr | Rastro | controle | sangramento 1/rodada × 2 |
+| Xhera | Investir | controle | sangramento 2/rodada × 2 |
+| Cael | Armadilha | controle | zona raio 1, veneno 1 |
+| Ilva | Véu de Névoa | controle | zona raio 1, veneno 1 |
+| Arden | Tribunal | Ultimate | zona raio 1, veneno 2 |
+| Nira | Tapeçaria | Ultimate | zona raio 1, veneno 2 |
+
+**O sangramento nasceu na BÁSICA do Kaross e do Kurr, e `sim/habs.js` matou a
+ideia na hora:** com efeito de graça em todo golpe, o Talho (dado 1) passava a
+valer mais que a Puxada (dado 3), e a habilidade do meio deixava de pagar o
+próprio dado — a regra fechada na v23. Movido para o slot de controle, o Kaross
+foi de **−1 para +5**. A regra que fica: **efeito com prazo é escolha, não
+passiva.** Custa dado médio ou alto, e por isso pode ser forte. Há teste.
+
+### A base trata, e o cerco interrompe
+
+**O pedido:** *"o herói na base se cura um pouco por rodada, porém se tiver um
+inimigo a 2 hexágonos dele só cura 1x até ele sair de perto"* — implementado como
+descrito.
+
+Não havia cura de base nenhuma: o único jeito de recuperar vida cheia era
+**morrer**, e o respawn era a cura mais barata do jogo, que é o incentivo errado.
+Agora **3 por rodada** na própria base, e voltar custa movimento.
+
+A trava é a parte que importa. Com inimigo a **2 casas ou menos**, o herói se
+trata **uma vez** e para até o cerco sair de perto. Sem ela, recuar viraria poço
+de vida infinito e mergulhar na base deixaria de ser decisão.
+
+### O Reforço era o Poder mais barato do jogo
+
+**O relato:** *"além disso tá mto barato"*. Medido com um instrumento novo,
+**`sim/ouro.js`**, em 600 partidas:
+
+| | |
+|---|---|
+| Ouro que um herói acumula na partida | **61** |
+| Build completo mais caro (3 itens) | **25** |
+| Sobra | **36** |
+
+Com a curva antiga (6, +2) essa sobra pagava **quatro** Reforços — 6+8+10+12 = 36,
+ou **+4 de Poder permanente**. Nenhum item da loja dá mais de +2, e todos ocupam
+um dos três slots; o Reforço não ocupa nada e não tem teto. **Curva 6+2 → 10+4:**
+a mesma sobra compra dois, e o terceiro exige guardar em vez de gastar. O que se
+comprou não foi número, foi escolha.
+
+**O que este número NÃO resolve, e está medido:** a renda paga o build **2,4×**.
+Mexer no preço de um gasto não fecha uma torneira aberta. `sim/ouro.js` já traz
+`farma=`, `agiu=` e `matar=` para o grupo testar a renda quando quiser decidir —
+ver `docs/DECISOES-PENDENTES.md`.
+
+### A bateria estava medindo o confronto, não a ordem
+
+**O achado mais importante deste lote, e ele não veio de relato nenhum** — veio de
+o número não fechar.
+
+`sim/bateria.js` sempre rodou **um confronto fixo**: vharn/nyx/solenne/vesper/mirrha
+contra kaross/grumo/zhet/cael/torvald. Dez dos vinte heróis, repartidos
+fixamente entre os lados. Para mudança **estrutural** (mapa, torre, onda, ouro,
+respawn) isso não atrapalha — ela cai igual nos dois lados. Para mudança que toca
+**herói**, cai só do lado em que aquele herói está.
+
+Das sete habilidades da v25, **duas estavam no time 1 (Kaross e Cael) e nenhuma
+no time 0.** A bateria acusou "quem começa" subindo de 51,2% para 53,5% com
+z=6,60, e **eu cheguei a concluir que a v25 tinha custado 2 pontos de equilíbrio
+de ordem.** Não tinha: o que eu media era o confronto que eu mesmo desequilibrei.
+
+**`times=espelho`** põe os mesmos cinco heróis nos dois lados. Aí a única
+diferença que sobra é quem joga primeiro — que é o que a métrica diz medir:
+
+| Braço (espelhado, n=9000 cada) | quem começa |
+|---|---|
+| v25 completa | 52,98% |
+| v25 com as três mecânicas desligadas | 52,73% |
+| **diferença** | **+0,24 ponto · z=0,33 — ruído** |
+
+**As mecânicas novas não movem o equilíbrio de ordem.** Duração mediana: 23 nos
+dois braços — a cura de base não alongou a partida.
+
+**E fica um número novo para o grupo:** no confronto espelhado, "quem começa"
+mede **~52,9%**, e não os ~51% históricos. Os 51% eram do confronto assimétrico —
+a composição de um lado compensava parte da vantagem de ordem. O item 1 de
+`DECISOES-PENDENTES.md` foi atualizado com isso.
+
+### Erros meus nesta sessão, registrados de propósito
+
+1. **Li ruído como sinal, e depois li sinal como ruído.** Com braços de n=3000,
+   `zonas=off` deu 51,6% (abaixo do build) e me convenceu de uma assimetria de
+   zona; refeito depois da correção, deu 53,0% (**acima**). O braço inverteu de
+   sinal — assinatura de ruído. Depois, a n=9000, li 53,5% como regressão real da
+   v25 quando era o confronto. **A assimetria de zona que corrigi é real, mas foi
+   achada LENDO o código, não medindo** — e a correção vale pelo raciocínio.
+2. **Dois testes meus nasceram errados.** Um checava se o veneno gastava escudo
+   chamando `iniciaTurno`, que expira o escudo por regra: o teste passaria medindo
+   a coisa errada. Outro exigia etiqueta nula num herói que nasce no mato e
+   legitimamente acende ESCONDIDO.
+3. **O heurístico da IA para sair da zona não funcionava.** Eu procurava saída
+   entre os vizinhos, mas zona de raio 1 cobre a casa **e** as seis em volta — não
+   havia vizinho limpo, e a IA desistia. O teste pegou.
+4. **O crédito da morte por sangramento ia para o herói errado.** Eu lia o autor
+   depois de filtrar a lista de efeitos, e a cobrança que mata é justamente a que
+   tira o efeito da lista — o ouro ia para o inimigo mais próximo. Achado na
+   auditoria, antes de commitar.
+
+### Texto do jogo que estava mentindo (de novo)
+
+O guia dizia *"uma Ward acende os dois matos de uma vez"*, o que a regra da v22
+desfez — ward só enxerga mato de dentro do mato. Ficou registrado na v24 e
+**continua sem conserto**, porque é de outro lote.
+
+---
+
+## v24 — o Dragão cabe em dois dados · 2026-08-13
+
+Um número só, medido sozinho de propósito. A v23 fechou com três regras novas no
+mesmo lote e o aviso de que mexer no Dragão junto tornaria impossível dizer de
+quem era qualquer efeito. Este lote é o Dragão, e nada além dele.
+
+### Vida do Dragão: 4 → 3
+
+**O relato, herdado da v23:** *"muito tentado e pouco fechado"* — o veredito que
+`sim/epicos.js` imprimia sozinho, versão após versão.
+
+**Medido em 1500 partidas antes de mexer:** o Dragão aparecia em 100% das
+partidas, era atacado em 63,3% delas e morria em **21,5%**. O Barão, com a
+**mesma vida 4 e um pedágio maior** (revide 4 contra 2), morria em 56,0%. A
+diferença nunca foi preço de encostar — foi **janela**: o Dragão desce na rodada
+5 e perde o lugar na 12, quando o Barão toma o poço mesmo com ele vivo. Sete
+rodadas para juntar **duas Ultimates no mesmo poço**, que é o que 4 de vida
+exigia.
+
+**A regra:** o Dragão tem **3 de vida**. Cai em **Ultimate + básica** — dois
+dados, de dois heróis, dentro de um turno. E continua **não caindo numa Ultimate
+sozinha**: o segundo dado é o dilema, e ele ficou de pé.
+
+| | v23 | v24 |
+|---|---|---|
+| Dragão morto (das partidas em que aparece) | 21,5% | **32,3%** |
+| Golpes no Dragão por partida | 1,4 | **1,3** |
+| Veredito de `sim/epicos.js` | *caro demais* | **disputado e fechável** |
+| Barão morto | 56,0% | 53,2% |
+| Duração mediana | 23 | 23 |
+
+**O ponto que interessa é o par:** o Dragão passou a fechar mais **sem ser mais
+atacado** — os golpes por partida até caíram. Não virou ímã nem farm; virou
+tentativa que converte. Era exatamente o que faltava.
+
+### O pedágio foi descartado por medição, não por gosto
+
+O handoff da v23 apontava **duas** alavancas para o Dragão, `vdragao=` e
+`revide=off`. A segunda foi medida e **não faz nada**:
+
+| Variante (n=1500 cada) | Dragão morto |
+|---|---|
+| build v23 | 21,5% |
+| `revide=off` (nenhum morador cobra pedágio) | **21,7%** |
+| `rdragao=0` (pedágio zero só do Dragão) | 23,4% |
+| **`vdragao=3`** | **33,1%** |
+| `barao=14` (janela de 7 → 9 rodadas) | 34,5% |
+
+Zerar o revide devolve 0,2 ponto. Faz sentido depois de visto: **quem desiste do
+Dragão desiste por dado gasto, não por vida perdida** — o custo que pesa é o
+turno que o herói não passou empurrando rota.
+
+`barao=14` funciona tão bem quanto a vida 3, e foi **recusado pelo preço**: o
+Barão deixa de aparecer em 7% das partidas (98,2% → 93,3%) e a mediana sobe para
+24 rodadas. O fim de partida arrastando é preocupação aberta desde a v23, e a
+correção do Dragão não podia ser paga pelo Barão.
+
+### O que isso quebra
+
+Nada de mecânica. **A vantagem de quem começa não se moveu** — A/B com a vida do
+Dragão como única variável, n=6000 por braço:
+
+| Braço | quem começa |
+|---|---|
+| vida 4 | 51,7% · 52,1% → **51,9%** |
+| vida 3 | 50,9% · 51,4% → **51,2%** |
+
+Diferença de 0,7 ponto, **z=0,75 — ruído**. Registro junto uma lição que já está
+escrita na armadilha nº 4 e que quase repeti: numa das execuções de 2000 a v24
+deu 52,8% com z=2,5, e o alerta de *"VANTAGEM REAL"* disparou. O A/B mostrou que
+o braço da **vida 4** dava 51,9% na mesma condição. Era oscilação. Execução
+isolada continua não distinguindo 51% de 53%.
+
+### Texto do jogo que estava mentindo
+
+Encontrado ao conferir onde a vida do Dragão aparecia escrita. O painel **Como
+jogar**, dentro do jogo, descrevia o poço com números de **três versões atrás**:
+
+| Dizia | É |
+|---|---|
+| Dragão: 8 de vida, revida 1, até a rodada 8 | 3 de vida, revida 2, rodada 5 |
+| Barão: 14 de vida, revida 2, da rodada 8 | 4 de vida, revida 4, rodada 12 |
+| Fúria: +2 de Poder no time e as ondas andam | **escolha de 1 de 3 dádivas**, nenhuma dá Poder |
+
+`docs/REGRAS.md` errava os dois revides (1 e 2, contra 2 e 4 do motor) num
+arquivo que se declara extraído do motor. O **guia** ainda dizia *"Dragão até a
+rodada 8"* e descrevia a recompensa do Barão como a **Fúria** (+2 de Poder e as
+ondas), que a escolha de três dádivas substituiu na v20. Tudo corrigido: bestiário
+e glossário.
+
+Nenhuma dessas linhas é regra — mas as três descreviam o poço para quem está
+aprendendo a jogar, e é o sistema que este lote mexeu.
+
+**Continua errado e não foi tocado:** o mesmo painel diz que *"uma Ward acende os
+dois matos de uma vez"*, o que a regra da v22 desfez — ward só enxerga mato de
+dentro do mato. Fica registrado aqui em vez de corrigido junto, porque é texto da
+v22 e não deste lote.
+
+---
+
 ## v23 — o fim de partida volta a ser jogado · 2026-08-13
 
 Cinco itens do playtest. Dois de tela, três de regra — e o maior deles saiu de

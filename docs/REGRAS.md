@@ -1,6 +1,6 @@
 # JAGERLARAMAIS — regras e dinâmicas
 
-**Versão 23** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
+**Versão 28** · regras extraídas do motor (`jogo/jogo.js`), não da memória.
 
 > Este arquivo substitui `docs/02-regras.md`, que ficou na v0.2 e descreve um jogo
 > que não existe mais. Quando um número mudar no motor, mude aqui também — e
@@ -137,8 +137,15 @@ próprio time** ganha **+1 de Armadura**. A torre do adversário não protege qu
 está mergulhando nela, e o bônus **cai junto com a torre**. É a diferença entre
 brigar em casa e brigar no vão da rota.
 
-**Dano garantido:** três Ultimates (Julgamento, Ato Final, Sentença) causam um
-número fixo e **ignoram Armadura**. São o melhor golpe do jogo contra tanque.
+**Dano perfurante:** três Ultimates (Julgamento, Ato Final, Sentença) **ignoram
+Armadura**. Elas escalam como qualquer outra (`Força × 0,8 × 1,25 + Poder`), mas
+com multiplicador reduzido — é o preço do dano que passa por dentro. Contra alvo
+sem armadura rendem menos que uma Ultimate comum; contra tanque, mais. Até a v26
+eram número fixo e não cresciam com nada.
+
+**Dois alvos no mesmo hexágono:** herói e estrutura dividem casa o tempo todo
+(defensor em cima do Nexus, herói em cima da própria torre). O toque abre uma
+**janela perguntando em quem bater**. Com um alvo só, resolve direto.
 
 **Morte:** quem matou leva **4 de ouro**. O morto volta na base, com a vida
 cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
@@ -149,18 +156,104 @@ cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
 | 9 a 16 | 3 rodadas |
 | 17 em diante | 4 rodadas |
 
-> **Dinâmica.** Não existe cura de base neste jogo — o que devolve vida cheia é o
-> respawn, a uma casa do Nexus. Com preço fixo de 2, segurar o próprio Nexus
-> morrendo de propósito saía de graça. Cedo, morrer é lição; tarde, morrer é a
-> partida.
+> **Dinâmica.** Com preço fixo de 2, segurar o próprio Nexus morrendo de propósito
+> saía de graça. Cedo, morrer é lição; tarde, morrer é a partida. Até a v25 o
+> respawn era também a única forma de recuperar vida cheia — morrer era a cura
+> mais barata do jogo, que é o incentivo errado. A **cura de base** (adiante)
+> desfez isso.
 
 | Efeito | O que faz |
 |---|---|
-| Escudo | Absorve dano antes da vida. Não empilha entre rodadas |
+| Escudo | Absorve dano antes da vida. Não empilha entre rodadas. Aparece como **ESCUDO** na peça |
+| Sangramento / veneno | Dano por rodada com prazo, **ignora armadura e escudo** (adiante) |
 | Preso | Não pode se mover |
 | Intocável | Não recebe dano nenhum |
 | Marca | Soma dano no próximo golpe recebido |
 | Área | Respinga nos vizinhos — **inclusive no morador do poço** |
+
+---
+
+## 6.1 · Rotação do Caçador
+
+No **início de cada rodada** os dois jogadores escolhem, **escondido um do
+outro**, para que **região** o próprio Caçador vai. Ele é **reposicionado na
+hora** — não gasta o Dado Mestre nem a ação dele.
+
+**Ele reaparece sempre dentro da selva**, na parte dela colada à região
+escolhida, e **nunca dentro da rota**.
+
+| Escolha | Onde ele reaparece |
+|---|---|
+| **Topo** | a casa de selva colada à rota de cima, do próprio lado |
+| **Meio** | a casa de selva colada à rota do meio, do próprio lado |
+| **Baixo** | a casa de selva colada à rota de baixo, do próprio lado |
+| **Selva** | o centro da própria selva |
+
+As quatro casas são **derivadas da planta do mapa**, não escritas à mão, e as do
+time 1 são o **espelho** das do time 0 — `gira` leva a rota de cima na de baixo,
+então o espelho de "Topo" é "Baixo".
+
+**Casa ocupada ou inválida:** pousa na casa de selva válida mais próxima, dentro
+da mesma região. Nunca em rota, nunca em base, nunca em cima de outra peça,
+nunca fora do tabuleiro.
+
+**10 segundos para decidir.** Sem escolha, vai sozinho para a **Selva** — a
+partida nunca fica parada esperando.
+
+**A escolha é secreta.** O adversário não recebe aviso nenhum de qual região foi
+escolhida, e nada vai para o log. Para saber onde o Caçador caiu ele precisa ter
+**visão daquele mato** — de olho ou de ward. A informação está presa à
+**posição**, nunca ao botão.
+
+> **História.** A v18 teve uma rotação em que o Caçador **saía do tabuleiro** e
+> reaparecia noutra entrada de selva; a v19 desfez, por correção do Vinicius. Da
+> v28 à v37 a rotação era **andar** até 3 casas de graça, interceptável. A v38
+> voltou ao reposicionamento imediato, a pedido do Vilker. A metade da correção
+> do Vinicius que **continua de pé**: o Caçador nunca deixa de estar num lugar
+> real do tabuleiro. O que ele deixou de ser é interceptável no caminho.
+>
+> Os bônus de destino (+3 de ouro, +1 de Poder, +4 roubados, +1 no golpe do poço)
+> **saíram junto** com os destinos que os davam. O Caçador ainda coleta
+> acampamento **por ocupação**, como qualquer herói.
+
+
+---
+
+## 6.2 · Hexágonos bloqueados
+
+Algumas casas da **selva** são fisicamente bloqueadas. **Herói não entra e não
+atravessa.** Elas existem para a selva deixar de ser campo aberto e virar
+**corredor** — entrada, atalho, caminho de Caçador, lugar de emboscada.
+
+**O obstáculo é o próprio hexágono**, e ele conta a história do mundo: ônibus
+abandonado, carros empilhados, caixa-d'água. Nunca pedra genérica.
+
+| | |
+|---|---|
+| Quantas | **6** — 3 pares espelhados, de 27 casas de selva |
+| Onde | **só na selva** — rota, base, rio e poço nunca bloqueiam |
+| Nunca em | acampamento, ponto de pouso do Caçador, vizinha do poço |
+| Visão | **bloqueiam**, como todo mato |
+| Empurrão/puxão | não jogam ninguém para dentro |
+| Ward | não se planta dentro |
+| Lampejo | **passa por cima**, mas não pousa dentro — é salto |
+
+**Andar passa a ter duas réguas.** `distância` continua sendo a linha reta e
+continua valendo para **alcance de habilidade** — o ônibus para o pé, não o tiro.
+Para **andar**, a régua é o caminho que contorna o obstáculo: a casa atrás do
+ônibus pode estar a 2 de distância e a 4 de caminhada, e o herói paga 4.
+
+**Herói não bloqueia caminho** — só o obstáculo. Continua valendo passar por cima
+de aliado e de inimigo, como sempre foi.
+
+**A planta não mudou.** Nenhum hexágono nasceu, sumiu ou trocou de lugar; o que
+mudou é quais casas são caminháveis. São 116 hexágonos, como antes.
+
+**As seis são derivadas da planta, não escritas à mão**, e passam por duas
+travas: o tabuleiro continua inteiro (toda casa alcança toda casa) e a selva
+continua com as **mesmas duas regiões** que já tinha. Bloquear a casa errada
+partia a selva em ilhas e prendia o Caçador no próprio quintal — aconteceu na
+primeira tentativa, com `[2,5]`.
 
 ---
 
@@ -278,16 +371,81 @@ na casa**. Reaparecem 3 rodadas depois.
 | Neutro | 4 |
 | Do adversário (invasão) | +1 a mais |
 
+### Efeito com prazo — sangramento e veneno
+
+Algumas habilidades de **controle** (dado 3+) e algumas Ultimates deixam um efeito
+que continua trabalhando depois do turno.
+
+| | |
+|---|---|
+| Quando cobra | no **início do turno de quem está marcado**, uma vez por rodada |
+| Quanto | o número da habilidade, fixo — não escala com o dado |
+| Passa por | **ignora armadura e escudo**. É o golpe que já chegou, cobrando depois |
+| Reaplicar | **renova o prazo e fica com o maior dano**. Nunca empilha um segundo |
+| Morte | limpa tudo — o respawn devolve o herói inteiro |
+
+**Nunca na habilidade básica.** Efeito com prazo custa dado médio ou alto, e é por
+isso que pode ser forte: ele é escolha, não passiva de todo golpe.
+
+Quem aplicou leva o **ouro da morte**, mesmo que já tenha morrido desde então.
+
+### Zona — controle de área
+
+A zona é o mesmo efeito posto no **chão**. Quem **começa o turno dentro** dela
+recebe o efeito.
+
+| | |
+|---|---|
+| Prazo | os **2 próximos turnos do adversário** — contado em turnos, **nunca em rodadas** |
+| Raio | 1 (a casa e as seis vizinhas) |
+| A sua zona | **não** machuca você |
+| No mapa | a sua em verde tracejado, a do adversário em vermelho pulsante |
+
+O prazo é medido em turnos do adversário porque a zona cobra no início do turno de
+quem está dentro: em rodadas, a zona de quem joga **primeiro** vigiaria dois turnos
+adversários e a do segundo apenas um. É o mesmo erro que a v20 corrigiu nas ondas.
+
+### Cura de base
+
+Herói ferido na **própria base** recupera **3 de vida por rodada**. Voltar custa
+movimento — é esse o preço.
+
+**Com inimigo a 2 casas ou menos, ele se trata UMA vez e para.** A cura só volta
+quando o cerco sair de perto. É o que impede a base de virar poço de vida infinito
+e mantém o mergulho como decisão.
+
+Quem está **SEM CURA** não é tratado pela base.
+
 ### O poço — Dragão e Barão
 
-Bater no poço é como bater na torre, mas **sem dono**: qualquer um bate, e **quem
-dá o último golpe leva o prêmio inteiro**. Básica tira **1**, Ultimate tira **2**,
-respingo de área tira 1.
+O poço é **sem dono**: qualquer um bate, e **quem dá o último golpe leva o prêmio
+inteiro**.
 
-| Morador | Desce | Vida | Revide | Prêmio |
-|---|---|---|---|---|
-| **Dragão** | rodada 5 | 4 | 1 | **+1 de Poder** no time, permanente e acumulativo |
-| **Barão** | rodada 12 | 4 | 2 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+**Os dois moradores contam coisas diferentes, de propósito.**
+
+| Morador | Desce | Vida | Armadura | Como apanha | Revide | Prêmio |
+|---|---|---|---|---|---|---|
+| **Dragão** | rodada 5 | **3** | — | **conta GOLPES**: básica 1, Ultimate 2, respingo 1. O dado não entra | 2 | **+1 de Poder** no time, permanente e acumulativo |
+| **Barão** | rodada 12 | **16** | **3** | **conta DANO**, pela regra dos heróis: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora a armadura | 4 | Escolha **1 de 3 dádivas**, por 2 rodadas |
+
+**Por que os dois não são iguais.** Contar golpes achata o dado: contra o Dragão o
+1 e o 6 de uma básica valem o mesmo. Isso é aceitável num alvo de 3 que cai em dois
+dados, na rodada 5, quando ninguém tem item. Num alvo grande, achatar apagaria a
+decisão inteira — por isso o Barão premia o dado que você comprometeu nele, e as
+três Ultimates de dano garantido ganham no poço o mesmo papel que já têm contra
+tanque.
+
+**O que faz o Barão exigir um grupo é a ARMADURA, não a vida.** Ele tem **16**, que
+é menos que a vida de qualquer um dos 20 heróis — o objetivo não é o saco de pancada
+mais gordo da mesa. Mas com **3 de armadura** e Poder 3, uma básica de dado 2 tira
+**2** e uma Ultimate de dado 6 tira **8**: quatro vezes mais. Cutucar com dado ruim
+quase não anda, e fechar num turno pede **4 dos 5 heróis**.
+
+O Dragão cai em **dois dados** — uma Ultimate (2) e uma básica (1) — e nunca em
+um só. É o preço que o faz caber na janela curta dele sem virar farm: com 4 de
+vida ele exigia duas Ultimates no mesmo poço e morria em 21,5% das partidas em
+que aparecia. O Barão continua em 4, e com o dobro de pedágio: o Dragão se
+acumula, o Barão se conquista.
 
 Na rodada 12 o **Barão toma o poço mesmo com o Dragão vivo** — o que dá ao Dragão
 um prazo de validade.

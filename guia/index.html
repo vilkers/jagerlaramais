@@ -567,10 +567,10 @@ const MONSTROS = [
   ["Fera Escarlate","acampamento · renasce a cada 3 rodadas","Buff: +1 de dano em toda alocação, durante 3 rodadas"],
   ["Ninhada de Pedra","acampamento · renasce a cada 2 rodadas","3 de ouro"],
   ["Ancião de Musgo","acampamento · renasce a cada 2 rodadas","Cura 3 e limpa efeitos"],
-  ["Dragão","épico · no poço da rodada 5 à 8, volta 3 rodadas depois de cair",
-   "Herança do Dragão: +1 de Poder em todo o time, para sempre, e acumula"],
-  ["Barão","épico · no poço da rodada 8 em diante, volta em 4",
-   "Fúria do Barão, por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas"],
+  ["Dragão","épico · desce na rodada 5 e perde o poço na 12 · 3 de vida, conta GOLPES (básica 1, Ultimate 2 — o dado não entra), revida 2 · volta 3 rodadas depois de cair",
+   "Herança do Dragão: +1 de Poder em todo o time, para sempre, e acumula. Cai em Ultimate + básica"],
+  ["Barão","épico · toma o poço na rodada 12, mesmo com o Dragão vivo · 16 de vida e 3 de Armadura, apanha pela regra dos heróis (Força + Poder − Armadura) — a armadura é o que o faz exigir um grupo · revida 4 · volta em 4",
+   "Dádiva do Barão, por 2 rodadas: escolha 1 de 3 — Ondas de Ferro, Égide ou Aríete. Nenhuma dá Poder"],
   ["Arauto","épico · desenhado, ainda sem regra no jogo",
    "Empurra uma rota inteira até a próxima torre"]
 ];
@@ -599,9 +599,13 @@ const GLOSS = [
   ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
   ["Crítico","Efeito extra na carta, ativado por um 6 natural no dado alocado."],
   ["Super-creep","Creep reforçado, gerado por inibidor caído. Desenhado, sem regra no motor."],
-  ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão até a rodada 8, Barão depois."],
+  ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão da rodada 5 à 12, Barão da 12 em diante — e o Barão toma o lugar mesmo com o Dragão vivo."],
   ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
-  ["Fúria do Barão","Por 2 rodadas: +2 de Poder no time e as três ondas avançam sozinhas, com herói na rota ou sem."],
+  ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (golpe de herói em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
+  ["Rotação do Caçador","No início da rodada os dois jogadores escolhem, escondido um do outro, para onde o próprio Caçador vai. No seu turno ele anda até 3 casas de graça naquela direção — nunca teleporta, e só ganha o bônus se chegar. Destinos: acampamento próprio (+3 de ouro), neutro (+1 de Poder), inimigo (+4 de ouro) ou o poço (+1 por golpe no poço)."],
+  ["Sangramento / Envenenamento","Efeito com prazo. Cobra no início do turno de quem está marcado, uma vez por rodada, e ignora armadura e escudo — é o golpe que já chegou, cobrando depois. Reaplicar renova o prazo; nunca empilha. Morrer limpa. Mora no slot de controle ou na Ultimate, nunca na básica."],
+  ["Zona","Efeito posto no chão: quem começa o turno dentro fica envenenado. Dura os 2 próximos turnos do adversário — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar o dobro da do segundo."],
+  ["Cura de base","Herói ferido na própria base recupera 3 por rodada. Com inimigo a 2 casas ou menos, trata uma vez e para até o cerco sair de perto."],
   ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
 ];
 
@@ -852,14 +856,17 @@ q("#filtros").addEventListener("click",e=>{
 });
 
 /* ==================== LABORATÓRIO DE DADOS ==================== */
-/* espelha o catálogo de jogo/index.html — Força mínima de cada habilidade */
-const REGRAS=[
-  {rota:"topo",     quem:"Vharn",   ops:[["Golpe de Escudo",1],["Provocar",3],["Muralha",6]]},
-  {rota:"selva",    quem:"Nyx",     ops:[["Bote",1],["Sombra",3],["Caçada",5]]},
-  {rota:"meio",     quem:"Solenne", ops:[["Feixe",1],["Prisma",4],["Julgamento",6]]},
-  {rota:"atirador", quem:"Vesper",  ops:[["Tiro",1],["Recarregar",2],["Chuva de Ferro",5]]},
-  {rota:"suporte",  quem:"Mirrha",  ops:[["Sopro",1],["Doar Dado",1],["Eco",4]]}
-];
+/* DERIVADO do catálogo, e não copiado dele. Esta lista era escrita à mão aqui e
+   ficou mentindo no instante em que os heróis mudaram de nome: mostrava Vharn,
+   Nyx, Solenne, Vesper e Mirrha com habilidades que não existiam mais. É o
+   terceiro catálogo divergente que a regra do projeto manda não criar.
+   Agora ele pega um herói por rota do CATALOGO — muda lá, muda aqui. */
+const ROTA_LAB=[["topo","topo"],["selva","selva"],["meio","meio"],
+                ["atirador","adc"],["suporte","sup"]];
+const REGRAS=ROTA_LAB.map(([rotulo,pos])=>{
+  const [,def]=Object.entries(HEROIS).find(([,d])=>d.pos===pos);
+  return {rota:rotulo, quem:def.n, ops:def.habs.map(h=>[h.n,h.f])};
+});
 let dados=[];
 function rolar(){
   dados=[0,1,2].map(()=>1+Math.floor(Math.random()*6));

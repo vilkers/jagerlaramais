@@ -391,6 +391,11 @@ const _distBase=(p,t)=>Math.min(...BASE[t].map(([c,r])=>dist(c,r,...p)));
 
    As duas continuam equidistantes das bases — a justiça não é sorteada, só o
    lado é. `CAMP_NEUTRO_LADOS` guarda as duas; `sorteiaNeutro()` escolhe. */
+/* os dois de time moram aqui, junto do neutro: eram declarados 600 linhas
+   abaixo, longe dos outros acampamentos, e a lista de hexágonos bloqueados
+   (que precisa saber onde eles estão para não bloqueá-los) não os enxergava */
+const CAMP_AZUL=[3,4];
+const CAMP_CARMIM=gira(...CAMP_AZUL);
 const CAMP_NEUTRO_LADOS=(()=>{
   const meio=[(COLS-1)/2,(LINS-1)/2];
   const justas=[];
@@ -434,6 +439,413 @@ const VISAO_BASE=2;       /* a própria base nunca é surpresa */
 const VISAO_ONDA=2;       /* a onda é o creep: enxerga onde está empurrando */
 const VISAO_WARD=3;       /* ward vê mais que herói — é o que a torna comprável */
 const WARD_RODADAS=3;     /* e ela apaga sozinha */
+
+/* ---------- ROTAÇÃO DO CAÇADOR ----------
+   No início de cada rodada os DOIS jogadores escolhem, escondido um do outro,
+   PARA QUE REGIÃO o próprio Caçador vai: Topo, Meio, Baixo ou Selva. Ele é
+   reposicionado na hora, sempre DENTRO DA SELVA, na parte dela colada à região
+   escolhida — nunca dentro da rota.
+
+   AVISO DE HISTÓRIA, e ele precisa ser lido antes de mexer aqui. A v18 teve uma
+   rotação em que o Caçador SAÍA DO TABULEIRO e reaparecia noutra entrada de
+   selva; a v19 a desfez, por correção do Vinicius — a peça tem de continuar
+   existindo num lugar real, e o que muda é quem enxerga. Da v28 até a v37 a
+   rotação era ANDAR: até 3 casas de graça na direção do destino, interceptável.
+
+   Esta versão volta a reposicionar de imediato, a pedido do Vilker (v38). A
+   diferença para a v18 — e é ela que mantém a correção do Vinicius de pé — é que
+   o Caçador NUNCA sai do tabuleiro: ele deixa uma casa real e ocupa outra casa
+   real no mesmo instante, continua bloqueando passagem, continua coletando
+   acampamento e continua aparecendo ao sair do mato. O que ele deixa de ser é
+   interceptável no caminho, porque caminho não há mais.
+
+   A ocultação não é ficha nem declaração: é a névoa. A casa de pouso é sempre
+   mato, e mato só se enxerga de dentro. Quem quiser saber onde o Caçador
+   inimigo caiu põe ward lá — a informação está presa à POSIÇÃO, nunca ao botão
+   que o outro apertou. */
+
+/* ---------- OS QUATRO PONTOS DA SELVA ----------
+   Derivados da planta existente, nunca escritos à mão: mudou o mapa, eles se
+   recolocam sozinhos. O mapa NÃO é alterado para caber a mecânica.
+
+   Cada time tem os seus quatro, e os do time 1 são o ESPELHO dos do time 0 —
+   escritos uma vez, girados uma vez, como manda o resto do arquivo. Fazer a
+   conta duas vezes daria dois resultados diferentes no desempate e a simetria
+   morreria sem ninguém ver.
+
+   POR QUE POR TIME. "A selva mais perto do Topo" não quer dizer nada sozinha: a
+   rota de cima atravessa o mapa inteiro, e a casa mais perto dela existe dos
+   dois lados do rio. Sem âncora de time, escolher "Topo" jogaria um dos dois
+   Caçadores dentro da selva do adversário todas as rodadas.
+
+   · topo / meio / baixo — a casa de mato colada na rota (primeiro critério) e,
+     entre as coladas, a mais perto do VÃO NEUTRO daquela rota, que é onde ela é
+     disputada. É o ponto de onde se sai para o gank.
+   · selva — o CENTRO da própria selva: a casa que minimiza a distância até a
+     mais longe das três âncoras de rota. É o entroncamento de onde se alcança
+     qualquer rota, e é para lá que se olha o poço. Medir pelo centro do
+     TABULEIRO foi tentado primeiro e caía sempre na mesma casa da âncora do
+     meio — quatro botões e três lugares. As âncoras de rota ficam de fora da
+     disputa por construção, então "Selva" nunca repete "Meio".
+
+   O ESPELHO TROCA TOPO POR BAIXO. `gira` leva a rota de cima na de baixo
+   (`L_BOT` é literalmente `L_TOPO` girada), então o espelho da âncora de topo do
+   time 0 é a âncora de BAIXO do time 1. Espelhar topo em topo colocava a âncora
+   do time 1 a seis casas da rota que ela deveria vigiar — foi o primeiro
+   resultado impresso desta função, e o motivo desta nota existir. */
+const _MATO_P=[...MATO].map(s=>{const[c,r]=s.split(",").map(Number);return[c,r];});
+const _meuLado=(p,t)=>_distBase(p,t)<_distBase(p,1-t);
+const _distCorredor=(p,nome)=>Math.min(...CORREDOR[nome].map(q=>dist(...p,...q)));
+const _ancoraRota=(nome,t)=>{
+  const vao=ROTAS[nome][centroRota(nome)];
+  return _MATO_P.filter(p=>_meuLado(p,t))
+    .sort((a,b)=>_distCorredor(a,nome)-_distCorredor(b,nome)
+              || dist(...a,...vao)-dist(...b,...vao)
+              || a[0]-b[0] || a[1]-b[1])[0]||null;
+};
+const _ancoraSelva=(t,rotas)=>{
+  const alvos=Object.values(rotas).filter(Boolean);
+  const usados=new Set(alvos.map(p=>k(...p)));
+  const raio=p=>alvos.length?Math.max(...alvos.map(q=>dist(...p,...q))):0;
+  return _MATO_P.filter(p=>_meuLado(p,t)&&!usados.has(k(...p)))
+    .sort((a,b)=>raio(a)-raio(b)
+              || dist(...a,..._MEIO_TAB)-dist(...b,..._MEIO_TAB)
+              || a[0]-b[0] || a[1]-b[1])[0]||null;
+};
+const SELVA_PONTOS=(()=>{
+  const meu={topo:_ancoraRota("topo",0), meio:_ancoraRota("meio",0), baixo:_ancoraRota("baixo",0)};
+  meu.selva=_ancoraSelva(0,meu);
+  const esp=p=>p?gira(...p):null;
+  /* topo↔baixo na virada: ver a nota do espelho, acima */
+  const dele={topo:esp(meu.baixo), meio:esp(meu.meio),
+              baixo:esp(meu.topo), selva:esp(meu.selva)};
+  return [meu,dele];
+})();
+
+/* ---------- HEXÁGONOS BLOQUEADOS ----------
+   Direção de arte, item 4 e 5 (ver docs/DIRECAO-DE-ARTE.md): algumas casas da
+   selva são fisicamente bloqueadas. Herói não entra nem atravessa. Elas existem
+   para a selva deixar de ser um campo aberto e virar CORREDOR — entrada, atalho,
+   caminho de Caçador, lugar de emboscada.
+
+   O obstáculo é o próprio hexágono, e ele conta a história do mundo: ônibus
+   abandonado, carros empilhados, caixa-d'água sobre laje. Nada de pedra genérica.
+
+   NÃO MUDA A PLANTA. Nenhum hexágono nasce, some ou troca de lugar; o que muda é
+   quais casas são caminháveis. A geometria continua sendo a da versão 2D — item
+   1 da direção de arte.
+
+   COMO SÃO ESCOLHIDAS, e por que não estão escritas à mão:
+   · só mato — rota, base, rio e poço nunca bloqueiam;
+   · nunca um ponto de pouso do Caçador, nunca um acampamento (incluindo os DOIS
+     lados possíveis do neutro, porque o lado é sorteado por partida e a lista
+     aqui é fixa), nunca o poço nem vizinha dele;
+   · escritas para um lado e ESPELHADAS para o outro, como todo o resto do mapa;
+   · nunca encostadas umas nas outras — obstáculo isolado vira contorno,
+     obstáculo em fila vira muralha;
+   · e as duas travas que importam: o tabuleiro continua inteiro (toda casa
+     alcança toda casa) e a SELVA continua com as mesmas duas regiões que já
+     tinha. Bloquear a casa errada partia a selva em ilhas e o Caçador ficava
+     preso no próprio quintal — aconteceu na primeira tentativa, com `[2,5]`.
+
+   A ordem de preferência é o grau: casa com mais vizinhas de mato está no meio
+   de um bolsão aberto, e é bloqueando ela que o bolsão vira corredor.
+
+   O alvo é BLOQUEIOS_ALVO por lado, mas a lista satura sozinha antes disso — com
+   as travas acima, o mapa 11×11 comporta 3 pares. Aumentar o alvo não força mais
+   bloqueio; afrouxar as travas, sim, e é aí que a selva se parte. */
+const BLOQUEIOS_ALVO=3;
+const OBSTACULOS_TIPOS=["onibus","carros","caixadagua"];
+const _BLOQ=(()=>{
+  const proibidas=new Set([
+    ...[0,1].flatMap(t=>Object.values(SELVA_PONTOS[t]).filter(Boolean).map(p=>k(...p))),
+    ...CAMP_NEUTRO_LADOS.map(p=>k(...p)),
+    k(...CAMP_AZUL), k(...gira(...CAMP_AZUL)),
+    POCO_K, ...vizinhos(...POCO).map(p=>k(...p))
+  ]);
+  const grau=p=>vizinhos(...p).filter(v=>MATO.has(k(...v))).length;
+  /* componentes do grafo de MATO, ignorando as bloqueadas */
+  const comps=bloq=>{
+    const livres=_MATO_P.filter(p=>!bloq.has(k(...p)));
+    const vis=new Set(); let n=0;
+    for(const p0 of livres){
+      if(vis.has(k(...p0)))continue;
+      n++; const f=[p0]; vis.add(k(...p0));
+      while(f.length){ const p=f.pop();
+        vizinhos(...p).forEach(v=>{ const kk=k(...v);
+          if(MATO.has(kk)&&!bloq.has(kk)&&!vis.has(kk)){ vis.add(kk); f.push(v); } }); }
+    }
+    return n;
+  };
+  /* tabuleiro inteiro alcançável a pé */
+  const inteiro=bloq=>{
+    const todas=[];
+    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++)
+      if(noTab(c,r)&&!bloq.has(k(c,r))) todas.push([c,r]);
+    if(!todas.length) return false;
+    const vis=new Set([k(...todas[0])]); const f=[todas[0]];
+    while(f.length){ const p=f.pop();
+      vizinhos(...p).forEach(v=>{ const kk=k(...v);
+        if(!bloq.has(kk)&&!vis.has(kk)){ vis.add(kk); f.push(v); } }); }
+    return vis.size===todas.length;
+  };
+  const COMPS0=comps(new Set());
+  const bloq=new Set(); const tipos={}; let i=0;
+  const candidatas=_MATO_P
+    .filter(p=>!proibidas.has(k(...p))&&_meuLado(p,0))
+    .sort((a,b)=>grau(b)-grau(a)||a[0]-b[0]||a[1]-b[1]);
+  for(const p of candidatas){
+    if(i>=BLOQUEIOS_ALVO)break;
+    const e=gira(...p);
+    if(!MATO.has(k(...e))||proibidas.has(k(...e)))continue;
+    if(bloq.has(k(...p))||bloq.has(k(...e)))continue;
+    const encosta=q=>vizinhos(...q).some(v=>bloq.has(k(...v)));
+    if(encosta(p)||encosta(e))continue;
+    const tent=new Set([...bloq,k(...p),k(...e)]);
+    if(!inteiro(tent)||comps(tent)!==COMPS0)continue;
+    bloq.add(k(...p)); bloq.add(k(...e));
+    const tipo=OBSTACULOS_TIPOS[i%OBSTACULOS_TIPOS.length];
+    tipos[k(...p)]=tipo; tipos[k(...e)]=tipo;
+    i++;
+  }
+  return {set:bloq,tipos};
+})();
+const BLOQUEADO=_BLOQ.set;
+const OBSTACULO=_BLOQ.tipos;                 /* casa → que coisa está ali */
+const ehBloqueado=(c,r)=>BLOQUEADO.has(k(c,r));
+
+/* ---------- DISTÂNCIA ANDANDO ----------
+   `dist` continua sendo a distância em linha reta e continua valendo para
+   ALCANCE DE HABILIDADE — o ônibus para o pé, não o tiro. Para andar, a régua
+   passa a ser esta: busca em largura que CONTORNA o hexágono bloqueado.
+
+   Sem isto o obstáculo seria enfeite. O movimento deste jogo sempre foi por
+   distância, não por caminho: `calcula` aceitava qualquer casa dentro do
+   alcance e `moveAte` levava direto. O herói simplesmente passaria por cima do
+   ônibus, e "corredor" não existiria em regra nenhuma.
+
+   Herói NÃO bloqueia caminho — só o obstáculo. Continua valendo que se passa por
+   cima de aliado e de inimigo; o que mudou é que não se passa por cima de casa
+   bloqueada. Era assim antes para todo mundo e continua assim para gente. */
+function passosDe(de){
+  const d=new Map([[k(...de),0]]);
+  let borda=[de];
+  while(borda.length){
+    const prox=[];
+    for(const p of borda){
+      const n=d.get(k(...p))+1;
+      for(const v of vizinhos(...p)){
+        const kk=k(...v);
+        if(BLOQUEADO.has(kk)||d.has(kk))continue;
+        d.set(kk,n); prox.push(v);
+      }
+    }
+    borda=prox;
+  }
+  return d;
+}
+/* quantos passos de `de` até `ate`, contornando obstáculo — `null` se não há caminho */
+const passosAte=(de,ate)=>{ const v=passosDe(de).get(k(...ate)); return v===undefined?null:v; };
+const REGIOES=[
+  {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima."},
+  {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio."},
+  {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo."},
+  {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço."}
+];
+const REGIAO=Object.fromEntries(REGIOES.map(r=>[r.id,r]));
+const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
+
+/* Casa onde o Caçador PODE pousar: dentro do tabuleiro, dentro da selva e vazia.
+   `MATO` já é o que sobra depois de base, poço, corredor de rota e rio — então
+   uma casa de mato nunca é rota, nunca é base e nunca é estrutura. A própria
+   casa do Caçador conta como livre: escolher a região onde ele já está não pode
+   falhar por ele estar no lugar. */
+const casaDeSelvaLivre=(p,h)=>{
+  if(!noTab(...p)||!MATO.has(k(...p))||BLOQUEADO.has(k(...p)))return false;
+  const o=em(...p);
+  return !o||o===h;
+};
+/* O ponto preferencial da região; se estiver ocupado ou inválido, a casa de
+   selva válida mais próxima DENTRO DA MESMA REGIÃO (o próprio lado). Só se o
+   lado inteiro estiver tomado é que aceita qualquer mato — cinco heróis não
+   enchem dezenove casas, mas travar a partida por isso seria pior que o desvio. */
+function pousoNaSelva(t,regiao,h){
+  const alvo=SELVA_PONTOS[t]&&SELVA_PONTOS[t][regiao];
+  if(!alvo)return null;
+  if(casaDeSelvaLivre(alvo,h))return alvo;
+  const perto=l=>l.sort((a,b)=>dist(...a,...alvo)-dist(...b,...alvo)||a[0]-b[0]||a[1]-b[1])[0]||null;
+  const livres=_MATO_P.filter(p=>casaDeSelvaLivre(p,h));
+  return perto(livres.filter(p=>_meuLado(p,t)))||perto(livres);
+}
+
+/* O reposicionamento. Sem animação de percurso de propósito: não há percurso, e
+   uma animação deslizando pelo mapa entregaria a casa de pouso a quem não tem
+   visão dela. */
+function reposicionaCacador(t,regiao){
+  if(!REGIAO[regiao])return null;
+  const h=cacadorDe(t);
+  if(!h)return null;
+  const destino=pousoNaSelva(t,regiao,h);
+  if(!destino)return null;
+  h.pos=[...destino];
+  return destino;
+}
+/* A escolha e o reposicionamento são a mesma coisa, e é isto que o resto do
+   motor chama. NADA vai para o log: o log é lido pelos dois jogadores, e uma
+   linha dizendo "o Caçador foi para o Topo" entregaria de graça exatamente a
+   informação que a névoa existe para cobrar. Quem escolheu já sabe — clicou. */
+function escolheRotacao(t,regiao){
+  if(!REGIAO[regiao])return null;
+  J.rotacao[t]=regiao;                 /* registro da rodada; ninguém desenha */
+  return reposicionaCacador(t,regiao);
+}
+
+/* A escolha, no início da rodada. Os dois escolhem ANTES de qualquer um jogar, e
+   um não vê o do outro — é a aposta às cegas que dá sal à mecânica. Em hotseat
+   isso são duas telas em sequência; contra a IA, só a do humano.
+   A escolha só aparece se o time ainda TEM Caçador vivo: pedir aposta a quem não
+   tem peça para mover é pedir clique por nada. */
+function abreRotacoes(){
+  if(!J||J.fim!==null)return;
+  J.rotacao=[null,null];
+  const humanos=[0,1].filter(t=>!(simMode||(aiMode&&t===1)));
+  [0,1].forEach(t=>{ if(!humanos.includes(t)&&cacadorDe(t)) escolheRotacao(t,iaEscolheRotacao(t)); });
+  const fila=humanos.filter(t=>cacadorDe(t));
+  if(!fila.length) return pinta();
+  perguntaRotacao(fila,0);
+}
+
+/* O relógio. A partida NUNCA pode ficar parada esperando esta decisão — sem
+   escolha em ROTACAO_SEGUNDOS, a Selva é escolhida sozinha e o jogo segue. */
+const ROTACAO_SEGUNDOS=10;
+let _rotRelogio=null;
+function paraRelogioRotacao(){ if(_rotRelogio){ clearInterval(_rotRelogio); _rotRelogio=null; } }
+function perguntaRotacao(fila,i){
+  paraRelogioRotacao();
+  if(i>=fila.length){ pinta(); return; }
+  const t=fila[i], h=cacadorDe(t);
+  if(!h) return perguntaRotacao(fila,i+1);
+  const bts=REGIOES.map(r=>
+    `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
+      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span></button>`).join("");
+  const legenda=s=>`Escolha em <b>${s}</b>s — sem escolha, ele vai para a Selva`;
+  abre(`<span class="et">Rotação do Caçador · rodada ${J.rodada}</span>
+    <h2 class="t${t}">${NOMES[t]}: para que região vai ${h.n}?</h2>
+    <p>Ele reaparece <b>dentro da selva</b>, na parte dela colada à região escolhida —
+    <b>nunca dentro da rota</b>. O outro jogador <b>não vê</b> a sua escolha: para saber
+    onde ele caiu é preciso ter visão daquele mato.</p>
+    <p id="rotRel" style="opacity:.8;font-size:13px">${legenda(ROTACAO_SEGUNDOS)}</p>${bts}`);
+  const escolhe=(id,porTempo)=>{
+    paraRelogioRotacao(); fecha();
+    escolheRotacao(t,id);
+    if(porTempo) toast(`Tempo esgotado — ${h.n} foi para o centro da Selva`,"aviso");
+    perguntaRotacao(fila,i+1);
+  };
+  G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>escolhe(b.dataset.r,false));
+  let resta=ROTACAO_SEGUNDOS;
+  _rotRelogio=setInterval(()=>{
+    if(!J||J.fim!==null){ paraRelogioRotacao(); return; }
+    const el=G("rotRel");
+    if(!el){ paraRelogioRotacao(); return; }   /* a tela saiu por outro caminho */
+    resta--;
+    if(resta<=0) return escolhe("selva",true);
+    el.innerHTML=legenda(resta);
+  },1000);
+}
+
+/* A IA escolhe pelo ESTADO DO MAPA, e obedece à mesma névoa que o humano: só
+   entram na conta os inimigos que ela de fato enxerga (`visivelPara`). Uma IA
+   que lesse o mapa inteiro daria gank perfeito em herói escondido e a névoa
+   deixaria de ser jogo para quem joga contra ela.
+
+   Não é uma IA nova — é uma nota por região, no mesmo estilo do resto do
+   arquivo: inimigo exposto perto do ponto de pouso puxa gank, aliado por perto
+   soma porque gank de um só não fecha, torre própria ferida puxa defesa, e o
+   poço puxa a Selva com peso maior quando o morador é o Barão. */
+function iaEscolheRotacao(t){
+  const h=cacadorDe(t);
+  if(!h) return "selva";
+  /* o Aprendiz aposta no acaso — e é aposta de verdade, não sabotagem: às vezes
+     acerta a região certa, como quem ainda não leu o mapa */
+  if(!IA().rotacaoBoa) return REGIOES[Math.floor(Math.random()*REGIOES.length)].id;
+  const inimigos=J.times[1-t].herois.filter(x=>!x.morto&&visivelPara(x,t));
+  const aliados=J.times[t].herois.filter(x=>!x.morto&&x!==h);
+  const nota=id=>{
+    const a=SELVA_PONTOS[t][id];
+    if(!a) return -99;
+    if(id==="selva"){
+      let s=2;                                        /* piso: a selva sempre serve */
+      if(J.poco.vida>0){
+        s+=(J.poco.id==="barao"?6:3);                 /* o Barão vale a rodada inteira */
+        s+=aliados.filter(x=>dist(...x.pos,...POCO)<=4).length;  /* objetivo é de grupo */
+      }
+      const neutro=J.camps.find(c=>c.t===-1);
+      if(neutro&&!em(...neutro.pos)) s+=1;
+      return s;
+    }
+    /* A nota da rota é medida NA ROTA, não no ponto de pouso. Os quatro pontos
+       ficam a poucas casas uns dos outros — medir "inimigo perto do pouso"
+       fazia a mesma isca contar para duas regiões, e o desempate alfabético
+       decidia o gank. `naRota` é inequívoco: ou o herói está no corredor
+       daquela rota, ou está colado nele. */
+    const naRota=p=>_distCorredor(p,id)<=1;
+    let s=0;
+    inimigos.filter(x=>naRota(x.pos)).forEach(x=>{
+      s+=3;
+      s+=Math.round(3*(1-Math.max(0,x.vida)/x.vidaMax));   /* ferido vale mais */
+      if(!sobTorreAmiga(x)) s+=2;                          /* longe da torre dele */
+    });
+    s+=aliados.filter(x=>naRota(x.pos)).length*2;          /* gank de um só não fecha */
+    const minhas=J.torres.filter(x=>x.rota===id&&x.t===t&&x.vida>0);
+    if(minhas.some(x=>x.vida<VIDA_TORRE)) s+=2;            /* a minha torre apanhando */
+    return s;
+  };
+  return REGIOES.map(r=>r.id).sort((x,y)=>nota(y)-nota(x)||x.localeCompare(y))[0];
+}
+
+/* ---------- EFEITO AO LONGO DO TEMPO ----------
+   Sangramento e envenenamento. O jogo só tinha dano instantâneo: todo golpe
+   resolvia no próprio turno, e por isso a única forma de pressionar alguém era
+   estar do lado dele com dado na mão. O efeito com prazo é a primeira coisa que
+   continua trabalhando depois que o dado acabou — e é o que dá sentido a recuar,
+   perseguir e negar espaço.
+
+   COBRA NO INÍCIO DO TURNO DA VÍTIMA, uma vez por rodada, e é a mesma âncora de
+   escudo, prisão e buff (ver expiraDoTime): quem recebe sempre tem exatamente um
+   turno adversário de exposição, jogando em primeiro ou em segundo.
+
+   IGNORA ARMADURA E ESCUDO, de propósito. Não é o golpe chegando — é o golpe que
+   já chegou, cobrando depois. A consequência de desenho é a que faltava: um
+   Vharn com 17 de escudo e 4 de armadura era imune a quase tudo enquanto a
+   Muralha durasse, e agora existe uma classe de dano que responde a ele. Em
+   troca, o número é pequeno e não escala com o dado: quem quer matar continua
+   precisando bater. */
+const DOTS={
+  sangramento:{n:"sangramento", selo:"SANGRANDO",   ico:"🩸"},
+  veneno:     {n:"envenenamento", selo:"ENVENENADO", ico:"☠"}
+};
+/* ---------- ZONA — controle de área ----------
+   A ward já provou que peça-no-mapa-com-prazo funciona neste motor, e a zona é a
+   mesma ideia virada para o outro lado: em vez de acender o terreno, ela o
+   NEGA. Quem começa o turno dentro leva o efeito com prazo.
+
+   É o que faltava para "controle de área" existir de verdade. `area`,
+   `danoVizinhos` e `danoRaio` acertam quem está lá NO INSTANTE do golpe e
+   acabam ali — são explosões, não território. A zona permanece, então ela muda
+   por onde o adversário anda mesmo nas rodadas em que ninguém gasta dado.
+
+   O PRAZO É CONTADO EM TURNOS DO ADVERSÁRIO, e não em rodadas. Medir em rodada
+   parece igual e não é: a zona cobra no início do turno de quem está dentro,
+   então a criada por quem joga PRIMEIRO pega o adversário já na mesma rodada,
+   e a criada por quem joga em segundo só pega na rodada seguinte. Com prazo de
+   2 rodadas, a primeira cobrava dois turnos adversários e a segunda, um.
+
+   É exatamente o erro que a v20 já corrigiu nas ondas — comparar presença no
+   fim da RODADA dava 42% para quem começa, e congelar por turno devolveu 4,8
+   pontos. Medido de novo aqui: com prazo em rodadas a bateria dava 53,3% para
+   quem começa contra 51,6% com as zonas desligadas. Contando turnos, os dois
+   lados recebem o mesmo número de exposições por construção. */
+const ZONA_TURNOS=2;
 
 /* Vizinhança pré-calculada. A primeira versão varria os 116 hexágonos para CADA
    fonte de visão, a cada consulta — com ~15 fontes por time e a visão sendo
@@ -558,10 +970,88 @@ const ladoDaTela=()=>aiMode?0:J.vez;
    com posição e prazo. É o que a faz interagir com a visão por raio: ela acende
    um pedaço do tabuleiro onde você não tem ninguém. */
 function poeWard(t,pos){
+  if(ehBloqueado(...pos))return;             /* não se planta ward dentro do ônibus */
   const tm=J.times[t];
   tm.wards=tm.wards||[];
   tm.wards.push({pos:[...pos],rodadas:WARD_RODADAS});
   reg(t?"c":"a",`ward posta — acende ${VISAO_WARD} de raio por ${WARD_RODADAS} rodadas`);
+}
+/* Aplica (ou renova) um efeito com prazo. Não empilha duas vezes o mesmo tipo:
+   reaplicar RENOVA a duração e fica com o maior dano. Empilhar era a alternativa
+   e foi descartada na mesa do desenho — dois assassinos sangrando o mesmo alvo
+   viraria dano instantâneo com passos extras, que é justamente o que o efeito
+   com prazo não deveria ser. */
+function poeDot(alvo,quem,tipo,dano,rodadas){
+  if(!alvo||alvo.morto||!DOTS[tipo])return;
+  alvo.dots=alvo.dots||[];
+  const ja=alvo.dots.find(d=>d.tipo===tipo);
+  if(ja){ ja.dano=Math.max(ja.dano,dano); ja.rodadas=Math.max(ja.rodadas,rodadas); ja.dono=quem; }
+  else alvo.dots.push({tipo,dano,rodadas,dono:quem});
+  reg("b",`${alvo.n} está com ${DOTS[tipo].n} — ${dano} por rodada, ${rodadas} rodadas`);
+}
+/* Cobra os efeitos no início do turno do dono da peça, e só uma vez por rodada.
+   Ignora armadura e escudo — ver o comentário de DOTS. Não passa por aplicaDano
+   justamente por isso: aquele é o funil do golpe que CHEGA, e este é o do golpe
+   que já chegou. */
+function cobraDots(t){
+  J.times[t].herois.forEach(h=>{
+    if(h.morto||!h.dots||!h.dots.length)return;
+    /* o autor é guardado ANTES de a lista ser filtrada. Ler `h.dots[0].dono`
+       depois do filtro perdia o crédito exatamente no caso mais comum — a última
+       cobrança do efeito é justamente a que mata, e é também a que tira o efeito
+       da lista. O ouro da morte ia para o vizinho mais próximo em vez de para
+       quem aplicou. */
+    let autor=null;
+    h.dots.forEach(d=>{
+      if(h.vida<=0)return;
+      h.vida-=d.dano; autor=d.dono;
+      reg("b",`${DOTS[d.tipo].ico} ${h.n} perde ${d.dano} de ${DOTS[d.tipo].n} `
+             +`(${Math.max(0,h.vida)}/${h.vidaMax})`);
+      fx(h.pos,-d.dano,"dano");
+      d.rodadas--;
+    });
+    h.dots=h.dots.filter(d=>d.rodadas>0);
+    /* a morte por efeito credita o ouro a quem aplicou — mesmo que ele já tenha
+       morrido desde então. Herói morto continua existindo e continua tendo bolso. */
+    if(h.vida<=0) mata(h,autor||maisPertoDe(h,1-h.t));
+  });
+}
+/* fallback de autoria: se o aplicador sumiu da mesa (não deveria acontecer, mas
+   `mata` precisa de alguém para creditar), o crédito vai para o inimigo vivo mais
+   próximo. Nunca fica sem dono, e nunca estoura. */
+function maisPertoDe(h,t){
+  const cand=J.times[t].herois.filter(x=>!x.morto);
+  if(!cand.length)return J.times[t].herois[0];
+  return cand.reduce((a,b)=>dist(...h.pos,...b.pos)<dist(...h.pos,...a.pos)?b:a);
+}
+/* Zona: quem começa o turno dentro de uma zona inimiga recebe o efeito dela.
+   O prazo da zona também corre AQUI, e só aqui — cada turno adversário que ela
+   vigia gasta uma carga, tenha pegado alguém ou não. É o que a torna simétrica:
+   as duas zonas vigiam o mesmo número de turnos do outro lado, não importa quem
+   jogou primeiro. Gastar só quando pega alguém faria zona em canto vazio durar
+   a partida inteira. */
+function zonasCobram(t){
+  if(!J.zonas||!J.zonas.length)return;
+  J.zonas.forEach(z=>{
+    if(z.t===t)return;                       // a sua própria zona não te machuca
+    J.times[t].herois.forEach(h=>{
+      if(h.morto)return;
+      if(dist(...h.pos,...z.pos)>z.raio)return;
+      reg("b",`${h.n} começou o turno dentro de ${z.n}`);
+      poeDot(h,z.dono,z.tipo,z.dano,2);
+    });
+    z.turnos--;
+  });
+  const antes=J.zonas.length;
+  J.zonas=J.zonas.filter(z=>z.turnos>0);
+  if(J.zonas.length<antes) reg("b","uma zona se dissipou");
+}
+function poeZona(t,pos,z){
+  J.zonas=J.zonas||[];
+  J.zonas.push({t,pos:[...pos],raio:z.raio||1,turnos:ZONA_TURNOS,
+                tipo:z.tipo,dano:z.dano,n:z.n||"uma zona",dono:z.dono});
+  reg(t?"c":"a",`${z.n||"zona"} criada — raio ${z.raio||1}, `
+     +`os ${ZONA_TURNOS} próximos turnos do adversário`);
 }
 function expiraWards(){
   J.times.forEach((tm,t)=>{
@@ -573,8 +1063,6 @@ function expiraWards(){
   });
 }
 
-const CAMP_AZUL=[3,4];
-const CAMP_CARMIM=gira(...CAMP_AZUL);
 
 /* Dragão compõe, Barão vira a mesa — a distinção do MOBA, ver docs/00-anatomia-moba.md.
    `volta` é quantas rodadas depois de morrer o poço reabre. `revide` é o preço de
@@ -590,13 +1078,68 @@ const CAMP_CARMIM=gira(...CAMP_AZUL);
    por isso que a IA — depois de ganhar avaliação na v17 — parou de bater no poço.
    Ela estava certa; o preço é que estava errado.
 
-   Com 4 e 6: o Dragão cai em 2 Ultimates ou 4 básicas, o Barão em 3 Ultimates.
    Cabe dentro de um turno se o time comprar a briga, e aí a pergunta "pressiono a
    torre ou disputo o objetivo?" passa a ter os dois lados viáveis — que é a
-   definição de dilema. O revide não mudou: encostar continua custando. */
+   definição de dilema. O revide não mudou: encostar continua custando.
+
+   VIDA DO DRAGÃO 4 → 3 na v24. Com 4 ele exigia DUAS Ultimates no mesmo poço, e a
+   janela dele é curta: desce na rodada 5 e perde o lugar na 12, quando o Barão
+   toma o poço mesmo com ele vivo. Medido em 1500 partidas: morria em 21,5%
+   daquelas em que aparecia, com o veredito automático de sim/epicos.js em "muito
+   tentado e pouco fechado". O Barão, com a mesma vida 4 e um pedágio MAIOR, caía
+   em 56% — a diferença nunca foi preço, foi tempo de janela.
+
+   O pedágio foi descartado por medição, não por gosto: `revide=off` deu 21,7% e
+   `rdragao=0` deu 23,4%, contra os 21,5% da base. Zerar o revide não move o
+   número, porque quem desiste do Dragão desiste por dado gasto, não por vida
+   perdida. Com vida 3 ele cai em Ultimate + básica — dois dados, de dois heróis,
+   dentro de um turno — e fecha em 33,1%, sem ser mais atacado (1,3 golpes por
+   partida contra 1,4). Não virou ímã: virou tentativa que converte.
+
+   O Barão continua em 4 de propósito. É ele que vira a mesa, e a assimetria
+   agora diz na mecânica o que a lore já dizia: o Dragão se acumula, o Barão se
+   conquista. */
+/* ---------- OS DOIS MORADORES CONTAM COISAS DIFERENTES (v26) ----------
+   O Dragão conta GOLPES: vida 3, Ultimate tira 2 e básica tira 1, o dado não
+   entra na conta. É o objetivo de cedo, e a regra de contagem é o que o mantém
+   legível na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa.
+
+   O BARÃO conta DANO, pela mesma regra de qualquer herói: `porDano` liga
+   `round(Força × dano × escala) + Poder − Armadura`, com respingo valendo metade
+   e `danoFixo` ignorando armadura — exatamente como contra um herói. Ele tem
+   **16 de vida e 3 de ARMADURA**, e a armadura é a peça que importa. A primeira
+   tentativa foi vida 22 e armadura 1, e ela resolvia o problema errado: com
+   armadura baixa todo dado contribui proporcionalmente, então cinco cutucadas
+   fracas derrubam o Barão igual a dois golpes bons — vida alta vira só uma barra
+   mais comprida, não uma exigência de time.
+
+   Com armadura 3 e Poder 3, uma básica de dado 2 tira 2 e uma Ultimate de dado 6
+   tira 8: QUATRO VEZES mais. É isso que obriga a comprometer o dado bom de vários
+   heróis ao mesmo tempo, que é como o objetivo grande funciona no gênero. E 16
+   fica ABAIXO da vida de todos os 20 heróis (o menor tem 18): o Barão não precisa
+   ser o saco de pancada mais gordo da mesa para exigir um grupo.
+
+   Fechar num turno pede 4 dos 5 heróis — `16 ÷ (7 − 3)`. Medido: 55,9% de Barões
+   fechados contra 56,6% da regra que contava golpes.
+
+   Por que os dois não são iguais: contar golpes achata tudo — com o Dragão, o 1
+   e o 6 no dado de uma básica valem o mesmo, e é aceitável num alvo de 3 que
+   morre em dois dados. Num alvo grande, achatar apaga a decisão inteira: o
+   Barão passa a premiar o dado que você comprometeu nele, e as três Ultimates de
+   `danoFixo` (Julgamento, Ato Final, Sentença) ganham no poço o mesmo papel que
+   já tinham contra tanque.
+
+   O número foi VARRIDO antes de entrar, com `sim/epicos.js baraodano= baraoarm=`,
+   e a dificuldade não mudou: 57,0% de Barões fechados contra 53,8% e 55,4% de
+   duas execuções do build que contava golpes — dentro da oscilação do próprio
+   controle. Detalhe importante e honesto sobre essa medição no patch note da
+   v26: o agente da bateria só compromete dado quando fecha no mesmo turno, e
+   isso QUANTIZA o resultado em degraus inteiros de heróis necessários. 22/1 cai
+   no mesmo degrau (4 heróis) do Barão antigo — afinar mais fino que o degrau
+   seria ajustar contra o agente, não contra o jogo. */
 const EPICO={
-  dragao:{n:"Dragão", vida:4, revide:2, volta:3, pre:"a Herança do Dragão"},
-  barao: {n:"Barão",  vida:4, revide:4, volta:4, pre:"a Fúria do Barão"}
+  dragao:{n:"Dragão", vida:3, revide:2, volta:3, pre:"a Herança do Dragão"},
+  barao: {n:"Barão",  vida:16, arm:3, porDano:1, revide:4, volta:4, pre:"a Fúria do Barão"}
 };
 /* Rodadas medidas em sim/epicos.js, 600 partidas por variante:
      · Barão na 8 dava ao Dragão só 3 rodadas de janela — ele caía em 1,3%;
@@ -628,7 +1171,13 @@ const DADIVAS=[
    porque:"Dobra a velocidade de derrubar estrutura."}
 ];
 const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
-const BARAO_ESCUDO=7;
+/* 7 → 4 na v26. A carta SEMPRE disse "4 de escudo" e o motor entregava 7: o
+   jogador escolhia a dádiva lendo um número e recebia outro. E 7 por herói por
+   turno, com cinco heróis e duas rodadas, somava 70 de escudo — quase três heróis
+   inteiros de vida, de graça, num jogo em que o maior herói tem 25. Com 4 são 40,
+   que ainda "compra as brigas que você não podia comprar" sem apagar duas rodadas
+   de combate. */
+const BARAO_ESCUDO=4;
 const BARAO_ARIETE=1;      /* dano somado ao golpe em estrutura */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
 const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
@@ -637,6 +1186,36 @@ const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver ata
 let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],alvosEpico=[],
     alvoNexus=null,mover=[],lojaHeroi=null;
 let aiMode=false, simMode=false;
+
+/* ---------- OS TRÊS NÍVEIS DA IA ----------
+   A regra que rege tudo aqui: DIFICULDADE MEXE NA QUALIDADE DA DECISÃO, NUNCA
+   NOS NÚMEROS. A IA difícil não ganha dano, vida, ouro nem dado a mais, e não
+   enxerga um hexágono sequer além do que a névoa deixa — este projeto já decidiu
+   que ela obedece à mesma névoa e não trapaceia (v19), e nível de dificuldade
+   não é desculpa para desfazer isso. Uma IA que trapaceia ensina a regra errada:
+   o jogador perde e não sabe o que fez de errado, porque não fez.
+
+   O que muda entre os níveis é o que qualquer jogador humano faz melhor com
+   experiência — reparar na melhor jogada, gastar ouro, comprar visão, converter
+   dado em movimento para chegar, voltar para defender e disputar o objetivo.
+
+   `erro` é o coração: a chance de a IA NÃO pegar a melhor jogada da lista que
+   ela mesma ordenou. É assim que se erra de verdade — vendo a jogada certa e
+   escolhendo outra —, e não jogando dado escondido.
+
+   `minimo` é o piso de nota para agir. Contraintuitivo e proposital: piso ALTO
+   deixa a IA passiva, porque ela desdenha jogada pequena que somada ganha
+   partida. É o erro clássico de quem está aprendendo. */
+const NIVEIS_IA={
+  facil:  {id:"facil",  n:"Aprendiz", d:"Erra bastante e joga passivo. Compra item, mas não warda, não volta para defender e não disputa o poço.",
+           erro:0.40, minimo:26, compra:1, wards:0, alcance:0, defende:0, objetivo:0, rotacaoBoa:0},
+  normal: {id:"normal", n:"Veterano", d:"Joga o mapa inteiro: compra, warda, volta para defender o Nexus e disputa o poço.",
+           erro:0.20, minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1},
+  dificil:{id:"dificil",n:"Mestre",   d:"Não erra jogada e concentra fogo em quem já está caindo.",
+           erro:0,    minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1, foco:1}
+};
+let nivelIA="normal";
+const IA=()=>NIVEIS_IA[nivelIA]||NIVEIS_IA.normal;
 
 function novo(){
   J={
@@ -648,7 +1227,8 @@ function novo(){
       herois:TIMES[t].map((id,i)=>{
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
-          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0};
+          pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0,
+          dots:[], curouSitiado:0, focoPoco:0};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -662,6 +1242,7 @@ function novo(){
       {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
       {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
     ],
+    zonas:[], rotacao:[null,null],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -776,11 +1357,20 @@ function expiraDoTime(t){
     if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
     if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
+    h.focoPoco=0;
   });
 }
 function iniciaTurno(){
   const t=J.vez, tm=J.times[t];
   expiraDoTime(t);
+  /* a zona marca ANTES de o efeito cobrar: quem começou o turno dentro dela paga
+     na hora, e não só na rodada seguinte. Sem isso dava para entrar e sair da
+     zona no mesmo turno sem custo nenhum, e território que não cobra não nega
+     nada. */
+  /* a rotação NÃO mora mais aqui: desde a v38 o Caçador é reposicionado no
+     instante da escolha, no início da rodada, e não no início do turno do dono */
+  zonasCobram(t);
+  cobraDots(t);
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
      mesmo instante em que é reposto */
   if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
@@ -937,6 +1527,7 @@ function fimDaRodada(){
     }
   });
   colheAcampamentos();                            // quem ficou em cima, colhe
+  curaDeBase();                                   // e quem ficou em casa, se trata
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
     h.ouro += h.agiu?1:3;
@@ -979,6 +1570,7 @@ function fimDaRodada(){
      é medida em `node sim/bateria.js` — a compensação é decisão do grupo (ver
      docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
+  abreRotacoes();           // os dois escolhem para onde o Caçador vai, às cegas
   atualizaAcampamentos();
   /* O poço reabre com o morador da vez — e o BARÃO NÃO ESPERA VAGA.
      Até a v19 a troca só acontecia com o poço vazio (`p.vida<=0`), e a
@@ -1014,7 +1606,12 @@ function moveAte(c,r){
      de 1 em 1 hexágono, todo passo custava zero: movimento infinito. Agora o
      desconto vale uma vez por turno, e `agilUsado` expira com o resto. */
   const temDesconto = ehAgil(h) && !h.agilUsado;
-  const d=dist(...h.pos,c,r), custo=Math.max(0,d-(temDesconto?1:0));
+  /* o preço é o do CAMINHO, não o da linha reta: quem contorna o obstáculo paga
+     o contorno. Sem isto, alcance e custo discordavam e o herói chegava de graça
+     numa casa que a régua já dizia estar longe. */
+  const andando=passosAte(h.pos,[c,r]);
+  if(andando===null)return;                 // sem caminho: obstáculo fecha de vez
+  const d=andando, custo=Math.max(0,d-(temDesconto?1:0));
   if(temDesconto&&d>0) h.agilUsado=1;
   if(custo>J.mov.rest)return;
   h.pos=[c,r]; J.mov.rest-=custo;
@@ -1106,6 +1703,40 @@ const campEm=(c,r)=>J.camps.find(cp=>cp.ativo&&cp.pos[0]===c&&cp.pos[1]===r);
 function coletaAcampamento(h){ /* mantida por compatibilidade: ocupar é o que vale */ }
 
 /* roda no fim da rodada, depois de todo mundo ter mexido */
+/* ---------- CURA DE BASE, E O CERCO QUE A INTERROMPE ----------
+   Até a v25 não havia cura nenhuma de base: o único jeito de recuperar vida
+   cheia era morrer, e o respawn ficou sendo a "cura" mais barata do jogo, o que
+   é exatamente o incentivo errado. Agora voltar para casa trata — e voltar custa
+   movimento, que é o recurso mais disputado da mesa.
+
+   A TRAVA é a parte que importa, e veio do relato: *"se tiver um inimigo a 2
+   hexágonos dele só cura 1x até ele sair de perto"*. Sem ela, recuar para a base
+   com o adversário em cima viraria um poço de vida infinito e o mergulho na base
+   deixaria de ser uma decisão. Com ela, quem está sitiado se trata UMA vez e
+   depois precisa resolver o cerco: matar, ser morto, ou esperar o outro
+   desistir. `curouSitiado` zera sozinho assim que não há mais ninguém a 2 —
+   sair de perto devolve a torneira, e é o próprio relato virado regra. */
+const CURA_BASE=3;
+const CERCO_RAIO=2;
+function curaDeBase(){
+  todos().forEach(h=>{
+    if(h.morto||!naBase(h))return;
+    const sitiado=J.times[1-h.t].herois.some(o=>!o.morto&&dist(...o.pos,...h.pos)<=CERCO_RAIO);
+    if(!sitiado){ h.curouSitiado=0; }
+    else if(h.curouSitiado){
+      if(h.vida<h.vidaMax) reg("b",`${h.n} está cercado na base — a cura não vem de novo`);
+      return;
+    }
+    if(h.semCura){ reg("b",`${h.n} está SEM CURA — a base não trata`); return; }
+    if(h.vida>=h.vidaMax)return;
+    const antes=h.vida;
+    h.vida=Math.min(h.vidaMax,h.vida+CURA_BASE);
+    if(sitiado) h.curouSitiado=1;
+    reg(h.t?"c":"a",`${h.n} se trata na base (+${h.vida-antes})`
+       +(sitiado?" — e não se trata de novo enquanto houver inimigo por perto":""));
+    fx(h.pos,"+"+(h.vida-antes),"cura");
+  });
+}
 function colheAcampamentos(){
   J.camps.forEach(cp=>{
     if(!cp.ativo||cp.respawn>0)return;
@@ -1163,15 +1794,25 @@ function usaHab(alvo){
   }
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
   if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
+  /* ZONA — o alvo é o CHÃO, não a peça. Nasce onde a habilidade aponta (ou sob o
+     próprio herói, quando ela é `alvo:"eu"`), e continua lá depois do turno. */
+  if(ef.zona){
+    const onde = (hb.alvo==="eu"||!alvo||!alvo.pos) ? h.pos : alvo.pos;
+    poeZona(h.t,onde,{...ef.zona,n:hb.n,dono:h});
+    txt+=` — ${hb.n} cobre ${ef.zona.raio||1} de raio pelos ${ZONA_TURNOS} próximos turnos do adversário`;
+  }
 
   if(ef.dano||ef.danoFixo){
     let d = ef.danoFixo ? ef.danoFixo : base(ef.dano);
     if(ef.extra)d+=ef.extra;
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
     if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
-    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo);
+    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo||!!ef.perfura);
+    /* o efeito com prazo entra DEPOIS do dano e só se o alvo sobreviveu: pendurar
+       sangramento num defunto não faz sentido e ainda sujaria o crédito da morte */
+    if(ef.dot&&!alvo.morto) poeDot(alvo,h,ef.dot.tipo,ef.dot.dano,ef.dot.rodadas);
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
-      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo));
+      .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo||!!ef.perfura));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
     h.recarga=0;
   }else reg(J.vez?"c":"a",txt);
@@ -1205,7 +1846,7 @@ function desloca(alvo,de,dir,n=1){
   for(let p=0;p<n;p++){
     const atual=dist(...alvo.pos,...de);
     const passo=vizinhos(...alvo.pos)
-      .filter(v=>!em(...v))
+      .filter(v=>!em(...v)&&!ehBloqueado(...v))   /* não se empurra ninguém para dentro do ônibus */
       .map(v=>[v,dist(...v,...de)])
       .filter(([,d])=>dir<0 ? d<atual : d>atual)
       .sort((a,b)=>dir<0 ? a[1]-b[1] : b[1]-a[1])[0];
@@ -1243,7 +1884,15 @@ function danoEmEntidade(quem,alvo,bruto,txt,ehUlt,ignoraArm){
      caminho por onde ele chegou. Antes o respingo entrava sempre como 1, então
      o Cerco do Torvald (que é Ultimate) tirava 1 do Dragão enquanto uma
      Ultimate mirada tirava 2. Mesma habilidade, peso diferente por acidente. */
-  if(ehEpico(alvo)) return golpeiaEpico(quem,alvo,ehUlt?GOLPE_ULT:GOLPE_HAB,txt?` com ${txt}`:"");
+  if(ehEpico(alvo)){
+    const d=EPICO[alvo.id];
+    /* morador que conta dano leva o respingo pela mesma conta de um herói —
+       `bruto` já chega dividido de quem chamou. Armadura entra aqui porque o
+       respingo não passa por `golpeNoPoco`. */
+    const golpe = d.porDano ? Math.max(1,bruto-(ignoraArm?0:(d.arm||0)))
+                            : (ehUlt?GOLPE_ULT:GOLPE_HAB);
+    return golpeiaEpico(quem,alvo,golpe,txt?` com ${txt}`:"");
+  }
   aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm);
 }
 function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
@@ -1294,7 +1943,10 @@ const respawnAgora=()=>Math.min(RESPAWN_MAX,
   RESPAWN_BASE+Math.floor((J.rodada-1)/RESPAWN_PASSO));
 
 function mata(alvo,quem){
+  /* morrer limpa o que estava pendurado: o respawn devolve o herói inteiro, e
+     sangramento que sobrevivesse à morte cobraria duas vezes pelo mesmo golpe */
   alvo.vida=0; alvo.morto=respawnAgora(); alvo.esc=0; alvo.intoc=0;
+  alvo.dots=[]; alvo.curouSitiado=0;
   quem.ouro+=4;
   reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva 4 de ouro`);
 }
@@ -1410,15 +2062,24 @@ function descreve(h,hb,F){
      aprende a não confiar na ficha */
   const esc=escalaDe(h.habs.indexOf(hb));
   const t=[];
+  /* NUNCA MOSTRAR FÓRMULA. Relato do playtest: "o ult do Catarino tá a fórmula,
+     quero já o resultado do dano". Ela aparecia quando não havia dado utilizável
+     na mesa (`F` nulo) — justamente na habilidade apagada, que é quando o jogador
+     mais precisa saber quanto ela daria para decidir se vale guardar o dado.
+     Sem dado, mostra o INTERVALO do dado mínimo dela até o 6. */
+  const golpe=d=>Math.round(d*e.dano*esc)+p+(e.extra||0);
+  const faixa=()=>{ const lo=golpe(hb.f), hi=golpe(6);
+                    return lo===hi?`${lo} de dano`:`${lo} a ${hi} de dano`; };
   if(e.danoFixo) t.push(`${e.danoFixo} de dano garantido · ignora armadura`);
   else if(e.dano){
-    const base=F!=null?Math.round(F*e.dano*esc)+p+(e.extra||0):null;
-    t.push(base!=null?`~${base} de dano`:(esc>1?`Força × ${esc} + ${p} de dano`:`Força + ${p} de dano`));
+    t.push((F!=null?`~${golpe(F)} de dano`:faixa())
+          +(e.perfura?" · ignora armadura":""));
   }
   if(e.area) t.push("respinga nos vizinhos");
   if(e.danoVizinhos) t.push("dano em todos os vizinhos");
   if(e.danoRaio) t.push(`dano em todos até ${e.danoRaio} casas`);
-  if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo:"Força+"+e.escudo}`);
+  if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo
+     :(hb.f+e.escudo===6+e.escudo?String(6+e.escudo):`${hb.f+e.escudo} a ${6+e.escudo}`)}`);
   if(e.cura) t.push(`cura ${e.cura}`);
   if(e.ouro) t.push(`+${e.ouro} de ouro`);
   if(e.recarga) t.push(`próximo golpe +${e.recarga}`);
@@ -1507,6 +2168,12 @@ function revela(snap){
     if(dv<0){ fx(h.pos,dv,"dano"); tremer(h); bateu=true; }
     else if(dv>0) fx(h.pos,"+"+dv,"cura");
     if(h.esc>s.e) fx(h.pos,"⛨"+(h.esc-s.e),"esc");
+    /* escudo que DESCE também é notícia. Antes só a subida virava número, e um
+       golpe inteiramente absorvido não produzia nada na tela: sem número de
+       dano (a vida não mudou), sem tremida, sem vibração. O jogador batia duas
+       vezes e via o adversário intacto, sem explicação. Agora o golpe absorvido
+       treme a peça igual, e o número sai com o sinal do escudo. */
+    else if(h.esc<s.e&&!h.morto){ fx(h.pos,"⛨−"+(s.e-h.esc),"esc"); tremer(h); bateu=true; }
     if(h.morto&&!s.m){ fx(h.pos,"☠","morte"); toast(h.n+" caiu","morte"); vibra([35,55,35]); }
   });
   if(bateu) vibra(18);
@@ -1601,10 +2268,13 @@ function calcula(){
   mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
   if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
     const teto=J.mov.rest+((ehAgil(selHeroi)&&!selHeroi.agilUsado)?1:0);
+    /* a régua é ANDANDO, contornando obstáculo — casa atrás de um ônibus pode
+       estar a 2 em linha reta e a 4 a pé, e é o 4 que vale */
+    const passos=passosDe(selHeroi.pos);
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(!noTab(c,r)||em(c,r))continue;   // casa fora do tabuleiro não é destino
-      const d=dist(...selHeroi.pos,c,r);
-      if(d>0&&d<=teto) mover.push([c,r]);
+      if(!noTab(c,r)||em(c,r)||ehBloqueado(c,r))continue;  // fora do tabuleiro, ocupada ou obstáculo
+      const d=passos.get(k(c,r));
+      if(d!==undefined&&d>0&&d<=teto) mover.push([c,r]);
     }
   }
   /* o Lampejo pinta as mesmas casas verdes do mover, mas com outra régua:
@@ -1612,7 +2282,8 @@ function calcula(){
      da base inimiga — de lá o Nexus ficaria a um salto de distância. */
   if(modo==="lampejo"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&temFeitico(selHeroi.t)){
     for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
-      if(!noTab(c,r)||em(c,r))continue;
+      /* o Lampejo é salto: passa POR CIMA do obstáculo, mas não pousa nele */
+      if(!noTab(c,r)||em(c,r)||ehBloqueado(c,r))continue;
       if(BASE_S.get(k(c,r))===1-selHeroi.t)continue;
       const d=dist(...selHeroi.pos,c,r);
       if(d>0&&d<=LAMPEJO_ALC) mover.push([c,r]);
@@ -1621,7 +2292,7 @@ function calcula(){
   /* Recuo: uma casa, de graça, ignorando movimento restante e prisão — é uma
      carta de reação, e o ponto dela é justamente escapar de onde você travou. */
   if(modo==="recuo"&&selHeroi&&!selHeroi.morto){
-    mover=vizinhos(...selHeroi.pos).filter(([c,r])=>noTab(c,r)&&!em(c,r)
+    mover=vizinhos(...selHeroi.pos).filter(([c,r])=>noTab(c,r)&&!em(c,r)&&!ehBloqueado(c,r)
       &&BASE_S.get(k(c,r))!==1-selHeroi.t);
   }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
@@ -1697,7 +2368,10 @@ function dadoPara(hb){
 
 function escolheHeroi(h){
   if(cliqueBloqueado||J.fase!=="jogando")return;
-  if(modo==="mirar"&&alvos.includes(h)) return confirmaHab(h);
+  /* passa pelo desempate: se houver estrutura embaixo deste herói (defensor em
+     cima do Nexus, herói em cima da própria torre), o jogador escolhe em vez de
+     o maior alvo de toque decidir por ele */
+  if(modo==="mirar"&&alvos.includes(h)) return tocaAlvo(...h.pos);
   if(h.t!==J.vez||h.morto){ // inspeciona o adversário sem mudar de estado
     abreCarta(h); return;
   }
@@ -1813,6 +2487,29 @@ function atacaNexus(lado){
    pode agora levar pancada por DOIS caminhos: mirado (atacaEpico, gasta dado) ou
    de respingo (usaHab, sem gastar dado a mais). Antes só existia o mirado, e o
    respingo o atravessava — ver `inimigosNosHex`. */
+/* QUANTO ESTE GOLPE TIRA DO MORADOR — um lugar só, de propósito.
+   O combate e a IA calculavam isto separado, e enquanto os dois moradores
+   contavam golpes ninguém percebia. Com o Barão contando dano, a divergência
+   apareceria na hora: a IA avaliaria "fecho com este golpe?" em golpes enquanto
+   o motor cobraria em dano, e ela largaria o Barão achando que nunca fecha.
+   Qualquer caminho novo até o poço deve passar por aqui. */
+function golpeNoPoco(h,hb,slot,F,ep){
+  const d=EPICO[ep.id];
+  /* o foco da Rotação do Caçador vale nos DOIS moradores — o `return` antecipado
+     do Dragão pulava o bônus e fazia o destino "poço" não servir para nada na
+     metade da partida em que o Dragão é o morador */
+  const foco=h.focoPoco?1:0;
+  if(!d.porDano) return (slot===2?GOLPE_ULT:GOLPE_HAB)+foco;
+  const ef=hb.ef;
+  const bruto=Math.round(F*(ef.dano||1)*escalaDe(slot))
+             +poderTotal(h)+(h.recarga||0)+dupla(h)+(ef.extra||0);
+  /* perfurante ignora a armadura do poço pelo mesmo motivo que ignora a de um
+     herói — é a função dela, e é o que dá a essas Ultimates um papel contra o
+     Barão, que tem 3 de armadura */
+  if(ef.danoFixo) return ef.danoFixo+foco;
+  if(ef.perfura)  return Math.max(1,bruto+foco);
+  return Math.max(1,bruto+foco-(d.arm||0));
+}
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
   ep.vida-=golpe;
@@ -1828,6 +2525,62 @@ function golpeiaEpico(h,ep,golpe,comoTxt){
   if(levou>0){ h.vida-=levou; reg("b",`o ${d.n} revida — ${levou} em ${h.n}`);
     fx(h.pos,-levou,"dano"); tremer(h); }
 }
+/* ---------- QUEM ESTÁ NESTE HEXÁGONO, AFINAL ----------
+   Herói e estrutura dividem hexágono o tempo todo: defensor em cima do Nexus,
+   herói em cima da própria torre, e o morador do poço com alguém colado. Até a
+   v26 o desempate era o TAMANHO DO ALVO DE TOQUE — criatura com raio 15,5,
+   estrutura com raio 9 — e o herói ainda era desenhado por cima. Na prática a
+   estrutura ficava inalcançável, e o relato foi o pior caso possível:
+
+     "eu estava com todos os creeps na base e ele com os heróis dentro do nexus,
+      eu não conseguia dar dano no nexus pra acabar a partida"
+
+   Empate travado, porque a ÚLTIMA MURALHA (v23) segura a onda de propósito
+   esperando o golpe de herói — e a tela não deixava dar esse golpe. Regra e
+   interface se contradiziam.
+
+   Agora o hexágono devolve TODOS os alvos válidos que estão nele, e quem escolhe
+   é o jogador. Com um alvo só nada muda: o toque resolve direto, sem janela. */
+function alvosNoHex(c,r){
+  const out=[];
+  alvos.forEach(o=>{ if(o.pos[0]===c&&o.pos[1]===r)
+    out.push({tipo:"heroi",v:o,n:o.n,d:`${Math.max(0,o.vida)}/${o.vidaMax} de vida`
+      +(o.esc>0?` · escudo ${o.esc}`:"")}); });
+  alvosTorre.forEach(tr=>{ const p=ROTAS[tr.rota][tr.i];
+    if(p[0]===c&&p[1]===r) out.push({tipo:"torre",v:tr,n:`Torre ${tr.rota}`,
+      d:`${Math.max(0,tr.vida)}/${VIDA_TORRE} de vida · revida ${REVIDE_TORRE}`}); });
+  alvosEpico.forEach(ep=>{ if(k(c,r)===POCO_K)
+    out.push({tipo:"epico",v:ep,n:EPICO[ep.id].n,
+      d:`${Math.max(0,ep.vida)}/${ep.vidaMax} de vida · revida ${EPICO[ep.id].revide}`}); });
+  if(alvoNexus!==null&&BASE[alvoNexus].some(([bc,br])=>bc===c&&br===r))
+    out.push({tipo:"nexus",v:alvoNexus,n:`Nexus ${NOMES[alvoNexus]}`,
+      d:`${Math.max(0,J.nexus[alvoNexus])}/${VIDA_NEXUS} — é a vitória`});
+  return out;
+}
+function executaAlvo(a){
+  if(a.tipo==="nexus")      atacaNexus(a.v);
+  else if(a.tipo==="torre") atacaTorre(a.v);
+  else if(a.tipo==="epico") atacaEpico(a.v);
+  else                      confirmaHab(a.v);
+}
+/* O toque num hexágono durante a mira. Um alvo resolve direto; dois ou mais
+   abrem a escolha, porque adivinhar por baixo do dedo é como o bug nasceu. */
+function tocaAlvo(c,r){
+  const lista=alvosNoHex(c,r);
+  if(!lista.length)return;
+  if(lista.length===1) return executaAlvo(lista[0]);
+  const ICONE={heroi:"⚔",torre:"⌂",epico:"☠",nexus:"◈"};
+  const bts=lista.map((a,i)=>`<button class="grande escAlvo" data-i="${i}"
+      style="font-size:15px;padding:12px;text-align:left">
+      ${ICONE[a.tipo]||"•"} ${a.n}<br><span style="font-size:12.5px;opacity:.8">${a.d}</span></button>`).join("");
+  abre(`<span class="et">Mesmo hexágono</span><h2>Bater em quem?</h2>
+    <p>Há <b>${lista.length} alvos</b> nesta casa.</p>${bts}
+    <button class="grande" id="escAlvoX"
+      style="background:none;border:1px solid var(--line);color:var(--ink-2)">cancelar</button>`);
+  G("telacx").querySelectorAll(".escAlvo").forEach(b=>b.onclick=()=>{
+    fecha(); executaAlvo(lista[+b.dataset.i]); });
+  G("escAlvoX").onclick=()=>{ fecha(); pinta(); };
+}
 function atacaEpico(ep){
   if(!selHeroi||habAtual===null)return;
   const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
@@ -1839,7 +2592,8 @@ function atacaEpico(ep){
      objetivo grande premiava o dado pequeno. Com 2, derrubar o poço em uma rodada
      exige que alguém queime a ultimate nele em vez de num herói: é a escolha que
      faz o objetivo pesar. Testado na mesa antes de entrar. */
-  golpeiaEpico(h,ep,habAtual===2?GOLPE_ULT:GOLPE_HAB,` com ${hb.n}`);
+  golpeiaEpico(h,ep,golpeNoPoco(h,hb,habAtual,J.dados[di].v,ep),` com ${hb.n}`);
+  if(EPICO[ep.id].porDano) h.recarga=0;   // a carga foi gasta no golpe, como em usaHab
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
@@ -2038,6 +2792,17 @@ moveAte=function(c,r){
 function estadoDaPeca(h){
   if(h.preso)  return {k:"mal",  txt:"PRESO"};
   if(h.intoc)  return {k:"bom",  txt:"INTOCÁVEL"};
+  /* ESCUDO entra logo depois de INTOCÁVEL porque responde à mesma pergunta que
+     ele — "por que o meu golpe não fez nada?". Faltava, e o relato foi exato:
+     "dei 2 ataques contra o Vharn e não deu dano nem tirou escudo". A Muralha
+     dele dá até 17 num herói de 25, o golpe some inteiro dentro do escudo e a
+     peça não dizia nada. Vem antes de MARCADO por consequência: marca modifica
+     o próximo golpe, escudo decide se vale dar o golpe. */
+  if(h.esc>0)  return {k:"bom",  txt:"ESCUDO"};
+  /* o efeito com prazo vem antes de MARCADO porque já está cobrando: ele muda a
+     conta de "dá para aguentar mais uma rodada?", que é a decisão mais comum da
+     mesa. Marca só vale se um segundo golpe acertar. */
+  if(h.dots&&h.dots.length) return {k:"mal", txt:DOTS[h.dots[0].tipo].selo};
   if(h.marca)  return {k:"mal",  txt:"MARCADO"};
   if(h.recarga)return {k:"bom",  txt:"CARREGADO"};
   if(h.semCura)return {k:"mal",  txt:"SEM CURA"};
@@ -2075,6 +2840,27 @@ function desenhaMapa(){
     if(tab) tab[VISAO_WARD].forEach(x=>{ if(!MATO.has(x)||ehMato(...w.pos)) wardS.add(x); });
   });
 
+  /* AS ZONAS, pintadas no chão pelo mesmo princípio da ward: hexágono marcado, e
+     nunca um círculo. O anel de raio 3 da ward já quebrou o mapa uma vez inflando
+     o `getBBox()`, e uma zona é a mesma armadilha com outro nome.
+     A sua zona e a do adversário se distinguem pela classe — território negado
+     por você e território que nega você não podem ter a mesma cor.
+     Quem não enxerga a casa também não vê a zona: ela obedece à névoa igual a
+     todo o resto, senão viraria um radar de graça. */
+  const zonaMinha=new Set(), zonaDele=new Set();
+  const meuLadoZ=ladoDaTela();
+  (J.zonas||[]).forEach(z=>{
+    const tab=RAIO_ATE.get(k(...z.pos));
+    const casas=tab?tab[Math.min(z.raio,tab.length-1)]:[k(...z.pos)];
+    casas.forEach(x=>{
+      if(z.t!==meuLadoZ){
+        const [zc,zr]=x.split(",").map(Number);
+        if(!enxergaCasa(meuLadoZ,zc,zr))return;
+      }
+      (z.t===meuLadoZ?zonaMinha:zonaDele).add(x);
+    });
+  });
+
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
     if(!noTab(c,r))continue;            // casa sem par no espelho não existe no tabuleiro
     let cls="hx ";
@@ -2090,8 +2876,11 @@ function desenhaMapa(){
        seria invisível — e névoa que não se vê é só herói sumindo sem explicação. */
     /* o poço fica de fora: é objetivo compartilhado, e a vida do morador tem de
        ser legível para os dois lados o tempo todo. */
+    if(ehBloqueado(c,r))cls+=" bloq";
     if(k(c,r)!==POCO_K&&!enxergaCasa(ladoDaTela(),c,r)) cls+=" cego";
     if(wardS.has(k(c,r)))cls+=" wardado";
+    if(zonaDele.has(k(c,r)))cls+=" zona-ini";
+    else if(zonaMinha.has(k(c,r)))cls+=" zona-min";
     if(moverS.has(k(c,r)))cls+=" mover";
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
@@ -2099,6 +2888,38 @@ function desenhaMapa(){
     if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
+  /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
+     mundo, não uma pedra genérica. Silhueta simples de propósito: o jogador tem
+     de reconhecer "não passo aqui" de relance, e detalhe demais numa casa de 19
+     de raio vira sujeira (item 3). Casa sem visão apaga o objeto junto — casa
+     que não se vê não entrega o que tem dentro. */
+  BLOQUEADO.forEach(K=>{
+    const [bc,br]=K.split(",").map(Number);
+    const [x,y]=centro(bc,br);
+    const tipo=OBSTACULO[K]||"carros";
+    const escondido=!enxergaCasa(ladoDaTela(),bc,br);
+    const g=el("g",{class:"obst "+tipo+(escondido?" escondido":"")});
+    g.appendChild(el("ellipse",{cx:x,cy:y+8,rx:12,ry:3.6,class:"sombra"}));
+    if(tipo==="onibus"){
+      g.appendChild(el("rect",{x:x-13,y:y-7,width:26,height:13,rx:2.6,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-13,y:y-1.6,width:26,height:2.9,class:"faixa"}));
+      [-9.6,-4.2,1.2,6.6].forEach(dx=>
+        g.appendChild(el("rect",{x:x+dx,y:y-5.4,width:4,height:3.4,class:"vidro"})));
+      g.appendChild(el("rect",{x:x+9,y:y+1.4,width:4,height:4.2,class:"ferrugem"}));
+    } else if(tipo==="carros"){
+      g.appendChild(el("rect",{x:x-12,y:y-0.6,width:23,height:8.4,rx:2.6,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-9,y:y-8.4,width:19,height:7.8,rx:2.6,class:"cima"}));
+      g.appendChild(el("rect",{x:x-5.4,y:y-7,width:6,height:3.6,class:"vidro"}));
+      g.appendChild(el("rect",{x:x+6.4,y:y+4.2,width:4,height:3.4,class:"ferrugem"}));
+    } else {
+      g.appendChild(el("line",{x1:x-6,y1:y+7,x2:x-5,y2:y-1,class:"perna"}));
+      g.appendChild(el("line",{x1:x+6,y1:y+7,x2:x+5,y2:y-1,class:"perna"}));
+      g.appendChild(el("rect",{x:x-9,y:y-9,width:18,height:10.4,rx:3,class:"corpo"}));
+      g.appendChild(el("rect",{x:x-6.4,y:y-11,width:12.8,height:2.8,rx:1.4,class:"tampa"}));
+    }
+    gM.appendChild(g);
+  });
+
   [[BASE[0][0],L_TOPO,BASE[1][0]],[BASE[0][1],L_MEIO,BASE[1][1]],[BASE[0][1],L_BOT,BASE[1][1]]]
     .forEach(([a,l,b])=>gE.appendChild(el("polyline",
       {points:[a,...l,b].map(p=>centro(...p).map(n=>n.toFixed(1)).join(",")).join(" "),class:"estrada"})));
@@ -2159,7 +2980,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando){ g.onclick=()=>{vibra(10);atacaEpico(ep);}; alvoDeToque(g,x,y); }
+    if(mirando){ g.onclick=()=>{vibra(10);tocaAlvo(...POCO);}; alvoDeToque(g,x,y); }
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -2167,9 +2988,9 @@ function desenhaMapa(){
     const mirando=alvoNexus===t;
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
-    if(mirando) nx.onclick=()=>{vibra(12);atacaNexus(t);};
+    if(mirando) nx.onclick=()=>{vibra(12);tocaAlvo(...BASE[t][0]);};
     gM.appendChild(nx);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);atacaNexus(t);},R_TOQUE_ESTRUTURA);
+    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);tocaAlvo(...BASE[t][0]);},R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -2292,6 +3113,9 @@ function fichaHTML(h,meu){
     h.intoc?'<span class="selo-est">intocável</span>':"",
     escondido(h)?'<span class="selo-est">escondido</span>':"",
     reveladoPorAtaque(h)&&!h.morto?'<span class="selo-est mal">revelado</span>':"",
+    h.esc>0?`<span class="selo-est">escudo ${h.esc}</span>`:"",
+    ...(h.dots||[]).map(d=>`<span class="selo-est mal">${DOTS[d.tipo].n} ${d.dano}/rodada `
+       +`· ${d.rodadas} rodada${d.rodadas>1?"s":""}</span>`),
     h.recarga?`<span class="selo-est">carregado +${h.recarga}</span>`:"",
     h.marca?`<span class="selo-est mal">marcado +${h.marca}</span>`:"",
     h.semCura?'<span class="selo-est mal">sem cura</span>':"",
@@ -2355,11 +3179,24 @@ function abreLog(){
 
    `pode` decide se o botão fica ativo; `faz` aplica o efeito. Nada mais. */
 const GASTOS=[
-  /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói
-     (6, 8, 10, 12…), então ele nunca vira renda infinita: cada ponto de Poder
-     custa mais que o anterior, e a certa altura vale mais gastar em outra coisa. */
+  /* REFORÇO — o depósito de ouro tardio. Preço sobe a cada compra do MESMO herói,
+     então ele nunca vira renda infinita: cada ponto de Poder custa mais que o
+     anterior, e a certa altura vale mais gastar em outra coisa.
+
+     CURVA 6+2 → 10+4 na v25, e o relato foi direto: "tá mto barato". Medido em
+     600 partidas com sim/ouro.js: um herói termina a partida com 61 de ouro e o
+     build de 3 itens mais caro que ele consegue vestir custa 25. Sobravam 36 —
+     e 36 pagava QUATRO Reforços na curva antiga (6+8+10+12), ou +4 de Poder
+     permanente. Nenhum item da loja dá mais de +2, e todos ocupam um dos três
+     slots. O Reforço não ocupa nada e não tem teto: era o Poder mais barato do
+     jogo justamente por ser o único ilimitado.
+
+     Com 10+4 a mesma sobra compra DOIS (10+14=24), e o terceiro exige guardar
+     em vez de gastar. O que se comprou não foi equilíbrio de número, foi
+     escolha: com quatro compras o ouro tardio era uma lista; com duas, é uma
+     decisão entre Poder, carta, território e visão. */
   {id:"reforco", n:"Reforço", d:"+1 de Poder permanente neste herói.",
-   o:h=>6+2*(h.reforcos||0),
+   o:h=>10+4*(h.reforcos||0),
    pode:h=>h.morto||naBase(h),
    faz:h=>{ h.reforcos=(h.reforcos||0)+1; h.extraPoder+=1; }},
 
@@ -2502,7 +3339,13 @@ function abreLoja(){
     lojaHeroi=tm.herois.find(h=>h.id===b.dataset.h); abreLoja(); });
   G("shCorpo").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
     if(usaGasto(b.dataset.g,quem,t)){ abreLoja(); pinta(); } });
-  G("shCorpo").querySelectorAll(".itC").forEach(b=>b.onclick=()=>{
+  /* `[data-i]`, e NÃO `.itC`: as duas prateleiras usam a mesma classe de estilo,
+     então `.itC` pegava também os botões de gasto e — por ser ligado depois —
+     sobrescrevia o clique deles. Reforço, Requisição, Leva e Sentinela caíam no
+     corpo de compra de item, `ITEM[undefined]` dava undefined e `it.o` estourava
+     TypeError: quatro botões mortos, sem nada no console para o jogador.
+     A classe continua sendo de aparência; quem manda no clique é o dado. */
+  G("shCorpo").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{
     const it=ITEM[b.dataset.i];
     const preco=Math.max(0,it.o-descontos[t]);
     if(quem.ouro<preco||quem.itens.includes(it.id)||inventarioCheio(quem))return;
@@ -2552,6 +3395,13 @@ function abreManual(){
       <p>E o <b>mato bloqueia</b>: dentro do mato só se enxerga <b>de dentro do mato</b>. Estar colado nele pela rota não adianta, e ward plantada na rota também não vê lá dentro. Quem quer saber o que tem no mato entra ou <b>planta a ward dentro</b>.</p>
       <p>Duas saídas para quem está no escuro: atacar de lá vale <b>+2 de Força</b> (emboscada) — mas <b>quem ataca fica visível</b> até sair da casa de onde bateu. Bater entrega a posição.</p>
       <p>Ouro sobrando com os três itens comprados? A <b>Sentinela</b>, na loja, é uma ward na mochila: compre na base, plante onde quiser, sem gastar dado.</p></section>
+    <section class="destaque"><h4>Sangramento, veneno e zonas</h4>
+      <p>Algumas habilidades de <b>controle</b> (dado 3+) e algumas Ultimates deixam um <b>efeito com prazo</b>. Ele cobra <b>no início do turno de quem está marcado</b>, uma vez por rodada, e <b>ignora armadura e escudo</b> — é o golpe que já chegou, cobrando depois. É a resposta que faltava contra tanque com escudo grande.</p>
+      <p>Reaplicar <b>renova o prazo</b>, não empilha um segundo. Morrer limpa tudo.</p>
+      <p>A <b>zona</b> é o mesmo efeito posto no <b>chão</b>: quem <b>começa o turno dentro</b> dela fica envenenado. Ela dura os <b>2 próximos turnos do adversário</b> — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar mais tempo que a de quem joga em segundo. No mapa, a sua aparece em <b>verde tracejado</b> e a do adversário em <b>vermelho pulsante</b>.</p></section>
+    <section class="destaque"><h4>A base trata — mas não com o inimigo em cima</h4>
+      <p>Herói ferido na <b>própria base</b> recupera <b>3 de vida por rodada</b>. Voltar custa movimento, que é o recurso mais disputado da mesa — é esse o preço.</p>
+      <p><b>Com inimigo a 2 casas ou menos, ele se trata UMA vez e para.</b> A cura só volta quando o cerco sair de perto. Mergulhar na base do adversário continua sendo decisão, e não suicídio garantido.</p></section>
     <section><h4>Defender junto da torre</h4>
       <p>Herói colado numa torre <b>viva do próprio time</b> ganha <b>+1 de Armadura</b>. Lutar em casa é diferente de lutar no vão da rota — e o bônus cai junto com a torre.</p></section>
     <section class="destaque"><h4>Regra de mesa · presença na rota</h4>
@@ -2563,14 +3413,27 @@ function abreManual(){
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
-      <p>Até a rodada 8 quem desce é o <b>Dragão</b>: <b>8 de vida</b>, revida 1. Levar dá a <b>Herança do Dragão</b> — <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
-      <p>Da rodada 8 em diante quem desce é o <b>Barão</b>: <b>14 de vida</b>, revida 2. Levar dá a <b>Fúria</b> por <b>2 rodadas</b> — +2 de Poder no time e <b>as três ondas avançam sozinhas</b>, com herói na rota ou sem. É o botão de ponto-sem-volta.</p>
-      <p>Bater no poço é como bater na torre — habilidade ofensiva básica causa 1 e Ultimate ofensiva causa 2 — só que <b>sem dono</b>. Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
-    <section><h4>Rotação do Caçador</h4>
+      <p>Na <b>rodada 5</b> desce o <b>Dragão</b>: <b>3 de vida</b>, revida 2. Cai em <b>dois dados</b> — uma Ultimate e uma básica — se dois heróis comprarem a briga no mesmo turno. Levar dá a <b>Herança do Dragão</b>: <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
+      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
+      <p><b>No Dragão</b> a conta é de <b>golpes</b>, e não de dano: básica ofensiva tira <b>1</b> e Ultimate tira <b>2</b>, com qualquer dado. Ele desce na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa — contar golpes é o que o mantém legível ali. O poço é <b>sem dono</b>: Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
+    <section class="destaque"><h4>Rotação do Caçador</h4>
+      <p>No <b>início de cada rodada</b> os dois jogadores escolhem, <b>escondido um do outro</b>, para que <b>região</b> o próprio Caçador vai. Ele é reposicionado <b>na hora</b>, e isso <b>não gasta o Dado Mestre</b> nem a ação dele.</p>
+      <p><b>Ele reaparece sempre dentro da selva</b> — na parte dela colada à região escolhida —, <b>nunca dentro da rota</b>. Se aquela casa estiver ocupada, ele pousa na casa de selva válida mais próxima.</p>
+      <table><tr><td>▲ <b>Topo</b></td><td>a selva colada à rota de cima</td></tr>
+      <tr><td>◆ <b>Meio</b></td><td>a selva colada à rota do meio</td></tr>
+      <tr><td>▼ <b>Baixo</b></td><td>a selva colada à rota de baixo</td></tr>
+      <tr><td>❦ <b>Selva</b></td><td>o centro da sua selva, de frente para o poço</td></tr></table>
+      <p style="margin-top:7px">Você tem <b>10 segundos</b> para decidir. Sem escolha, ele vai sozinho para a <b>Selva</b> — a partida nunca fica parada esperando.</p>
+      <p>O adversário <b>não recebe aviso nenhum</b> de qual botão você apertou. Para saber onde o seu Caçador caiu, ele precisa ter <b>visão daquele mato</b> — de olho ou de <b>ward</b>. A informação está presa à <b>posição</b>, não à escolha.</p></section>
+    <section><h4>O Caçador e o mato</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
       <p>Ou seja: o Caçador inimigo entrou no mato e <b>sumiu da sua tela</b>. Ele continua lá, andando, farmando e empurrando rota — você é que parou de ver. Quando ele pisa numa rota, aparece de novo.</p>
       <p>Quem ataca <b>saindo do mato sem ter sido visto</b> ganha <b>+2 de Força</b> no golpe. É a <b>Emboscada</b>, e é o motivo de valer a pena a espera.</p>
-      <p>A resposta é <b>presença</b>: mande alguém para o mato e ele acende. Uma <b>Ward</b> acende os dois de uma vez. A pergunta que o jogo faz o tempo todo é essa — vale uma peça vigiando o mato, ou ela faz mais pressionando a rota?</p></section>
+      <p>A resposta é <b>presença</b>: mande alguém para o mato e ele acende. Uma <b>Ward</b> acende o mato <b>onde ela está plantada</b> — ward na rota não enxerga mato nenhum. A pergunta que o jogo faz o tempo todo é essa — vale uma peça vigiando o mato, ou ela faz mais pressionando a rota?</p></section>
+    <section class="destaque"><h4>As casas bloqueadas</h4>
+      <p>Algumas casas da selva têm <b>um ônibus abandonado, carros empilhados ou uma caixa-d'água</b> em cima. Elas são <b>mais escuras</b> e têm o objeto desenhado: <b>ninguém entra e ninguém atravessa</b>.</p>
+      <p>Elas não são enfeite — são o que transforma a selva de campo aberto em <b>corredor</b>. A casa do outro lado do ônibus pode estar a <b>2 de distância e a 4 de caminhada</b>, e é a caminhada que você paga. Dá para emboscar quem vem pelo corredor, e dá para perder o gank por ter escolhido o lado errado do obstáculo.</p>
+      <p>Elas também <b>bloqueiam visão</b>, como todo mato. E <b>nenhuma rota é bloqueada</b>: as três continuam abertas de ponta a ponta.</p></section>
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
@@ -2597,7 +3460,7 @@ const PASSOS=[
    ok:null},
   {t:"Duas rotas mexem nos seus dados:<br><br><b>Topo</b> dá <b>Placas</b> — ajusta um dado em ±1 ou re-rola.<br><b>Meio</b> dá <b>Prioridade</b> — um dado de ação a mais.<br><br>Ganhar essas rotas é o que faz sua ultimate sair na hora certa.",
    ok:null},
-  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo para onde ele vai, e a carta só vira <b>no fim do turno do adversário</b>.<br><br>É o blefe do gank. Use.",
+  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo a <b>região</b> dele — <b>Topo, Meio, Baixo ou Selva</b> — e ele reaparece na hora, sempre <b>dentro do mato</b> daquela região.<br><br>O outro não vê a sua escolha: só descobre onde ele está se tiver <b>visão daquele mato</b>. É o blefe do gank. Use.",
    ok:null},
   {t:"É isso. Encerre o turno e jogue.<br><br>O <b>?</b> lá em cima abre o manual completo a qualquer momento.",
    ok:null, fim:true}
@@ -2890,7 +3753,7 @@ function iaJogadas(t){
            ainda cobra revide: por isso só pontua alto quando fecha, ou quando o
            poço já está tão baixo que a próxima rodada decide. */
         if(epVivo&&alvosEpico.includes(ep)){
-          const golpe=i===2?GOLPE_ULT:GOLPE_HAB;
+          const golpe=golpeNoPoco(h,hb,i,F,ep);
           const fecha=ep.vida<=golpe;
           const revideMata=EPICO[ep.id].revide>=h.vida;
           let nota = fecha ? 320 : (ep.vida<=golpe*2 ? 90 : 22);
@@ -2907,13 +3770,19 @@ function iaJogadas(t){
           saida.push({h,i,tipo:"torre",v:tr,nota});
         });
 
-        /* HERÓI — matar vale muito mais que machucar. */
+        /* HERÓI — matar vale muito mais que machucar. O Mestre ainda soma foco:
+           entre dois alvos igualmente atingíveis, ele bate em quem já está
+           ferido, que é o que transforma dano espalhado em abate. */
         alvos.filter(o=>o.t!==h.t&&!o.morto).forEach(o=>{
           const d=iaDanoReal(h,hb,i,F,o);
           const mata=d>=o.vida||(hb.ef.executa&&o.vida<=hb.ef.executa);
           let nota = mata ? 300*iaValorHeroi(o)
                           : 10*Math.min(d,o.vida)*iaValorHeroi(o)/Math.max(1,o.vidaMax/6);
           if(!mata&&i===2) nota*=.55;               /* não queima Ultimate sem fechar */
+          /* FOCO (só o Mestre): alvo já ferido vale mais, porque dano em quem
+             está caindo vira abate e dano espalhado vira nada. Não é bônus de
+             número — é ordem de preferência entre alvos que ela já podia bater. */
+          if(IA().foco&&!mata) nota*=1+.8*(1-o.vida/o.vidaMax);
           saida.push({h,i,tipo:"heroi",v:o,nota});
         });
 
@@ -2944,8 +3813,18 @@ function iaJogadas(t){
    guardar o dado (e convertê-lo em movimento) a gastar num golpe inútil. */
 function iaMelhorJogada(t,minimo){
   const lista=iaJogadas(t);
-  const j=lista[0];
-  if(!j||j.nota<(minimo||0))return null;
+  const cfg=IA();
+  const piso=(minimo!==undefined&&minimo!==null)?minimo:cfg.minimo;
+  /* O ERRO. Ela ordenou a lista e conhece a melhor — e às vezes escolhe outra,
+     que é exatamente como um jogador inexperiente erra: a informação estava lá.
+     Nunca escolhe jogada abaixo do piso, senão viraria IA aleatória em vez de
+     IA fraca, e jogar contra o acaso não ensina nada. */
+  const viaveis=lista.filter(x=>x.nota>=piso);
+  if(!viaveis.length)return null;
+  const j=(cfg.erro&&viaveis.length>1&&Math.random()<cfg.erro)
+    ? viaveis[1+Math.floor(Math.random()*(viaveis.length-1))]
+    : viaveis[0];
+  if(!j)return null;
   limpaModo(); selHeroi=j.h; iniciaHab(j.i);
   if(j.tipo==="nexus")      atacaNexus(j.v);
   else if(j.tipo==="torre") atacaTorre(j.v);
@@ -2967,6 +3846,7 @@ function iaMelhorJogada(t,minimo){
    os caros são os que mudam o combate — e só quando o herói está na base ou
    morto, que é a mesma regra do humano. */
 function iaCompra(t){
+  if(!IA().compra)return false;   // o Aprendiz deixa o ouro parado, como quem está aprendendo
   let comprou=false;
   J.times[t].herois.forEach(h=>{
     if(!(h.morto||naBase(h)))return;
@@ -3014,6 +3894,11 @@ function iaJogaCartas(t){
     /* cartas que pedem herói recebem o melhor candidato antes da checagem */
     const alvo=J.times[t].herois.filter(h=>!h.morto)
       .sort((a,b)=>(b.vida/b.vidaMax)-(a.vida/a.vidaMax))[0];
+    /* TIME INTEIRO MORTO: sem herói vivo não há alvo, e seguir daqui punha
+       `selHeroi` indefinido dentro de `jogaCarta` — a primeira carta que lê
+       `h.pos` (ward, recall, escudo) derrubava a partida com TypeError. Cinco
+       heróis no respawn ao mesmo tempo é fim de partida normal, não borda. */
+    if(!alvo)break;
     const id=mao.find(x=>{
       const salvo=selHeroi; selHeroi=alvo;
       const pode=podeJogar(x); selHeroi=salvo; return pode;
@@ -3063,19 +3948,46 @@ function iaDestino(h,t){
   const ferido=h.vida<=Math.ceil(h.vidaMax*.3);
   if(ferido&&!naBase(h)) return {p:BASE[t][0],motivo:"recua"};
 
+  /* SAIR DA ZONA vem antes de tudo o mais, porque é a única entrada desta lista
+     que cobra por ficar parado. Território negado que a IA ignora não nega nada:
+     ela levaria o efeito todo turno e o jogador aprenderia que zona é decoração.
+     Sai para a casa vizinha mais próxima que esteja limpa — e se não houver
+     nenhuma, segue a lista normal, porque fugir para lugar nenhum é pior do que
+     jogar. */
+  const naZona=(p)=>(J.zonas||[]).some(z=>z.t!==t&&dist(...p,...z.pos)<=z.raio);
+  if(naZona(h.pos)){
+    /* A saída NÃO está entre os vizinhos. Uma zona de raio 1 cobre a casa e as
+       seis em volta, então procurar a 1 passo não acha nada e a IA desistia de
+       sair — foi o que o teste pegou. O alcance da busca tem de ser maior que o
+       raio da maior zona em cima dela, e o desempate é o de sempre: sai pelo
+       lado do adversário, não pelo próprio. */
+    const raioMax=Math.max(...(J.zonas||[]).filter(z=>z.t!==t).map(z=>z.raio),1);
+    let fora=null;
+    for(let d=1;d<=raioMax+1&&!fora;d++){
+      const anel=[];
+      for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+        if(!noTab(c,r)||dist(c,r,...h.pos)!==d)continue;
+        if(em(c,r)||naZona([c,r]))continue;
+        anel.push([c,r]);
+      }
+      fora=anel.sort((a,b)=>dist(...a,...BASE[1-t][0])-dist(...b,...BASE[1-t][0]))[0]||null;
+    }
+    if(fora) return {p:fora,motivo:"sai da zona"};
+  }
+
   /* ÚLTIMA MURALHA. Com o Nexus em 1 e uma rota aberta, ficar em casa deixou de
      ser desperdício e passou a ser a jogada que impede a onda de fechar (ver
      `fimDaRodada`). Sem isto a regra existiria só para o humano: a IA nunca
      voltaria, e o jogador jamais veria a última luta que ela devolve.
      Um herói e não o time todo — o mais perto de casa. Segurar o Nexus com
      cinco é perder o mapa inteiro para não perder um ponto. */
-  if(J.nexus[t]<=1 && rotaAbertaContra(t)){
+  if(IA().defende && J.nexus[t]<=1 && rotaAbertaContra(t)){
     const perto=vivos(t).slice().sort((a,b)=>
       dist(...a.pos,...BASE[t][0])-dist(...b.pos,...BASE[t][0]))[0];
     if(perto===h) return {p:BASE[t][0],motivo:"defende o Nexus"};
   }
 
-  if(J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
+  if(IA().objetivo && J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};
 
   /* acampamento: qualquer herói pega, não só o caçador — era a queixa de "toda
      partida eu pego os acampamentos sozinho". O caçador continua com prioridade
@@ -3103,6 +4015,7 @@ function iaDestino(h,t){
    faz sem pensar — "gasto uma ação virando movimento, chego, e ataco com a
    outra" — e só gasta o dado se a conta realmente fechar. */
 function iaPlanejaAlcance(t){
+  if(!IA().alcance)return false;  // converter dado em movimento para chegar é jogada de quem já jogou
   const livres=J.dados.map((d,i)=>({d,i})).filter(x=>!x.d.usado);
   if(livres.length<2 && !(livres.length===1&&J.mov.rest>0)) return false;
 
@@ -3152,6 +4065,7 @@ let iaRodando=false, pularIA=false;
    compra é visão que FICA depois que o herói sai. Logo o critério é cobertura:
    planta se não houver ward dela por perto. */
 function iaPlantaWards(t){
+  if(!IA().wards)return false;   // visão é a última coisa que o iniciante compra
   J.times[t].herois.forEach(h=>{
     if(h.morto||!(h.sentinelas>0)||!ehMato(...h.pos))return;
     const jaCoberto=(J.times[t].wards||[]).some(w=>dist(...w.pos,...h.pos)<=VISAO_WARD);
@@ -3222,7 +4136,7 @@ async function iaExecutaTurno(){
        O piso de 15 é o que separa "jogada" de "gastar dado": abaixo disso a IA
        prefere guardar a ação — e o fim do laço a converte em movimento, que
        quase sempre vale mais que um arranhão. */
-    const jogada = iaMelhorJogada(lado, 15);
+    const jogada = iaMelhorJogada(lado, IA().minimo);
     if(jogada){
       if(aiMode){
         const alvoTxt = jogada.tipo==="nexus" ? "no NEXUS"
@@ -3244,12 +4158,19 @@ async function iaExecutaTurno(){
       for(const h of candidatos){
         const dest=iaDestino(h,lado);
         if(!dest)continue;
-        const agora=dist(...h.pos,...dest.p);
+        /* a régua da IA é a mesma do jogador: passos ANDANDO. Com distância em
+           linha reta ela encostava no obstáculo e parava — nenhuma vizinha
+           reduzia a reta, e o herói ficava tremendo contra o ônibus a partida
+           inteira. É o mesmo defeito que o contorno do `passoNaDirecao` cobria
+           na rotação antiga. */
+        const ate=passosDe(dest.p);
+        const anda=p=>{const v=ate.get(k(...p));return v===undefined?99:v;};
+        const agora=anda(h.pos);
         if(agora===0)continue;
         selHeroi=h; modo="mover"; calcula();
         const umPasso=mover.filter(p=>dist(...h.pos,...p)===1)
-          .sort((a,b)=>dist(...a,...dest.p)-dist(...b,...dest.p))[0];
-        if(umPasso&&dist(...umPasso,...dest.p)<agora){
+          .sort((a,b)=>anda(a)-anda(b))[0];
+        if(umPasso&&anda(umPasso)<agora){
           if(aiMode) falaIA(`${h.n} ${dest.motivo}`);
           moveAte(...umPasso);
           passos.set(h.id,(passos.get(h.id)||0)+1);
@@ -3550,6 +4471,7 @@ function limpaBuffs(){
     if(h.buffP){ h.extraPoder-=h.buffP; h.buffP=0; }
     if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
+    h.focoPoco=0;
   });
 }
 
@@ -3843,6 +4765,24 @@ function comeca(comTutorial,comDraft){
   if(!comDraft) return partida(comTutorial);
   iniciaDraft(times=>{ TIMES=times; partida(comTutorial); });
 }
+/* A escolha do nível, antes do draft. Fica antes de propósito: o jogador decide
+   contra quem vai jogar antes de escolher com quem vai jogar.
+
+   O texto de cada botão diz o que MUDA no comportamento, e não "fácil/médio/
+   difícil". É a diferença entre o jogador saber que a IA vai deixar o poço
+   passar e ele só sentir que "tá mais fácil" sem entender por quê. */
+function escolheNivelIA(depois){
+  const bts=Object.values(NIVEIS_IA).map(v=>
+    `<button class="grande nivIA" data-n="${v.id}" style="font-size:15px;padding:12px;text-align:left">
+      ${v.n}${v.id===nivelIA?" ·  atual":""}<br>
+      <span style="font-size:12.5px;opacity:.8">${v.d}</span></button>`).join("");
+  abre(`<span class="et">Contra a IA</span><h2>Qual adversário?</h2>
+    <p>Nenhum nível dá à IA dano, vida, ouro ou visão a mais —
+    ela obedece à mesma névoa que você. <b>O que muda é como ela decide.</b></p>${bts}`);
+  G("telacx").querySelectorAll(".nivIA").forEach(b=>b.onclick=()=>{
+    nivelIA=b.dataset.n; fecha(); depois();
+  });
+}
 function telaAbertura(){
   abre(`<span class="et">Um MOBA de mesa para dois</span><h2>JAGER<br>LARAMAIS</h2>
     <p>Cada um comanda <b>cinco heróis</b> — no mesmo aparelho.</p>
@@ -3853,10 +4793,10 @@ function telaAbertura(){
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
-  G("btIA").onclick=()=>{
+  G("btIA").onclick=()=>escolheNivelIA(()=>{
     aiMode=true; simMode=false;
     iniciaDraft(times=>{ TIMES=times; partida(false); });
-  };
+  });
   G("btDireto").onclick=()=>{aiMode=false;comeca(false,false);};
 }
 globalThis.__JAGER_AI__={
