@@ -125,7 +125,7 @@ const PONTE = `
   descreve:(h,hb,F)=>descreve(h,hb,F),
   cacadorDe:t=>cacadorDe(t),
   iaEscolheRotacao:t=>iaEscolheRotacao(t), abreRotacoes:()=>abreRotacoes(),
-  escolheRotacao:(t,r)=>escolheRotacao(t,r), paraRelogioRotacao:()=>paraRelogioRotacao(),
+  escolheRotacao:(t,r)=>escolheRotacao(t,r), mesaTravada:()=>mesaTravada(), paraRelogioRotacao:()=>paraRelogioRotacao(),
   reposicionaCacador:(t,r)=>reposicionaCacador(t,r),
   pousoNaSelva:(t,r,h)=>pousoNaSelva(t,r,h),
   casaDeSelvaLivre:(p,h)=>casaDeSelvaLivre(p,h),

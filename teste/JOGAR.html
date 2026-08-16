@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit b32f186 2026-08-16
+     commit 6b3e6eb 2026-08-16
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -1864,14 +1864,26 @@ function escolheRotacao(t,regiao){
    isso são duas telas em sequência; contra a IA, só a do humano.
    A escolha só aparece se o time ainda TEM Caçador vivo: pedir aposta a quem não
    tem peça para mover é pedir clique por nada. */
-function abreRotacoes(){
-  if(!J||J.fim!==null)return;
+function abreRotacoes(depois){
+  /* A RODADA ESPERA A ESCOLHA. Relato do Vilker: "a escolha da posição do jungle
+     é no início da RODADA, não do turno."
+
+     Estava certo e o defeito era de sequência: `abreRotacoes` abre uma tela, que
+     é assíncrona, mas `fimDaRodada` seguia em frente na mesma pilha — atualizava
+     acampamento, descia o morador do poço e chamava `faseOculta`, que ROLA OS
+     DADOS E COMEÇA O TURNO. Quando o jogador finalmente escolhia, a rodada já
+     tinha andado e o Caçador se reposicionava no meio do turno de alguém.
+
+     Agora o resto da virada de rodada é um `depois` que só roda quando os dois
+     lados responderam — por clique ou pelo relógio de 10 segundos. */
+  const segue=()=>{ if(depois) depois(); else pinta(); };
+  if(!J||J.fim!==null) return segue();
   J.rotacao=[null,null];
   const humanos=[0,1].filter(t=>!(simMode||(aiMode&&t===1)));
   [0,1].forEach(t=>{ if(!humanos.includes(t)&&cacadorDe(t)) escolheRotacao(t,iaEscolheRotacao(t)); });
   const fila=humanos.filter(t=>cacadorDe(t));
-  if(!fila.length) return pinta();
-  perguntaRotacao(fila,0);
+  if(!fila.length) return segue();
+  perguntaRotacao(fila,0,segue);
 }
 
 /* O relógio. A partida NUNCA pode ficar parada esperando esta decisão — sem
@@ -1879,11 +1891,11 @@ function abreRotacoes(){
 const ROTACAO_SEGUNDOS=10;
 let _rotRelogio=null;
 function paraRelogioRotacao(){ if(_rotRelogio){ clearInterval(_rotRelogio); _rotRelogio=null; } }
-function perguntaRotacao(fila,i){
+function perguntaRotacao(fila,i,depois){
   paraRelogioRotacao();
-  if(i>=fila.length){ pinta(); return; }
+  if(i>=fila.length){ if(depois) depois(); else pinta(); return; }
   const t=fila[i], h=cacadorDe(t);
-  if(!h) return perguntaRotacao(fila,i+1);
+  if(!h) return perguntaRotacao(fila,i+1,depois);
   const bts=REGIOES.map(r=>
     `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
       ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span></button>`).join("");
@@ -1898,7 +1910,7 @@ function perguntaRotacao(fila,i){
     paraRelogioRotacao(); fecha();
     escolheRotacao(t,id);
     if(porTempo) toast(`Tempo esgotado — ${h.n} foi para o centro da Selva`,"aviso");
-    perguntaRotacao(fila,i+1);
+    perguntaRotacao(fila,i+1,depois);
   };
   G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>escolhe(b.dataset.r,false));
   let resta=ROTACAO_SEGUNDOS;
@@ -2729,7 +2741,10 @@ function fimDaRodada(){
      é medida em `node sim/bateria.js` — a compensação é decisão do grupo (ver
      docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
-  abreRotacoes();           // os dois escolhem para onde o Caçador vai, às cegas
+  /* tudo o que vem depois daqui só acontece QUANDO A ESCOLHA FOR RESPONDIDA —
+     inclusive rolar os dados e começar o turno. Ver a nota em `abreRotacoes`. */
+  abreRotacoes(()=>{
+  if(J.fim!==null) return;  // a partida acabou enquanto a tela estava aberta
   atualizaAcampamentos();
   /* O poço reabre com o morador da vez — e o BARÃO NÃO ESPERA VAGA.
      Até a v19 a troca só acontecia com o poço vazio (`p.vida<=0`), e a
@@ -2755,6 +2770,7 @@ function fimDaRodada(){
     reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
   }
   pinta(); faseOculta();
+  });
 }
 
 /* ---------- AÇÕES ---------- */
@@ -3526,7 +3542,7 @@ function dadoPara(hb){
 }
 
 function escolheHeroi(h){
-  if(cliqueBloqueado||J.fase!=="jogando")return;
+  if(mesaTravada())return;
   /* passa pelo desempate: se houver estrutura embaixo deste herói (defensor em
      cima do Nexus, herói em cima da própria torre), o jogador escolhe em vez de
      o maior alvo de toque decidir por ele */
@@ -3828,6 +3844,26 @@ function iaEscolheDadiva(t){
    se o dedo sair de cima do elemento. */
 const LIMIAR_ARRASTO=7;
 let arr=null, cliqueBloqueado=false;
+/* ---------- A MESA TRAVA NA VEZ DA IA ----------
+   RELATO do Vilker: "na vez da IA eu ainda consigo clicar nas opções de ação e
+   movimento dela."
+
+   Era verdade, e a causa vale registrada porque não é óbvia: a própria IA chama
+   `selHeroi=h; modo="mover"; calcula()` para escolher o passo dela — e `calcula`
+   PINTA as casas verdes de destino, cada uma com o seu `onclick`. O tabuleiro
+   ficava com os destinos do herói DA IA clicáveis, e quem tocasse movia a peça
+   dela com o dado dela.
+
+   O painel de comando já se protegia (`aiMode&&iaRodando`); o tabuleiro não, e
+   nem os dados, nem as placas. Agora existe UMA porta, e todo gesto do humano
+   passa por ela. A IA não passa por aqui: ela chama `moveAte` e companhia
+   direto, sem evento, então travar o clique não trava a IA.
+
+   `J.vez===1` entra junto com `iaRodando` de propósito — há uma fresta entre o
+   fim do laço da IA e a passagem do turno em que `iaRodando` já é falso e a vez
+   ainda é dela. */
+const mesaTravada=()=>cliqueBloqueado||!J||J.fase!=="jogando"
+  ||(aiMode&&(iaRodando||J.vez===1));
 
 function paraSVG(ev){
   const ctm=svg.getScreenCTM(); if(!ctm) return null;
@@ -3868,6 +3904,7 @@ function marcaArrasto(ev,destino){
   g.classList.add("arrastada");
 }
 svg.addEventListener("pointerdown",ev=>{
+  if(mesaTravada())return;          /* arrastar é mover: mesma porta do clique */
   const alvo=ev.target.closest?ev.target.closest(".peca"):null;
   const h=heroiDaPeca(alvo);
   if(!podeArrastar(h))return;
@@ -4044,7 +4081,7 @@ function desenhaMapa(){
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
     const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
-    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
+    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(mesaTravada())return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
   /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
@@ -4105,7 +4142,7 @@ function desenhaMapa(){
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira-torre"}));
     const rc=el("rect",{x:x-6,y:y-6,width:12,height:12,transform:`rotate(45 ${x} ${y})`,
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
-    if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
+    if(mirando) rc.onclick=()=>{if(mesaTravada())return;vibra(10);atacaTorre(t);};
     gM.appendChild(rc);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
@@ -4139,7 +4176,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando){ g.onclick=()=>{vibra(10);tocaAlvo(...POCO);}; alvoDeToque(g,x,y); }
+    if(mirando){ g.onclick=()=>{if(mesaTravada())return;vibra(10);tocaAlvo(...POCO);}; alvoDeToque(g,x,y); }
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -4147,7 +4184,7 @@ function desenhaMapa(){
     const mirando=alvoNexus===t;
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
-    if(mirando) nx.onclick=()=>{vibra(12);tocaAlvo(...BASE[t][0]);};
+    if(mirando) nx.onclick=()=>{if(mesaTravada())return;vibra(12);tocaAlvo(...BASE[t][0]);};
     gM.appendChild(nx);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);tocaAlvo(...BASE[t][0]);},R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
@@ -4228,7 +4265,7 @@ function desenhaMapa(){
       g.appendChild(eg);
       g.setAttribute("aria-label",`${h.n}, ${h.vida} de vida, ${et.txt.toLowerCase()}`);
     }
-    g.onclick=()=>escolheHeroi(h);
+    g.onclick=()=>{ if(mesaTravada())return; escolheHeroi(h); };
     g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();escolheHeroi(h);}};
     gP.appendChild(g);
   });
@@ -4786,12 +4823,12 @@ function feiticoBt(h,qual){
       }).join("")}`;
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
-    G("cmdMover").onclick=iniciaMover;
-    G("cmdLampejo").onclick=iniciaLampejo;
-    G("cmdRetorno").onclick=usaRetorno;
+    G("cmdMover").onclick=()=>{ if(mesaTravada())return; iniciaMover(); };
+    G("cmdLampejo").onclick=()=>{ if(mesaTravada())return; iniciaLampejo(); };
+    G("cmdRetorno").onclick=()=>{ if(mesaTravada())return; usaRetorno(); };
     h.habs.forEach((_,i)=>{
       const b=G("hab"+i); if(!b)return;
-      b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
+      b.onclick=()=>{ if(mesaTravada())return; iniciaHab(i); };
       toqueLongo(b,()=>fichaHab(h,i));      // segurar explica, mesmo apagada
     });
   }else{
@@ -5497,7 +5534,7 @@ function usaPrioridade(){
 
 /* ══════════════════ BOTÕES ══════════════════ */
 G("btTime").onclick=()=>{ sheetAberto==="Time"?fechaSheet():abreTime(); };
-G("btPrio").onclick=()=>usaPrioridade();
+G("btPrio").onclick=()=>{ if(mesaTravada())return; usaPrioridade(); };
 G("btPularIA").onclick=()=>{
   if(pularIA)return;
   pularIA=true;
@@ -5558,10 +5595,10 @@ G("btFim").onclick=()=>{
   fechaSheet(); limpaModo(); selHeroi=null;
   encerraTurno(); pinta();
 };
-G("btConv").onclick=()=>converteDado();
-G("btPlaca").onclick=()=>{ usaPlaca(1); toast("dado ajustado",""); vibra(10); };
-G("btRerol").onclick=()=>{ rerola(); toast("dado re-rolado",""); vibra(10); };
-G("btWard").onclick=()=>{ if(plantaSentinela(selHeroi)){ calcula(); pinta(); } };
+G("btConv").onclick=()=>{ if(mesaTravada())return; converteDado(); };
+G("btPlaca").onclick=()=>{ if(mesaTravada())return; usaPlaca(1); toast("dado ajustado",""); vibra(10); };
+G("btRerol").onclick=()=>{ if(mesaTravada())return; rerola(); toast("dado re-rolado",""); vibra(10); };
+G("btWard").onclick=()=>{ if(mesaTravada())return; if(plantaSentinela(selHeroi)){ calcula(); pinta(); } };
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ if(sheetAberto)return fechaSheet(); return cancela(); }
 });

@@ -2264,6 +2264,82 @@ teste("o obstáculo continua bloqueando visão, como todo mato", () => {
   });
 });
 
+/* ═══════════════ v40 — dois relatos do Vilker ═══════════════ */
+
+/* RELATO 1: "na vez da IA eu ainda consigo clicar nas opções de ação e
+   movimento dela."
+
+   RELATO 2: "a escolha da posição do jungle é no início da RODADA, não do
+   turno." */
+
+teste("na vez da IA a mesa não aceita clique nenhum do humano", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.aiMode = true; g.simMode = false;
+  g.J.fase = "jogando";
+
+  g.J.vez = 1;
+  ok(g.mesaTravada(), "a mesa aceitou clique durante a vez da IA");
+  g.J.vez = 0;
+  ok(!g.mesaTravada(), "a mesa travou na vez do humano — travou demais");
+
+  /* em hotseat nada disso vale: os dois lados são gente */
+  g.aiMode = false;
+  g.J.vez = 1;
+  ok(!g.mesaTravada(), "travou a vez do segundo jogador humano em hotseat");
+});
+
+teste("a IA pinta destinos do próprio herói, e eles não podem ser clicáveis", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.aiMode = true; g.simMode = false;
+  g.J.fase = "jogando"; g.J.vez = 1;
+  g.J.mov = { v: 4, rest: 4 };
+
+  /* é exatamente o que `iaExecutaTurno` faz para escolher o passo dela */
+  const h = g.cacadorDe(1);
+  g.selHeroi = h; g.modo = "mover"; g.calcula();
+  ok(g.mover.length > 0, "a IA não gerou destino nenhum — o teste não prova nada");
+  ok(g.mesaTravada(),
+     "o tabuleiro tem destinos do herói da IA pintados e a mesa aceita clique neles");
+});
+
+teste("a rodada NÃO começa antes de a escolha do Caçador ser respondida", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;      // hotseat: a tela aparece de verdade
+  g.J.mov = { v: 0, rest: 0 };
+  const rodada0 = g.J.rodada;
+
+  g.fimDaRodada();
+
+  eq(g.J.rodada, rodada0 + 1, "a rodada não avançou");
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "a tela da rotação não abriu no início da rodada");
+  eq(g.J.mov.rest, 0,
+     "o turno começou com a escolha do Caçador ainda aberta na tela — a escolha é do INÍCIO DA RODADA");
+
+  /* respondidas AS DUAS escolhas (aqui pelo relógio) — em hotseat são duas
+     telas em sequência, e a rodada só anda depois da última */
+  for (let volta = 0; volta < 4; volta++) {
+    const t = g.__timers.filter(x => x.vivo).pop();
+    if (!t) break;
+    for (let i = 0; i < 10 && t.vivo; i++) t.fn();
+  }
+  eq(g.__timers.filter(x => x.vivo).length, 0, "sobrou tela de rotação aberta");
+  ok(g.J.mov.v > 0, "a rodada não começou depois de as escolhas serem respondidas");
+});
+
+teste("sem Caçador vivo dos dois lados, a rodada começa sem esperar tela nenhuma", () => {
+  const c = cenaBloq();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  [0, 1].forEach(t => { const h = g.cacadorDe(t); if (h) h.morto = 2; });
+  g.J.mov = { v: 0, rest: 0 };
+  g.fimDaRodada();
+  ok(g.J.mov.v > 0, "a rodada travou esperando uma escolha que não existe");
+});
+
 /* ═══════════════ v27 — as Ultimates travadas voltam a crescer ═══════════════ */
 
 /* RELATO: "alguns ults tão travados em valores, não tá usando a regra de mult da

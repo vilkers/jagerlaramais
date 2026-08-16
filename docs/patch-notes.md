@@ -16,6 +16,70 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v40 — dois relatos do Vilker · 2026-08-16
+
+### RELATO 1 — "na vez da IA eu ainda consigo clicar nas opções de ação e movimento dela"
+
+Verdade, e a causa não é óbvia: **a própria IA pinta os destinos dela.** Para
+escolher o passo, `iaExecutaTurno` faz `selHeroi=h; modo="mover"; calcula()` — e
+`calcula` desenha as casas verdes, cada uma com o seu `onclick`. O tabuleiro
+ficava com os destinos do herói **da IA** clicáveis, e quem tocasse movia a peça
+dela gastando o Dado Mestre dela.
+
+O painel de comando já se protegia (`aiMode && iaRodando`); o **tabuleiro não**,
+e nem os dados, nem as placas, nem o arrasto da peça.
+
+Agora existe **uma porta só** — `mesaTravada()` — e todo gesto do humano passa
+por ela: hexágono de movimento, arrasto, peça, torre, poço, Nexus, botões de
+habilidade, Mover, Lampejo, Retorno, converter dado, placa, re-rolar, ward e
+Prioridade.
+
+`J.vez===1` entra na conta junto com `iaRodando` de propósito: existe uma fresta
+entre o fim do laço da IA e a passagem do turno em que `iaRodando` já é falso e a
+vez ainda é dela.
+
+**A IA não passa por essa porta** — ela chama `moveAte` e companhia direto, sem
+evento. Travar o clique não trava a IA.
+
+### RELATO 2 — "a escolha da posição do jungle é no início da RODADA, não do turno"
+
+Certo, e o defeito era de **sequência**. `abreRotacoes` abre uma tela, que é
+assíncrona, mas `fimDaRodada` seguia em frente na mesma pilha: atualizava
+acampamento, descia o morador do poço e chamava `faseOculta` — que **rola os
+dados e começa o turno**.
+
+Ou seja: a tela ficava aberta por cima de uma rodada que já tinha andado, e o
+Caçador se reposicionava no meio do turno de alguém. A escolha era anunciada como
+"início da rodada" e acontecia depois do início do turno.
+
+Agora todo o resto da virada de rodada é um `depois` que **só roda quando os dois
+lados responderem** — por clique ou pelo relógio de 10 segundos. Em hotseat são
+duas telas em sequência, e a rodada só anda depois da última. Sem Caçador vivo
+dos dois lados, não há tela e a rodada anda direto (há teste para isso, para o
+conserto não virar trava).
+
+### O que isso quebra
+
+Nada de balanceamento. Em `simMode` não há humano, a fila de escolha é vazia e a
+continuação roda na mesma pilha de antes — o fluxo das baterias é idêntico byte a
+byte. Confirmado: `bateria 1500 times=espelho` sem desvio.
+
+### Medição
+
+| | v39 | v40 |
+|---|---|---|
+| Testes de regressão | 161 | **165** (4 novos: 3 dos relatos, 1 guarda anti-trava) |
+
+Os três testes dos relatos **falharam antes do conserto** — é a regra da casa, e
+o terceiro pegou de quebra um erro meu de teste: em hotseat são duas telas, e
+responder só a primeira deixava a rodada parada de propósito.
+
+Verificado no Chromium: a tela abre na virada da rodada com o Dado Mestre ainda
+em zero, e só depois de respondida a rodada rola os dados; e um clique num
+destino pintado pela IA não move a peça dela.
+
+---
+
 ## v39 — hexágonos bloqueados, e o tabuleiro passa a ser de dia · 2026-08-16
 
 Primeira entrega da direção de arte do Vilker (`docs/DIRECAO-DE-ARTE.md`, agora
