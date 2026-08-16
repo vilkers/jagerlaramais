@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v43 (a moldura — o tabuleiro deixa de flutuar) · **Atualizado em:** 2026-08-16
+**Versão:** v44 (a arte de cada lugar) · **Atualizado em:** 2026-08-16
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.

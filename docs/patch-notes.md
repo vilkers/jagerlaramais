@@ -16,6 +16,73 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v44 — a arte de cada lugar, a partir da referência · 2026-08-16
+
+Segunda referência do Vilker: um render do próprio tabuleiro do JAGERLARAMAIS,
+com Nexus, torres, acampamentos, Barão, Dragão e as três rotas nomeadas. Pedido:
+**a arte de cada lugar, sem mudar número de hexágono nem posição de estrutura.**
+
+### A referência respondeu uma pergunta que estava travando duas versões
+
+Os rótulos dela dizem **"BARÃO"** e **"DRAGÃO"** — os nomes de sempre — enquanto
+as criaturas são o **boi mecânico** e o **rato de galeria**. Ou seja: os §25 e
+§26 são troca de **arte**, não de nome. O bloqueio que a v41 registrou ("esperando
+o nome, que é trilha de criação") cai por terra: não há nome novo a inventar.
+
+O que continua faltando ali é raster — o poço ainda mostra os retratos antigos em
+`arte/monstros/`, que são dragão tradicional e barão roxo, exatamente o que o §34
+proíbe. Isso é asset, e é da trilha de criação.
+
+### O que mudou
+
+**Torre → caixa-d'água sobre pernas.** Era poste com farol; virou tripé de
+cantoneira, tanque cilíndrico **na cor do time** e farol aceso em cima. É o
+objeto da referência, e já estava na lista de gambiarra do §17. A cor de time
+saiu do contorno e foi para o **tanque** — é a peça que diz de quem é aquele
+pedaço de rota, e agora dá para ler de longe.
+
+**Acampamento → barraca listrada.** Eram dois círculos com rótulo. Virou lona de
+circo remendada, com a listra na cor do dono (a neutra em laranja). É o §27
+pedindo que o acampamento pareça um acontecimento daquele mundo.
+
+**Selva → vegetação.** Moitas e palmeiras esparsas, uma a cada três casas, sempre
+**fora do centro** do hexágono — que é onde a peça pousa. Detalhe que cobre o
+centro é detalhe que atrapalha a leitura (§3 e §36).
+
+**Canal → passarela.** Tábua improvisada atravessando, como na referência (§21).
+
+**Moldura → barraco e palmeira.** Telhado de zinco com faixa de grafite, e
+vegetação por cima do concreto (§6 e §12).
+
+### O defeito que quase passou
+
+A vegetação **não aparecia**. Estava sendo desenhada antes do tampo do próprio
+hexágono, e o tampo cobria a moita que acabara de ser posta nele — a selva ficava
+um verde chapado. Só apareceu quando renderizei o tabuleiro grande, a 2× de
+escala: no tamanho de celular o defeito era invisível.
+
+Lição para a próxima: **julgar arte em captura do tamanho real não serve.**
+
+### O que ainda NÃO parece com a referência, e é honesto dizer
+
+A referência é um render pintado; isto é vetor chapado, e não vai chegar naquela
+fidelidade em SVG. Especificamente falta:
+
+- **Dragão e Barão** — a criatura certa (rato saindo da galeria, boi mecânico no
+  curral) depende de arte raster que não existe;
+- **densidade** — a referência tem barraco, carro, kombi e ônibus espalhados pela
+  selva; aqui há 6 obstáculos e vegetação esparsa. Aumentar densidade briga com o
+  §3, então é decisão de quanto sujar, não de saber fazer;
+- **a moldura** é bloco com telhado, não o barracão detalhado com grafite da
+  referência.
+
+### Medição
+
+Nenhum número de regra mudou — é arte. 165 testes passando, incluindo os que
+travam os 116 hexágonos e a posição de rota, torre, Nexus, poço e acampamento.
+
+---
+
 ## v43 — a moldura: o tabuleiro deixa de flutuar · 2026-08-16
 
 Referência visual mandada pelo Vilker (mockup de MOBA tático de miniaturas). O

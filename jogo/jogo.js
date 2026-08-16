@@ -2126,8 +2126,8 @@ const svg=document.getElementById("mapa");
    as casas que existem — a borda sem par não entra e não vira margem morta. */
 (()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){ if(!noTab(c,r))continue;
-    const[x,y]=centro(c,r); x0=Math.min(x0,x-R*2.1);y0=Math.min(y0,y-R*ISO_Y-46);
-      x1=Math.max(x1,x+R*2.1);y1=Math.max(y1,y+R*ISO_Y+ESPESSURA+34); }
+    const[x,y]=centro(c,r); x0=Math.min(x0,x-R*2.0);y0=Math.min(y0,y-R*ISO_Y-40);
+      x1=Math.max(x1,x+R*2.0);y1=Math.max(y1,y+R*ISO_Y+ESPESSURA+18); }
   const m=6;
   svg.setAttribute("viewBox",`${(x0-m).toFixed(1)} ${(y0-m).toFixed(1)} ${(x1-x0+2*m).toFixed(1)} ${(y1-y0+2*m).toFixed(1)}`);
 })();
@@ -3023,9 +3023,17 @@ function desenhaMapa(){
       points:cantos.map(z=>z[0].toFixed(1)+","+z[1].toFixed(1)).join(" ")}));
     /* um caco de sucata em cima de alguns blocos: a sucata mora NA MOLDURA, não
        nas casas caminháveis — o §3 manda o campo ficar limpo */
-    if((((b.p[0]*5+b.p[1]*3)%4)+4)%4===0){
-      gH.appendChild(el("circle",{cx:x.toFixed(1),cy:(y-3).toFixed(1),r:3.4,class:"mold-caco "+cls}));
-      gH.appendChild(el("circle",{cx:x.toFixed(1),cy:(y-3).toFixed(1),r:1.3,class:"mold-furo"}));
+    /* v44: a moldura ganhou BARRACO e PALMEIRA, como na referência — telhado de
+       zinco com faixa de grafite, e vegetação por cima do concreto (§12). */
+    const marca=(((b.p[0]*5+b.p[1]*3)%4)+4)%4;
+    if(marca===0){
+      gH.appendChild(el("polygon",{class:"mold-telhado "+cls,
+        points:`${x-8},${y-2} ${x},${y-9} ${x+8},${y-2} ${x},${y+3}`}));
+      gH.appendChild(el("rect",{x:x-5.4,y:y-2.4,width:10.8,height:2.2,class:"mold-grafite "+cls}));
+    }else if(marca===2){
+      gH.appendChild(el("line",{x1:x,y1:y+2,x2:x-1,y2:y-8,class:"mold-tronco"}));
+      [[-5,-4],[0,-6.4],[5,-4]].forEach(([a,bq])=>
+        gH.appendChild(el("line",{x1:x-1,y1:y-8,x2:x-1+a,y2:y-8+bq,class:"mold-folha"})));
     }
   });
 
@@ -3068,10 +3076,42 @@ function desenhaMapa(){
         points:[a,b,[b[0],b[1]+fundo],[a[0],a[1]+fundo]]
           .map(q=>q[0].toFixed(1)+","+q[1].toFixed(1)).join(" ")}));
     }
+    /* v44: VEGETAÇÃO na selva e PASSARELA no canal — o §12 diz que a natureza
+       retomou a cidade, e a referência mostra o canal cruzado por pontes
+       improvisadas. Esparso de propósito: uma touceira a cada três casas, e
+       sempre FORA do centro do hexágono, que é onde a peça pousa. Detalhe que
+       cobre o centro é detalhe que atrapalha a leitura (§3 e §36). */
+    const terr=terrenoDe(c,r), vis=!cls.includes("cego");
+    const enfeites=[];
+    if(vis&&terr==="mato"&&!BLOQUEADO.has(k(c,r))&&((c*5+r*7)%3===0)){
+      const[hx0,hy0]=centro(c,r), dx=((c*3+r)%2?1:-1)*7.4;
+      const g=el("g",{class:"mato-vege"});
+      g.appendChild(el("ellipse",{cx:hx0+dx,cy:hy0+3.6,rx:3.4,ry:1.2,class:"vg-sombra"}));
+      if((c+r)%2){
+        [[-2.6,-3.4],[0,-5.2],[2.6,-3.4]].forEach(([a,b])=>
+          g.appendChild(el("line",{x1:hx0+dx,y1:hy0+3.2,x2:hx0+dx+a*1.5,y2:hy0+3.2+b,class:"vg-palma"})));
+        g.appendChild(el("line",{x1:hx0+dx,y1:hy0+3.4,x2:hx0+dx,y2:hy0-1.4,class:"vg-tronco"}));
+      }else{
+        [[-2.2,0],[0,-1.4],[2.2,0]].forEach(([a,b])=>
+          g.appendChild(el("circle",{cx:hx0+dx+a,cy:hy0+b,r:2.5,class:"vg-moita"})));
+      }
+      enfeites.push(g);
+    }
+    if(vis&&terr==="rio"&&((c+r)%2===0)){
+      const[rx0,ry0]=centro(c,r);
+      const g=el("g",{class:"rio-passarela"});
+      g.appendChild(el("rect",{x:rx0-9,y:ry0-1.6,width:18,height:3.2,rx:.6,class:"pa-tabua"}));
+      [-6,-1.5,3,7.5].forEach(dx=>
+        g.appendChild(el("line",{x1:rx0+dx,y1:ry0-1.6,x2:rx0+dx,y2:ry0+1.6,class:"pa-junta"})));
+      enfeites.push(g);
+    }
     const p=cantos.map(q=>q[0].toFixed(1)+","+q[1].toFixed(1));
     const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
     if(moverS.has(k(c,r))) hx.onclick=()=>{ if(mesaTravada())return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
+    /* enfeite vai DEPOIS do tampo: antes, o próprio hexágono cobria a moita que
+       acabara de ser desenhada nele, e a selva ficava um verde chapado */
+    enfeites.forEach(g=>gH.appendChild(g));
   }
   /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
      mundo, não uma pedra genérica. Silhueta simples de propósito: o jogador tem
@@ -3114,9 +3154,18 @@ function desenhaMapa(){
   J.camps.forEach(cp=>{
     const [x,y]=centro(...cp.pos);
     if(cp.ativo){
-      const g=el("g",{class:"camp"+(cp.t===-1?" neutro":"")});
-      g.appendChild(el("circle",{cx:x,cy:y,r:7.2,class:"camp-bg"}));
-      g.appendChild(el("circle",{cx:x,cy:y,r:4.4,class:"camp-core"}));
+      /* v44: BARRACA LISTRADA, como na referência — lona de circo remendada,
+         que é o §27 pedindo que o acampamento pareça um acontecimento daquele
+         mundo em vez de "monstro parado num círculo". A listra pega a cor do
+         dono; a neutra é a que não tem dono. */
+      const g=el("g",{class:"camp"+(cp.t===-1?" neutro":cp.t===0?" t0":" t1")});
+      g.appendChild(el("ellipse",{cx:x,cy:y+5.4,rx:8.6,ry:2.6,class:"camp-sombra"}));
+      g.appendChild(el("path",{class:"camp-lona",
+        d:`M ${x-8.4} ${y+4.6} Q ${x-4.2} ${y-6.6} ${x} ${y-7.4} Q ${x+4.2} ${y-6.6} ${x+8.4} ${y+4.6} Z`}));
+      [-4.6,0,4.6].forEach(dx=>g.appendChild(el("path",{class:"camp-listra",
+        d:`M ${x+dx*0.52} ${y-6.2+Math.abs(dx)*0.16} L ${x+dx} ${y+4.6}`})));
+      g.appendChild(el("rect",{x:x-1.5,y:y+0.4,width:3,height:4.2,class:"camp-porta"}));
+      g.appendChild(el("circle",{cx:x,cy:y-8.2,r:1.2,class:"camp-ponta"}));
       const tx=el("text",{x:x,y:y+11,class:"camp-txt"}); tx.textContent=cp.t===-1?"NEUTRO":(cp.t===0?"AZUL":"CARMIM"); g.appendChild(tx);
       gM.appendChild(g);
     } else if(cp.respawn>0){
@@ -3138,17 +3187,25 @@ function desenhaMapa(){
        contando história em vez de virar buraco. */
     const rc=el("g",{class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
     const caiu=t.vida<=0;
-    rc.appendChild(el("ellipse",{cx:x,cy:y+7.5,rx:8,ry:2.6,class:"t-sombra"}));
-    rc.appendChild(el("rect",{x:x-7,y:y+4.4,width:14,height:3.4,rx:1,class:"t-chapa"}));
+    /* v44: a torre é a CAIXA-D'ÁGUA SOBRE PERNAS da referência — tripé de
+       cantoneira, tanque cilíndrico e um farol aceso na cor do time em cima.
+       É o objeto mais brasileiro que existe para a função "estrutura que vigia
+       um pedaço de rota", e resolve o §22 (sistema defensivo improvisado) sem
+       inventar nada: caixa-d'água já estava na lista do §17 como gambiarra. */
+    rc.appendChild(el("ellipse",{cx:x,cy:y+7.6,rx:8.4,ry:2.8,class:"t-sombra"}));
     if(caiu){
-      rc.appendChild(el("rect",{x:x-1.6,y:y-3,width:3.2,height:8,rx:1,
-        transform:`rotate(24 ${x} ${y+5})`,class:"t-poste"}));
+      rc.appendChild(el("rect",{x:x-7,y:y+2.6,width:14,height:4.6,rx:1.4,
+        transform:`rotate(-13 ${x} ${y+5})`,class:"t-tanque"}));
+      rc.appendChild(el("line",{x1:x-5,y1:y+7,x2:x-2,y2:y+1,class:"t-perna"}));
     }else{
-      rc.appendChild(el("rect",{x:x-1.7,y:y-7.5,width:3.4,height:12,rx:1,class:"t-poste"}));
-      rc.appendChild(el("rect",{x:x-5.6,y:y-11.5,width:11.2,height:5.4,rx:1.6,class:"t-farol"}));
-      rc.appendChild(el("circle",{cx:x,cy:y-8.8,r:1.7,class:"t-luz"}));
-      rc.appendChild(el("line",{x1:x+3.4,y1:y-11,x2:x+6.2,y2:y-15.4,class:"t-antena"}));
-      rc.appendChild(el("rect",{x:x-6.2,y:y-1.6,width:3.2,height:4,rx:.8,class:"t-botijao"}));
+      [[-5.4,-1.6],[5.4,1.6],[0,0]].forEach(([dx,dt])=>
+        rc.appendChild(el("line",{x1:x+dx,y1:y+6.4,x2:x+dx*.42+dt,y2:y-3.4,class:"t-perna"})));
+      rc.appendChild(el("rect",{x:x-6.6,y:y+1.4,width:13.2,height:1.8,rx:.6,class:"t-trave"}));
+      rc.appendChild(el("rect",{x:x-6.2,y:y-9.4,width:12.4,height:6.6,rx:2.6,class:"t-tanque"}));
+      rc.appendChild(el("rect",{x:x-6.2,y:y-9.4,width:12.4,height:1.8,rx:.9,class:"t-tampa"}));
+      rc.appendChild(el("rect",{x:x-2.4,y:y-12.2,width:4.8,height:2.8,rx:1,class:"t-farol"}));
+      rc.appendChild(el("circle",{cx:x,cy:y-10.8,r:1.5,class:"t-luz"}));
+      rc.appendChild(el("line",{x1:x+4.6,y1:y-9.6,x2:x+6.8,y2:y-14.6,class:"t-antena"}));
     }
     if(mirando) rc.onclick=()=>{if(mesaTravada())return;vibra(10);atacaTorre(t);};
     gM.appendChild(rc);

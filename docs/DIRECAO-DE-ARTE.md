@@ -322,13 +322,13 @@ produção de arte são da trilha de criação** (Vilker + ChatGPT, em `visual-l
 | §10 sucata não é marrom | **feito no 2D** — ônibus amarelo, carro vermelho com porta azul, caixa-d'água azul |
 | §14 verde-limão pontual | **parcial** — poço e núcleo do Nexus |
 | §19 rotas abertas | **feito no 2D** |
-| §21 rio como canal urbano | **parcial** — cor de concreto com água; falta o desenho do canal |
-| §20 selva urbana | **parcial** — vegetação e obstáculos; falta quintal, muro, beco |
-| §22 torres improvisadas | **feito no 2D** — poste + chapa + farol + antena + botijão. Alta e estreita; caída, o farol apaga e o poste torto fica |
+| §21 rio como canal urbano | **feito no 2D** — concreto com água e passarela improvisada atravessando |
+| §20 selva urbana | **parcial** — vegetação, moitas e obstáculos; falta a densidade de barraco/carro/kombi da 2ª referência |
+| §22 torres improvisadas | **feito no 2D** — caixa-d'água sobre pernas com farol, na cor do time, como na 2ª referência |
 | §24 Nexus como gerador | **feito no 2D** — caixa de chapa, bobina vazando verde-limão, pistões, escapamento e antena. **Largo e baixo** contra a torre alta e estreita, que é o que o item 24 pede |
-| §25 Dragão → rato de esgoto | **pendente, esperando o NOME** — ver nota abaixo |
-| §26 Barão → boi mecânico | **pendente, esperando o NOME** — ver nota abaixo |
-| §27 acampamentos com história | **pendente** |
+| §25 Dragão → rato de esgoto | **só falta a ARTE.** A 2ª referência mostra o rótulo `DRAGÃO` sobre o rato: o nome fica, muda a criatura |
+| §26 Barão → boi mecânico | **só falta a ARTE.** Mesma coisa: o rótulo `BARÃO` fica, muda a criatura |
+| §27 acampamentos com história | **feito no 2D** — barraca de lona listrada na cor do dono |
 | §6, §13, §16–18 cotidiano, magia, gambiarra, humor | **pendente** — dependem de arte |
 | §32 câmera elevada e isométrica | **feito** — projeção axonométrica, hexágono virou laje com tampo e parede, relevo por terreno |
 | §31 obstáculo não esconde personagem | **feito** — as peças são desenhadas por último e nunca ficam atrás de cenário |
