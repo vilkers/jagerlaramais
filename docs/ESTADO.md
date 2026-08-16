@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v42 (a câmera isométrica — o tabuleiro vira diorama) · **Atualizado em:** 2026-08-16
+**Versão:** v43 (a moldura — o tabuleiro deixa de flutuar) · **Atualizado em:** 2026-08-16
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -59,6 +59,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Andar × alcançar | **duas réguas.** `distância` (linha reta) vale para **alcance de habilidade**; para **andar**, vale o caminho que contorna o obstáculo. Herói não bloqueia caminho — só o obstáculo |
 | Direção de arte | `docs/DIRECAO-DE-ARTE.md` é **canon**: Brasil pós-cataclisma de gambiarra, dia claro, sucata colorida, verde-limão pontual. O tabuleiro está na paleta e **na câmera do §32**; torres e Nexus já são improvisados. Falta: **miniaturas 3D dos heróis** (travado em asset — os modelos não existem e o §29 proíbe billboard como solução final), Dragão→rato e Barão→boi (**esperando o nome**, que é trilha de criação) e acampamentos com história |
 | Câmera | **axonométrica** (§32): o hexágono é uma **laje** com tampo e parede, e o terreno tem relevo — rio afundado, rua no nível da cidade, selva por cima, poço é buraco. Compressão **0,75** (não os 0,577 do isométrico exato) porque a tela é de celular em retrato. **A altura não mexe na planta**: `centroPlano` é o layout que as derivações usam, `centro` é ele visto pela câmera. Decoração é transparente ao toque — quem recebe clique é o tampo |
+| Moldura | a cidade que sobrou **em volta** do campo: laje, muro e contêiner em três alturas, derivados das casas vizinhas do tabuleiro. **Não é tabuleiro** — sem clique, fora de `noTab`, fora de distância/visão/movimento. A sucata mora aqui, nunca nas casas caminháveis (§3). Não é canyon de rocha: o §8 recusa deserto e o §34 recusa Mad Max |
 | Tamanho do tabuleiro | **11×11**, 116 casas · **27 de mato** · espinha 17/12/17 · corredor com **2 de largura nas três rotas** — derivado de `const N` em jogo.js |
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |

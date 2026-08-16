@@ -644,10 +644,13 @@ const ehBloqueado=(c,r)=>BLOQUEADO.has(k(c,r));
    "grandes, fáceis de contar" do §2. 0,75 é uma câmera um pouco mais alta:
    ainda claramente elevada e com volume, e o mapa ocupa a tela. */
 const ISO_Y=0.75;
-const ESPESSURA=7.5;       /* a parede visível da laje, abaixo do tampo */
+const ESPESSURA=11;        /* a parede visível da laje, abaixo do tampo */
 /* O relevo conta a história do terreno: o canal é afundado, a rua é o nível da
    cidade, a selva cresceu por cima, e o poço é boca de galeria — um buraco. */
-const ALTURA_TERRENO={rio:0, poco:1.5, rota:4, base:5.5, mato:6.5, bloq:6.5};
+/* O relevo abriu na v43: a referência do Vilker tem platôs de altura claramente
+   diferente, e com 0–6,5 o tabuleiro lia quase plano. Agora o canal é um vão de
+   verdade e a selva é um platô por cima da rua. */
+const ALTURA_TERRENO={rio:0, poco:2, rota:7, base:10, mato:12, bloq:12};
 function terrenoDe(c,r){
   const K=k(c,r);
   if(BASE_S.has(K))return "base";
@@ -662,6 +665,41 @@ const alturaDe=(c,r)=>ALTURA_TERRENO[terrenoDe(c,r)];
    de um hexágono (peça, torre, Nexus, acampamento, ward, número) usa esta, e por
    isso pousa sozinho na superfície certa, na altura certa. */
 const centro=(c,r)=>{const[x,y]=centroPlano(c,r);return[x,y*ISO_Y-alturaDe(c,r)];};
+/* ---------- A MOLDURA ----------
+   Na referência que o Vilker mandou o tabuleiro não flutua: ele está DENTRO de
+   uma borda elevada, e é ela que faz a cena virar diorama em vez de recorte no
+   céu. Aqui a borda é a cidade que sobrou em volta do campo — laje, muro,
+   contêiner, entulho —, e não paredão de rocha vermelha: o §8 recusa deserto
+   constante e o §34 recusa Mad Max genérico explicitamente.
+
+   É DERIVADA e NÃO É TABULEIRO. Toda casa vizinha de uma casa do mapa que não
+   pertence ao mapa vira um bloco da moldura. Não recebe clique, não entra em
+   `noTab`, não conta para distância, para visão nem para movimento — o item 1
+   continua valendo, e a planta segue com os mesmos 116 hexágonos.
+
+   A altura de cada bloco é fixa por posição, não sorteada: sorteio mudaria o
+   tabuleiro a cada `pinta()` e a borda ficaria tremendo. */
+const MOLDURA=(()=>{
+  const fora=new Map();
+  const dir=r=>((r&1)?[[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]]:[[-1,0],[1,0],[-1,-1],[0,-1],[-1,1],[0,1]]);
+  NO_TAB.forEach(K=>{
+    const[c,r]=K.split(",").map(Number);
+    dir(r).forEach(([a,b])=>{
+      const p=[c+a,r+b], kk=k(...p);
+      if(NO_TAB.has(kk)||fora.has(kk))return;
+      /* altura estável, tirada da própria coordenada: dá silhueta irregular sem
+         sorteio, e a mesma casa tem sempre o mesmo bloco.
+         `mod` e não `%`: a moldura tem casas de coordenada NEGATIVA (a coluna
+         -1, a linha -1), e o resto de negativo em JS é negativo — três blocos
+         saíam com tipo -1, classe inexistente e preenchimento preto. */
+      const mod=(a,n)=>((a%n)+n)%n;
+      const h=16+mod(p[0]*7+p[1]*13,4)*7;
+      fora.set(kk,{p,h,tipo:mod(p[0]*3+p[1]*5,3)});
+    });
+  });
+  return [...fora.values()];
+})();
+
 /* os seis cantos do TAMPO, já comprimidos pela câmera */
 const cantosTampo=(c,r)=>{
   const[x,y]=centro(c,r), p=[];
@@ -2088,8 +2126,8 @@ const svg=document.getElementById("mapa");
    as casas que existem — a borda sem par não entra e não vira margem morta. */
 (()=>{ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){ if(!noTab(c,r))continue;
-    const[x,y]=centro(c,r); x0=Math.min(x0,x-R);y0=Math.min(y0,y-R*ISO_Y-16);
-      x1=Math.max(x1,x+R);y1=Math.max(y1,y+R*ISO_Y+ESPESSURA+2); }
+    const[x,y]=centro(c,r); x0=Math.min(x0,x-R*2.1);y0=Math.min(y0,y-R*ISO_Y-46);
+      x1=Math.max(x1,x+R*2.1);y1=Math.max(y1,y+R*ISO_Y+ESPESSURA+34); }
   const m=6;
   svg.setAttribute("viewBox",`${(x0-m).toFixed(1)} ${(y0-m).toFixed(1)} ${(x1-x0+2*m).toFixed(1)} ${(y1-y0+2*m).toFixed(1)}`);
 })();
@@ -2953,6 +2991,42 @@ function desenhaMapa(){
       }
       (z.t===meuLadoZ?zonaMinha:zonaDele).add(x);
     });
+  });
+
+  /* A MOLDURA e a SOMBRA vêm primeiro: são o fundo do diorama, e tudo o que é
+     tabuleiro é desenhado por cima. Blocos altos ficam ATRÁS do campo, então
+     nunca escondem peça — §31. */
+  (()=>{
+    const bb=[];
+    for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++) if(noTab(c,r)) bb.push(centro(c,r));
+    const xs=bb.map(p=>p[0]), ys=bb.map(p=>p[1]);
+    gH.appendChild(el("ellipse",{class:"mesa-sombra",
+      cx:((Math.min(...xs)+Math.max(...xs))/2).toFixed(1),
+      cy:(Math.max(...ys)+ESPESSURA+4).toFixed(1),
+      rx:((Math.max(...xs)-Math.min(...xs))/2+30).toFixed(1), ry:26}));
+  })();
+  MOLDURA.slice().sort((a,b)=>centro(...a.p)[1]-centro(...b.p)[1]).forEach(b=>{
+    const[x,y0]=centroPlano(...b.p);
+    const y=y0*ISO_Y-b.h;
+    const cantos=[];
+    for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);
+      cantos.push([x+R*Math.cos(a), y+R*ISO_Y*Math.sin(a)]);}
+    const cls=["laje","muro","conteiner"][b.tipo];
+    for(let i=0;i<6;i++){
+      const a=cantos[i], q=cantos[(i+1)%6];
+      if((a[1]+q[1])/2 <= y) continue;
+      gH.appendChild(el("polygon",{class:"mold-parede "+cls,
+        points:[a,q,[q[0],q[1]+b.h+ESPESSURA],[a[0],a[1]+b.h+ESPESSURA]]
+          .map(z=>z[0].toFixed(1)+","+z[1].toFixed(1)).join(" ")}));
+    }
+    gH.appendChild(el("polygon",{class:"mold-topo "+cls,
+      points:cantos.map(z=>z[0].toFixed(1)+","+z[1].toFixed(1)).join(" ")}));
+    /* um caco de sucata em cima de alguns blocos: a sucata mora NA MOLDURA, não
+       nas casas caminháveis — o §3 manda o campo ficar limpo */
+    if((((b.p[0]*5+b.p[1]*3)%4)+4)%4===0){
+      gH.appendChild(el("circle",{cx:x.toFixed(1),cy:(y-3).toFixed(1),r:3.4,class:"mold-caco "+cls}));
+      gH.appendChild(el("circle",{cx:x.toFixed(1),cy:(y-3).toFixed(1),r:1.3,class:"mold-furo"}));
+    }
   });
 
   for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){

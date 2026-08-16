@@ -229,6 +229,22 @@ button:disabled{cursor:not-allowed}
 #mapa .rotulo text{font-family:var(--carto);font-size:5.4px;letter-spacing:.18em;
   fill:var(--ink-3);text-anchor:middle;pointer-events:none}
 
+/* ══════════ A MOLDURA — a cidade que sobrou em volta do campo ══════════
+   A referência do Vilker tem o tabuleiro DENTRO de uma borda elevada, e é ela
+   que faz a cena virar diorama. Aqui a borda é laje, muro e contêiner — cidade
+   arruinada —, e não paredão de rocha: o §8 recusa deserto e o §34 recusa Mad
+   Max genérico. Sucata mora aqui, nunca nas casas caminháveis (§3). */
+#mapa .mesa-sombra{fill:#6B5F49;opacity:.28;stroke:none;pointer-events:none}
+#mapa .mold-topo,#mapa .mold-parede,#mapa .mold-caco,#mapa .mold-furo{pointer-events:none}
+#mapa .mold-topo{stroke:#3A3020;stroke-width:1}
+#mapa .mold-parede{stroke:none}
+#mapa .mold-topo.laje{fill:#C2B49B}      #mapa .mold-parede.laje{fill:#8E8168}
+#mapa .mold-topo.muro{fill:#B5705A}      #mapa .mold-parede.muro{fill:#844E3D}
+#mapa .mold-topo.conteiner{fill:#5E8F86} #mapa .mold-parede.conteiner{fill:#42675F}
+#mapa .mold-caco{stroke:#3A3020;stroke-width:.8}
+#mapa .mold-caco.laje{fill:#8A8FA0} #mapa .mold-caco.muro{fill:#D8942F} #mapa .mold-caco.conteiner{fill:#C4483A}
+#mapa .mold-furo{fill:#3A3020;stroke:none}
+
 /* ══════════ A LAJE — a parede de cada hexágono ══════════
    A câmera do §32 transformou cada hexágono numa laje com espessura. A parede é
    a MESMA cor do tampo, escurecida: é a face que a luz do sol não pega, e é ela

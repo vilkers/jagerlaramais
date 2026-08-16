@@ -16,6 +16,66 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v43 — a moldura: o tabuleiro deixa de flutuar · 2026-08-16
+
+Referência visual mandada pelo Vilker (mockup de MOBA tático de miniaturas). O
+que ela acrescenta ao canon é **estrutura**, não paleta: o tabuleiro está
+*dentro* de uma borda elevada em vez de flutuar no céu, as lajes são grossas, a
+altura varia muito mais, e a sucata mora na moldura — não nas casas caminháveis.
+
+### O que mudou
+
+**A moldura.** Toda casa vizinha do tabuleiro que não pertence a ele virou um
+bloco elevado: laje, muro ou contêiner, em três alturas. É o que fecha a cena e
+faz o campo virar diorama.
+
+**É derivada e NÃO é tabuleiro.** Não recebe clique, não entra em `noTab`, não
+conta para distância, visão nem movimento. A planta segue com os mesmos **116
+hexágonos** — item 1 preservado, com teste em cima.
+
+**O relevo abriu.** Estava 0–6,5 e lia quase plano; agora vai a 12.
+
+| Terreno | Era | É |
+|---|---|---|
+| Rio | 0 | 0 |
+| Poço | 1,5 | 2 |
+| Rota | 4 | **7** |
+| Base | 5,5 | **10** |
+| Selva e bloqueado | 6,5 | **12** |
+
+Espessura da laje de 7,5 para **11**.
+
+**A sucata mora na moldura.** Cacos e furos aparecem em alguns blocos da borda, e
+em **nenhuma** casa caminhável — o §3 manda o campo ficar limpo, e a referência
+faz igual: os detalhes dela também estão na periferia.
+
+### Onde eu me afastei da referência, de propósito
+
+A referência tem **paredão de rocha vermelha de canyon**. Não segui: o §8 recusa
+"deserto constante" e o §34 recusa "Mad Max genérico" — os dois explicitamente.
+A moldura aqui é **a cidade que sobrou em volta do campo**: laje de concreto,
+muro de tijolo, contêiner. Mesma função de enquadramento, material que o canon
+aceita.
+
+Se o canyon for uma decisão nova que revoga o §8, é troca de paleta em três
+linhas de CSS — mas é decisão do Vilker, não minha para tomar sozinho.
+
+### Um defeito que a moldura trouxe
+
+Três blocos nasceram **pretos**. A moldura tem casas de coordenada negativa (a
+coluna −1, a linha −1), e o resto de número negativo em JS é negativo: `(-3)%3`
+dá `-0`, mas `(-1*3+…)%3` dava `-1`, o índice `-1` no vetor de tipos devolvia
+`undefined`, a classe saía inexistente e o preenchimento caía no preto padrão do
+SVG. Trocado por módulo positivo.
+
+### Medição
+
+Nenhum número de regra mudou — é cenário. 165 testes passando, incluindo o que
+trava os 116 hexágonos e a posição de rotas, torres e poço. No Chromium: 10
+passos de partida contra a IA sem erro de console.
+
+---
+
 ## v42 — a câmera do §32: o tabuleiro vira diorama · 2026-08-16
 
 Pedido: "agora fazer a mudança de 2D para 3D". Esta entrada entrega **a câmera e

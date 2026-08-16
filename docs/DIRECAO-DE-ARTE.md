@@ -317,7 +317,7 @@ produção de arte são da trilha de criação** (Vilker + ChatGPT, em `visual-l
 | §1 planta preservada | **feito** — teste de regressão trava os 116 hexágonos, as rotas, as torres e o poço |
 | §4 e §5 hexágonos bloqueados | **feito** — 6 casas, 3 pares espelhados, com ônibus, carros empilhados e caixa-d'água. Ver `docs/REGRAS.md` §6.2 |
 | §2 hexágono legível | **feito no 2D** — traço forte e contável |
-| §3 não sobrecarregar | **feito no 2D** — só as 6 casas bloqueadas têm objeto |
+| §3 não sobrecarregar | **feito no 2D** — só as 6 casas bloqueadas têm objeto; a sucata solta mora na moldura, fora do campo |
 | §8, §9, §33 paleta de dia | **feito no 2D** — céu, cimento bege, vegetação viva, névoa quente |
 | §10 sucata não é marrom | **feito no 2D** — ônibus amarelo, carro vermelho com porta azul, caixa-d'água azul |
 | §14 verde-limão pontual | **parcial** — poço e núcleo do Nexus |
