@@ -16,6 +16,229 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v46 — os seis relatos do playtest · 2026-08-17
+
+Seis pedidos do Vilker, três deles bugs reproduzidos antes de consertar. Dois já
+tinham sido descritos como resolvidos no handoff da sessão anterior (a v40) —
+**e não estavam no repositório**: aquela branch nunca foi mergeada, e a `main`
+parou na v39. Vale como aviso: handoff descreve intenção, o `grep` descreve o
+que existe.
+
+### 1 · A rotação do Caçador acontece ANTES dos turnos, e paga bônus
+
+**O defeito era de sequência, não de lugar.** `abreRotacoes` já era chamada no
+início da rodada, mas abre tela **assíncrona** — e `fimDaRodada` seguia na mesma
+pilha até `faseOculta`, que rola os dados e **começa o turno**. Na prática o
+turno começava por baixo da tela de escolha: quem escolhia já estava jogando.
+
+Agora o resto da virada é uma **continuação** que só roda quando os dois lados
+responderem (em hotseat são duas telas). Enquanto a fila não fecha,
+`J.fase==="rotacao"` e a mesa fica travada. **A rodada 1 também tem rotação** —
+"no início de cada rodada" não abre exceção na primeira.
+
+**O bônus voltou, e voltou diferente.** Até a v37 havia quatro *destinos* com
+prêmio, pagos só se o Caçador **chegasse** lá; saíram na v38 junto com os
+destinos. O que entra agora é **momentâneo**: a escolha deixa o bônus
+**pendente**, ele é pago no **início do turno do dono** e vale **só aquele
+turno**.
+
+| Região | Bônus | Por quê |
+|---|---|---|
+| ▲ Topo | **+2 de Armadura** | a rota do duelo longo: aguentar a troca |
+| ◆ Meio | **+2 de Poder** | a rota curta, onde o gank mata: fechar |
+| ▼ Baixo | **+3 de ouro**, na hora | a rota do investimento, com dois heróis e a maior renda |
+| ❦ Selva | **cura 4** e **+1 no Dado Mestre** da rodada | o quintal dele: farmar e circular |
+
+Nenhum dá dano nem visão. E **nada disso vai para o `log`**, pelo mesmo motivo
+que a posição não vai desde a v38: em hotseat o log é lido pelos dois, e "o
+Caçador dele ganhou Armadura" é o mesmo que dizer "ele foi para o topo".
+
+**Por que pendente, e não pago na hora da escolha.** A primeira versão pagava na
+hora, e estava errada: a rotação acontece na virada da rodada, e a primeira coisa
+que `iniciaTurno` faz é `expiraDoTime`, que limpa buff. O **+2 de Armadura** e o
+**+2 de Poder** nasciam na virada e morriam no instante em que o dono ia usá-los
+— os dois eram **letra morta**, e só ouro e cura (que não são buff) chegavam à
+mesa. Ver a seção de medição: foi a bateria que denunciou.
+
+### 2 · Não dá mais para mexer na mesa no turno do adversário
+
+Relato repetido duas vezes: *"ainda consigo selecionar as teclas no turno do
+adversário"*. A causa não é óbvia — **a própria IA pinta os destinos dela**.
+Quando ela decide mover, o motor faz `selHeroi=h; modo="mover"; calcula()`, e
+`pinta` desenha as casas verdes já com `onclick` funcionando. O dedo do humano
+acha aquilo pronto na tela.
+
+O painel de comando se protegia sozinho com `J.fase!=="jogando"`. O tabuleiro
+não; os dados não; as placas não; o arrasto não — cada um tinha (ou não tinha) a
+própria condição escrita à mão.
+
+Agora existe **uma porta**, `mesaTravada()`, e **14 gestos** passam por ela:
+casa de movimento, peça, torre, poço, Nexus, dado, os três botões do painel,
+placa, re-rolar, prioridade, ward, converter dado, encerrar, carta, loja e
+arrasto. **A IA não passa**: ela chama `moveAte`, `iniciaHab` e `confirmaHab`
+direto, sem evento — e é por isso que a trava mora nos ouvintes de clique e não
+dentro das funções de regra.
+
+Ela fecha também **o rabo do turno da máquina**: `iaRodando` continua ligado
+durante `encerraTurno`/`fimDaRodada`, que rodam de dentro do turno dela já com a
+vez virada.
+
+Medido antes e depois, no navegador de verdade: na v45 o clique numa casa verde
+**movia a peça da IA** e o clique num dado **selecionava o dado dela**. Agora
+nenhum dos dois faz nada.
+
+### 3 · O dado extra cabe na barra
+
+*"Estou ganhando um dado de ação extra mas não estou conseguindo usar."*
+
+**Não era regra: era largura.** A barra tem ~243px num celular de 360, e quatro
+ou cinco dados de 44px não cabem. A caixa rolava na horizontal, mas com
+`scrollbar-width:none` não havia nada na tela dizendo que rolava — o 4º e o 5º
+dado ficavam fora do vidro e o jogador nunca soube que estavam lá.
+
+Agora os dados **encolhem para caber**: `flex:1 1 0` reparte a largura,
+`max-width` impede que três fiquem gigantes, e `min-width:34px` é o piso de
+toque. Medido em 320, 360 e 412px de tela:
+
+| Dados na mesa | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|
+| Largura de cada um | 44px | 44px | 43px | 35px |
+| Todos dentro do vidro | sim | sim | sim | sim |
+
+Seis é o teto real do jogo: 3 base + 2 de Retomada + 1 de Prioridade.
+
+### 4 · Vender item
+
+Volta **60% do preço de compra**, arredondado para baixo, mínimo 1. A janela é a
+**mesma da compra**: na própria base ou morto.
+
+A perda existe para que vender **não** seja jogada neutra. Sem ela os três slots
+deixariam de ser escolha: dava para comprar errado, trocar de graça na rodada
+seguinte e nunca pagar por ter errado. Com 60%, trocar de build custa 40% do que
+já foi investido.
+
+**Por que 60% e não metade:** com 50% um item de 5 devolveria 2, e 2 não compra
+nada nesta loja — o botão existiria sem servir para nada. Com 60% ele devolve 3,
+que já é meio Reforço ou uma Sentinela.
+
+Item de vida **desfaz o `vidaMax`** na venda (e apara a vida atual), senão vender
+um Coração de Basalto deixaria os +4 de vida de graça.
+
+### 5 · A torre debaixo da própria peça
+
+*"Mesmo que uma peça minha estiver em cima da torre, posso escolher atacá-la."*
+
+`alvosNoHex` já sabia responder desde a v37 — **ninguém estava perguntando**. O
+teste em `escolheHeroi` era `alvos.includes(h)`, e `alvos` só tem **inimigo**;
+com a peça em cima da torre sendo **sua**, o `includes` dava falso, a função caía
+no ramo de seleção e `limpaModo()` **cancelava a mira**. O jogador mirava a
+torre, encostava nela e o toque desfazia a própria jogada — cercar a torre com o
+herói em cima dela era impossível.
+
+A pergunta certa é "há alvo nesta casa?", e não "este herói é alvo?".
+
+### 6 · Alcance por habilidade
+
+*"Os heróis podem ter só hab de longe, só de perto, ou as duas."*
+
+Até aqui o alcance era do **herói**: um número na ficha, e as três habilidades
+herdavam. Agora a habilidade pode declarar `alc` própria no catálogo:
+
+- **sem `alc`** → segue o herói (padrão, e a maioria continua assim);
+- **`alc:1`** → corpo a corpo, e **item de alcance não transforma em tiro** —
+  `alc:1` é decisão de desenho, não um número baixo a consertar com 7 de ouro;
+- **`alc:n`** → alcance próprio, maior **ou menor** que o do herói, e aí sim o
+  item soma normalmente.
+
+Dezenove habilidades ganharam régua própria. As que mudam a leitura de um kit:
+
+| Herói | Antes | Agora |
+|---|---|---|
+| Dona Chinela | tudo em 1 | básica e Puxão em **1**, **Chinelo Voador em 3** — o chinelo é arremessado |
+| Ilva | tudo em 2 | **Chama Espectral em 3**, **Ceifa em 1** — pica de longe, colhe colada |
+| Valti | tudo em 2 | **Facão em 1**, **Talho e Coco em 3** — facão de perto, coco de longe |
+| Pyk | tudo em 2 | **Arpão em 3**, Puxada em 4 (com o `alcExtra`), **Cova em 1** — arpoa, puxa, executa colado |
+| Gari Mago | tudo em 3 | **Varrida em 1**, resto em 3 — ele varre a casa colada |
+| Xhera | tudo em 1 | **Investir em 2** — a investida cobre chão |
+
+A ficha do herói passou a mostrar **faixa** (`1–3`) quando as habilidades
+divergem, em vez de um número que mentia para duas delas.
+
+### O que isso quebra
+
+- **`sim/motor.js` precisou responder à rotação.** Com a tela bloqueando de
+  verdade, o harness (que só guarda o callback de `abre` e nunca clica) deixava
+  toda partida parada em `J.fase==="rotacao"`. Medido na hora: a bateria de 3000
+  reportou **"3000 estouraram o teto"** — zero partidas concluídas. O harness
+  agora responde como a IA responderia, para os dois lados, do mesmo jeito e pelo
+  mesmo motivo que já respondia ao cara ou coroa. Quem testa o **relógio** da
+  rotação chama `g.rotacaoDeVerdade()` para desfazer o atalho;
+- **um teste de presença de rota** presumia "1 herói do time 0 nesta rota". Com
+  rotação na rodada 1 o Caçador nasce reposicionado e pode cair na mesma rota do
+  herói do meio. O teste passou a **contar** em vez de fixar 1;
+- **`J.fase` ganhou o valor `"rotacao"`.** Quem testar fase tem que saber que
+  existe um estado entre rodadas em que ninguém joga.
+
+### O que foi medido
+
+| | v45 | v46 |
+|---|---|---|
+| Testes de regressão | 206 | **223** |
+| `sim/niveis.js 300` — Mestre × Aprendiz | 72,5% | **64,7%** (z=5,08) |
+
+O Mestre caiu ~8 pontos contra o Aprendiz, e a causa é o item 6: com alcance por
+habilidade, a IA passou a ter mais jogadas possíveis por turno, e o Aprendiz —
+que erra de propósito — passou a errar entre opções melhores. A diferença
+continua real (z=5,08). Fica anotado como leitura, não como conclusão.
+
+### A bateria encontrou o defeito do bônus
+
+Primeira medição da v46, `sim/bateria.js 3000 times=espelho`:
+
+| | v45 | v46 (1ª tentativa) |
+|---|---|---|
+| quem começa | 52,7% e 53,2% | **53,8% e 54,5%** (z≈4,1) |
+
+Dois pontos acima, e fora do ruído. A regra do projeto — *uma mudança de cada vez
+quando for medir* — cobrou o preço: a v46 mexeu em **duas** coisas capazes de
+mover a mesma agulha. Entraram duas variantes na bateria para separá-las:
+
+```
+node sim/bateria.js 1500 times=espelho bonusrot=off   → 51,7% (z=1,29, ruído)
+node sim/bateria.js 1500 times=espelho alchab=off
+```
+
+Com o bônus desligado a agulha voltava ao lugar — então era dele. E aí apareceu a
+causa real, que **não era balanceamento e sim um defeito**: o bônus era pago na
+virada da rodada e `expiraDoTime` o apagava antes de o dono jogar. Armadura e
+Poder nunca chegavam à mesa; só ouro e cura chegavam, e eram eles, sozinhos, que
+empurravam os dois pontos.
+
+Com o bônus passando a ser pago **no início do turno do dono** — e agora com os
+**quatro** funcionando de verdade, e não só dois:
+
+| | v45 | v46 final |
+|---|---|---|
+| quem começa | 52,7% e 53,2% | **52,1%** (z=1,88, dentro do ruído) |
+| rodadas (mediana) | 22 e 23 | **24** |
+| ações por partida | 56,5 | **65,9** |
+| Barões por partida | 0,93 e 0,95 | **1,16** |
+| Dragões por partida | 0,33 | **0,44** |
+
+**A partida ficou mais longa e mais densa, e isso é do item 6.** Com alcance por
+habilidade, mais golpes chegam ao alvo: 9 ações a mais por partida, um quarto de
+Barão a mais, um terço de Dragão a mais. Medido com `bonusrot=off` para
+confirmar que não vinha do bônus — o alongamento aparece igual nas duas.
+
+Se na mesa a partida parecer arrastada, **a alavanca é o alcance das Ultimates
+arremessadas** (Chinelo Voador, Coco na Cabeça, Arpão), não o preço dos épicos —
+que já foi medido duas vezes sem se mexer.
+
+`node sim/condicoes.js 150` continua mostrando as doze condições vivas, nenhuma
+em 0%, e os seis recursos chegando ao teto.
+
+---
+
 ## v45 — a individualidade dos heróis · 2026-08-17
 
 A entrega mais larga desde a v0.4, e a única até hoje que muda os **vinte** heróis

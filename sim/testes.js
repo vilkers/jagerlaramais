@@ -899,12 +899,18 @@ teste("a presença de rota é congelada no fim do turno de cada time", () => {
   c.poe(h, g.ROTAS.meio[Math.floor(g.ROTAS.meio.length / 2)]);
   const nomeRota = g.rotaDaPos(h);
   ok(nomeRota, "o herói não ficou numa rota");
+  /* Quantos do time 0 estão nesta rota AGORA. Era `1` fixo, e virou contagem na
+     v46: desde que a rotação passou a acontecer também na rodada 1, o Caçador
+     nasce reposicionado e pode cair na mesma rota do herói do meio. O teste mede
+     o CONGELAMENTO — se ele depender de quantos heróis calharam de estar na rota,
+     ele reprova por um motivo que não é o dele. */
+  const esperado = g.vivos(0).filter(x => g.rotaDaPos(x) === nomeRota).length;
   g.encerraTurno();
-  eq(g.J.presenca[0][nomeRota], 1, "a presença do time 0 não foi congelada");
+  eq(g.J.presenca[0][nomeRota], esperado, "a presença do time 0 não foi congelada");
 
   /* agora o time 0 sai da rota — a contagem congelada NÃO pode mudar */
   c.poe(h, g.BASE[0][0]);
-  eq(g.J.presenca[0][nomeRota], 1,
+  eq(g.J.presenca[0][nomeRota], esperado,
      "a presença mudou depois de congelada — o segundo jogador voltaria a ter a última palavra");
 });
 
@@ -1715,7 +1721,8 @@ teste("depois de reposicionado o Caçador age normalmente", () => {
 teste("sem escolha em 10 segundos, o Caçador vai sozinho para a Selva", () => {
   const c = cenaSelva();
   const g = c.g;
-  g.simMode = false; g.aiMode = false;          // hotseat: os dois são humanos
+  g.simMode = false; g.aiMode = false;
+  g.rotacaoDeVerdade();   // este teste mede o RELÓGIO, não o atalho do harness          // hotseat: os dois são humanos
   const h = g.cacadorDe(0);
   const centro = g.SELVA_PONTOS[0].selva;
   c.poe(h, g.BASE[0][0]);                        // longe do centro da selva
@@ -1739,6 +1746,7 @@ teste("sem escolha em 10 segundos, o Caçador vai sozinho para a Selva", () => {
 teste("o timeout usa exatamente o mesmo caminho da escolha manual", () => {
   const a = cenaSelva(), b = cenaSelva();
   a.g.simMode = false; a.g.aiMode = false;
+  a.g.rotacaoDeVerdade();   // este teste mede o RELÓGIO, não o atalho do harness
   a.poe(a.g.cacadorDe(0), a.g.BASE[0][0]);
   b.poe(b.g.cacadorDe(0), b.g.BASE[0][0]);
 
@@ -1756,6 +1764,7 @@ teste("escolher desliga o relógio — ele não dispara depois", () => {
   const c = cenaSelva();
   const g = c.g;
   g.simMode = false; g.aiMode = false;
+  g.rotacaoDeVerdade();   // este teste mede o RELÓGIO, não o atalho do harness
   const h = g.cacadorDe(0);
 
   g.abreRotacoes();
@@ -1775,6 +1784,7 @@ teste("com a partida encerrada o relógio se desliga em vez de reposicionar", ()
   const c = cenaSelva();
   const g = c.g;
   g.simMode = false; g.aiMode = false;
+  g.rotacaoDeVerdade();   // este teste mede o RELÓGIO, não o atalho do harness
   const h = g.cacadorDe(0);
   g.abreRotacoes();
   const rel = g.__timers.filter(t => t.vivo).pop();
@@ -3612,6 +3622,278 @@ teste("a Marca sobrevive ao golpe que a aplica, e só é gasta no golpe SEGUINTE
   ok(levou > semMarca, `com a marca levou ${levou} e sem ela levaria ${semMarca} — a marca não somou`);
   eq(g.stacksDe(v, "marcado"), corvo.habs[0].ef.cond[0].st,
      "a marca antiga não foi gasta, ou a nova não foi aplicada");
+});
+
+/* ═══════════════ v46 — os seis relatos do Vilker ═══════════════
+   Cada teste aqui nasceu de uma frase dele, e cada um FALHAVA antes do conserto.
+   Onde o teste não falha antes, ele não está testando o bug. */
+
+/* ---------- 1 · a rotação acontece ANTES dos turnos, e paga bônus ---------- */
+
+teste("o turno NÃO começa enquanto a rotação do Caçador estiver aberta", () => {
+  const g = carrega();
+  g.aiMode = false; g.simMode = false;     // hotseat: os dois escolhem, duas telas
+  g.rotacaoDeVerdade();                    // sem o atalho do harness, que responde sozinho
+  g.novo();
+  /* `novo` chama caraOuCoroa → abreRotacoes. Sem ninguém responder, a fase tem
+     que ficar em "rotacao": era exatamente o defeito — `fimDaRodada` seguia na
+     mesma pilha até `faseOculta`, que rola os dados e COMEÇA o turno por baixo
+     da tela de escolha. */
+  eq(g.J.fase, "rotacao",
+     "a partida entrou em 'jogando' com a escolha do Caçador ainda aberta — "
+     + "o turno começou por baixo da tela");
+  ok(g.mesaTravada(), "a mesa não estava travada durante a rotação");
+});
+
+/* O BÔNUS CHEGA AO TURNO DO DONO. Este é o teste que faltava na primeira versão,
+   e ele reprovava: pagar na hora da escolha punha o buff na virada da rodada, e
+   `expiraDoTime` — a primeira coisa que `iniciaTurno` faz — limpava antes de o
+   jogador poder usar. O +2 de Armadura e o +2 de Poder eram letra morta. */
+teste("o bônus de região chega ao turno do dono, e não morre na virada", () => {
+  const c = cena(); const g = c.g;
+  const conf = g.BONUS_REGIAO;
+  const h = g.cacadorDe(0);
+  const arm0 = g.armTotal(h);
+
+  g.escolheRotacao(0, "topo");
+  g.J.vez = 0; g.iniciaTurno();      // expiraDoTime roda ANTES de o bônus ser pago
+  eq(g.armTotal(h), arm0 + conf.topo.arm,
+     "o Topo não chegou ao turno do dono — o buff morreu em expiraDoTime, "
+     + "que é a primeira coisa que iniciaTurno faz");
+
+  const pod0 = g.poderTotal(h);
+  g.escolheRotacao(0, "meio");
+  g.J.vez = 0; g.iniciaTurno();
+  eq(g.poderTotal(h), pod0 + conf.meio.poder, "o Meio não pagou Poder");
+});
+
+teste("ouro e cura da região são pagos no turno do dono, e uma vez só", () => {
+  const c = cena(); const g = c.g;
+  const conf = g.BONUS_REGIAO;
+  const h = g.cacadorDe(0);
+  const ouro0 = h.ouro;
+  g.escolheRotacao(0, "baixo");
+  eq(h.ouro, ouro0, "o ouro foi pago na virada em vez do turno do dono");
+  g.J.vez = 0; g.iniciaTurno();
+  eq(h.ouro, ouro0 + conf.baixo.ouro, "o Baixo não pagou ouro no turno do dono");
+  g.J.vez = 0; g.iniciaTurno();
+  eq(h.ouro, ouro0 + conf.baixo.ouro, "pagou DE NOVO — o bônus virou renda por turno");
+
+  h.vida = 1;
+  g.escolheRotacao(0, "selva");
+  g.J.vez = 0; g.iniciaTurno();
+  eq(h.vida, 1 + conf.selva.cura, "a Selva não curou");
+});
+
+teste("o bônus de região é MOMENTÂNEO — expira no turno seguinte do dono", () => {
+  const c = cena(); const g = c.g;
+  const h = g.cacadorDe(0);
+  const arm0 = g.armTotal(h);
+  g.escolheRotacao(0, "topo");
+  g.J.vez = 0; g.iniciaTurno();
+  ok(g.armTotal(h) > arm0, "o bônus não entrou");
+  g.J.vez = 0; g.iniciaTurno();      // sem nova escolha: nada a pagar
+  eq(g.armTotal(h), arm0,
+     "o bônus da região sobreviveu ao próprio turno — momentâneo virou permanente");
+});
+
+teste("o +1 de movimento da Selva é gasto na rodada em que foi escolhido", () => {
+  const c = cena(); const g = c.g;
+  g.J.times[0].movRegiao = 0;
+  g.escolheRotacao(0, "selva");
+  g.J.vez = 0; g.iniciaTurno();
+  eq(g.J.times[0].movRegiao, 0, "o movimento da região não foi consumido — vira renda");
+  const semBonus = g.J.mov.v;
+  g.escolheRotacao(0, "selva");
+  g.J.vez = 0; g.iniciaTurno();
+  ok(g.J.mov.v >= 1, "o Dado Mestre ficou inválido");
+});
+
+/* ---------- 2 · nada de tocar na mesa no turno do adversário ---------- */
+
+teste("na vez da IA a mesa está travada para o humano", () => {
+  const c = cena(); const g = c.g;
+  g.aiMode = true;
+  g.J.vez = 1; g.J.fase = "jogando";
+  ok(g.mesaTravada(), "a vez da IA não travou a mesa");
+  g.J.vez = 0;
+  ok(!g.mesaTravada(), "a mesa ficou travada na vez do humano");
+});
+
+teste("o rabo do turno da IA também trava — encerraTurno roda com a vez já virada", () => {
+  const c = cena(); const g = c.g;
+  g.aiMode = true; g.J.vez = 0; g.J.fase = "jogando";
+  ok(!g.mesaTravada(), "deveria estar livre antes");
+  g.iaRodando = true;
+  ok(g.mesaTravada(),
+     "com a vez virada para o humano mas a IA ainda fechando o turno, a mesa ficou aberta — "
+     + "é dali que saía o gank da rotação e a torre que a onda derrubou");
+});
+
+teste("o arrasto obedece à mesma trava que o clique", () => {
+  const c = cena().vez(0).mov(6); const g = c.g;
+  const h = c.heroi(0, "topo");
+  ok(g.podeArrastar(h), "não dava para arrastar a própria peça na própria vez");
+  g.aiMode = true; g.J.vez = 1;
+  ok(!g.podeArrastar(g.J.times[1].herois[0]),
+     "dava para arrastar a peça da IA no turno dela — o arrasto tinha lista de condições própria");
+});
+
+/* ---------- 3 · o dado extra tem que caber e ser usável ---------- */
+
+teste("o dado extra da Retomada entra na mesa e serve a uma habilidade", () => {
+  /* a Dona Chinela porque a Ultimate dela mira INIMIGO — a do Taxista é nele
+     mesmo, e o teste passaria sem nunca provar que o dado extra pagou o golpe */
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]).vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo"), alvo = c.heroi(1, "topo");
+  alvo.vida = alvo.vidaMax = 60;                 // ninguém morre: mede-se o dano
+  encosta(c, h, alvo);
+  /* três dados baixos e um extra alto: a Ultimate só sai com o extra */
+  g.J.dados = [{ v: 1, usado: 1 }, { v: 1, usado: 1 }, { v: 1, usado: 1 },
+               { v: 6, usado: 0, extra: 1 }];
+  g.J.mov = { v: 0, rest: 0 };
+  const ult = h.habs[2];
+  eq(g.dadoPara(ult), 3, "o dado extra não foi eleito para a habilidade que só ele paga");
+  const v0 = alvo.vida;
+  c.usa(h, 2, alvo);
+  ok(alvo.vida < v0 || alvo.morto, "a habilidade paga pelo dado extra não saiu");
+  eq(g.J.dados[3].usado, 1, "o dado extra não foi marcado como gasto");
+});
+
+/* ---------- 4 · vender item ---------- */
+
+teste("vender devolve menos do que custou, e só na base ou morto", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  const it = g.ITENS[0];
+  h.itens = [it.id]; h.ouro = 0;
+
+  /* longe da base: a janela é a MESMA da compra */
+  h.pos = [...g.ROTAS.topo[Math.floor(g.ROTAS.topo.length / 2)]];
+  ok(!g.naBase(h), "o herói deveria estar longe da base");
+  ok(!g.vendeItem(h, it.id, 0), "vendeu no meio da rota — a mochila virou dinheiro líquido");
+  eq(h.itens.length, 1, "o item saiu mesmo com a venda recusada");
+
+  /* na base: vende, e por menos */
+  h.pos = [...g.BASE[0][0]];
+  ok(g.vendeItem(h, it.id, 0), "não vendeu estando na base");
+  eq(h.itens.length, 0, "o item continuou na mochila");
+  eq(h.ouro, g.precoVenda(it.id), "o ouro devolvido não bate com o preço de venda");
+  ok(g.precoVenda(it.id) < it.o,
+     `venda (${g.precoVenda(it.id)}) não é menor que a compra (${it.o}) — trocar de build sairia de graça`);
+  ok(g.precoVenda(it.id) >= 1, "a venda devolveu zero — o botão existiria sem servir para nada");
+});
+
+teste("vender item de vida devolve o teto, sem deixar o herói acima do próprio máximo", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.pos = [...g.BASE[0][0]];
+  const it = g.ITENS.find(x => x.ef && x.ef.vida);
+  ok(it, "nenhum item de vida na loja para testar");
+  const max0 = h.vidaMax;
+  h.itens = [it.id]; h.vidaMax += it.ef.vida; h.vida = h.vidaMax;
+  g.vendeItem(h, it.id, 0);
+  eq(h.vidaMax, max0, "o teto de vida do item ficou depois da venda — vida permanente de graça");
+  ok(h.vida <= h.vidaMax, "o herói ficou com vida acima do próprio teto");
+  ok(h.vida >= 1, "a venda matou o herói");
+});
+
+teste("todo item da loja tem preço de venda menor que o de compra", () => {
+  const g = carrega();
+  const ruins = g.ITENS.filter(it => g.precoVenda(it.id) >= it.o).map(it => it.n);
+  eq(ruins.length, 0, `venda igual ou maior que a compra: ${ruins.join(", ")}`);
+});
+
+/* ---------- 5 · a torre debaixo da própria peça ---------- */
+
+teste("com a própria peça em cima da torre inimiga, o toque ainda oferece a torre", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  ok(tr, "não achei torre inimiga exposta");
+  const p = g.ROTAS[tr.rota][tr.i];
+  h.pos = [...p]; h.agiu = 0; h.alc = 4;
+  g.J.dados = [{ v: 6, usado: 0 }];
+  c.mira(h, 0);
+  const lista = g.alvosNoHex(...p);
+  ok(lista.some(a => a.tipo === "torre"), "a torre nem aparecia na lista do hexágono");
+
+  /* o gesto real: o dedo acerta a PEÇA, que é o que está desenhado por cima */
+  const v0 = tr.vida;
+  g.escolheHeroi(h);
+  ok(tr.vida < v0,
+     "tocar na própria peça em cima da torre cancelou a mira em vez de bater — "
+     + "cercar a torre com o herói em cima dela era impossível");
+});
+
+/* ---------- 6 · alcance por habilidade ---------- */
+
+teste("habilidade pode ter alcance próprio, maior ou menor que o do herói", () => {
+  const g = carrega();
+  const k = g.CATALOGO.kaross, i = g.CATALOGO.ilva;
+  eq(k.alc, 1, "a Dona Chinela deixou de ser de alcance 1");
+  eq(k.habs[2].alc, 3, "o Chinelo Voador deveria ser arremessado — é a habilidade de longe dela");
+  eq(i.habs[0].alc, 3, "a Chama Espectral da Ilva deveria ser a de longe");
+  eq(i.habs[2].alc, 1, "a Ceifa da Ilva deveria exigir encostar");
+  /* e existe herói dos três tipos */
+  const tipo = id => {
+    const h = g.CATALOGO[id], l = h.habs.filter(hb => hb.alvo !== "eu").map(hb => hb.alc || h.alc);
+    return l.every(x => x <= 1) ? "perto" : l.every(x => x >= 2) ? "longe" : "os dois";
+  };
+  const tipos = new Set(Object.keys(g.CATALOGO).map(tipo));
+  ["perto", "longe", "os dois"].forEach(t =>
+    ok(tipos.has(t), `nenhum herói é do tipo "${t}" — o pedido era ter os três`));
+});
+
+teste("corpo a corpo é corpo a corpo: item de alcance não transforma em tiro", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]).vez(0);
+  const g = c.g;
+  const h = c.heroi(0, "topo");
+  const lente = g.ITENS.find(x => x.ef && x.ef.alc);
+  ok(lente, "nenhum item de alcance na loja");
+  const perto = h.habs.find(hb => hb.alc === 1);
+  ok(perto, "o herói de topo desta cena não tem habilidade corpo a corpo");
+  const antes = g.alcDeHab(h, perto);
+  h.itens = [lente.id];
+  eq(g.alcDeHab(h, perto), antes,
+     "a Lente de Âmbar deu alcance de arqueiro a uma habilidade de encostar");
+  /* mas soma normalmente numa habilidade que já é de longe */
+  const longe = h.habs.find(hb => hb.alc > 1);
+  if (longe) ok(g.alcDeHab(h, longe) > longe.alc, "o item não somou numa habilidade de longe");
+});
+
+teste("a mira respeita o alcance da HABILIDADE, não o do herói", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]).vez(0);
+  const g = c.g;
+  const k = c.heroi(0, "topo"), alvo = c.heroi(1, "topo");
+  ok(k.habs[0].alc === 1 && k.habs[2].alc === 3,
+     "esta cena precisa de um herói com básica de perto e Ultimate de longe");
+  /* alvo a 3 casas: fora da básica, dentro da Ultimate */
+  const casa = [];
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++)
+    if (g.noTab(col, r) && g.dist(col, r, ...k.pos) === 3 && !g.em(col, r)) casa.push([col, r]);
+  ok(casa.length, "não achei casa a 3 de distância");
+  alvo.pos = [...casa[0]];
+  g.aplicaCond(alvo, "revelado", { tu: 3 });
+  g.J.dados = [{ v: 6, usado: 0 }];
+
+  c.mira(k, 0);
+  ok(!g.alvos.includes(alvo), "a básica corpo a corpo alcançou um alvo a 3 casas");
+  g.limpaModo(); g.selHeroi = k;
+  c.mira(k, 2);
+  ok(g.alvos.includes(alvo), "a Ultimate arremessada NÃO alcançou um alvo a 3 casas");
+});
+
+teste("a IA se aproxima pelo maior alcance do kit, não pelo do herói", () => {
+  const g = carrega();
+  const k = g.CATALOGO.kaross;
+  const falso = { ...k, id: "kaross", habs: k.habs, itens: [], alcTurno: 0, extraPoder: 0, pos: [0, 0] };
+  ok(g.alcanceUtil(falso) >= 3,
+     "a IA acha que a Dona Chinela só alcança 1 — ela nunca usaria o Chinelo Voador de longe");
 });
 
 /* ---------- resumo ---------- */

@@ -130,7 +130,7 @@ vharn:{n:"O Taxista",ep:"o Piloto da Quebrada",pos:"topo",cls:"Tanque",ref:"Ornn
   pas:{id:"pontoDeOnibus",n:"Ponto de Ônibus",
        d:"No início do turno dele, todo inimigo colado fica Lento."},
   habs:[{n:"Martelo Carburado",f:1,alvo:"in",ef:{dano:1,cond:[{t:"vulneravel",tu:1}]}},
-        {n:"Buzina Infernal",f:3,alvo:"in",ef:{dano:1,puxar:1,cond:[{t:"atordoado",tu:1}]}},
+        {n:"Buzina Infernal",f:3,alvo:"in",alc:2,ef:{dano:1,puxar:1,cond:[{t:"atordoado",tu:1}]}},
         {n:"Escudo de Porta",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1,condEu:[{t:"tenacidade",tu:2}]}}]},
 
 kaross:{n:"Dona Chinela",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",ref:"Darius",
@@ -138,9 +138,9 @@ kaross:{n:"Dona Chinela",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",re
   ideia:"Empilha Sangramento e cobra a conta: quanto mais o alvo sangra, mais alto o chinelo executa.",
   pas:{id:"chinelada",n:"Chinelada",
        d:"Todo golpe dela deixa 1 acúmulo de Sangramento no alvo."},
-  habs:[{n:"Chinelada",f:1,alvo:"in",ef:{dano:1,bonusFerido:3}},
-        {n:"Puxão de Orelha",f:3,alvo:"in",ef:{dano:1,puxar:1,cond:[{t:"sangramento",st:2}]}},
-        {n:"Chinelo Voador",f:5,alvo:"in",ef:{dano:1,executa:5,
+  habs:[{n:"Chinelada",f:1,alvo:"in",alc:1,ef:{dano:1,bonusFerido:3}},
+        {n:"Puxão de Orelha",f:3,alvo:"in",alc:1,ef:{dano:1,puxar:1,cond:[{t:"sangramento",st:2}]}},
+        {n:"Chinelo Voador",f:5,alvo:"in",alc:3,ef:{dano:1,executa:5,
            execPorStack:{t:"sangramento",v:3},consome:{t:"sangramento",danoPorStack:3}}}]},
 
 ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
@@ -148,18 +148,18 @@ ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
   ideia:"Espalha Veneno e depois colhe: a Ceifa bate muito mais forte em quem já está envenenado.",
   pas:{id:"miasma",n:"Miasma",
        d:"No início do turno dela, todo inimigo colado é Envenenado por 1 turno."},
-  habs:[{n:"Chama Espectral",f:1,alvo:"in",ef:{dano:1,espalha:{t:"veneno",tu:1}}},
+  habs:[{n:"Chama Espectral",f:1,alvo:"in",alc:3,ef:{dano:1,espalha:{t:"veneno",tu:1}}},
         {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:5,zona:{tipo:"veneno",dano:1,raio:1}}},
-        {n:"Ceifa",f:5,alvo:"in",ef:{dano:1,area:1,bonusCond:{t:"veneno",dano:4}}}]},
+        {n:"Ceifa",f:5,alvo:"in",alc:1,ef:{dano:1,area:1,bonusCond:{t:"veneno",dano:4}}}]},
 
 xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven",
   vida:22,poder:4,arm:2,alc:1,
   ideia:"Paga com a própria vida e recompra bebendo a do outro. Quanto mais ferida, mais forte.",
   pas:{id:"insaciavel",n:"Insaciável",
        d:"Cura 2 sempre que causa dano. Abaixo de metade da vida, cura 4 e ganha +2 de Poder."},
-  habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Investir",f:3,alvo:"in",ef:{dano:1,extra:3,puxar:1,cond:[{t:"vulneravel",tu:1}]}},
-        {n:"Sede Final",f:5,alvo:"in",ef:{dano:1,extra:4,custoVida:3,bonusFerido:3,drena:1}}]},
+  habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",alc:1,ef:{dano:1}},
+        {n:"Investir",f:3,alvo:"in",alc:2,ef:{dano:1,extra:3,puxar:1,cond:[{t:"vulneravel",tu:1}]}},
+        {n:"Sede Final",f:5,alvo:"in",alc:1,ef:{dano:1,extra:4,custoVida:3,bonusFerido:3,drena:1}}]},
 
 /* ─────────── SELVA ─────────── */
 
@@ -177,7 +177,7 @@ grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
   ideia:"Digere tudo: veneno, sangramento e cadáver. O tanque que não fica com condição pendurada.",
   pas:{id:"digestao",n:"Digestão",
        d:"Cura 4 quando qualquer herói morre a até 2 casas dele."},
-  habs:[{n:"Investida",f:1,alvo:"in",ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
+  habs:[{n:"Investida",f:1,alvo:"in",alc:2,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
         {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:3,limpaEu:9}},
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,condVizinhos:[{t:"lentidao",tu:1}]}}]},
 
@@ -186,10 +186,10 @@ kurr:{n:"Valti",ep:"o Homem do Coco",pos:"selva",cls:"Assassino",ref:"Nidalee / 
   ideia:"Prepara terreno. O coco só atordoa quem pisou nas cascas — o Atordoamento tem endereço.",
   pas:{id:"olhoDeMateiro",n:"Olho de Mateiro",
        d:"Enxerga dentro do mato de qualquer lugar do tabuleiro."},
-  habs:[{n:"Facão",f:1,alvo:"in",ef:{dano:1,cond:[{t:"sangramento",st:1}]}},
-        {n:"Talho de Facão",f:2,alvo:"in",ef:{dano:1,
+  habs:[{n:"Facão",f:1,alvo:"in",alc:1,ef:{dano:1,cond:[{t:"sangramento",st:1}]}},
+        {n:"Talho de Facão",f:2,alvo:"in",alc:3,ef:{dano:1,
            zona:{tipo:"cascas",cond:{t:"lentidao",tu:1},raio:1}}},
-        {n:"Coco na Cabeça",f:5,alvo:"in",ef:{dano:1,extra:2,
+        {n:"Coco na Cabeça",f:5,alvo:"in",alc:3,ef:{dano:1,extra:2,
            condSeNaZona:[{t:"atordoado",tu:1}]}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
@@ -197,9 +197,9 @@ pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
   ideia:"Marca, arrasta e executa. Contra ele a pergunta é sempre a mesma: dá para morrer daqui?",
   pas:{id:"contabilidade",n:"Contabilidade do Coveiro",
        d:"Quando ele mata, leva +3 de ouro e o aliado mais próximo leva +2."},
-  habs:[{n:"Arpão",f:1,alvo:"in",ef:{dano:1,cond:[{t:"marcado",st:3}]}},
+  habs:[{n:"Arpão",f:1,alvo:"in",alc:3,ef:{dano:1,cond:[{t:"marcado",st:3}]}},
         {n:"Puxada Funda",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Cova",f:5,alvo:"in",ef:{dano:1,executa:7,execSeCond:{t:"marcado",v:4},ouroSeMatar:3}}]},
+        {n:"Cova",f:5,alvo:"in",alc:1,ef:{dano:1,executa:7,execSeCond:{t:"marcado",v:4},ouroSeMatar:3}}]},
 
 /* ─────────── MEIO ─────────── */
 
@@ -218,7 +218,7 @@ zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Z
   pas:{id:"passoDeSombra",n:"Passo de Sombra",
        d:"Depois de causar dano, ele recua 1 casa de graça."},
   habs:[{n:"Estocada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Eco",f:2,alvo:"in",ef:{dano:1,cond:[{t:"marcado",st:4}],troca:1}},
+        {n:"Eco",f:2,alvo:"in",alc:2,ef:{dano:1,cond:[{t:"marcado",st:4}],troca:1}},
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1,baneEu:1}}]},
 
 nira:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
@@ -226,7 +226,7 @@ nira:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"meio",cls:"Mago",ref:"Orian
   ideia:"Limpa os aliados e acumula Sucata. A Ultimate dele vale o que ele varreu na partida.",
   pas:{id:"coleta",n:"Coleta",
        d:"Ganha 1 Sucata a cada golpe e a cada herói que morre a até 3 casas. Máximo 5."},
-  habs:[{n:"Varrida Purificadora",f:1,alvo:"in",ef:{dano:1,limpaAliados:1}},
+  habs:[{n:"Varrida Purificadora",f:1,alvo:"in",alc:1,ef:{dano:1,limpaAliados:1}},
         {n:"Redemoinho Sustentável",f:3,alvo:"in",ef:{dano:1,prende:1,cond:[{t:"lentidao",tu:1}]}},
         {n:"Coleta Seletiva Suprema",f:5,alvo:"in",ef:{dano:1,area:1,
            zona:{tipo:"veneno",dano:2,raio:1},bonusPorRecurso:{t:"sucata",dano:2}}}]},
@@ -305,8 +305,8 @@ gorm:{n:"Caramêlo 2.0",ep:"o Cachorro Pilotado",pos:"sup",cls:"Suporte",ref:"Br
   ideia:"Corpo na frente. Aliado colado nele custa 2 de dano a menos para o adversário.",
   pas:{id:"guardaCorpo",n:"Guarda-Corpo",
        d:"Aliado colado nele sofre 2 de dano a menos."},
-  habs:[{n:"Latido",f:1,alvo:"in",ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Escudo de Pelo",f:1,alvo:"al",ef:{escudo:4,cond:[{t:"tenacidade",tu:2}]}},
+  habs:[{n:"Latido",f:1,alvo:"in",alc:1,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Escudo de Pelo",f:1,alvo:"al",alc:2,ef:{escudo:4,cond:[{t:"tenacidade",tu:2}]}},
         {n:"Latido Caótico",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,empurraVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
@@ -341,6 +341,11 @@ function condTxt(c){
 }
 function textoHab(hb){
   const e = hb.ef, p = [];
+  /* v46 — o alcance só aparece quando é PRÓPRIO da habilidade. Repetir o alcance
+     do herói em toda linha seria ruído: o número já está na ficha dele. O que o
+     jogador precisa saber é onde a habilidade DISCORDA do herói. */
+  if(hb.alc===1)      p.push("<b>Corpo a corpo</b> — só em quem está colado, e item de alcance não muda isso");
+  else if(hb.alc>1)   p.push(`<b>Alcance ${hb.alc}</b> (próprio desta habilidade)`);
   if(e.dano)           p.push(`Dano = <b>Força + Poder − Armadura</b>${e.dano>1?`, <b>${e.dano} vezes</b>`:""}`);
   if(e.danoFixo)       p.push(`Dano fixo de <b>${e.danoFixo}</b>, ignora a Força`);
   if(e.perfura)        p.push("<b>Perfurante</b> — <b>ignora a Armadura</b> do alvo. "

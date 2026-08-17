@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v45 (a individualidade dos heróis) · **Atualizado em:** 2026-08-17
+**Versão:** v46 (os seis relatos do playtest) · **Atualizado em:** 2026-08-17
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -42,7 +42,11 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
 | Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz |
-| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva** — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Sem bônus de destino** — saíram junto com os destinos na v38. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
+| **Alcance** | é da **HABILIDADE**, não só do herói (v46). Sem `alc` no catálogo → segue o herói; `alc:1` → **corpo a corpo, e item de alcance não muda isso**; `alc:n` → régua própria, maior ou menor que a do herói, e aí o item soma. 19 habilidades têm régua própria. A ficha mostra **faixa** (`1–3`) quando divergem |
+| Vender item | devolve **60%** do preço de compra (arredonda para baixo, mínimo 1), na **mesma janela da compra** — base ou morto. Item de vida desfaz o `vidaMax` |
+| **A trava da mesa** | `mesaTravada()` é a **porta única** de todo gesto humano: fase que não é de jogar, vez da máquina (incluindo `iaRodando`, que segue ligado no fecho do turno dela) e a janela de 350ms do arrasto. **A IA não passa por ela** — chama `moveAte`/`iniciaHab`/`confirmaHab` direto, sem evento, e é por isso que a trava mora nos ouvintes de clique |
+| Fases | `oculto` → **`rotacao`** (v46: existe um estado entre rodadas em que ninguém joga) → `jogando` → `fim` |
+| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva** — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Com bônus de REGIÃO desde a v46**, momentâneo: a escolha deixa o bônus **pendente** e ele é pago no **início do turno do dono**, valendo só aquele turno (pagar na virada não funciona — `expiraDoTime` limpa buff antes de o dono jogar): **Topo +2 Armadura · Meio +2 Poder · Baixo +3 ouro · Selva cura 4 e +1 no Dado Mestre**. Nada disso vai para o log — dizer o bônus é dizer a região. **A rodada 1 também tem rotação**, e o turno só começa depois de os dois responderem. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |

@@ -43,6 +43,8 @@
      dot=off     habilidade nenhuma aplica sangramento ou veneno      — v25
      zonas=off   habilidade nenhuma cria zona no chão                 — v25
      times=espelho  os dois lados jogam com os MESMOS cinco heróis.
+     bonusrot=off   desliga o bônus de região da rotação do Caçador (v46).
+     alchab=off     desliga o alcance por habilidade — tudo volta a seguir o herói (v46).
                  OBRIGATÓRIO quando a mudança toca herói, habilidade ou item:
                  sem isto "quem começa" mede o confronto, não a ordem  — v25    */
 
@@ -100,6 +102,14 @@ if (opcoes.heranca !== undefined)
 if (opcoes.escudobarao !== undefined)
   trocas.push([/const BARAO_ESCUDO=\d+/, `const BARAO_ESCUDO=${+opcoes.escudobarao}`]);
 if (opcoes.ondas === "off") trocas.push([/d\+=furia\[0\]-furia\[1\];/, ""]);
+/* v46 — as duas mudanças novas, para poder medir uma de cada vez. A regra do
+   projeto é "uma mudança por vez quando for medir", e a v46 mexeu em duas coisas
+   que podem mover a mesma agulha: o bônus de região (poder novo, entregue no
+   início da rodada) e o alcance por habilidade (mais alvos por turno). */
+if (opcoes.bonusrot === "off")
+  trocas.push([/const BONUS_REGIAO=\{[\s\S]*?\n\};/, "const BONUS_REGIAO={};"]);
+if (opcoes.alchab === "off")
+  trocas.push([/const propria = hb && hb\.alc;/, "const propria = undefined;"]);
 /* v22 — as três mudanças da revisão, cada uma desligável sozinha. Existem porque
    a medição do lote inteiro deu 52,6% e não dizia de quem era a culpa: sem poder
    desligar uma de cada vez, "quem começa" vira número sem endereço. */

@@ -110,6 +110,40 @@ const armTotal=h=>Math.max(0,h.arm+bonus(h,"arm")+(sobTorreAmiga(h)?ARM_TORRE:0)
    é o dobro do corpo a corpo, e ainda dá para fugir andando. */
 const ALCANCE_MAX=4;
 const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc")+(h.alcTurno||0));
+
+/* ---------- ALCANCE POR HABILIDADE (v46) ----------
+   Até aqui o alcance era do HERÓI: um número na ficha, e as três habilidades
+   herdavam. Isso amarrava a identidade a um extremo — ou o herói era todo de
+   perto, ou todo de longe —, e apagava exatamente o tipo de personagem que o
+   pedido descreve: *"os heróis podem ter só hab de longe, só de perto, ou as
+   duas"*.
+
+   Agora a habilidade pode declarar `alc` própria no catálogo:
+
+     sem `alc`   → segue o herói (é o padrão, e a maioria continua assim)
+     `alc: 1`    → CORPO A CORPO, e é corpo a corpo de verdade
+     `alc: n`    → alcance próprio, que pode ser maior OU menor que o do herói
+
+   A regra do item, e ela é a única sutileza: **item de alcance não transforma
+   corpo a corpo em tiro**. `alc:1` é uma decisão de desenho ("esta habilidade
+   exige encostar"), não um número baixo a ser consertado com 7 de ouro — a Lente
+   de Âmbar na Dona Chinela daria à chinelada o alcance de um arqueiro. Para
+   `alc:2` ou mais o item soma normalmente, porque aí ele está melhorando um tiro
+   que já existe.
+
+   O que isto abre, e é o ponto: a Dona Chinela é toda de perto e joga o chinelo
+   de longe; o Gari varre a casa colada e sopra o redemoinho a três; o Coveiro
+   arpoa longe, puxa e executa colado. Um kit passa a ter GEOMETRIA, e não só
+   números. */
+function alcDeHab(h,hb){
+  const propria = hb && hb.alc;
+  if(propria===undefined||propria===null) return alcTotal(h)+((hb&&hb.ef.alcExtra)||0);
+  if(propria<=1) return 1+((hb.ef.alcExtra)||0);      // corpo a corpo não vira tiro
+  return Math.min(ALCANCE_MAX, propria+bonus(h,"alc")+(h.alcTurno||0)+(hb.ef.alcExtra||0));
+}
+/* o maior alcance que este herói tem em ALGUMA habilidade — é o que a IA usa
+   para decidir de quão longe vale se aproximar */
+const alcanceUtil=h=>Math.max(...h.habs.map(hb=>alcDeHab(h,hb)));
 const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 
 /* ---------- GEOMETRIA DO MAPA ---------- */
@@ -652,11 +686,46 @@ function passosDe(de){
 }
 /* quantos passos de `de` até `ate`, contornando obstáculo — `null` se não há caminho */
 const passosAte=(de,ate)=>{ const v=passosDe(de).get(k(...ate)); return v===undefined?null:v; };
+/* ---------- AS QUATRO REGIÕES, E O QUE CADA UMA PAGA ----------
+   O bônus voltou na v46, e voltou DIFERENTE do que existia até a v37.
+
+   O que havia antes eram quatro DESTINOS com prêmio (acampamento próprio,
+   neutro, inimigo, poço), e o prêmio só era pago se o Caçador CHEGASSE lá — ele
+   andava alguns passos por rodada e o bônus ficava pendurado no meio do caminho.
+   Saiu junto com os destinos, quando a escolha virou região e o reposicionamento
+   passou a ser imediato.
+
+   Agora o bônus é **momentâneo e pago na hora**: ele entra no instante da
+   escolha, junto com o reposicionamento, e vale **até o início do próximo turno
+   do dono** — a mesma âncora de escudo, buff e prisão (ver `expiraDoTime`), pela
+   mesma razão de sempre: dá exatamente um turno adversário de exposição a quem
+   joga primeiro e a quem joga em segundo.
+
+   Cada região paga o que aquela parte do mapa PEDE, e é isso que transforma a
+   escolha numa leitura em vez de um menu:
+
+     ▲ Topo   — a rota do duelo longo. Armadura, para aguentar a troca.
+     ◆ Meio   — a rota curta, onde o gank mata. Poder, para fechar.
+     ▼ Baixo  — a rota do investimento, com dois heróis e a maior renda. Ouro.
+     ❦ Selva  — o quintal dele: cura e movimento, para farmar e circular.
+
+   Nenhum deles dá dano de graça nem visão: o Caçador continua pagando o preço
+   de estar longe da rota que escolheu não vigiar. */
+const BONUS_REGIAO={
+  topo:  {arm:2},
+  meio:  {poder:2},
+  baixo: {ouro:3},
+  selva: {cura:4, mov:1}
+};
 const REGIOES=[
-  {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima."},
-  {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio."},
-  {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo."},
-  {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço."}
+  {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima.",
+   b:"+2 de Armadura no seu turno"},
+  {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio.",
+   b:"+2 de Poder no seu turno"},
+  {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo.",
+   b:"+3 de ouro, na hora"},
+  {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço.",
+   b:"cura 4 e +1 no Dado Mestre"}
 ];
 const REGIAO=Object.fromEntries(REGIOES.map(r=>[r.id,r]));
 const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
@@ -703,7 +772,44 @@ function reposicionaCacador(t,regiao){
 function escolheRotacao(t,regiao){
   if(!REGIAO[regiao])return null;
   J.rotacao[t]=regiao;                 /* registro da rodada; ninguém desenha */
-  return reposicionaCacador(t,regiao);
+  const onde=reposicionaCacador(t,regiao);
+  /* O BÔNUS FICA PENDENTE, e é pago no INÍCIO DO TURNO DO DONO — não aqui.
+
+     Pagar na hora da escolha parecia certo e estava errado: a rotação acontece na
+     virada da rodada, e a primeira coisa que `iniciaTurno` faz é `expiraDoTime`,
+     que limpa buff. O +2 de Armadura e o +2 de Poder nasciam na virada e morriam
+     no instante em que o dono ia usá-los — os dois bônus eram letra morta, e só
+     ouro e cura (que não são buff) chegavam à mesa.
+
+     Medido antes de achar isto: com o bônus ligado, "quem começa" foi a 53,8% e
+     54,5%; com `bonusrot=off`, a 51,7%. A diferença vinha inteira de ouro e cura,
+     porque os outros dois nunca existiram. */
+  J.bonusPend[t]=regiao;
+  return onde;
+}
+/* O bônus da região, pago no instante da escolha.
+
+   SEGREDO, como o resto da rotação: nada disto vai para o `log`, que em hotseat
+   é lido pelos dois. O dono vê o efeito na ficha do próprio Caçador; o
+   adversário descobre do jeito que descobre tudo nesta mecânica — encontrando a
+   peça. Foi o mesmo cuidado que a v38 teve com a posição, e vale igual para o
+   bônus: dizer "o Caçador dele ganhou Armadura" é dizer "ele foi para o topo".
+
+   `aplicaBuff` e não `h.arm+=`: o buff precisa saber se desfazer sozinho em
+   `expiraDoTime`, e mexer no campo direto é justamente o erro que o CLAUDE.md
+   proíbe. Ouro e cura são pagos na hora e não expiram — não são buff, são renda
+   e sustento. O movimento entra no Dado Mestre do TIME, e só se a rodada dele
+   ainda não tiver rolado (senão pagaria uma rodada atrasado). */
+function pagaBonusRegiao(t,regiao){
+  const h=cacadorDe(t), b=BONUS_REGIAO[regiao];
+  if(!h||!b)return;
+  J.bonusPend[t]=null;
+  if(b.arm)   aplicaBuff(h,"arm",b.arm);
+  if(b.poder) aplicaBuff(h,"poder",b.poder);
+  if(b.ouro)  h.ouro+=b.ouro;
+  if(b.cura&&!h.semCura) h.vida=Math.min(h.vidaMax,h.vida+b.cura);
+  if(b.mov)   J.times[t].movRegiao=(J.times[t].movRegiao||0)+b.mov;
+  h.bonusRegiao=regiao;                /* só para a ficha do dono mostrar */
 }
 
 /* A escolha, no início da rodada. Os dois escolhem ANTES de qualquer um jogar, e
@@ -711,14 +817,25 @@ function escolheRotacao(t,regiao){
    isso são duas telas em sequência; contra a IA, só a do humano.
    A escolha só aparece se o time ainda TEM Caçador vivo: pedir aposta a quem não
    tem peça para mover é pedir clique por nada. */
-function abreRotacoes(){
-  if(!J||J.fim!==null)return;
+/* `depois` é a CONTINUAÇÃO da virada de rodada, e é a correção do defeito que o
+   Vilker relatou: *"a escolha da posição do jungle é no início da RODADA, não do
+   turno"*. Ela já era chamada no início da rodada — o problema era de SEQUÊNCIA.
+   `abreRotacoes` abre tela assíncrona, mas `fimDaRodada` seguia na mesma pilha
+   até `faseOculta`, que rola os dados e COMEÇA O TURNO. Na prática o turno
+   começava por baixo da tela de escolha: quem escolhia já estava jogando.
+
+   Agora o resto da virada é este `depois`, e ele só roda quando os dois lados
+   responderem (em hotseat são duas telas em sequência). Enquanto a fila não
+   fecha, `J.fase` continua fora de "jogando" e `mesaTravada()` segura a mesa. */
+function abreRotacoes(depois){
+  const segue=()=>{ if(typeof depois==="function") depois(); else pinta(); };
+  if(!J||J.fim!==null)return segue();
   J.rotacao=[null,null];
   const humanos=[0,1].filter(t=>!(simMode||(aiMode&&t===1)));
   [0,1].forEach(t=>{ if(!humanos.includes(t)&&cacadorDe(t)) escolheRotacao(t,iaEscolheRotacao(t)); });
   const fila=humanos.filter(t=>cacadorDe(t));
-  if(!fila.length) return pinta();
-  perguntaRotacao(fila,0);
+  if(!fila.length) return segue();
+  perguntaRotacao(fila,0,segue);
 }
 
 /* O relógio. A partida NUNCA pode ficar parada esperando esta decisão — sem
@@ -726,26 +843,31 @@ function abreRotacoes(){
 const ROTACAO_SEGUNDOS=10;
 let _rotRelogio=null;
 function paraRelogioRotacao(){ if(_rotRelogio){ clearInterval(_rotRelogio); _rotRelogio=null; } }
-function perguntaRotacao(fila,i){
+function perguntaRotacao(fila,i,depois){
   paraRelogioRotacao();
-  if(i>=fila.length){ pinta(); return; }
+  if(i>=fila.length){ if(typeof depois==="function") depois(); else pinta(); return; }
   const t=fila[i], h=cacadorDe(t);
-  if(!h) return perguntaRotacao(fila,i+1);
+  if(!h) return perguntaRotacao(fila,i+1,depois);
   const bts=REGIOES.map(r=>
     `<button class="grande rotCac" data-r="${r.id}" style="font-size:15px;padding:12px;text-align:left">
-      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span></button>`).join("");
+      ${r.ico} ${r.n}<br><span style="font-size:12.5px;opacity:.8">${r.d}</span>
+      <br><span class="rotB">✦ ${r.b}</span></button>`).join("");
   const legenda=s=>`Escolha em <b>${s}</b>s — sem escolha, ele vai para a Selva`;
   abre(`<span class="et">Rotação do Caçador · rodada ${J.rodada}</span>
     <h2 class="t${t}">${NOMES[t]}: para que região vai ${h.n}?</h2>
     <p>Ele reaparece <b>dentro da selva</b>, na parte dela colada à região escolhida —
     <b>nunca dentro da rota</b>. O outro jogador <b>não vê</b> a sua escolha: para saber
     onde ele caiu é preciso ter visão daquele mato.</p>
+    <p>Cada região paga um <b style="color:var(--brass)">bônus momentâneo</b>, que entra no
+    <b>seu turno desta rodada</b> e vale só ele — não é prêmio por chegar, é o que aquela
+    parte do mapa pede de quem vai para lá.</p>
     <p id="rotRel" style="opacity:.8;font-size:13px">${legenda(ROTACAO_SEGUNDOS)}</p>${bts}`);
   const escolhe=(id,porTempo)=>{
     paraRelogioRotacao(); fecha();
     escolheRotacao(t,id);
     if(porTempo) toast(`Tempo esgotado — ${h.n} foi para o centro da Selva`,"aviso");
-    perguntaRotacao(fila,i+1);
+    else toast(`${REGIAO[id].n} · ${REGIAO[id].b}`,"");
+    perguntaRotacao(fila,i+1,depois);
   };
   G("telacx").querySelectorAll(".rotCac").forEach(b=>b.onclick=()=>escolhe(b.dataset.r,false));
   let resta=ROTACAO_SEGUNDOS;
@@ -1699,7 +1821,7 @@ function novo(){
       {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
       {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
     ],
-    zonas:[], rotacao:[null,null],
+    zonas:[], rotacao:[null,null], bonusPend:[null,null],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
   };
   /* cada herói começa na entrada da própria rota, não empilhado na base */
@@ -1714,7 +1836,10 @@ function novo(){
   desempilha();
   dadoSel=ativo=habSel=selHeroi=null; alvos=[]; mover=[];
   reg("r","— rodada 1 —");
-  caraOuCoroa(()=>faseOculta());
+  /* a rodada 1 também tem rotação: "no início de CADA rodada" é a regra, e abrir
+     a exceção na primeira faria o Caçador começar sem bônus e sem aposta */
+  J.fase="rotacao";
+  caraOuCoroa(()=>abreRotacoes(()=>faseOculta()));
 }
 function desempilha(){                     // dois heróis nunca no mesmo hex
   const usados=new Set();
@@ -1819,6 +1944,7 @@ function expiraDoTime(t){
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
     h.focoPoco=0;
     h.alcTurno=0;            /* o alcance emprestado pelo Encher o Pulmão */
+    h.bonusRegiao=null;      /* o selo do bônus de rotação sai com o buff dele */
     h.andou=0;               /* usado pelo crítico condicional e pela IA */
   });
 }
@@ -1842,7 +1968,13 @@ function iniciaTurno(){
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
      mesmo instante em que é reposto */
   if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
-  const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0);
+  /* o +1 da região Selva entra aqui, no Dado Mestre, e é CONSUMIDO: ele vale a
+     rodada em que foi escolhido, não as seguintes. */
+  /* O BÔNUS DA REGIÃO É PAGO AQUI, depois de `expiraDoTime` e antes de os dados
+     rolarem: é o único ponto em que ele sobrevive ao próprio turno do dono. */
+  if(J.bonusPend&&J.bonusPend[t]) pagaBonusRegiao(t,J.bonusPend[t]);
+  const daRegiao=tm.movRegiao||0; tm.movRegiao=0;
+  const extra=tm.herois.filter(h=>!h.morto).reduce((a,h)=>a+bonus(h,"mov"),0)+daRegiao;
   tm.retomada=atraso(t);
   /* PRIMEIRO PASSO. Quem começa a partida rola +1 no Dado Mestre na rodada 1, e
      só nela. É o resto da compensação de ordem, medida em 3000 partidas por
@@ -2043,7 +2175,6 @@ function fimDaRodada(){
      é medida em `node sim/bateria.js` — a compensação é decisão do grupo (ver
      docs/DECISOES-PENDENTES.md), não algo para o motor escolher sozinho. */
   J.rodada++; reg("r",`— rodada ${J.rodada} — começa ${NOMES[J.primeiro]}`);
-  abreRotacoes();           // os dois escolhem para onde o Caçador vai, às cegas
   atualizaAcampamentos();
   /* O poço reabre com o morador da vez — e o BARÃO NÃO ESPERA VAGA.
      Até a v19 a troca só acontecia com o poço vazio (`p.vida<=0`), e a
@@ -2068,7 +2199,14 @@ function fimDaRodada(){
     p.vidaMax=d.vida; p.vida=d.vida;
     reg("b",`${d.n} desceu ao poço — ${d.pre} está em jogo`);
   }
-  pinta(); faseOculta();
+  /* A ROTAÇÃO É A ÚLTIMA COISA DA VIRADA, e o turno só começa DEPOIS dela.
+     Antes ela era chamada lá em cima e o código seguia direto para `faseOculta`
+     na mesma pilha — a tela de escolha abria por cima de um turno que já tinha
+     começado. Agora `faseOculta` é a continuação, e roda quando os dois lados
+     responderem. */
+  pinta();
+  J.fase="rotacao";                    /* trava a mesa enquanto a aposta está aberta */
+  abreRotacoes(()=>{ pinta(); faseOculta(); });
 }
 
 /* ---------- AÇÕES ---------- */
@@ -2864,6 +3002,8 @@ function descreve(h,hb,F){
   if(e.execSeCond) t.push(`+${e.execSeCond.v} no limiar contra ${CONDS[e.execSeCond.t].ico}`);
   if(e.bonusFerido) t.push(`+${e.bonusFerido} em alvo ferido`);
   if(e.semAlcance) t.push("qualquer distância");
+  else if(hb.alc===1) t.push("corpo a corpo");
+  else if(hb.alc>1&&hb.alvo!=="eu") t.push(`alcance ${alcDeHab(h,hb)}`);
   /* v45 — o painel de comando fala o mesmo vocabulário do resto do jogo. Curto:
      aqui é o botão, e a regra inteira mora no tooltip e na ficha. */
   const ic=l=>l.map(c=>CONDS[c.t].ico+(c.st>1?"×"+c.st:"")).join("");
@@ -3109,7 +3249,7 @@ function calcula(){
       &&BASE_S.get(k(c,r))!==1-selHeroi.t);
   }
   if(modo==="mirar"&&selHeroi&&habAtual!==null){
-    const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
+    const h=selHeroi, hb=h.habs[habAtual], alc=alcDeHab(h,hb);
     alvos=todos().filter(o=>{
       if(o.morto)return false;
       if(!noJogo(o))return false;               // banido: não está no tabuleiro
@@ -3181,11 +3321,19 @@ function dadoPara(hb){
 }
 
 function escolheHeroi(h){
-  if(cliqueBloqueado||J.fase!=="jogando")return;
-  /* passa pelo desempate: se houver estrutura embaixo deste herói (defensor em
-     cima do Nexus, herói em cima da própria torre), o jogador escolhe em vez de
-     o maior alvo de toque decidir por ele */
-  if(modo==="mirar"&&alvos.includes(h)) return tocaAlvo(...h.pos);
+  if(mesaTravada())return;
+  /* DESEMPATE NO HEXÁGONO. Se há qualquer coisa mirável embaixo desta peça —
+     torre, poço, Nexus ou o próprio herói —, quem escolhe é o jogador.
+
+     A v46 corrigiu o caso que faltava, e era o mais comum de todos: **a peça em
+     cima da torre era SUA**. `alvos` só tem inimigo, então o `includes` dava
+     falso, a função caía no ramo de seleção e `limpaModo()` CANCELAVA a mira —
+     o jogador mirava a torre, encostava nela e o toque desfazia a própria
+     jogada. Cercar a torre com o seu herói em cima dela era impossível.
+
+     Agora a pergunta certa é "há alvo nesta casa?", e não "este herói é alvo?".
+     `alvosNoHex` já sabia responder desde a v37; ninguém estava perguntando. */
+  if(modo==="mirar"&&alvosNoHex(...h.pos).length) return tocaAlvo(...h.pos);
   if(h.t!==J.vez||h.morto){ // inspeciona o adversário sem mudar de estado
     abreCarta(h); return;
   }
@@ -3498,6 +3646,34 @@ function iaEscolheDadiva(t){
 const LIMIAR_ARRASTO=7;
 let arr=null, cliqueBloqueado=false;
 
+/* ═══════════════════════════════════════════════════════════════════
+   mesaTravada() — A PORTA ÚNICA DO GESTO HUMANO (v46)
+   ═══════════════════════════════════════════════════════════════════
+   Relato do Vilker, e ele repetiu duas vezes: *"ainda consigo selecionar as
+   teclas no turno do adversário"*. É verdade, e a causa não é óbvia — **a
+   própria IA pinta os destinos dela**. Quando ela decide mover, o motor faz
+   `selHeroi=h; modo="mover"; calcula()`, e `pinta` desenha as casas verdes já
+   com `onclick` funcionando. O dedo do humano acha aquilo pronto na tela.
+
+   O painel de comando se protegia sozinho, com `J.fase!=="jogando"`. O
+   TABULEIRO não; os dados não; as placas não; o arrasto não. Cada um tinha (ou
+   não tinha) a própria condição, escrita à mão, e bastava esquecer de uma.
+
+   Agora existe UMA porta, e todo gesto do humano passa por ela. A IA **não**
+   passa: ela chama `moveAte`, `iniciaHab` e `confirmaHab` direto, sem evento —
+   e é justamente por isso que a trava mora nos ouvintes de clique e não dentro
+   das funções de regra. Pôr a trava lá dentro pararia a IA também.
+
+   O que ela fecha:
+     · fase que não é de jogar (rotação do Caçador, draft, fim de partida);
+     · a vez da máquina, e o rabo dela: `iaRodando` continua ligado durante
+       `encerraTurno`/`fimDaRodada`, que rodam de dentro do turno dela já com a
+       vez virada;
+     · a janela de 350ms depois de um arrasto, que já existia como
+       `cliqueBloqueado`. */
+const mesaTravada=()=>!J||J.fim!==null||J.fase!=="jogando"
+  ||cliqueBloqueado||(aiMode&&(iaRodando||J.vez===1));
+
 function paraSVG(ev){
   const ctm=svg.getScreenCTM(); if(!ctm) return null;
   const p=svg.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY;
@@ -3516,8 +3692,11 @@ function hexSob(ev){
   }
   return d0<=(R*1.1)**2 ? melhor : null;
 }
-const podeArrastar=h=>h&&!h.morto&&h.t===J.vez&&J.fase==="jogando"
-  &&!h.preso&&J.mov.rest>0&&!sheetAberto;
+/* o arrasto era o gesto que mais escapava: ele tinha a própria lista de
+   condições, e `aiMode` não estava nela — dava para arrastar a peça da IA */
+const podeArrastar=h=>h&&!h.morto&&h.t===J.vez&&!mesaTravada()
+  &&!h.preso&&!temCond(h,"atordoado")&&!temCond(h,"banido")
+  &&J.mov.rest>0&&!sheetAberto;
 
 function heroiDaPeca(no){
   const d=no&&no.getAttribute("data-peca"); if(!d) return null;
@@ -3774,7 +3953,7 @@ function desenhaMapa(){
     const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
       p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
     const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
-    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(cliqueBloqueado)return; vibra(9); moveAte(c,r); };
+    if(moverS.has(k(c,r))) hx.onclick=()=>{ if(mesaTravada())return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
   /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
@@ -3835,7 +4014,7 @@ function desenhaMapa(){
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:12.6,class:"mira-torre"}));
     const rc=el("rect",{x:x-6,y:y-6,width:12,height:12,transform:`rotate(45 ${x} ${y})`,
       class:"torre t"+t.t+(t.vida<=0?" caiu":"")+(mirando?" alvo":"")});
-    if(mirando) rc.onclick=()=>{vibra(10);atacaTorre(t);};
+    if(mirando) rc.onclick=()=>{ if(mesaTravada())return; vibra(10); tocaAlvo(...ROTAS[t.rota][t.i]); };
     gM.appendChild(rc);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
@@ -3869,7 +4048,7 @@ function desenhaMapa(){
     g.append(cp,ip);
     g.appendChild(el("circle",{cx:x,cy:y,r:10.4,class:"anel"}));
     const v=el("text",{x:x,y:y+15.6,class:"epvida"});v.textContent=ep.vida;g.appendChild(v);
-    if(mirando){ g.onclick=()=>{vibra(10);tocaAlvo(...POCO);}; alvoDeToque(g,x,y); }
+    if(mirando){ g.onclick=()=>{ if(mesaTravada())return; vibra(10); tocaAlvo(...POCO); }; alvoDeToque(g,x,y); }
     gM.appendChild(g);
   })();
   [0,1].forEach(t=>{
@@ -3877,9 +4056,9 @@ function desenhaMapa(){
     const mirando=alvoNexus===t;
     if(mirando) gM.appendChild(el("circle",{cx:x,cy:y,r:14,class:"mira-torre"}));
     const nx=el("circle",{cx:x,cy:y,r:10.5,class:"nexus t"+t+(mirando?" alvo":"")});
-    if(mirando) nx.onclick=()=>{vibra(12);tocaAlvo(...BASE[t][0]);};
+    if(mirando) nx.onclick=()=>{ if(mesaTravada())return; vibra(12); tocaAlvo(...BASE[t][0]); };
     gM.appendChild(nx);
-    if(mirando) alvoDeToque(gM,x,y,()=>{vibra(12);tocaAlvo(...BASE[t][0]);},R_TOQUE_ESTRUTURA);
+    if(mirando) alvoDeToque(gM,x,y,()=>{ if(mesaTravada())return; vibra(12); tocaAlvo(...BASE[t][0]); },R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
   const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
@@ -4003,7 +4182,11 @@ function abreCarta(h){
         <div><div class="k">Vida</div><div class="v">${Math.max(0,h.vida)}/${h.vidaMax}</div></div>
         <div><div class="k">Poder</div><div class="v">${poderTotal(h)}</div></div>
         <div><div class="k">Armad.</div><div class="v">${armTotal(h)}</div></div>
-        <div><div class="k">Alcance</div><div class="v">${alcTotal(h)}</div></div>
+        <div><div class="k">Alcance</div><div class="v">${(()=>{
+          const l=h.habs.filter(hb=>hb.alvo!=="eu").map(hb=>alcDeHab(h,hb));
+          if(!l.length) return alcTotal(h);
+          const lo=Math.min(...l), hi=Math.max(...l);
+          return lo===hi?lo:`${lo}–${hi}`;})()}</div></div>
       </div>
       ${CATALOGO[h.id].ideia?`<div class="ideia">${CATALOGO[h.id].ideia}</div>`:""}
       <div class="lista">
@@ -4097,7 +4280,7 @@ function abreTime(){
     if(+t===J.vez&&!h.morto){ limpaModo(); selHeroi=h; fechaSheet(); pinta(); }
     else abreCarta(h);
   });
-  const bp=G("btPrioReal"); if(bp) bp.onclick=()=>{ usaPrioridade(); fechaSheet(); };
+  const bp=G("btPrioReal"); if(bp) bp.onclick=()=>{ if(mesaTravada())return; usaPrioridade(); fechaSheet(); };
 }
 function abreLog(){
   abreSheet("Histórico",
@@ -4245,6 +4428,43 @@ function abreEscolhaRota(t){
   });
 }
 
+/* ═══════════ VENDER ITEM (v46) ═══════════
+   Pedido: *"opção de vender item da mochila, porém mais barato do que a compra"*.
+
+   A perda existe para que vender NÃO seja jogada neutra. Sem ela, os três slots
+   deixariam de ser escolha: dava para comprar o item errado, trocar de graça na
+   rodada seguinte e nunca pagar por ter errado. Com 60% de volta, trocar de build
+   custa 40% do que você já investiu — caro o bastante para pensar, barato o
+   bastante para não travar o jogador num item morto a partida inteira.
+
+   Por que 60% e não metade: metade (50%) fazia um item de 5 devolver 2, e 2 não
+   compra nada nesta loja — o botão existiria e não serviria para nada. Com 60%
+   o item de 5 devolve 3, que já é meio Reforço ou uma Sentinela.
+
+   A JANELA É A MESMA DA COMPRA: na própria base ou morto. Vender no meio da rota
+   seria transformar a mochila em recurso líquido — e o preço de voltar à base é
+   justamente o que dá peso à loja neste jogo.
+
+   O `vida` do item precisa ser DESFEITO à mão: `vidaMax` foi somado na compra, e
+   um item de vida vendido sem devolver o bônus daria vida permanente de graça. A
+   vida atual é aparada junto, senão o herói ficaria acima do próprio teto. */
+const VENDE_FRACAO=0.6;
+const precoVenda=id=>Math.max(1,Math.floor((ITEM[id]?ITEM[id].o:0)*VENDE_FRACAO));
+
+function vendeItem(h,id,t){
+  if(!h||!ITEM[id])return false;
+  if(!(h.morto||naBase(h)))return false;          // mesma janela da compra
+  const i=h.itens.indexOf(id);
+  if(i<0)return false;
+  const it=ITEM[id], volta=precoVenda(id);
+  h.itens.splice(i,1);
+  h.ouro+=volta;
+  if(it.ef.vida){ h.vidaMax-=it.ef.vida; h.vida=Math.min(h.vida,h.vidaMax); if(h.vida<1&&!h.morto)h.vida=1; }
+  reg(t?"c":"a",`${h.n} vende ${it.n} (+${volta} de ouro, pagou ${it.o})`);
+  toast(`vendido: ${it.n} · +${volta} ◈`,"");
+  return true;
+}
+
 function abreLoja(){
   const t=J.vez, tm=J.times[t];
   /* morto está na base esperando respawn — é a janela de compra clássica de MOBA.
@@ -4269,6 +4489,17 @@ function abreLoja(){
       <span class="iD">${it.d}</span>
       <span class="iO">${tem?"comprado":cheio?capacidade(quem)+" slots cheios":preco+" ◈"+(descontos[t]?" (-"+descontos[t]+")":"")}</span></button>`;
   }).join("");
+  /* MOCHILA — o que ele já tem, e por quanto sai. Só aparece com item dentro:
+     uma seção vazia na loja é ruído em tela de celular. */
+  const mochila = !quem.itens.length ? "" :
+    `<div class="secao-loja">Mochila · ${quem.itens.length}/${capacidade(quem)}</div>
+     <div class="prat">${quem.itens.map(id=>{const it=ITEM[id];
+       return `<button class="itC vender" data-v="${id}">
+         <img src="${RETRATO_ITEM(id)}" alt=""><span class="iN">${it.n}</span>
+         <span class="iD">${it.d}</span>
+         <span class="iO">vender por ${precoVenda(id)} ◈ <small>(custou ${it.o})</small></span>
+       </button>`;}).join("")}</div>`;
+
   /* a prateleira de gasto tardio só existe se houver regra aprovada para ela */
   const gastos=gastosDisponiveis(quem);
   const prat2 = !gastos.length ? "" :
@@ -4279,7 +4510,12 @@ function abreLoja(){
         <span class="iN">${g.n}${jaFez}</span><span class="iD">${g.d}</span>
         <span class="iO">${preco} ◈</span></button>`;}).join("")}</div>`;
 
-  abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>${prat2}`);
+  abreSheet("Loja",`<div class="abas">${abas}</div><div class="prat">${cards}</div>${mochila}${prat2}`);
+  /* `[data-v]` antes de `[data-i]` pelo mesmo motivo que os botões de gasto usam
+     dado próprio: as três prateleiras compartilham a classe `.itC`, que é de
+     APARÊNCIA. Quem manda no clique é o atributo. */
+  G("shCorpo").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+    if(vendeItem(quem,b.dataset.v,t)){ vibra(10); abreLoja(); pinta(); } });
   G("shCorpo").querySelectorAll(".abaH").forEach(b=>b.onclick=()=>{
     lojaHeroi=tm.herois.find(h=>h.id===b.dataset.h); abreLoja(); });
   G("shCorpo").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{
@@ -4490,7 +4726,7 @@ function pinta(){
   }
   cx.querySelectorAll(".dado").forEach(e=>e.onclick=()=>{
     const i=+e.dataset.i;
-    if(J.dados[i].usado||J.fase!=="jogando")return;
+    if(mesaTravada()||J.dados[i].usado)return;
     dadoSel=dadoSel===i?null:i; vibra(8); pinta();
   });
 
@@ -4572,12 +4808,12 @@ function feiticoBt(h,qual){
       }).join("")}`;
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
-    G("cmdMover").onclick=iniciaMover;
-    G("cmdLampejo").onclick=iniciaLampejo;
-    G("cmdRetorno").onclick=usaRetorno;
+    G("cmdMover").onclick=()=>{ if(!mesaTravada()) iniciaMover(); };
+    G("cmdLampejo").onclick=()=>{ if(!mesaTravada()) iniciaLampejo(); };
+    G("cmdRetorno").onclick=()=>{ if(!mesaTravada()) usaRetorno(); };
     h.habs.forEach((_,i)=>{
       const b=G("hab"+i); if(!b)return;
-      b.onclick=()=>{ if(cliqueBloqueado)return; iniciaHab(i); };
+      b.onclick=()=>{ if(mesaTravada())return; iniciaHab(i); };
       toqueLongo(b,()=>fichaHab(h,i));      // segurar explica, mesmo apagada
     });
   }else{
@@ -5071,7 +5307,7 @@ function iaPlanejaAlcance(t){
   let melhor=null;
   for(const h of vivos(t)){
     if(h.agiu||h.preso)continue;
-    const alc=alcTotal(h);
+    const alc=alcanceUtil(h);
     for(const alvo of cobicados){
       const falta=dist(...h.pos,...alvo.pos)-alc;
       if(falta<=0||falta>6)continue;
@@ -5332,7 +5568,7 @@ function toqueLongo(elem,aoSegurar){
 function fichaHab(h,i){
   const hb=h.habs[i];
   const ALVO={in:"um inimigo",al:"um aliado",eu:"você mesmo"};
-  const alc=alcTotal(h)+(hb.ef.alcExtra||0);
+  const alc=alcDeHab(h,hb);
   const alcTxt=hb.alvo==="eu"?"—":hb.ef.semAlcance?"o mapa inteiro":`${alc} ${alc===1?"casa":"casas"}`;
   const dados=J.dados.map(d=>{
     const gasto=d.usado, serve=!gasto&&d.v>=hb.f;
@@ -5381,15 +5617,19 @@ function usaPrioridade(){
 
 /* ══════════════════ BOTÕES ══════════════════ */
 G("btTime").onclick=()=>{ sheetAberto==="Time"?fechaSheet():abreTime(); };
-G("btPrio").onclick=()=>usaPrioridade();
+G("btPrio").onclick=()=>{ if(!mesaTravada()) usaPrioridade(); };
 G("btPularIA").onclick=()=>{
   if(pularIA)return;
   pularIA=true;
   const b=G("btPularIA");
   b.classList.add("correndo"); b.textContent="resolvendo…";
 };
-G("btLoja").onclick=()=>{ sheetAberto&&sheetAberto.startsWith("Loja")?fechaSheet():abreLoja(); };
-G("btCartas").onclick=()=>{ sheetAberto==="Cartas"?fechaSheet():abreMao(); };
+G("btLoja").onclick=()=>{ if(mesaTravada()&&!(sheetAberto||"").startsWith("Loja"))
+    return toast("a loja abre na sua vez","morte");
+  sheetAberto&&sheetAberto.startsWith("Loja")?fechaSheet():abreLoja(); };
+G("btCartas").onclick=()=>{ if(mesaTravada()&&sheetAberto!=="Cartas")
+    return toast("as cartas saem na sua vez","morte");
+  sheetAberto==="Cartas"?fechaSheet():abreMao(); };
 /* Estruturas: uma linha por rota, dos dois lados, com a vida em bolinha e a
    torre que aceita golpe AGORA marcada. Na gaveta cabe o que não cabia no
    painel — em que passo da rota cada torre está, e por que o Nexus está ou não
@@ -5430,7 +5670,7 @@ G("btEstr").onclick=()=>{ sheetAberto==="Estruturas"?fechaSheet():abreEstruturas
 G("btLog").onclick=()=>{ sheetAberto==="Histórico"?fechaSheet():abreLog(); };
 G("btAjuda").onclick=()=>{ sheetAberto==="Manual"?fechaSheet():abreManual(); };
 G("btFim").onclick=()=>{
-  if(J.fase!=="jogando")return;
+  if(mesaTravada())return;
   const livres=J.dados.filter(d=>!d.usado).length;
   if((livres||J.mov.rest)&&!G("btFim").dataset.confirma){
     G("btFim").dataset.confirma="1";
@@ -5442,10 +5682,10 @@ G("btFim").onclick=()=>{
   fechaSheet(); limpaModo(); selHeroi=null;
   encerraTurno(); pinta();
 };
-G("btConv").onclick=()=>converteDado();
-G("btPlaca").onclick=()=>{ usaPlaca(1); toast("dado ajustado",""); vibra(10); };
-G("btRerol").onclick=()=>{ rerola(); toast("dado re-rolado",""); vibra(10); };
-G("btWard").onclick=()=>{ if(plantaSentinela(selHeroi)){ calcula(); pinta(); } };
+G("btConv").onclick=()=>{ if(!mesaTravada()) converteDado(); };
+G("btPlaca").onclick=()=>{ if(mesaTravada())return; usaPlaca(1); toast("dado ajustado",""); vibra(10); };
+G("btRerol").onclick=()=>{ if(mesaTravada())return; rerola(); toast("dado re-rolado",""); vibra(10); };
+G("btWard").onclick=()=>{ if(mesaTravada())return; if(plantaSentinela(selHeroi)){ calcula(); pinta(); } };
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){ if(sheetAberto)return fechaSheet(); return cancela(); }
 });
@@ -5654,7 +5894,8 @@ function abreMao(){
       <span>mão ${mao.length}/3</span></div>`+corpo+
     (mao.length&&!selHeroi?`<p style="color:var(--ink-3);font-size:12px;margin:12px 0 0">
        Cartas que afetam um herói pedem que ele esteja <b style="color:var(--brass)">selecionado</b>.</p>`:""));
-  G("shCorpo").querySelectorAll(".ct").forEach(b=>b.onclick=()=>jogaCarta(b.dataset.c));
+  G("shCorpo").querySelectorAll(".ct").forEach(b=>b.onclick=()=>{
+    if(mesaTravada())return; jogaCarta(b.dataset.c); });
 }
 
 /* ══════════════════ DRAFT ══════════════════ */

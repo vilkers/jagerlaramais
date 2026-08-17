@@ -414,6 +414,18 @@ button:disabled{cursor:not-allowed}
 #dadosAcao{display:flex;gap:7px;flex:1;min-width:0;overflow-x:auto;
   scrollbar-width:none;-ms-overflow-style:none;padding:2px 0}
 #dadosAcao::-webkit-scrollbar{display:none}
+/* ── v46 · o dado extra tem que CABER ──
+   Relato: *"estou ganhando um dado de ação extra mas não estou conseguindo
+   usar"*. Não era regra: era largura. A barra tem ~243px num celular de 360, e
+   quatro ou cinco dados de 44px não cabem. A caixa rolava na horizontal, mas com
+   `scrollbar:display:none` não havia nada na tela dizendo que rolava — o 4º e o
+   5º dado ficavam fora do vidro, e o jogador nunca soube que estavam lá.
+
+   Agora os dados ENCOLHEM para caber: `flex:1 1 0` reparte a largura,
+   `max-width` impede que três dados fiquem gigantes, e `min-width` é o piso de
+   toque — abaixo de 34px o dedo erra, e aí sim a caixa volta a rolar. Com
+   Retomada 2 + Prioridade são 6 dados, que a 34px ainda cabem em 243. */
+#dadosAcao .dado{flex:1 1 0;max-width:var(--toque);min-width:34px}
 .dado{width:var(--toque);height:var(--toque);flex:none;border-radius:12px;border:1.5px solid var(--line);
   background:var(--ground-3);display:grid;place-items:center;
   font-family:var(--display);font-size:22px;color:var(--ink);position:relative;
@@ -424,7 +436,7 @@ button:disabled{cursor:not-allowed}
 .dado.usado{opacity:.24}
 .dado.seis::after{content:"";position:absolute;inset:-1.5px;border-radius:12px;
   border:1.5px solid var(--brass);opacity:.55}
-.dado.extra::before{content:"+";position:absolute;top:-6px;right:-3px;font-size:12px;
+.dado.extra::before{content:"+";position:absolute;top:-6px;right:-1px;font-size:12px;
   color:var(--brass);font-family:var(--mono)}
 @keyframes rolando{0%{transform:rotate(-14deg) scale(1.14)}100%{transform:none}}
 .dado.rola{animation:rolando .3s ease-out}
@@ -804,3 +816,18 @@ button:disabled{cursor:not-allowed}
   text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
 .cond-lista .cl{font-size:11px;line-height:1.5;color:var(--ink-2);margin-bottom:5px}
 .cond-lista .cl b{color:var(--brass)} .cond-lista .cl.mal b{color:var(--carmim-2)}
+
+/* ══ v46 · o bônus de região no botão da rotação ══
+   O botão `.grande` é dourado cheio, então texto em `--brass` some dentro dele.
+   A linha do bônus é a informação nova desta tela e precisa ser a mais legível:
+   tinta escura, peso alto e um filete que a separa da descrição da região. */
+.rotB{display:inline-block;margin-top:5px;padding-top:5px;font-size:12.5px;font-weight:700;
+  color:rgba(20,14,4,.86);border-top:1px solid rgba(20,14,4,.22)}
+
+/* ══ v46 · a mochila na loja ══
+   Cor diferente da prateleira de compra de propósito: comprar e vender na mesma
+   tela, com o mesmo botão, é o caminho curto para vender sem querer. */
+.itC.vender{border-color:var(--carmim-dim,rgba(160,70,60,.5))}
+.itC.vender .iO{color:var(--carmim-2,#e08a7a)}
+.itC.vender .iO small{opacity:.6;font-size:.85em}
+.itC.vender:active{background:rgba(160,70,60,.12)}

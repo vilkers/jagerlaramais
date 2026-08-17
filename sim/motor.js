@@ -138,6 +138,8 @@ const PONTE = `
   get CORREDOR(){return CORREDOR}, get LANE(){return LANE},
   get NIVEIS_IA(){return NIVEIS_IA},
   get nivelIA(){return nivelIA}, set nivelIA(v){nivelIA=v},
+  get iaRodando(){return iaRodando}, set iaRodando(v){iaRodando=v},
+  podeArrastar:h=>podeArrastar(h), dadoPara:hb=>dadoPara(hb),
   iaMelhorJogada:(t,m)=>iaMelhorJogada(t,m), iaJogadas:t=>iaJogadas(t),
   iaDestino:(h,t)=>iaDestino(h,t), iaCompra:t=>iaCompra(t),
   iaPlanejaAlcance:t=>iaPlanejaAlcance(t), iaJogaCartas:t=>iaJogaCartas(t),
@@ -176,6 +178,11 @@ const PONTE = `
   iaInimigosVisiveis:t=>iaInimigosVisiveis(t),
   desempilha:()=>desempilha(),
   precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
+  vendeItem:(h,id,t)=>vendeItem(h,id,t), precoVenda:id=>precoVenda(id),
+  get VENDE_FRACAO(){return VENDE_FRACAO}, abreLoja:()=>abreLoja(),
+  get ITEM(){return ITEM}, mesaTravada:()=>mesaTravada(),
+  get BONUS_REGIAO(){return BONUS_REGIAO}, pagaBonusRegiao:(t,r)=>pagaBonusRegiao(t,r),
+  aplicaBuff:(h,c,v)=>aplicaBuff(h,c,v), alvosNoHex:(c,r)=>alvosNoHex(c,r),
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
   get DADIVAS(){return DADIVAS},     get BARAO_RODADAS(){return BARAO_RODADAS},
@@ -187,7 +194,11 @@ const PONTE = `
   todos:()=>todos(), vivos:t=>vivos(t), naBase:h=>naBase(h),
   torreExposta:(...a)=>torreExposta(...a), capacidade:h=>capacidade(h),
   poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h),
-  ehAgil:h=>ehAgil(h), fichaHTML:(h,m)=>fichaHTML(h,m)
+  ehAgil:h=>ehAgil(h), fichaHTML:(h,m)=>fichaHTML(h,m),
+  alcDeHab:(h,hb)=>alcDeHab(h,hb), alcanceUtil:h=>alcanceUtil(h),
+  get ALCANCE_MAX(){return ALCANCE_MAX}, escolheHeroi:h=>escolheHeroi(h),
+  get REGIAO(){return REGIAO}, atacaTorre:t=>atacaTorre(t),
+  perguntaRotacao:(f,i,d)=>perguntaRotacao(f,i,d)
 };`;
 
 function carrega(trocas = []) {
@@ -216,6 +227,31 @@ function carrega(trocas = []) {
      Quem quiser medir a IA de verdade usa o navegador (ver o teste de fumaça):
      lá o setTimeout existe e ela termina o turno. */
   ctx.iaExecutaTurno = nada;
+
+  /* A ROTAÇÃO DO CAÇADOR É UMA TELA, e desde a v46 ela BLOQUEIA de verdade: o
+     turno só começa quando os dois lados respondem. Isso é o conserto de um
+     defeito real (o turno começava por baixo da tela de escolha) e é também o
+     motivo de este stub existir.
+
+     Sem ele, `perguntaRotacao` chama `abre`, que aqui só guarda o callback e
+     nunca clica em nada — a partida fica parada em `J.fase==="rotacao"` para
+     sempre. Medido na hora em que a v46 entrou: a bateria de 3000 partidas
+     reportou "3000 estouraram o teto", ou seja, ZERO partidas concluídas.
+
+     O harness responde como a IA responderia, para os dois lados. É a mesma
+     escolha que `caraOuCoroa` faz logo abaixo, e pela mesma razão: sem ninguém
+     para clicar, o motor precisa de alguém que decida — e decidir como a IA
+     mantém a medição simétrica, que é o que a bateria exige. */
+  const ponteRot = ctx.__ponte;
+  /* guardada antes de ser trocada: os testes do RELÓGIO da rotação precisam da
+     função de verdade, e é só ela que eles querem. `g.rotacaoDeVerdade()` põe a
+     original de volta para aquele teste. */
+  ctx.perguntaRotacaoReal = ctx.perguntaRotacao;
+  ctx.rotacaoDeVerdade = () => { ctx.perguntaRotacao = ctx.perguntaRotacaoReal; };
+  ctx.perguntaRotacao = (fila, i, depois) => {
+    (fila || []).forEach(t => ponteRot.escolheRotacao(t, ponteRot.iaEscolheRotacao(t)));
+    if (typeof depois === "function") depois();
+  };
 
   /* `abre` guarda o callback em vez de disparar: a tela de fim de partida chama
      partida() de novo, e auto-executar isso iniciaria uma partida infinita. */
