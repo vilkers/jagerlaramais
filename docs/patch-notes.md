@@ -219,11 +219,28 @@ Com o bônus passando a ser pago **no início do turno do dono** — e agora com
 
 | | v45 | v46 final |
 |---|---|---|
-| quem começa | 52,7% e 53,2% | **52,1%** (z=1,88, dentro do ruído) |
+| quem começa | 52,7% e 53,2% | **52,1%** (n=2000 e n=3000) |
 | rodadas (mediana) | 22 e 23 | **24** |
-| ações por partida | 56,5 | **65,9** |
+| ações por partida | 56,5 | **66,4** |
 | Barões por partida | 0,93 e 0,95 | **1,16** |
 | Dragões por partida | 0,33 | **0,44** |
+
+**Uma armadilha de leitura, e ela merece um parágrafo** porque vai reaparecer em
+toda medição futura deste projeto. As duas execuções deram o **mesmo** 52,1%, e o
+script imprimiu rótulos **diferentes**:
+
+```
+n=2000 → 52,1% (1042×958, z=1,88)  — dentro do ruído
+n=3000 → 52,1% (1564×1436, z=2,34) ← VANTAGEM REAL
+```
+
+Nada piorou entre uma e outra: `z` cresce com a raiz de `n`, então amostra maior
+detecta o **mesmo** efeito com mais confiança. O que o par de linhas diz é que a
+vantagem de quem começa **existe e sempre existiu** — 52,1% está dentro da faixa
+que a v44 e a v45 já mediam (52,4% a 53,2%), e é o **item 11 de
+`DECISOES-PENDENTES`**, não algo que a v46 tenha criado. O rótulo do script
+responde "dá para distinguir de 50%?"; a pergunta de desenho é "mudou em relação
+à versão anterior?", e essa resposta é **não**.
 
 **A partida ficou mais longa e mais densa, e isso é do item 6.** Com alcance por
 habilidade, mais golpes chegam ao alvo: 9 ações a mais por partida, um quarto de
