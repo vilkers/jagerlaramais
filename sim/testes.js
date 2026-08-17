@@ -423,6 +423,11 @@ teste("a IA converte ação em movimento para alcançar e atacar", () => {
   for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++)
     if (g.noTab(col, r) && g.dist(col, r, ...vitima.pos) === 3 && !g.em(col, r)) perto.push([col, r]);
   atacante.pos = [...perto[0]];
+  /* v45: a vítima precisa ESTAR VISÍVEL, e agora isso não é de graça — o Pombo
+     Ciborgue fica Invisível sozinho, e a IA não pode ler posição que não vê
+     (§30). Sem revelar, este teste passava a medir a névoa em vez da conversão
+     de dado em movimento, que é o que ele existe para medir. */
+  g.aplicaCond(vitima, "revelado", { tu: 3 });
   g.J.mov = { v: 0, rest: 0 };
   g.J.dados = [{ v: 6, usado: 0 }, { v: 6, usado: 0 }];
   const vida0 = vitima.vida;
@@ -2610,7 +2615,7 @@ teste("a ficha do Time mostra o número do escudo, como já mostra marcado e car
   const g = c.g;
   const vharn = c.heroi(1, "topo");
   vharn.esc = 17;
-  ok(/escudo 17/.test(g.fichaHTML(vharn, false)),
+  ok(/escudo 17/i.test(g.fichaHTML(vharn, false)),
      "a gaveta do Time não diz quanto escudo o herói tem");
 });
 
@@ -2619,25 +2624,34 @@ teste("a ficha do Time mostra o número do escudo, como já mostra marcado e car
 const cenaDot = () => cena({ times: [["kaross", "kurr", "arden", "cael", "torvald"],
                                      ["vharn", "grumo", "nira", "vesper", "gorm"]] });
 
-teste("sangramento cobra no início do turno da vítima, e só uma vez por rodada", () => {
+/* v45: o sangramento passou a contar ACÚMULOS, e o prazo cai no FIM do turno do
+   portador, não no início. Este teste mede as duas coisas juntas porque é a
+   combinação que define a condição: 3 acúmulos custam 3 + 2 + 1 e acabam. */
+teste("sangramento cobra por acúmulo no início do turno, e perde 1 acúmulo no fim", () => {
   const c = cenaDot();
   const g = c.g;
   const vitima = c.heroi(1, "topo");
-  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  g.aplicaCond(vitima, "sangramento", { st: 3, dono: c.heroi(0, "topo") });
   const v0 = vitima.vida;
 
   g.J.vez = 0; g.iniciaTurno();
   eq(vitima.vida, v0, "o efeito cobrou no turno do ADVERSÁRIO — a âncora está errada");
 
-  g.J.vez = 1; g.iniciaTurno();
-  eq(vitima.vida, v0 - 3, "o sangramento não cobrou no início do turno da vítima");
+  const volta = () => { g.J.vez = 1; g.iniciaTurno(); g.processaCondsFim(1); };
 
-  g.J.vez = 1; g.iniciaTurno();
-  eq(vitima.vida, v0 - 6, "a segunda rodada de sangramento não cobrou");
+  volta();
+  eq(vitima.vida, v0 - 3, "3 acúmulos deveriam custar 3 no primeiro turno");
+  eq(g.stacksDe(vitima, "sangramento"), 2, "não perdeu 1 acúmulo no fim do turno");
 
-  g.J.vez = 1; g.iniciaTurno();
-  eq(vitima.vida, v0 - 6, "o sangramento cobrou uma terceira vez — não tinha prazo");
-  eq(vitima.dots.length, 0, "o efeito não saiu da lista depois de vencer");
+  volta();
+  eq(vitima.vida, v0 - 5, "2 acúmulos deveriam custar 2 no segundo turno");
+
+  volta();
+  eq(vitima.vida, v0 - 6, "1 acúmulo deveria custar 1 no terceiro turno");
+
+  volta();
+  eq(vitima.vida, v0 - 6, "o sangramento cobrou uma quarta vez — não tinha prazo");
+  ok(!g.temCond(vitima, "sangramento"), "o efeito não saiu da lista depois de vencer");
 });
 
 teste("o efeito com prazo ignora armadura e escudo — é o golpe que já chegou", () => {
@@ -2645,34 +2659,53 @@ teste("o efeito com prazo ignora armadura e escudo — é o golpe que já chegou
   const g = c.g;
   const vharn = c.heroi(1, "topo");          // 3 de armadura, e aqui com escudo cheio
   vharn.esc = 20;
-  g.poeDot(vharn, c.heroi(0, "topo"), "veneno", 3, 2);
+  g.aplicaCond(vharn, "veneno", { tu: 2, dono: c.heroi(0, "topo") });
   const v0 = vharn.vida, e0 = vharn.esc;
 
   /* `cobraDots` direto, e NÃO `iniciaTurno`: o turno começa expirando o escudo
      (regra da v21), e por esse caminho o escudo sumiria sem o veneno ter
      encostado nele — o teste passaria medindo a coisa errada. */
   g.cobraDots(1);
-  eq(vharn.vida, v0 - 3, "a armadura ou o escudo comeram o veneno");
+  eq(vharn.vida, v0 - g.COND_NUM.venenoDano, "a armadura ou o escudo comeram o veneno");
   eq(vharn.esc, e0, "o veneno gastou escudo — ele deveria passar por dentro");
 });
 
-teste("reaplicar o mesmo efeito renova o prazo, não empilha um segundo", () => {
+/* v45: SANGRAMENTO empilha (é o que o desenho pediu), VENENO renova. A regra que
+   sobreviveu inteira das duas versões é a que importa: nunca DUAS entradas do
+   mesmo tipo na lista — senão o indicador na peça mentiria e a limpeza tiraria
+   só metade. E o teto (`max` no registro) é o que impede o dano instantâneo com
+   passos extras que a v25 tinha medo de criar. */
+teste("condição do mesmo tipo nunca vira duas entradas, e respeita o teto", () => {
   const c = cenaDot();
   const g = c.g;
   const vitima = c.heroi(1, "topo"), autor = c.heroi(0, "topo");
-  g.poeDot(vitima, autor, "sangramento", 2, 2);
-  g.poeDot(vitima, autor, "sangramento", 3, 2);
-  eq(vitima.dots.length, 1, "empilhou dois sangramentos — vira dano instantâneo com passos extras");
-  eq(vitima.dots[0].dano, 3, "renovar deveria ficar com o maior dano");
+
+  g.aplicaCond(vitima, "sangramento", { st: 2, dono: autor });
+  g.aplicaCond(vitima, "sangramento", { st: 3, dono: autor });
+  eq(vitima.conds.filter(x => x.t === "sangramento").length, 1,
+     "abriu uma segunda entrada de sangramento em vez de acumular na primeira");
+  eq(g.stacksDe(vitima, "sangramento"), 5, "sangramento deveria ACUMULAR os acúmulos");
+
+  g.aplicaCond(vitima, "sangramento", { st: 4, dono: autor });
+  eq(g.stacksDe(vitima, "sangramento"), g.CONDS.sangramento.max,
+     "passou do teto de acúmulos do registro");
+
+  g.aplicaCond(vitima, "veneno", { tu: 1, dono: autor });
+  g.aplicaCond(vitima, "veneno", { tu: 3, dono: autor });
+  eq(vitima.conds.filter(x => x.t === "veneno").length, 1, "abriu um segundo veneno");
+  eq(g.condDe(vitima, "veneno").tu, 3, "veneno deveria RENOVAR pelo maior prazo");
 });
 
 teste("morrer limpa o efeito — o respawn devolve o herói inteiro", () => {
   const c = cenaDot();
   const g = c.g;
   const vitima = c.heroi(1, "topo");
-  g.poeDot(vitima, c.heroi(0, "topo"), "sangramento", 3, 2);
+  g.aplicaCond(vitima, "sangramento", { st: 3, dono: c.heroi(0, "topo") });
+  g.aplicaCond(vitima, "atordoado", { tu: 1, dono: c.heroi(0, "topo") });
+  vitima.preso = 2;
   g.mata(vitima, c.heroi(0, "topo"));
-  eq(vitima.dots.length, 0, "o sangramento sobreviveu à morte e cobraria de novo no respawn");
+  eq(vitima.conds.length, 0, "a condição sobreviveu à morte e cobraria de novo no respawn");
+  eq(vitima.preso, 0, "a prisão sobreviveu à morte");
 });
 
 teste("quem começa o turno na zona inimiga é envenenado; a própria zona não machuca", () => {
@@ -2684,10 +2717,10 @@ teste("quem começa o turno na zona inimiga é envenenado; a própria zona não 
   g.poeZona(0, alvoHex, { tipo: "veneno", dano: 2, raio: 1, n: "Tapeçaria", dono: meu });
 
   g.J.vez = 1; g.zonasCobram(1);
-  ok(dele.dots.length, "o inimigo parado na zona não recebeu o efeito");
+  ok(g.temCond(dele, "veneno"), "o inimigo parado na zona não recebeu o efeito");
 
   g.J.vez = 0; g.zonasCobram(0);
-  eq(meu.dots.length, 0, "a própria zona envenenou quem a criou");
+  eq(meu.conds.length, 0, "a própria zona envenenou quem a criou");
 });
 
 teste("a zona gasta prazo por turno do adversário, mesmo sem pegar ninguém", () => {
@@ -2868,7 +2901,7 @@ teste("quem aplicou o efeito leva o ouro da morte, mesmo na última cobrança", 
   /* o outro colado na vítima: se o crédito escorregar, é para ele que vai */
   c.poe(vitima, [5, 5]); c.poe(outro, [5, 6]); c.poe(autor, g.BASE[0][0]);
 
-  g.poeDot(vitima, autor, "sangramento", 3, 1);   // 1 rodada: a cobrança que mata é a última
+  g.aplicaCond(vitima, "sangramento", { st: 3, dono: autor }); // a cobrança que mata é a última
   vitima.vida = 2;
   const ouro0 = autor.ouro, ouroOutro0 = outro.ouro;
 
@@ -2895,6 +2928,690 @@ teste("a IA sai de cima de uma zona inimiga em vez de ficar apanhando", () => {
      + `(sem zona era "${semZona ? semZona.motivo : "nada"}") — território negado que a IA ignora não nega nada`);
   ok(g.dist(...comZona.p, 5, 5) > 1 || !g.J.zonas.some(z => g.dist(...comZona.p, ...z.pos) <= z.raio),
      "a IA fugiu para dentro da mesma zona");
+});
+
+/* ═══════════════ v45 — INDIVIDUALIDADE DOS HERÓIS ═══════════════
+   O sistema central de condições, as passivas, o crítico condicional e as regras
+   novas de banimento, invisibilidade e cópia. Cada teste aqui existe porque a
+   regra correspondente tem uma armadilha: ou o prazo cai na hora errada, ou o
+   contrajogo não existe, ou a IA passa a saber algo que o jogador não sabe. */
+
+const cenaV45 = (t0, t1) => cena({ times: [t0, t1] });
+/* uma cena controlada: dois heróis vizinhos, dados altos, movimento à vontade */
+function encosta(c, a, b) {
+  const g = c.g;
+  const livre = g.vizinhos(...a.pos).find(p => g.noTab(...p) && !g.em(...p) && !g.ehBloqueado(...p));
+  ok(livre, "não achei casa vizinha livre");
+  b.pos = [...livre];
+  return c;
+}
+
+/* ---------- o registro é a fonte única ---------- */
+
+teste("todo herói declara passiva, e toda passiva declarada existe no motor", () => {
+  const g = carrega();
+  const semPassiva = [], semCodigo = [];
+  Object.entries(g.CATALOGO).forEach(([id, d]) => {
+    if (!d.pas) return semPassiva.push(id);
+    if (!g.PASSIVAS[d.pas.id]) semCodigo.push(`${id} → ${d.pas.id}`);
+  });
+  eq(semPassiva.length, 0, `heróis sem passiva: ${semPassiva.join(", ")}`);
+  eq(semCodigo.length, 0, `passiva declarada e não implementada: ${semCodigo.join(", ")}`);
+});
+
+teste("toda condição que uma habilidade aplica existe no registro", () => {
+  const g = carrega();
+  const orfas = [];
+  const olha = (id, nome, lista) => (lista || []).forEach(x => {
+    if (!g.CONDS[x.t]) orfas.push(`${id} · ${nome} → ${x.t}`);
+  });
+  Object.entries(g.CATALOGO).forEach(([id, d]) => d.habs.forEach(hb => {
+    const e = hb.ef;
+    olha(id, hb.n, e.cond); olha(id, hb.n, e.condEu); olha(id, hb.n, e.condVizinhos);
+    olha(id, hb.n, e.condRaio); olha(id, hb.n, e.condAliadosPerto); olha(id, hb.n, e.condSeNaZona);
+    if (e.zona && e.zona.cond && !g.CONDS[e.zona.cond.t]) orfas.push(`${id} · zona → ${e.zona.cond.t}`);
+    [e.bonusCond, e.consome, e.execPorStack, e.execSeCond, e.espalha].forEach(x => {
+      if (x && !g.CONDS[x.t]) orfas.push(`${id} · ${hb.n} → ${x.t}`);
+    });
+    if (e.bonusPorRecurso && !g.RECURSOS[e.bonusPorRecurso.t])
+      orfas.push(`${id} · ${hb.n} → recurso ${e.bonusPorRecurso.t}`);
+    if (e.recurso && !g.RECURSOS[e.recurso.t]) orfas.push(`${id} · ${hb.n} → recurso ${e.recurso.t}`);
+  }));
+  eq(orfas.length, 0, `condição ou recurso sem registro: ${orfas.join(" | ")}`);
+});
+
+teste("o desenho parou onde prometeu: entre 8 e 12 condições, nem uma a mais", () => {
+  const g = carrega();
+  const n = Object.keys(g.CONDS).length;
+  ok(n >= 8 && n <= 12,
+     `${n} condições — o desenho pediu 8 a 12 bem definidas em vez de 30 impossíveis de decorar`);
+  const semTexto = Object.entries(g.CONDS).filter(([, d]) => !d.d || !d.ico || !d.selo);
+  eq(semTexto.length, 0,
+     `condição sem ícone, selo ou regra escrita: ${semTexto.map(x => x[0]).join(", ")} — `
+     + "sem os três ela não pode aparecer na peça nem no tooltip");
+});
+
+teste("cada condição do registro é usada por alguém — nenhuma decoração", () => {
+  const g = carrega();
+  const usadas = new Set();
+  Object.values(g.CATALOGO).forEach(d => d.habs.forEach(hb => {
+    const e = hb.ef;
+    [...(e.cond || []), ...(e.condEu || []), ...(e.condVizinhos || []),
+     ...(e.condRaio || []), ...(e.condAliadosPerto || []), ...(e.condSeNaZona || [])]
+      .forEach(x => usadas.add(x.t));
+    if (e.zona && e.zona.cond) usadas.add(e.zona.cond.t);
+    [e.bonusCond, e.consome, e.execPorStack, e.execSeCond, e.espalha].forEach(x => x && usadas.add(x.t));
+    if (e.baneEu) usadas.add("banido");
+  }));
+  /* as que nascem de passiva ou de regra, e não de habilidade */
+  ["invisivel", "catarino", "revelado", "sangramento", "tenacidade", "veneno"].forEach(x => usadas.add(x));
+  const sobrando = Object.keys(g.CONDS).filter(t => !usadas.has(t));
+  eq(sobrando.length, 0, `condição no registro que ninguém aplica: ${sobrando.join(", ")}`);
+});
+
+/* ---------- o relógio das condições ---------- */
+
+teste("veneno cobra o mesmo dano todo turno; sangramento cobra menos a cada turno", () => {
+  const c = cenaDot(); const g = c.g;
+  const a = c.heroi(1, "topo"), b = c.heroi(1, "selva");
+  a.arm = 9; b.arm = 9;                                  // armadura não muda nada nos dois
+  g.aplicaCond(a, "veneno", { tu: 3 });
+  g.aplicaCond(b, "sangramento", { st: 3 });
+  const va = [], vb = [];
+  for (let i = 0; i < 3; i++) {
+    const a0 = a.vida, b0 = b.vida;
+    g.J.vez = 1; g.iniciaTurno(); g.processaCondsFim(1);
+    va.push(a0 - a.vida); vb.push(b0 - b.vida);
+  }
+  eq(va.join(","), "2,2,2", "o veneno deveria cobrar sempre o mesmo — é a diferença dele");
+  eq(vb.join(","), "3,2,1", "o sangramento deveria decair — é a diferença dele");
+});
+
+teste("condição de 1 turno num inimigo custa exatamente um turno dele", () => {
+  const c = cenaDot(); const g = c.g;
+  const v = c.heroi(1, "topo");
+  g.J.vez = 0;                                        // aplicada no MEU turno
+  g.aplicaCond(v, "atordoado", { tu: 1 });
+  g.processaCondsFim(0);                              // fim do meu turno não deveria gastar o dele
+  ok(g.temCond(v, "atordoado"),
+     "o atordoamento venceu no fim do turno de QUEM APLICOU — a vítima nunca perdeu turno");
+  ok(g.travaDeAcao(v, 0), "atordoado e ainda assim livre para agir");
+  g.J.vez = 1; g.iniciaTurno();
+  ok(g.temCond(v, "atordoado"), "o atordoamento sumiu no início do turno da vítima");
+  g.processaCondsFim(1);
+  ok(!g.temCond(v, "atordoado"), "o atordoamento durou mais de um turno da vítima");
+});
+
+teste("morrer limpa TODAS as condições, boas e ruins, e o respawn volta limpo", () => {
+  const c = cenaDot(); const g = c.g;
+  const v = c.heroi(1, "topo"), autor = c.heroi(0, "topo");
+  ["sangramento", "veneno", "lentidao", "atordoado", "invisivel", "marcado", "tenacidade"]
+    .forEach(t => g.aplicaCond(v, t, { st: 2, tu: 2, dono: autor }));
+  v.preso = 2; v.esc = 9;
+  g.mata(v, autor);
+  eq(v.conds.length, 0, "sobrou condição pendurada num morto (§40)");
+  eq(v.preso, 0, "a prisão sobreviveu à morte");
+  eq(v.esc, 0, "o escudo sobreviveu à morte");
+});
+
+/* ---------- TENACIDADE e a cadeia de atordoamento ---------- */
+
+teste("Tenacidade anula controle e se gasta; dano passa por ela", () => {
+  const c = cenaDot(); const g = c.g;
+  const v = c.heroi(1, "topo");
+  g.aplicaCond(v, "tenacidade", { tu: 2 });
+  ok(!g.aplicaCond(v, "atordoado", { tu: 1 }), "a Tenacidade deixou o atordoamento entrar");
+  ok(!g.temCond(v, "atordoado"), "atordoou mesmo com Tenacidade");
+  ok(!g.temCond(v, "tenacidade"), "a Tenacidade anulou e não se gastou — vira imunidade eterna");
+  g.aplicaCond(v, "tenacidade", { tu: 2 });
+  ok(g.aplicaCond(v, "veneno", { tu: 2 }),
+     "a Tenacidade barrou VENENO — ela responde a controle, não a dano");
+  ok(g.temCond(v, "tenacidade"), "o veneno gastou a Tenacidade");
+});
+
+teste("não existe cadeia de atordoamento: sair de um deixa Tenacidade", () => {
+  const c = cenaDot(); const g = c.g;
+  const v = c.heroi(1, "topo");
+  g.aplicaCond(v, "atordoado", { tu: 1 });
+  g.J.vez = 1; g.iniciaTurno(); g.processaCondsFim(1);
+  ok(!g.temCond(v, "atordoado"), "o atordoamento não passou");
+  ok(g.temCond(v, "tenacidade"),
+     "saiu do atordoamento sem Tenacidade — dá para atordoar em cadeia e o jogador nunca joga (§8)");
+  g.aplicaCond(v, "atordoado", { tu: 1 });
+  ok(!g.temCond(v, "atordoado"), "o segundo atordoamento seguido entrou");
+});
+
+teste("Prende passa pela mesma porta da Tenacidade que o atordoamento", () => {
+  const c = cenaDot(); const g = c.g;
+  const v = c.heroi(1, "topo");
+  g.aplicaCond(v, "tenacidade", { tu: 2 });
+  g.prende(v, c.heroi(0, "topo"));
+  eq(v.preso, 0, "a Tenacidade não protegeu contra Prende — para o jogador é o mesmo problema");
+});
+
+/* ---------- LENTIDÃO ---------- */
+
+teste("Lentidão tira casas de caminhada, nunca impede de andar, e mata o passo Ágil", () => {
+  const c = cena().vez(0).mov(6); const g = c.g;
+  const h = c.heroi(0, "selva");                       // ágil
+  ok(g.ehAgil(h), "o herói de selva desta cena deveria ser Ágil");
+  const cheio = g.tetoAndar(h);
+  g.aplicaCond(h, "lentidao", { tu: 1 });
+  const lento = g.tetoAndar(h);
+  eq(lento, cheio - g.LENTIDAO_CASAS - 1,
+     "a Lentidão deveria tirar as casas E o passo grátis de Ágil");
+  c.mov(1);
+  ok(g.tetoAndar(h) >= 1, "a Lentidão zerou o movimento — isso é Prende, não Lentidão (§7)");
+  ok(!g.travaDeAcao(h, 0), "a Lentidão impediu de AGIR — ela é de mobilidade");
+});
+
+/* ---------- ATORDOAMENTO e SILÊNCIO trancam o que devem ---------- */
+
+teste("Atordoado não age nem anda; Silenciado só perde a segunda e a Ultimate", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  g.aplicaCond(h, "atordoado", { tu: 1 });
+  ok(g.travaDeAcao(h, 0) && g.travaDeAcao(h, 2), "atordoado e livre para agir");
+  g.removeCond(h, "atordoado");
+  g.aplicaCond(h, "silenciado", { tu: 1 });
+  ok(!g.travaDeAcao(h, 0), "o Silêncio trancou a básica — ele deveria deixar a básica passar");
+  ok(g.travaDeAcao(h, 1) && g.travaDeAcao(h, 2), "o Silêncio deixou passar a segunda ou a Ultimate");
+});
+
+/* ---------- BANIMENTO: todas as regras explícitas do §9 ---------- */
+
+teste("Banido sai do tabuleiro: não é alvo, não sofre dano e não ocupa hexágono", () => {
+  const c = cena().vez(0); const g = c.g;
+  const z = c.heroi(1, "topo"), bate = c.heroi(0, "topo");
+  const onde = [...z.pos];
+  g.aplicaCond(z, "banido", { tu: 1 });
+
+  eq(g.em(...onde), undefined, "o banido continua ocupando o hexágono");
+  ok(!g.visivelPara(z, 0), "o adversário continua vendo o banido");
+  ok(!g.visivelPara(z, 1), "o próprio time continua vendo o banido — ele não está no tabuleiro");
+  const v0 = z.vida;
+  g.aplicaDano(bate, z, 99, "teste", true, true);
+  eq(z.vida, v0, "o banido levou dano — banimento tem que ser imunidade completa");
+  ok(!g.aplicaCond(z, "veneno", { tu: 2 }), "o banido recebeu condição nova");
+});
+
+teste("Banido volta no início do próprio turno, no mesmo lugar, e a regra é previsível", () => {
+  const c = cena().vez(0); const g = c.g;
+  const z = c.heroi(1, "topo");
+  const onde = [...z.pos];
+  g.aplicaCond(z, "banido", { tu: 1 });
+  g.J.vez = 0; g.iniciaTurno();
+  ok(g.temCond(z, "banido"), "voltou no turno do ADVERSÁRIO — o banimento não vigiou nada");
+  g.J.vez = 1; g.iniciaTurno();
+  ok(!g.temCond(z, "banido"), "não voltou no início do próprio turno");
+  eq(g.k(...z.pos), g.k(...onde),
+     "voltou em outro lugar — o retorno é previsível de propósito, para o Banimento ser jogada e não fuga");
+  ok(!z.agiu, "voltou sem poder agir — o banimento viraria dois turnos perdidos");
+});
+
+teste("Banido não acende visão e o cache de visão sabe disso", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(1, "meio");
+  const perto = g.vizinhos(...h.pos).find(p => g.noTab(...p));
+  ok(g.enxergaCasa(1, ...perto), "a casa colada no herói já não era vista");
+  g.aplicaCond(h, "banido", { tu: 1 });
+  const outros = g.J.times[1].herois.filter(o => o !== h && !o.morto);
+  const soDele = !outros.some(o => g.dist(...o.pos, ...perto) <= 2);
+  if (soDele) ok(!g.enxergaCasa(1, ...perto),
+    "o banido continua acendendo o raio de visão dele — o cache não viu a mudança");
+});
+
+/* ---------- INVISIBILIDADE: contrajogo obrigatório ---------- */
+
+teste("Invisível não é visto em campo aberto, mas atacar entrega a posição", () => {
+  const c = cena().vez(0); const g = c.g;
+  const p = c.heroi(0, "selva"), alvo = c.heroi(1, "topo");
+  encosta(c, alvo, p);                                   // colado, em campo aberto
+  /* o Voo Silencioso pode já ter escondido o Pombo na abertura da partida — este
+     teste mede a CONDIÇÃO, não a passiva, então parte-se do zero explicitamente */
+  g.removeCond(p, "invisivel", "silencio");
+  ok(g.visivelPara(p, 1), "colado e em campo aberto e já invisível sem motivo");
+  g.aplicaCond(p, "invisivel", { tu: 2 });
+  ok(!g.visivelPara(p, 1), "a Invisibilidade não esconde em campo aberto");
+  g.aplicaDano(p, alvo, 1, "teste", false, false);
+  ok(g.visivelPara(p, 1), "atacou e continuou invisível — não sobrou contrajogo (§28)");
+});
+
+teste("Ward revela o Invisível: é a resposta que o desenho nomeou", () => {
+  const c = cena().vez(0); const g = c.g;
+  const p = c.heroi(0, "selva");
+  g.aplicaCond(p, "invisivel", { tu: 2 });
+  ok(!g.visivelPara(p, 1), "não ficou invisível");
+  g.poeWard(1, [...p.pos]);
+  ok(g.enxergaPorWard(1, ...p.pos), "a ward não cobre a casa em que foi plantada");
+  ok(g.visivelPara(p, 1), "ward em cima do invisível e ele continua invisível — sem Ward não há resposta");
+});
+
+teste("Revelado vence a Invisibilidade e o mato", () => {
+  const c = cena().vez(0); const g = c.g;
+  const p = c.heroi(0, "selva");
+  const mato = [...g.MATO].map(s => s.split(",").map(Number)).find(q => !g.em(...q));
+  ok(mato, "não achei mato livre");
+  p.pos = [...mato];
+  g.aplicaCond(p, "invisivel", { tu: 2 });
+  ok(!g.visivelPara(p, 1), "invisível no mato e visível");
+  g.aplicaCond(p, "revelado", { tu: 1 });
+  ok(g.visivelPara(p, 1), "Revelado não venceu a Invisibilidade — o contrajogo não funciona");
+});
+
+teste("a IA não persegue quem ela não vê", () => {
+  const c = cena().vez(1); const g = c.g;
+  const escondido = c.heroi(0, "selva");
+  /* põe o herói do time 0 longe de tudo e invisível: para o time 1 ele não existe */
+  g.aplicaCond(escondido, "invisivel", { tu: 3 });
+  eq(g.iaInimigosVisiveis(1).filter(o => o === escondido).length, 0,
+     "a IA lista um inimigo invisível como alvo — informação privilegiada (§30)");
+});
+
+/* ---------- CRÍTICO: previsível, nunca sorte ---------- */
+
+teste("nenhum crítico do jogo depende de sorte — todos têm condição visível", () => {
+  const g = carrega();
+  const sorte = [];
+  Object.entries(g.CATALOGO).forEach(([id, d]) => d.habs.forEach(hb => {
+    if (hb.ef.critChance || hb.ef.critSorte) sorte.push(`${id} · ${hb.n}`);
+  }));
+  eq(sorte.length, 0, `crítico aleatório: ${sorte.join(", ")} — o §12 pediu condição, não chance`);
+});
+
+teste("o Crítico do Cael acontece contra alvo travado, e só contra alvo travado", () => {
+  const c = cenaV45(["cael", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "corvo", "torvald"]);
+  const g = c.g;
+  const cael = c.heroi(0, "adc"), alvo = c.heroi(1, "topo");
+  const hb = cael.habs[0];
+  ok(!g.ehCritico(cael, hb, alvo), "critou num alvo solto — o crítico dele tem endereço");
+  g.aplicaCond(alvo, "lentidao", { tu: 1 });
+  ok(g.ehCritico(cael, hb, alvo), "não critou num alvo Lento, que é a condição dele");
+  g.removeCond(alvo, "lentidao");
+  alvo.preso = 2;
+  ok(g.ehCritico(cael, hb, alvo), "não critou num alvo Preso");
+});
+
+teste("o quarto tiro do Corvo é Crítico, e o Recarregar adianta a conta", () => {
+  const c = cenaV45(["corvo", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const corvo = c.heroi(0, "adc"), alvo = c.heroi(1, "topo");
+  const hb = corvo.habs[0];
+  eq(g.ehCritico(corvo, hb, alvo), null, "o primeiro tiro já saiu crítico");
+  eq(g.ehCritico(corvo, hb, alvo), null, "o segundo tiro já saiu crítico");
+  eq(g.ehCritico(corvo, hb, alvo), null, "o terceiro tiro já saiu crítico");
+  ok(g.ehCritico(corvo, hb, alvo), "o quarto tiro não saiu crítico");
+  eq(g.recursoDe(corvo, "cartucho"), 0, "o cartucho não zerou depois do crítico");
+});
+
+teste("o Crítico multiplica o dano de verdade, e a IA sabe disso antes de bater", () => {
+  const c = cenaV45(["cael", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "corvo", "torvald"]);
+  const g = c.g;
+  const cael = c.heroi(0, "adc"), alvo = c.heroi(1, "topo");
+  const solto = g.iaDanoReal(cael, cael.habs[0], 0, 5, alvo);
+  g.aplicaCond(alvo, "lentidao", { tu: 1 });
+  const travado = g.iaDanoReal(cael, cael.habs[0], 0, 5, alvo);
+  ok(travado > solto,
+     `a IA calculou ${travado} contra alvo travado e ${solto} contra alvo solto — `
+     + "ela não vê o próprio crítico e nunca vai preparar o combo (§29)");
+});
+
+/* ---------- as sinergias internas de kit (§26) ---------- */
+
+teste("Dona Chinela: a básica empilha Sangramento e a Ultimate cobra a conta", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const k = c.heroi(0, "topo"), v = c.heroi(1, "topo");
+  encosta(c, k, v);
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(k, 0, v);
+  eq(g.stacksDe(v, "sangramento"), 1, "a passiva Chinelada não deixou Sangramento");
+
+  /* a Ultimate executa mais alto por acúmulo — é a conta que os outros dois abriram */
+  const semPilha = k.habs[2].ef.executa;
+  g.aplicaCond(v, "sangramento", { st: 3, dono: k });
+  const comPilha = semPilha + 3 * k.habs[2].ef.execPorStack.v;
+  v.vida = comPilha;
+  k.agiu = 0; c.dados(6, 6, 6);
+  c.usa(k, 2, v);
+  ok(v.morto, `com ${g.stacksDe(v, "sangramento")} acúmulos o limiar deveria chegar a ${comPilha}`);
+});
+
+teste("Ilva: a Ceifa bate mais forte em alvo Envenenado, e o Miasma envenena colado", () => {
+  const c = cenaV45(["ilva", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const ilva = c.heroi(0, "topo"), v = c.heroi(1, "topo");
+  encosta(c, ilva, v);
+  c.vez(0);
+  g.iniciaTurno();
+  ok(g.temCond(v, "veneno"), "o Miasma não envenenou o inimigo colado nela");
+
+  const limpo = g.iaDanoReal(ilva, ilva.habs[2], 2, 5, c.heroi(1, "meio"));
+  const doente = g.iaDanoReal(ilva, ilva.habs[2], 2, 5, v);
+  ok(doente > limpo, "a Ceifa não distingue alvo envenenado de alvo limpo — não há sinergia");
+});
+
+teste("Valti: o Coco só atordoa quem está dentro da armadilha dele", () => {
+  const c = cenaV45(["kurr", "kaross", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const valti = c.heroi(0, "selva"), v = c.heroi(1, "topo");
+  encosta(c, valti, v);
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(valti, 2, v);
+  ok(!g.temCond(v, "atordoado"),
+     "atordoou sem armadilha no chão — o controle mais forte do jogo perdeu o pré-requisito (§28)");
+
+  g.poeZona(0, [...v.pos], { tipo: "cascas", cond: { t: "lentidao", tu: 1 }, raio: 1, dono: valti, n: "Talho" });
+  valti.agiu = 0; c.dados(6, 6, 6);
+  c.usa(valti, 2, v);
+  ok(g.temCond(v, "atordoado") || g.temCond(v, "tenacidade") || v.morto,
+     "com a armadilha embaixo, o Coco não atordoou");
+});
+
+teste("Catarino: a terceira marca estoura e ignora armadura e escudo", () => {
+  const c = cenaV45(["nessa", "nyx", "solenne", "kaross", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const cat = c.heroi(0, "adc"), v = c.heroi(1, "topo");
+  v.esc = 40; v.arm = 20;                                  // nada disso protege do estouro
+  g.aplicaCond(v, "catarino", { st: 2, dono: cat });
+  const v0 = v.vida, e0 = v.esc;
+  g.aplicaCond(v, "catarino", { st: 1, dono: cat });
+  eq(v.vida, v0 - g.COND_NUM.catarinoEstouro, "a terceira marca não estourou");
+  eq(v.esc, e0, "o estouro comeu escudo — ele deveria passar por dentro");
+  ok(!g.temCond(v, "catarino"), "as marcas não saíram depois do estouro");
+});
+
+teste("Arden: o Tribunal devolve a habilidade registrada, e Ultimate nunca entra nos autos", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["arden", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const juiz = c.heroi(1, "meio"), bate = c.heroi(0, "topo");
+  encosta(c, juiz, bate);
+
+  /* a Ultimate do agressor NÃO pode ser registrada */
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(bate, 2, juiz);
+  ok(!juiz.autos, `o Tribunal registrou uma Ultimate inimiga (${juiz.autos && juiz.autos.n}) — §10 proíbe`);
+
+  /* a básica pode */
+  juiz.vida = juiz.vidaMax; bate.agiu = 0; c.dados(6, 6, 6);
+  c.usa(bate, 0, juiz);
+  ok(juiz.autos, "o Tribunal não registrou a habilidade básica que o acertou");
+  eq(juiz.autos.n, bate.habs[0].n, "registrou a habilidade errada");
+
+  /* e devolve uma vez só */
+  const v0 = bate.vida;
+  c.vez(1).mov(0).dados(6, 6, 6);
+  c.usa(juiz, 2, bate);
+  ok(bate.vida < v0, "o Tribunal não devolveu dano nenhum");
+  ok(!juiz.autos, "os autos não esvaziaram — dá para devolver a mesma sentença para sempre");
+});
+
+teste("Zhet: o Eco troca de lugar e o Trio de Sombras a tira do tabuleiro", () => {
+  const c = cenaV45(["kaross", "nyx", "zhet", "vesper", "mirrha"],
+                    ["vharn", "grumo", "solenne", "cael", "torvald"]);
+  const g = c.g;
+  const z = c.heroi(0, "meio"), v = c.heroi(1, "topo");
+  encosta(c, z, v);
+  const pz = [...z.pos], pv = [...v.pos];
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(z, 1, v);
+  if (!v.morto) {
+    /* o alvo vai para onde ela estava, e isso é firme. A posição FINAL dela não é
+       verificável aqui de propósito: o Passo de Sombra a tira uma casa depois do
+       dano, e essa soma é o kit funcionando — o que não pode é ela terminar onde
+       começou, que seria a troca não ter acontecido. */
+    eq(g.k(...v.pos), g.k(...pz), "o Eco não trouxe o alvo para onde a Zhet estava");
+    ok(g.k(...z.pos) !== g.k(...pz), "a Zhet terminou onde começou — a troca não aconteceu");
+  }
+  /* o Passo de Sombra a afastou; ela tem alcance 1, então precisa reencostar
+     antes da Ultimate — exatamente o que o jogador faria com o Dado Mestre */
+  encosta(c, v, z);
+  z.agiu = 0; z.vida = z.vidaMax; v.vida = v.vidaMax; v.morto = 0;
+  c.dados(6, 6, 6);
+  c.usa(z, 2, v);
+  ok(g.temCond(z, "banido"), "o Trio de Sombras não baniu a própria Zhet");
+  eq(g.em(...z.pos), undefined, "banida e ainda ocupando o hexágono");
+});
+
+teste("Xhera bebe vida quando causa dano, e mais quando está ferida", () => {
+  const c = cenaV45(["xhera", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const x = c.heroi(0, "topo"), v = c.heroi(1, "topo");
+  encosta(c, x, v);
+  x.vida = x.vidaMax - 6;
+  const v0 = x.vida;
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(x, 0, v);
+  ok(x.vida > v0, "a passiva Insaciável não curou nada ao causar dano");
+  /* e o Poder dela sobe quando ela cai abaixo da metade */
+  const cheia = (x.vida = x.vidaMax, g.poderTotal(x));
+  x.vida = Math.floor(x.vidaMax / 2);
+  ok(g.poderTotal(x) > cheia, "abaixo da metade o Poder dela não subiu");
+});
+
+teste("Emerson Emo converte a dor do time em cura — Tristeza sobe e é gasta", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const emo = c.heroi(0, "sup"), amigo = c.heroi(0, "topo"), inimigo = c.heroi(1, "topo");
+  encosta(c, amigo, inimigo);
+  g.aplicaDano(inimigo, amigo, 4, "teste", false, false);
+  ok(g.recursoDe(emo, "tristeza") > 0, "aliado apanhou e o Emerson não ganhou Tristeza");
+
+  encosta(c, emo, amigo);
+  amigo.vida = 5;
+  const antes = amigo.vida;
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(emo, 0, amigo);
+  eq(g.recursoDe(emo, "tristeza"), 0, "o Ombro Amigo não gastou a Tristeza");
+  ok(amigo.vida - antes > emo.habs[0].ef.cura,
+     "a cura não levou o bônus da Tristeza — a passiva não faz nada");
+});
+
+teste("Caramêlo 2.0 abate dano do aliado colado, e só do colado", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "gorm"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const dog = c.heroi(0, "sup"), amigo = c.heroi(0, "topo"), bate = c.heroi(1, "topo");
+  amigo.arm = 0; amigo.esc = 0;
+  /* longe do cachorro: dano cheio */
+  amigo.pos = [...g.ROTAS.topo[0]];
+  const longe = (v => { const a = amigo.vida; g.aplicaDano(bate, amigo, 10, "t", false, true);
+                        return a - amigo.vida; })();
+  amigo.vida = amigo.vidaMax;
+  encosta(c, dog, amigo);
+  const colado = (v => { const a = amigo.vida; g.aplicaDano(bate, amigo, 10, "t", false, true);
+                         return a - amigo.vida; })();
+  ok(colado < longe, `colado no Caramêlo levou ${colado} e longe levou ${longe} — a passiva não protege`);
+});
+
+teste("Torvald endurece com as almas de quem morre perto, até o teto", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "torvald"],
+                    ["vharn", "grumo", "zhet", "cael", "gorm"]);
+  const g = c.g;
+  const t = c.heroi(0, "sup"), v = c.heroi(1, "topo");
+  encosta(c, t, v);
+  const arm0 = g.armTotal(t);
+  g.mata(v, c.heroi(0, "topo"));
+  ok(g.armTotal(t) > arm0, "morreu alguém colado nele e a Armadura não subiu");
+  for (let i = 0; i < 9; i++) { v.morto = 0; v.vida = 1; g.mata(v, c.heroi(0, "topo")); }
+  eq(g.recursoDe(t, "almas"), g.RECURSOS.almas.max, "as almas passaram do teto");
+});
+
+teste("Vidente revela o escondido mais próximo — a resposta ao invisível existe no draft", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "vidra"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const vid = c.heroi(0, "sup"), oculto = c.heroi(1, "meio");
+  oculto.pos = g.vizinhos(...vid.pos).find(p => g.noTab(...p) && !g.em(...p)) || oculto.pos;
+  g.aplicaCond(oculto, "invisivel", { tu: 3 });
+  ok(!g.visivelPara(oculto, 0), "não ficou invisível para começar");
+  c.vez(0); g.iniciaTurno();
+  ok(g.visivelPara(oculto, 0), "a Vidência não revelou o inimigo invisível colado nela");
+});
+
+teste("Grumo digere as próprias condições ruins", () => {
+  const c = cenaV45(["kaross", "grumo", "solenne", "vesper", "mirrha"],
+                    ["vharn", "nyx", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const gr = c.heroi(0, "selva");
+  ["veneno", "sangramento", "lentidao"].forEach(t => g.aplicaCond(gr, t, { st: 2, tu: 2 }));
+  c.vez(0).mov(0).dados(6, 6, 6);
+  c.usa(gr, 1, gr);
+  eq(g.condsMalignas(gr).length, 0, "o Digerir não limpou as condições ruins dele");
+});
+
+/* ---------- o que NÃO deve acontecer ---------- */
+
+teste("condição não se aplica ao morador do poço — o alvo precisa aceitar o efeito", () => {
+  const c = cena().vez(0); const g = c.g;
+  g.J.poco.vida = 10;
+  ok(!g.aplicaCond(g.J.poco, "atordoado", { tu: 1 }),
+     "atordoou o Dragão — o §39 exige que cada efeito declare que alvo aceita");
+  ok(!g.J.poco.conds || !g.J.poco.conds.length, "o poço ficou com lista de condições");
+});
+
+teste("nenhum kit é só dano: todo herói tem pelo menos uma habilidade que não é golpe", () => {
+  const g = carrega();
+  const puros = [];
+  Object.entries(g.CATALOGO).forEach(([id, d]) => {
+    const extras = d.habs.filter(hb => {
+      const e = hb.ef;
+      return e.cond || e.condEu || e.condVizinhos || e.condRaio || e.condAliadosPerto ||
+             e.condSeNaZona || e.zona || e.escudo || e.cura || e.doar || e.ward || e.troca ||
+             e.baneEu || e.copia || e.revelaRaio || e.limpa || e.limpaEu || e.limpaAliados ||
+             e.recuaLivre || e.prende || e.prendeVizinhos || e.puxar || e.empurrar ||
+             e.empurraVizinhos || e.empurraDoAlvo || e.recurso || e.consome || e.espalha ||
+             e.drena || e.escudoAliados || e.revive || e.recarga;
+    });
+    if (!extras.length) puros.push(id);
+  });
+  eq(puros.length, 0,
+     `kit de dano puro: ${puros.join(", ")} — o §25 pediu habilidade que FAZ algo, não só "causa X de dano"`);
+});
+
+teste("cada herói tem uma ideia principal escrita, e ela cabe numa frase", () => {
+  const g = carrega();
+  const ruins = Object.entries(g.CATALOGO)
+    .filter(([, d]) => !d.ideia || d.ideia.length > 160)
+    .map(([id, d]) => `${id}(${d.ideia ? d.ideia.length : 0})`);
+  eq(ruins.length, 0,
+     `sem ideia principal ou com texto longo demais: ${ruins.join(", ")} — §27 limita a complexidade`);
+});
+
+teste("passiva cabe numa frase — nada de cinco condições e oito exceções (§14)", () => {
+  const g = carrega();
+  const longas = Object.entries(g.CATALOGO)
+    .filter(([, d]) => d.pas && (d.pas.d.length > 150 || (d.pas.d.match(/\./g) || []).length > 2))
+    .map(([id]) => id);
+  eq(longas.length, 0, `passiva comprida: ${longas.join(", ")}`);
+});
+
+teste("os indicadores da peça param em três, e avisam quantos ficaram de fora (§20)", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  ["sangramento", "veneno", "lentidao", "marcado", "vulneravel"]
+    .forEach(t => g.aplicaCond(h, t, { st: 2, tu: 2 }));
+  const lista = g.condsDaPeca(h);
+  ok(lista.length >= 5, "as condições não entraram na lista da peça");
+  /* a de maior consequência tem que ser a primeira: é ela que vira etiqueta */
+  eq(lista[0].n, g.CONDS.lentidao.n,
+     `a primeira da fila é ${lista[0].n} — a ordem deveria ser a de consequência`);
+  const et = g.estadoDaPeca(h);
+  ok(et && et.k === "mal", "com cinco condições ruins a peça não mostrou nenhuma etiqueta");
+});
+
+teste("a ficha mostra a seção de condições, com ícone, nome e quantidade", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "topo");
+  g.aplicaCond(h, "sangramento", { st: 2 });
+  g.aplicaCond(h, "veneno", { tu: 2 });
+  const html = g.fichaHTML(h, true);
+  ok(/Sangramento ×2/.test(html), "a ficha não diz quantos acúmulos de Sangramento (§22)");
+  ok(/Veneno · 2 turnos/.test(html), "a ficha não diz quantos turnos de Veneno faltam");
+  ok(/data-cond=/.test(html), "os selos não são clicáveis — no celular não existe hover (§21)");
+});
+
+teste("a Invisibilidade não aparece na peça para o adversário", () => {
+  const c = cena().vez(0); const g = c.g;
+  const meu = c.heroi(0, "selva"), dele = c.heroi(1, "selva");
+  g.aplicaCond(meu, "invisivel", { tu: 2 });
+  g.aplicaCond(dele, "invisivel", { tu: 2 });
+  g.aiMode = false;
+  ok(g.condsDaPeca(meu).some(x => x.n === g.CONDS.invisivel.n),
+     "o dono da peça não vê a própria Invisibilidade");
+  ok(!g.condsDaPeca(dele).some(x => x.n === g.CONDS.invisivel.n),
+     "o ícone de Invisibilidade entrega o inimigo invisível — o indicador anula a condição");
+});
+
+teste("a IA prefere a jogada que aplica controle à que só arranha", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const taxista = c.heroi(1, "topo"), v = c.heroi(0, "topo");
+  encosta(c, taxista, v);
+  v.vida = v.vidaMax;                                  // ninguém morre: a comparação é limpa
+  g.aplicaCond(v, "revelado", { tu: 3 });
+  c.vez(1).mov(0).dados(4, 4, 4);
+  const lista = g.iaJogadas(1).filter(x => x.h === taxista && x.v === v);
+  const buzina = lista.find(x => x.i === 1), martelo = lista.find(x => x.i === 0);
+  ok(buzina && martelo, "a IA não enumerou as duas habilidades do Taxista contra o alvo");
+  ok(buzina.nota > martelo.nota,
+     `a Buzina (atordoa) tirou ${buzina.nota.toFixed(1)} e o Martelo ${martelo.nota.toFixed(1)} — `
+     + "a IA não vê valor em controlar (§29)");
+});
+
+teste("a IA cura e limpa aliado em vez de ficar parada com o suporte", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "mirrha"]);
+  const g = c.g;
+  const sup = c.heroi(1, "sup"), amigo = c.heroi(1, "topo");
+  encosta(c, sup, amigo);
+  amigo.vida = 4;
+  g.aplicaCond(amigo, "veneno", { tu: 2 });
+  c.vez(1).mov(0).dados(6, 6, 6);
+  const lista = g.iaJogadas(1).filter(x => x.h === sup && x.v === amigo);
+  ok(lista.length, "a IA não enumerou nenhuma jogada do suporte no aliado ferido e envenenado");
+  ok(lista.some(x => x.nota > 15), "a IA achou que socorrer um aliado a 4 de vida não valia nada");
+});
+
+/* Achado por sim/condicoes.js: a condição Marcado aparecia em 0% de 120 partidas
+   com a IA de verdade. A causa era mais velha que a v45 — a marca era pendurada
+   antes do golpe da própria habilidade que a criava, e `aplicaDano` a consumia no
+   mesmo instante. O texto da carta prometia "o próximo dano nele leva +N" e o
+   motor entregava "+N neste dano". */
+teste("a Marca sobrevive ao golpe que a aplica, e só é gasta no golpe SEGUINTE", () => {
+  const c = cenaV45(["kaross", "nyx", "solenne", "corvo", "mirrha"],
+                    ["vharn", "grumo", "zhet", "cael", "torvald"]);
+  const g = c.g;
+  const corvo = c.heroi(0, "adc"), v = c.heroi(1, "topo");
+  v.pos = [...corvo.pos];
+  c.poe(v, g.vizinhos(...corvo.pos).find(p => g.noTab(...p) && !g.em(...p)) || v.pos);
+  v.vida = v.vidaMax = 60;                              // ninguém morre no meio do teste
+
+  c.vez(0).mov(0).dados(3, 3, 3);
+  c.usa(corvo, 0, v);
+  eq(g.stacksDe(v, "marcado"), corvo.habs[0].ef.cond[0].st,
+     "o Tiro Marcado comeu a própria marca — ela nunca chega ao golpe seguinte");
+
+  /* e o golpe seguinte gasta a marca, somando o bônus */
+  const antes = v.vida;
+  corvo.agiu = 0; c.dados(3, 3, 3);
+  const semMarca = g.iaDanoReal(corvo, corvo.habs[0], 0, 3, { ...v, conds: [] });
+  c.usa(corvo, 0, v);
+  const levou = antes - v.vida;
+  ok(levou > semMarca, `com a marca levou ${levou} e sem ela levaria ${semMarca} — a marca não somou`);
+  eq(g.stacksDe(v, "marcado"), corvo.habs[0].ef.cond[0].st,
+     "a marca antiga não foi gasta, ou a nova não foi aplicada");
 });
 
 /* ---------- resumo ---------- */

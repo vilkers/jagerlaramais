@@ -16,6 +16,199 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v45 — a individualidade dos heróis · 2026-08-17
+
+A entrega mais larga desde a v0.4, e a única até hoje que muda os **vinte** heróis
+de uma vez. O pedido do Vilker foi específico: *"os heróis ainda parecem parecidos
+demais durante o gameplay"* — e a queixa estava certa. Dezoito das vinte básicas
+tinham como regra inteira "causa dano", e catorze Ultimates eram a básica com um
+número maior. Trocar de herói mudava a planilha, não a partida.
+
+**A tabela dos 20 kits está em `docs/KITS.md`**, com ideia mecânica, passiva, as
+três habilidades, condições e contrajogo de cada um. Ela é para ser revisada herói
+por herói: cada kit é uma linha de `data/catalogo.js` e nenhum deles exige mexer no
+motor.
+
+### O que mudou — o sistema
+
+**Um registro central de condições** (`CONDS`, em `data/catalogo.js`) com **12
+entradas**, contra as 2 que existiam (sangramento e veneno) e os 3 sinalizadores
+soltos no herói (`marca`, `preso`, `intoc`). Uma entrada nova na tabela ganha de
+graça: ícone na peça, linha na ficha, aviso de aplicação, aviso de fim, tooltip,
+imunidade por Tenacidade e limpeza na morte.
+
+As doze: 🩸 Sangramento · ☠️ Veneno · 🐌 Lentidão · ⭐ Atordoamento · 🌀 Banimento ·
+👁️ Invisibilidade · 🎯 Marcado · 💢 Vulnerável · 🤐 Silenciado · 🛡️ Tenacidade ·
+📡 Revelado · 💠 Marca do Catarino.
+
+**Uma porta para aplicar** (`aplicaCond`) e **duas para processar**
+(`processaCondsInicio` e `processaCondsFim`). O ciclo é assimétrico de propósito:
+
+> **o dano é cobrado no INÍCIO do turno de quem carrega; a duração cai no FIM.**
+
+Cobrar e gastar no mesmo instante fazia `atordoado por 1 turno` nascer e morrer
+antes de o jogador tentar agir. A duração continua em **turnos do portador**, nunca
+em rodadas — a mesma lição que a zona aprendeu na v20 e a v37 repetiu.
+
+Consequência que vale escrever, porque ela pega qualquer um que for mexer nisso:
+para condição posta num **inimigo**, `tu:1` já é um turno inteiro dele; para
+condição posta em **si mesmo ou num aliado**, `tu:1` morre antes de o adversário
+jogar, e o valor certo é `tu:2`. A assimetria é do relógio, não do desenho.
+
+**Um registro de passivas** (`PASSIVAS`, em `jogo/jogo.js`) e **um barramento de
+eventos**: `inicioTurno`, `fimTurno`, `hit`, `danoCausado`, `danoRecebido`,
+`danoRecebidoAliado`, `matou`, `morreu`, `andou`, `habUsada`. Mais quatro consultas
+que a passiva responde em vez de disparar: `poder`, `crit`, `reduzDano`, `veMato`.
+O herói declara `pas:{id}` no catálogo e o id é a chave do registro — duas linhas
+para uma passiva nova, e nenhum `if (heroi.nome === "X")` em lugar nenhum.
+
+**Seis recursos de personagem**, que são de um herói só e não viram status
+universal: ⚡ Carga · ♻️ Sucata · 🖤 Tristeza · 🔸 Cartucho · 🎈 Fôlego · 🔗 Almas.
+
+### O que mudou — números
+
+| | de | para |
+|---|---|---|
+| Condições no jogo | **2** (sangramento, veneno) | **12** |
+| Passivas de herói | **0** | **20** (uma por herói) |
+| Recursos de personagem | **0** | **6** |
+| Sangramento | `dano` fixo por rodada, prazo em rodadas, reaplicar **renova** | **acúmulos**: 1 de dano por acúmulo no início do turno, −1 acúmulo no fim. Teto **5**. Reaplicar **empilha** |
+| Veneno | `dano` variável (1 a 3, conforme a habilidade) | **2 fixos** por turno, prazo em turnos do portador, teto **4**. Reaplicar **renova pelo maior** |
+| Marca | campo `alvo.marca`, número solto | condição 🎯 **Marcado** de acúmulos, teto 9 |
+| Crítico | dado 6 natural — **escrevia no log e não fazia nada** | **1,5× o dano**, e sempre **condicional** (nunca sorte) |
+| Ícones de estado na peça | **1** etiqueta de texto | até **3** ícones + a etiqueta, com `+N` quando sobra |
+| Lentidão (novo) | — | **−2 casas** de caminhada, mínimo 1, e perde o passo grátis de Ágil |
+| Vulnerável (novo) | — | **−2 de Armadura** enquanto durar |
+| Estouro da Marca do Catarino (novo) | — | **5** de dano na 3ª marca, ignora armadura e escudo |
+| Xhera · Lâmina Sedenta | `dano + 4 extra`, pagando 3 de vida | `dano` puro (a aposta migrou para a Ultimate) |
+| Xhera · Investir | `dano` | `dano + 3` |
+| Xhera · Sede Final | `dano`, cura 9, +3 em ferido | `dano + 4`, **paga 3 de vida**, +3 em ferido, **drena o dano causado** |
+| Nyx · Voo Rasante | **intocável** por 1 turno | 👁️ **Invisível** por 2 turnos |
+| Cael · Armadilha | zona de veneno | zona que aplica 🐌 **Lentidão** — e a passiva dele **crita** em alvo travado |
+| Contra-emboscada (carta) | escrevia os escondidos **no log** | aplica 📡 **Revelado** de verdade |
+
+### O bug mais velho que a v45 encontrou
+
+`sim/condicoes.js` (script novo) mediu que a condição 🎯 **Marcado** aparecia em
+**0% de 120 partidas** com a IA de verdade. A causa não era da v45: a marca era
+pendurada no alvo **antes** do golpe da própria habilidade que a criava, e
+`aplicaDano` a consumia no mesmo instante. O Arpão do Pyke marcava 3 e comia os 3;
+o Eco da Zhet marcava 4 e comia os 4. Na prática `marca` nunca existiu como marca —
+era só "+N de dano neste golpe", e o texto da carta ("o próximo dano nele leva +N")
+prometia uma coisa que o motor nunca fez, desde que a marca existe.
+
+Agora a condição no alvo entra **depois** da resolução do dano, e só se o alvo
+sobreviveu. Medido de novo: 🎯 Marcado aparece em **68%** das partidas, com pico de
+4 acúmulos. Tem teste (`a Marca sobrevive ao golpe que a aplica`).
+
+### O que mudou — interface
+
+- **Ícones ao lado do totem** (§17–§20): até três, ordenados por consequência, com
+  `+N` quando há mais. O número aparece como `×2` para acúmulo e nada para prazo;
+- **etiqueta grande** deixou de ser uma escada de `if` e passou a sair da mesma
+  lista dos ícones — a de maior consequência ganha;
+- **seção CONDIÇÕES na ficha** (§22), com ícone, nome e quantidade lida do jeito
+  certo: `🩸 Sangramento ×2` para acúmulo, `☠️ Veneno · 2 turnos` para prazo;
+- **tooltip de toque** (§21): tocar o selo mostra a regra da condição. Não depende
+  de hover, porque no celular hover não existe;
+- **aviso de aplicação e de fim** (§23–§24): "ATORDOADO!" quando chega, "VENENO
+  TERMINOU" — menor e mais apagado — quando sai. "CRÍTICO!" tem tamanho próprio;
+- **passiva e ideia principal** na carta do herói, no guia e na página de cartas;
+- **seção Condições no guia** (`guia/index.html`), gerada do registro, com a coluna
+  "aplica:" **derivada do catálogo** — quando alguém trocar de kit, o guia
+  acompanha sem ninguém editar.
+
+### O que mudou — IA
+
+A IA passou a ler o vocabulário novo (§29) **sem trapacear** (§30):
+
+- `iaDanoReal` conta o crítico, o consumo de acúmulos, o bônus contra alvo com
+  condição e o gasto de recurso. Sem isso ela usava a Ceifa da Ilva em quem não
+  estava envenenado e a Ultimate da Dona Chinela antes de empilhar nada;
+- `iaLimiarExec` (nova) entende execução que **escala com condição**;
+- `iaValorCondicoes` (nova) dá nota ao controle: atordoar vale 42, silenciar 26,
+  lentidão 14. Somado, não multiplicado — habilidade de controle puro precisa poder
+  ganhar de um golpe forte sem condição;
+- **a IA passou a socorrer aliado.** A v44 não pontuava nenhuma habilidade em
+  aliado: o suporte nunca curava, nunca escudava, nunca limpava. Com doze condições
+  no jogo isso deixou de ser detalhe — limpar é metade do contrajogo;
+- **invisibilidade não vaza.** `visivelPara` é o único caminho, e a IA passa por
+  ele. `recuaLonge` também foi corrigida para só considerar inimigo visível.
+
+### Contrajogo, item por item (§28)
+
+| Mecânica | Resposta |
+|---|---|
+| 👁️ Invisibilidade | **Ward revela** (fonte de visão privilegiada), atacar entrega a posição, 📡 Revelado vence em qualquer lugar. Fontes: Vidente, Sinal Aberto, Ato Final, Presságio, carta Contra-emboscada |
+| ⭐ Atordoamento | 🛡️ Tenacidade anula **e se gasta** — e sair de um atordoamento **já deixa Tenacidade**. Cadeia de atordoamento é impossível por regra |
+| 🩸 Sangramento | decai 1 acúmulo por turno, sozinho |
+| ☠️ Veneno | prazo curto, e limpeza tira (Digerir, Empresta o Fone, Varrida) |
+| 🌀 Banimento | **1 turno**, teto de 1 no registro, e volta na **mesma casa** — previsível de propósito |
+| ⚖ Cópia | nunca Ultimate, nunca cópia de cópia, um uso, e os autos ficam **visíveis na ficha** do Arden |
+| CRÍTICO | sempre condicional, nunca aleatório. A condição está na peça ou no contador |
+
+### O que isso quebra
+
+- **`h.dots` deixou de existir.** `poeDot` e `cobraDots` continuam de pé como
+  apelidos (a zona, o log e o teste antigo chamam por eles), mas o `dano` que
+  `poeDot` recebe passou a ser lido como **intensidade**: quantos acúmulos de
+  sangramento. Veneno ignora o parâmetro — ele agora tem dano fixo em `COND_NUM`;
+- **`alvo.marca` deixou de ser lido.** Quem quiser marcar usa `ef.marca` no
+  catálogo (que virou açúcar para a condição) ou `aplicaCond(alvo,"marcado",…)`;
+- **seis testes da v25 foram reescritos** — eles mediam o modelo antigo (prazo em
+  rodadas, sangramento sem acúmulo, veneno com dano variável). A regra mudou, então
+  o teste mudou;
+- **um teste da IA precisou revelar o alvo** (`a IA converte ação em movimento`).
+  Ele media o Pombo Ciborgue sem saber, e o Pombo agora fica invisível sozinho —
+  sem revelar, o teste passava a medir a névoa em vez da conversão de dado;
+- **`HEROIS_NOVOS` ficou vazio.** O catálogo virou um bloco só, organizado por rota
+  em vez de por história. As duas constantes continuam exportadas porque o guia e os
+  testes as pedem pelo nome.
+
+### O que foi medido
+
+| | v44 | v45 |
+|---|---|---|
+| Testes de regressão | 161 | **206** |
+| `sim/bateria.js 3000 times=espelho` — mediana de rodadas | 22 | **22 e 23** (duas execuções) |
+| — Barões por partida | 0,93 | **0,93 e 0,95** |
+| — Dragões por partida | 0,31 | **0,33** |
+| — quem começa | 52,4% a 52,9% | **52,7% e 53,2%** |
+| `sim/niveis.js 400` — Mestre × Aprendiz | — | **72,5%** (z=9,0) |
+| `sim/habs.js` — habilidades abaixo da própria básica sem desculpa | 0 | **0** |
+
+A estrutura da partida **não se moveu**: mesma duração, mesmas torres, mesmos
+épicos. Era o resultado desejado — a reformulação é de identidade, não de ritmo.
+"Quem começa" ficou na ponta de cima da faixa conhecida do arranjo espelhado
+(item 11 de `DECISOES-PENDENTES`); não é conclusão, é uma leitura a mais.
+
+**Um script novo:** `node sim/condicoes.js 200` — dirige a IA de verdade e conta
+quantos heróis carregam cada condição ao fim de cada turno. Serve para achar
+condição que é código morto e condição que virou clima.
+
+### Erros que eu cometi nesta sessão
+
+1. **Instrumentei `sim/condicoes.js` trocando `aplicaCond` por um invólucro.** No
+   harness de Node o motor roda dentro de um `vm` próprio: substituir a função na
+   PONTE não muda quem as funções internas chamam. Os contadores davam **zero em
+   tudo** — uma medição que mente com convicção. A versão que ficou de pé olha o
+   tabuleiro em vez de espionar a chamada.
+2. **Dei `tu:1` à invisibilidade da passiva do Pombo.** Aplicada no início do turno
+   dele, ela vencia no fim do mesmo turno: invisibilidade que o adversário nunca
+   teve chance de não ver. É a assimetria do relógio, e ela pega em qualquer
+   condição posta em si mesmo.
+3. **Deixei a Tenacidade decrementar em vez de sair inteira.** Com `tu:2` ela
+   anulava dois controles — na prática, imunidade, que é justamente o que não tem
+   contrajogo.
+4. **Pus a troca de lugar da Zhet DEPOIS do dano**, e a passiva dela (Passo de
+   Sombra, que recua 1 casa ao causar dano) desfazia a troca. As duas metades do
+   kit brigavam e vencia a última linha escrita.
+5. **A básica da Xhera saiu melhor que a Ultimate dela.** `extra:4` numa habilidade
+   de Força 1 — o teste `nenhuma Ultimate entrega menos que a básica` pegou, e o
+   orçamento foi redistribuído para os slots que exigem dado alto.
+
+---
+
 ## v39 — hexágonos bloqueados, e o tabuleiro passa a ser de dia · 2026-08-16
 
 Primeira entrega da direção de arte do Vilker (`docs/DIRECAO-DE-ARTE.md`, agora

@@ -128,6 +128,16 @@ button:disabled{cursor:not-allowed}
   text-anchor:middle;pointer-events:none}
 #mapa .peca .est.mal rect{stroke:var(--dano)} #mapa .peca .est.mal text{fill:var(--dano)}
 #mapa .peca .est.bom rect{stroke:var(--brass)} #mapa .peca .est.bom text{fill:var(--brass)}
+/* ── v45 · a fileira de indicadores acima do totem (§17 a §20) ──
+   Vive ACIMA do retrato porque o rodapé da peça já é da barra de vida e da
+   etiqueta grande. `paint-order` desenha o contorno por baixo do glifo: sem
+   isso o emoji some em cima do hexágono claro. */
+#mapa .peca .cond-ico{pointer-events:none}
+#mapa .peca .cond-ico .ci{font-size:5.4px;text-anchor:middle;
+  paint-order:stroke;stroke:rgba(6,10,8,.92);stroke-width:1.3px;stroke-linejoin:round}
+#mapa .peca .cond-ico .ci.mais{font-family:var(--mono);font-size:3.6px;fill:var(--ink-2)}
+#mapa .peca .cond-ico .ciq{font-family:var(--mono);font-size:3.2px;font-weight:700;
+  fill:#fff;text-anchor:start;paint-order:stroke;stroke:rgba(6,10,8,.95);stroke-width:1.1px}
 
 /* WARD no mapa: o olho, o prazo, e o ANEL do que ela acende.
    O anel é a parte que faltava — sem ele a ward era um pontinho sem consequência
@@ -258,6 +268,19 @@ button:disabled{cursor:not-allowed}
   100%{opacity:0;transform:translate(-50%,-260%) scale(.92)}}
 .flut.dano{color:var(--dano)} .flut.cura{color:var(--cura)}
 .flut.esc{color:var(--brass);font-size:19px} .flut.morte{font-size:38px}
+/* ── v45 · o aviso de condição (§23 e §24) ──
+   Menor que o número de dano de propósito: o dano é o assunto, a condição é a
+   consequência. O de FIM é menor ainda e mais apagado — "veneno acabou" não
+   merece o mesmo tamanho de "ATORDOADO!". */
+.flut.selo-mal,.flut.selo-bom,.flut.selo-fim{
+  font-family:var(--carto);font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  font-size:12px;white-space:nowrap}
+.flut.selo-mal{color:var(--carmim-2)}
+.flut.selo-bom{color:var(--cura)}
+.flut.selo-fim{color:var(--ink-2);font-size:10px;opacity:.9}
+/* CRÍTICO tem tamanho próprio: é o único aviso que muda o número do golpe */
+.flut.crit{color:var(--brass);font-size:22px;font-family:var(--display);
+  letter-spacing:.04em;text-shadow:0 0 14px rgba(198,160,74,.65),0 2px 8px rgba(0,0,0,.9)}
 
 #toast{position:absolute;left:50%;top:14%;transform:translateX(-50%);z-index:9;
   display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:92%}
@@ -482,6 +505,11 @@ button:disabled{cursor:not-allowed}
 .selo-est{font-family:var(--carto);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
   padding:2px 6px;border-radius:20px;border:1px solid var(--brass-dim);color:var(--brass)}
 .selo-est.mal{border-color:var(--carmim);color:var(--carmim-2)}
+/* seção CONDIÇÕES da ficha: clicável, porque no celular não existe hover (§21) */
+.fic .cnds{flex-wrap:wrap;gap:4px}
+.selo-est.cnd{font-size:9px;letter-spacing:.05em;text-transform:none;cursor:pointer;
+  background:rgba(255,255,255,.03)}
+.selo-est.cnd:active{background:rgba(198,160,74,.16)}
 
 /* loja */
 .abas{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:11px;border-bottom:1px solid var(--line)}
@@ -763,3 +791,16 @@ button:disabled{cursor:not-allowed}
 .dr-chip.t0{border-color:rgba(76,155,214,.5)} .dr-chip.t1{border-color:rgba(212,91,78,.5)}
 
 .camp{pointer-events:none}.camp-bg{fill:#243B32;stroke:#9CC7A8;stroke-width:1.2}.camp-core{fill:#D5B25D}.camp.neutro .camp-bg{fill:#4B3B22;stroke:#E0B85E}.camp-txt,.camp-cd{font:700 6px Arial;fill:#E8F0EB;text-anchor:middle;paint-order:stroke;stroke:#0E1614;stroke-width:2px}.camp-cd{fill:#D9B86C}
+
+/* ══ v45 · a carta do herói ganhou PASSIVA, IDEIA e CONDIÇÕES ══
+   A passiva não é a quarta habilidade: ela não gasta dado e não se escolhe. Por
+   isso vem antes das três, com marca própria e sem o ícone de habilidade. */
+.carta-g .ideia{font-size:12px;line-height:1.5;color:var(--ink-2);
+  padding:10px 15px 0;font-style:italic}
+.carta-g .hb2.pas{border-left:2px solid var(--brass);background:rgba(198,160,74,.06)}
+.carta-g .hb2.pas .f{color:var(--brass);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.cond-lista{padding:2px 15px 14px}
+.cond-lista .ct{font-family:var(--carto);font-size:8.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
+.cond-lista .cl{font-size:11px;line-height:1.5;color:var(--ink-2);margin-bottom:5px}
+.cond-lista .cl b{color:var(--brass)} .cond-lista .cl.mal b{color:var(--carmim-2)}

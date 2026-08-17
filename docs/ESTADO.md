@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v39 (hexágonos bloqueados e o tabuleiro de dia) · **Atualizado em:** 2026-08-16
+**Versão:** v45 (a individualidade dos heróis) · **Atualizado em:** 2026-08-17
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -22,7 +22,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 
 | | |
 |---|---|
-| Heróis no pool | **20** (4 por rota) · **10 substituídos na v30** — identidade nova sobre o mesmo chassi mecânico. Os `id` internos não mudaram, então a arte entra em `arte/herois/web/<id>.jpg` |
+| Heróis no pool | **20** (4 por rota) · **os 20 kits foram reformulados na v45** — cada um com **ideia principal**, **passiva** e sinergia interna. Nome, arte, rota, classe e história **não mudaram**. A tabela dos kits está em **`docs/KITS.md`**; a arte entra em `arte/herois/web/<id>.jpg` |
 | Itens na loja | **22** |
 | Deck de Comando | **46 cartas**, 22 tipos, 7 famílias — todas com arte |
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
@@ -46,8 +46,21 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
-| Efeito com prazo | **sangramento** e **veneno**: cobram no **início do turno da vítima**, 1×/rodada, e **ignoram armadura e escudo**. Reaplicar **renova**, não empilha. Morrer limpa. Mora no **slot de controle ou na Ultimate — nunca na básica** |
-| Zona | efeito posto no **chão**: quem **começa o turno dentro** é envenenado. Prazo em **turnos do adversário** (2), nunca em rodadas — senão a zona de quem joga primeiro vigia o dobro |
+| **Condições** | **12**, num registro só (`CONDS`, em `data/catalogo.js`): 🩸 Sangramento · ☠️ Veneno · 🐌 Lentidão · ⭐ Atordoamento · 🌀 Banimento · 👁️ Invisibilidade · 🎯 Marcado · 💢 Vulnerável · 🤐 Silenciado · 🛡️ Tenacidade · 📡 Revelado · 💠 Marca do Catarino. **O dano cobra no INÍCIO do turno de quem carrega; a duração cai no FIM.** Prazo em **turnos do portador**, nunca em rodadas. Morrer limpa **todas** |
+| Acúmulo × duração | **acúmulo** (`×2`) soma ao reaplicar, até o teto; **duração** (`2 turnos`) renova pelo maior. Sangramento e as marcas são acúmulo; o resto é duração |
+| Condição em si mesmo | armadilha: `tu:1` posto em **inimigo** vale um turno dele, mas posto em **si mesmo ou aliado** vence antes de o adversário jogar. Para aliado o valor certo é **`tu:2`** |
+| **Passivas** | **20 — uma por herói**, no registro `PASSIVAS` (`jogo/jogo.js`), disparadas por evento (`inicioTurno`, `fimTurno`, `hit`, `danoCausado`, `danoRecebido`, `danoRecebidoAliado`, `matou`, `morreu`, `andou`, `habUsada`) ou consultadas (`poder`, `crit`, `reduzDano`, `veMato`). O herói declara `pas:{id}` no catálogo, e o id é a chave do registro |
+| **Recursos de personagem** | **6**, de um herói só cada: ⚡ Carga (Parabólica) · ♻️ Sucata (Gari Mago) · 🖤 Tristeza (Emerson Emo) · 🔸 Cartucho (Corvo) · 🎈 Fôlego (Zé Griteco) · 🔗 Almas (Torvald). Mais os ⚖ Autos, registro da cópia do Arden. **Não saem na morte** |
+| Sangramento | **acúmulos**: 1 de dano por acúmulo no início do turno, −1 acúmulo no fim. Teto **5**. Ignora armadura e escudo |
+| Veneno | **2 fixos** por turno, teto **4** turnos, renova pelo maior. Ignora armadura e escudo |
+| Crítico | **1,5×**, e sempre **condicional** — nunca sorte. Alvo isolado (Pombo) · alvo travado (Cael) · 3 Cargas (Parabólica) · o quarto tiro (Corvo) · sempre (Ato Final) · das sombras (Rasante Final) |
+| Atordoamento | **dois heróis só** (Taxista e Valti), e o do Valti exige o alvo **dentro de uma armadilha dele**. **Sem cadeia**: sair de um atordoamento concede Tenacidade automaticamente |
+| Banimento | **um herói** (Zhet, nela mesma). 1 turno · não é alvo · não sofre dano · **não ocupa hexágono** · não acende visão · volta na **mesma casa** no início do próprio turno |
+| Invisibilidade | **um herói** (Pombo Ciborgue). **Ward revela** — é a única fonte de visão que pega o invisível. Atacar entrega a posição. Revelado vence em qualquer lugar |
+| Cópia | **um herói** (Arden). Registra a última habilidade **inimiga** que o acertou; **Ultimate nunca entra**, cópia de cópia nunca entra, **um uso**, e os autos aparecem na ficha dele |
+| Lentidão | **−2 casas** de caminhada, mínimo **1**, e perde o passo grátis de Ágil. Continua agindo — não é Prende |
+| Zona | condição posta no **chão**: quem **começa o turno dentro** a recebe. Prazo em **turnos do adversário** (2), nunca em rodadas. Desde a v45 pendura **qualquer** condição, não só veneno |
+| Indicadores de estado | até **3 ícones** ao lado do totem (ordenados por consequência, com `+N` quando sobra) + a etiqueta grande. Seção **CONDIÇÕES** na ficha, com tooltip **de toque** — no celular não existe hover |
 | Cura de base | **3 por rodada** na própria base. Com inimigo a **2 ou menos**, trata **1 vez** e para até ele sair de perto |
 | Alcance | teto de **4**, itens incluídos |
 | Quem começa | **cara ou coroa** no início da partida |
@@ -189,6 +202,17 @@ encolher e o mapa se redimensionar — com o dedo encostado. Medido: a casa sob 
 os 44 de referência de toque. Não é conserto de CSS: exigiria menos hexágonos ou deslocar-e-
 ampliar. Nesse tamanho a lista de comando mostra uma linha por vez e rola. Ver v0.5.6.
 **Em 9×9 (v0.6) o aperto é maior** — o hexágono encolhe de novo. Ainda não reavaliado em tela pequena.
+
+## O script de medição novo
+
+```
+node sim/condicoes.js 200        # as condições e os recursos aparecem na mesa?
+```
+
+Dirige a **IA de verdade** nos dois lados, sorteando os vinte heróis, e olha o
+tabuleiro ao fim de cada turno. Serve para achar **condição que é código morto**
+(0% das partidas) e **condição que virou clima** (presente em todo mundo, sempre).
+Foi ele que encontrou o bug da Marca — que era mais velho que a v45.
 
 ## Como testar rápido
 

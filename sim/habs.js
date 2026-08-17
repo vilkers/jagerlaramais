@@ -52,6 +52,18 @@ function valor(ef, F, P, escala) {
      O único desconto é a morte do alvo antes de o prazo vencer, e a esse preço
      o dano já foi feito de outro jeito. */
   if (ef.dot) v += ef.dot.dano * ef.dot.rodadas;
+  /* v45 — o dano das condições, na mesma moeda das outras linhas: sangramento
+     custa 1 por acúmulo e decai (3 acúmulos = 3+2+1), veneno custa 2 por turno.
+     O resto das condições não é dano e sai na coluna `utilidade`, que é onde
+     ficam as coisas que não cabem em ponto de vida. */
+  (ef.cond || []).forEach(c => {
+    if (c.t === "sangramento") { const n = c.st || 1; v += n * (n + 1) / 2; }
+    if (c.t === "veneno") v += (c.tu || 1) * 2;
+  });
+  if (ef.consome) v += 3 * ef.consome.danoPorStack * 0.5;   // metade: depende de ter empilhado
+  if (ef.bonusCond) v += ef.bonusCond.dano * 0.5;           // metade: depende do alvo estar assim
+  if (ef.custoVida) v -= ef.custoVida;                      // é preço, e conta como preço
+  if (ef.drena) v += golpe(ef.dano || 1) * 0.5;
   /* ZONA vale metade do que cobraria cheia: ela só paga se o adversário estiver
      (ou insistir em ficar) dentro. Território negado que o outro simplesmente
      contorna vale o contorno, não o dano — e contornar é o resultado comum. */
@@ -66,6 +78,30 @@ function utilidade(ef) {
   if (ef.puxar) u.push("puxa");
   if (ef.empurrar) u.push("empurra");
   if (ef.intocavel) u.push("intocável");
+  /* v45 — o vocabulário novo. Tudo aqui é coisa que decide partida e não cabe em
+     ponto de vida: um turno tirado do adversário, uma peça fora do tabuleiro, uma
+     informação que ninguém tinha. A coluna existe justamente para o script não
+     acusar de "fraca" uma habilidade cujo valor não é dano. */
+  const nomes = { atordoado: "ATORDOA", silenciado: "silencia", lentidao: "lentidão",
+                  vulneravel: "vulnerável", invisivel: "INVISÍVEL", tenacidade: "tenacidade",
+                  marcado: "marca", revelado: "revela", sangramento: "sangra", veneno: "veneno",
+                  catarino: "marca do Catarino" };
+  [...(ef.cond || []), ...(ef.condEu || []), ...(ef.condVizinhos || []),
+   ...(ef.condRaio || []), ...(ef.condAliadosPerto || []), ...(ef.condSeNaZona || [])]
+    .forEach(c => { const n = nomes[c.t] || c.t; if (!u.includes(n)) u.push(n); });
+  if (ef.baneEu) u.push("BANE-SE");
+  if (ef.troca) u.push("troca de lugar");
+  if (ef.copia) u.push("COPIA");
+  if (ef.revelaRaio) u.push("revela " + ef.revelaRaio);
+  if (ef.limpa || ef.limpaEu || ef.limpaAliados) u.push("limpa");
+  if (ef.recuaLivre) u.push("recua grátis");
+  if (ef.critSempre || ef.critSe) u.push("crítico");
+  if (ef.escudoAliados) u.push("escuda aliados");
+  if (ef.recurso) u.push("recarrega recurso");
+  if (ef.alcanceTurno) u.push("+alcance no turno");
+  if (ef.zona) u.push("zona");
+  if (ef.espalha) u.push("espalha");
+  if (ef.execPorStack || ef.execSeCond) u.push("execução escalável");
   if (ef.doar) u.push("doa dado");
   if (ef.ward) u.push("ward");
   if (ef.executa) u.push("executa " + ef.executa);

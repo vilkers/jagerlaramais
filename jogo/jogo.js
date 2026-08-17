@@ -83,7 +83,12 @@ function auraDe(h){
   return J.times[h.t].herois.some(o=>o!==h&&!o.morto&&(o.itens||[]).some(i=>ITEM[i].ef.aura)
     && dist(...h.pos,...o.pos)<=1) ? 1 : 0;
 }
-const poderTotal=h=>h.poder+h.extraPoder+bonus(h,"poder")+auraDe(h);
+/* `poderPassivo` entra AQUI e não como buff porque passiva não tem prazo: a
+   Insaciável ganha os +2 no instante em que cai abaixo da metade e perde no
+   instante em que se cura. Somar por fora seria um sinalizador para alguém
+   lembrar de zerar — o erro que este arquivo já pagou três vezes.
+   `poderTotal` continua `const`: quem precisa mudar Poder usa aplicaBuff. */
+const poderTotal=h=>h.poder+h.extraPoder+bonus(h,"poder")+auraDe(h)+poderPassivo(h);
 
 /* ---------- DEFENDER JUNTO DA TORRE ----------
    +1 de Armadura para quem está encostado numa torre VIVA do próprio time. É a
@@ -97,13 +102,14 @@ const poderTotal=h=>h.poder+h.extraPoder+bonus(h,"poder")+auraDe(h);
 const ARM_TORRE=1;
 const sobTorreAmiga=h=>(h.t===0||h.t===1)&&J.torres.some(x=>
   x.t===h.t&&x.vida>0&&dist(...h.pos,...ROTAS[x.rota][x.i])<=1);
-const armTotal=h=>h.arm+bonus(h,"arm")+(sobTorreAmiga(h)?ARM_TORRE:0);
+const armTotal=h=>Math.max(0,h.arm+bonus(h,"arm")+(sobTorreAmiga(h)?ARM_TORRE:0)
+  -(temCond(h,"vulneravel")?COND_NUM.vulneravelArm:0));
 /* TETO DE ALCANCE. Sem ele o Corvo (base 4) somava Cetro +1 e Lente +2 e
    atirava a SETE hexágonos — atravessava meio tabuleiro sem sair do lugar, que
    foi a queixa "os range tão conseguindo 4, 5 hexágonos". Quatro é o teto: ainda
    é o dobro do corpo a corpo, e ainda dá para fugir andando. */
 const ALCANCE_MAX=4;
-const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc"));
+const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc")+(h.alcTurno||0));
 const ehAgil=h=>h.agil||bonus(h,"agil")>0;
 
 /* ---------- GEOMETRIA DO MAPA ---------- */
@@ -820,10 +826,440 @@ function iaEscolheRotacao(t){
    Muralha durasse, e agora existe uma classe de dano que responde a ele. Em
    troca, o número é pequeno e não escala com o dado: quem quer matar continua
    precisando bater. */
+/* Compatibilidade: `DOTS` era o registro das duas condições que existiam antes da
+   v45. Continua apontando para as mesmas duas entradas do registro central, para
+   que zona, log e teste antigo não precisem saber que a casa mudou de dono. */
 const DOTS={
-  sangramento:{n:"sangramento", selo:"SANGRANDO",   ico:"🩸"},
-  veneno:     {n:"envenenamento", selo:"ENVENENADO", ico:"☠"}
+  sangramento:{n:"sangramento",   selo:CONDS.sangramento.selo, ico:CONDS.sangramento.ico},
+  veneno:     {n:"envenenamento", selo:CONDS.veneno.selo,      ico:CONDS.veneno.ico}
 };
+
+/* ═══════════════════════════════════════════════════════════════════
+   O SISTEMA CENTRAL DE CONDIÇÕES (v45)
+   ═══════════════════════════════════════════════════════════════════
+   Uma porta para aplicar, uma para processar, uma para consultar. O registro é
+   `CONDS`, em data/catalogo.js — quem quiser condição nova escreve lá e não
+   toca em nada daqui.
+
+   A LIÇÃO QUE ESTE ARQUIVO JÁ APRENDEU DUAS VEZES e que vale aqui de novo:
+   estado derivado não desatualiza, sinalizador desatualiza. Por isso a condição
+   é um ITEM NUMA LISTA com prazo próprio, e não um campo booleano que alguém
+   precisa lembrar de zerar. `h.conds` é a única verdade; `estaAtordoado`,
+   `temCond` e os indicadores todos leem dela.
+
+   O CICLO, e ele é assimétrico de propósito:
+     início do turno do portador → cobra o dano (sangramento, veneno, estouro)
+     fim    do turno do portador → gasta a duração / gasta 1 acúmulo
+   Cobrar e gastar no mesmo instante fazia `atordoado por 1 turno` não atordoar
+   nada: ele nascia, era cobrado e morria antes de o jogador tentar agir. */
+
+const condsDe=h=>(h.conds||(h.conds=[]));
+const condDe=(h,t)=>(h.conds||[]).find(c=>c.t===t)||null;
+const temCond=(h,t)=>!!condDe(h,t);
+const stacksDe=(h,t)=>{ const c=condDe(h,t); return c?(c.st||c.tu||0):0; };
+const condsMalignas=h=>condsDe(h).filter(c=>CONDS[c.t]&&CONDS[c.t].mal);
+
+/* CONTROLE é a família que a Tenacidade responde, e `preso` entra nela mesmo
+   sendo campo antigo — o jogador não distingue "estou preso" de "estou lento"
+   por qual variável guarda o quê. */
+const ehControle=t=>t==="preso"||(CONDS[t]&&CONDS[t].ctrl);
+
+/* Aplica (ou renova) uma condição. É a ÚNICA porta.
+   `st` acumula, `tu` renova pelo maior — a distinção é do registro, não do
+   chamador: quem aplica só diz quanto quer. */
+function aplicaCond(alvo,t,{st=0,tu=0,dono=null,quieto=false}={}){
+  if(!alvo||alvo.morto||!CONDS[t])return false;
+  const d=CONDS[t];
+  /* alvo que não é herói (o morador do poço) só aceita o que faz sentido nele:
+     ele não anda, não age e não tem ficha. Regra explícita, §39 do desenho. */
+  if(ehEpico(alvo)) return false;
+  /* TENACIDADE — o antídoto de controle, e o freio de cadeia de atordoamento */
+  /* A Tenacidade é CARGA, não prazo: anular gasta ela INTEIRA, não um turno
+     dela. Decrementar deixava um herói com `tu:2` anulando dois controles, o que
+     na prática é imunidade — e imunidade a controle não tem contrajogo. */
+  if(ehControle(t)&&temCond(alvo,"tenacidade")){
+    removeCond(alvo,"tenacidade","silencio");
+    reg("b",`${CONDS.tenacidade.ico} TENACIDADE — ${alvo.n} anula ${d.n}`);
+    seloCond(alvo,"TENACIDADE!","bom");
+    return false;
+  }
+  /* BANIDO não recebe nada: ele não está no tabuleiro para receber */
+  if(temCond(alvo,"banido")&&t!=="banido")return false;
+
+  const ja=condDe(alvo,t);
+  const teto=d.max||99;
+  if(ja){
+    if(d.pilha) ja.st=Math.min(teto,(ja.st||0)+(st||1));
+    else        ja.tu=Math.min(teto,Math.max(ja.tu||0,tu||1));
+    ja.dono=dono||ja.dono;
+  }else{
+    const c={t,dono};
+    if(d.pilha) c.st=Math.min(teto,st||1);
+    else        c.tu=Math.min(teto,tu||1);
+    condsDe(alvo).push(c);
+  }
+  const q=d.pilha?` ×${condDe(alvo,t).st}`:(condDe(alvo,t).tu>1?` (${condDe(alvo,t).tu} turnos)`:"");
+  reg("b",`${d.ico} ${alvo.n} está ${d.selo.toLowerCase()}${q}`);
+  if(!quieto) seloCond(alvo,d.selo+"!",d.mal?"mal":"bom");
+  /* efeitos que disparam NO INSTANTE da aplicação */
+  if(t==="banido") entraEmBanimento(alvo);
+  if(t==="catarino") checaEstouroCatarino(alvo,dono);
+  return true;
+}
+/* remove de vez */
+function removeCond(alvo,t,motivo){
+  const i=(alvo.conds||[]).findIndex(c=>c.t===t);
+  if(i<0)return false;
+  alvo.conds.splice(i,1);
+  if(CONDS[t]&&motivo!=="silencio")
+    reg("b",`${CONDS[t].ico} ${alvo.n} — ${CONDS[t].n} terminou`);
+  if(motivo!=="silencio") seloCond(alvo,CONDS[t].n.toUpperCase()+" ACABOU","fim");
+  return true;
+}
+/* gasta uma carga: some se era a última */
+function gastaCond(alvo,t){
+  const c=condDe(alvo,t); if(!c)return false;
+  if(CONDS[t].pilha){ c.st--; if(c.st<=0) removeCond(alvo,t,"silencio"); }
+  else { c.tu--; if(c.tu<=0) removeCond(alvo,t,"silencio"); }
+  return true;
+}
+/* LIMPEZA — o contrajogo genérico. Tira as `n` piores condições ruins.
+   A ordem é a de consequência: o que impede jogar sai antes do que só dói. */
+const ORDEM_LIMPEZA=["atordoado","silenciado","lentidao","veneno","sangramento",
+                     "catarino","marcado","vulneravel","revelado"];
+function limpaCond(alvo,n=1){
+  let saiu=0;
+  for(const t of ORDEM_LIMPEZA){
+    if(saiu>=n)break;
+    if(temCond(alvo,t)){ removeCond(alvo,t); saiu++; }
+  }
+  if(alvo.preso&&saiu<n){ alvo.preso=0; saiu++; reg("b",`${alvo.n} não está mais preso`); }
+  if(saiu) seloCond(alvo,"LIMPO","bom");
+  return saiu;
+}
+/* ---------- BANIMENTO ----------
+   As regras, todas explícitas, porque o desenho exigiu que nenhuma ficasse
+   implícita (§9):
+     · não é alvo de nada — habilidade, respingo, zona, torre, épico;
+     · não sofre dano de nenhuma fonte, inclusive condição já pendurada;
+     · NÃO ocupa hexágono: outro herói pode passar e parar onde ele estava;
+     · não acende visão e não conta presença de rota (a onda não o vê);
+     · o retorno é no INÍCIO do próprio turno, na MESMA casa — e se ela estiver
+       ocupada, na casa livre mais próxima. Previsível de propósito: o
+       adversário sabe onde ele reaparece, e é isso que faz o Banimento ser
+       jogada e não fuga grátis;
+     · a recarga não existe neste jogo (o dado é a recarga), então nada corre;
+     · dura 1 turno. Sempre 1. `max:1` no registro garante que nem renovando
+       passa disso. */
+function entraEmBanimento(h){
+  h.voltaEm=[...h.pos];
+  reg("b",`${CONDS.banido.ico} ${h.n} sai do tabuleiro — volta no início do próprio turno`);
+}
+function voltaDoBanimento(h){
+  const alvo=h.voltaEm||h.pos;
+  h.pos = em(...alvo) ? (casaLivrePerto(alvo)||h.pos) : [...alvo];
+  h.voltaEm=null;
+  removeCond(h,"banido","silencio");
+  reg("b",`${CONDS.banido.ico} ${h.n} volta ao tabuleiro`);
+  seloCond(h,"DE VOLTA","bom");
+}
+function casaLivrePerto(p){
+  const v=vizinhos(...p).find(q=>noTab(...q)&&!em(...q)&&!ehBloqueado(...q));
+  return v||null;
+}
+/* está no tabuleiro? morto e banido não estão, e é UMA pergunta em vez de duas
+   espalhadas — `em`, visão, presença de rota e desempilhamento leem daqui */
+const noJogo=h=>!h.morto&&!temCond(h,"banido");
+
+/* ---------- ESTOURO DA MARCA DO CATARINO ----------
+   A única condição do jogo que resolve sozinha ao chegar no teto. Mora aqui e
+   não na passiva porque a REGRA é da marca; a passiva só a aplica. */
+function checaEstouroCatarino(alvo,dono){
+  const c=condDe(alvo,"catarino");
+  if(!c||c.st<(CONDS.catarino.max||3))return;
+  removeCond(alvo,"catarino","silencio");
+  const d=COND_NUM.catarinoEstouro;
+  alvo.vida-=d;
+  reg("b",`${CONDS.catarino.ico} O CILINDRO ESTOURA — ${d} em ${alvo.n}, `
+         +`ignorando armadura e escudo (${Math.max(0,alvo.vida)}/${alvo.vidaMax})`);
+  fx(alvo.pos,-d,"dano"); seloCond(alvo,"CILINDRO!","mal");
+  if(alvo.vida<=0) mata(alvo,dono||maisPertoDe(alvo,1-alvo.t));
+}
+
+/* ---------- PROCESSAMENTO: INÍCIO DO TURNO ----------
+   Cobra o que dói. Substitui `cobraDots`, que continua existindo como apelido.
+   Ignora armadura e escudo, pela mesma razão de sempre: não é o golpe chegando,
+   é o golpe que já chegou. */
+function processaCondsInicio(t){
+  J.times[t].herois.forEach(h=>{
+    if(temCond(h,"banido")) voltaDoBanimento(h);
+    if(h.morto||!h.conds||!h.conds.length)return;
+    /* o autor é guardado ANTES de qualquer remoção: a última cobrança é
+       justamente a que mata, e é também a que tira a condição da lista. Sem
+       isto o ouro da morte ia para o vizinho mais próximo. */
+    let autor=null, perdeu=0;
+    const sang=condDe(h,"sangramento");
+    if(sang){ const d=sang.st*COND_NUM.sangramentoPorStack;
+      h.vida-=d; perdeu+=d; autor=sang.dono||autor;
+      reg("b",`${CONDS.sangramento.ico} ${h.n} perde ${d} de sangramento `
+             +`(${Math.max(0,h.vida)}/${h.vidaMax})`); }
+    const ven=condDe(h,"veneno");
+    if(ven&&h.vida>0){ const d=COND_NUM.venenoDano;
+      h.vida-=d; perdeu+=d; autor=ven.dono||autor;
+      reg("b",`${CONDS.veneno.ico} ${h.n} perde ${d} de veneno `
+             +`(${Math.max(0,h.vida)}/${h.vidaMax})`); }
+    if(perdeu) fx(h.pos,-perdeu,"dano");
+    if(h.vida<=0) mata(h,autor||maisPertoDe(h,1-h.t));
+  });
+}
+/* ---------- PROCESSAMENTO: FIM DO TURNO ----------
+   Gasta prazo. Aqui e só aqui — se a duração caísse no início, junto da
+   cobrança, toda condição de 1 turno morreria antes de valer. */
+function processaCondsFim(t){
+  J.times[t].herois.forEach(h=>{
+    if(!h.conds||!h.conds.length)return;
+    const eraAtordoado=temCond(h,"atordoado");
+    [...h.conds].forEach(c=>{
+      const d=CONDS[c.t]; if(!d)return;
+      if(c.t==="banido")return;              // o banimento sai no retorno, não aqui
+      if(d.pilha){ c.st--; if(c.st<=0) removeCond(h,c.t); }
+      else       { c.tu--; if(c.tu<=0) removeCond(h,c.t); }
+    });
+    /* SEM CADEIA DE ATORDOAMENTO. Sair de um atordoamento deixa Tenacidade:
+       o próximo controle que chegar é anulado. É o que impede
+       STUN → STUN → STUN → jogador que nunca jogou. */
+    if(eraAtordoado&&!temCond(h,"atordoado"))
+      aplicaCond(h,"tenacidade",{tu:2,quieto:true});
+  });
+}
+/* ═══════════════════════════════════════════════════════════════════
+   PASSIVAS — registro e barramento de eventos (v45)
+   ═══════════════════════════════════════════════════════════════════
+   O desenho proibiu `if (heroi.nome === "X")` espalhado pelo projeto, e a saída
+   é esta: o herói declara no catálogo `pas:{id}`, e o id é a chave aqui. Uma
+   passiva é uma função pequena pendurada num evento. Para dar passiva a um
+   herói novo escrevem-se DUAS linhas — uma no catálogo, uma neste objeto — e
+   nenhum outro arquivo sabe que ela existe.
+
+   Os eventos que o motor dispara, e de onde:
+     inicioTurno   iniciaTurno, para cada herói vivo do time da vez
+     fimTurno      encerraTurno
+     hit           usaHab, quando uma habilidade ofensiva acerta um herói
+     danoCausado   aplicaDano, depois de o dano entrar
+     danoRecebido  aplicaDano, no alvo
+     matou         mata, no autor
+     morreu        mata, em todo herói a alcance de quem morreu
+     andou         moveAte
+     habUsada      usaHab, no fim
+
+   Uma passiva pode também responder a PERGUNTAS, e aí não é evento e sim
+   consulta: `poder` (soma de Poder), `crit` (este golpe é crítico?),
+   `reduzDano` (o aliado colado sofre menos), `veMato` (a visão atravessa).
+   Quem pergunta são `poderTotal`, `ehCritico`, `aplicaDano` e `campoDeVisao`. */
+
+const PASSIVAS={
+
+  /* ---- TOPO ---- */
+  pontoDeOnibus:{ inicioTurno(h){
+    const perto=vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t&&!o.morto);
+    perto.forEach(o=>aplicaCond(o,"lentidao",{tu:1,dono:h}));
+  }},
+
+  chinelada:{ hit(h,alvo){ aplicaCond(alvo,"sangramento",{st:1,dono:h,quieto:true}); }},
+
+  miasma:{ inicioTurno(h){
+    vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t&&!o.morto)
+      .forEach(o=>aplicaCond(o,"veneno",{tu:1,dono:h}));
+  }},
+
+  /* a única passiva que responde a duas perguntas: cura no dano e Poder na
+     desvantagem. Duas linhas, uma frase — é o teto de complexidade do §14. */
+  insaciavel:{
+    poder:h=>(h.vida<=h.vidaMax/2?2:0),
+    danoCausado(h,alvo,d){
+      if(h.morto||h.semCura)return;
+      const q=h.vida<=h.vidaMax/2?4:2;
+      h.vida=Math.min(h.vidaMax,h.vida+q);
+      reg("b",`${h.n} bebe ${q} de vida (${h.vida}/${h.vidaMax})`);
+    }},
+
+  /* ---- SELVA ---- */
+  /* `tu:2` e não `tu:1`, e a razão vale para TODA condição que o herói põe em si
+     mesmo ou num aliado: o prazo cai no FIM do turno de quem carrega, então
+     `tu:1` aplicado no próprio turno nasce e morre antes de o adversário jogar —
+     invisibilidade que ninguém teve chance de não ver. Dois turnos cobrem
+     exatamente uma vez do adversário, que é a janela real.
+     Para condição posta num INIMIGO a conta é a outra: `tu:1` já é um turno
+     inteiro dele. A assimetria é do relógio, não do desenho. */
+  vooSilencioso:{ inicioTurno(h){
+    const colado=vizinhos(...h.pos).map(p=>em(...p)).some(o=>o&&o.t!==h.t&&!o.morto);
+    if(!colado) aplicaCond(h,"invisivel",{tu:2,dono:h,quieto:temCond(h,"invisivel")});
+  }},
+
+  digestao:{ morreu(h,quemMorreu){
+    if(h.morto||dist(...h.pos,...quemMorreu.pos)>2)return;
+    h.vida=Math.min(h.vidaMax,h.vida+4);
+    reg("b",`${h.n} digere o campo de batalha — cura 4 (${h.vida}/${h.vidaMax})`);
+  }},
+
+  olhoDeMateiro:{ veMato:()=>true },
+
+  contabilidade:{ matou(h,alvo){
+    h.ouro+=3;
+    const amigo=J.times[h.t].herois.filter(o=>o!==h&&!o.morto)
+      .sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+    if(amigo)amigo.ouro+=2;
+    reg("b",`${h.n} cobra a cova — +3 de ouro${amigo?`, +2 para ${amigo.n}`:""}`);
+  }},
+
+  /* ---- MEIO ---- */
+  captacao:{
+    hit(h){ ganhaRecurso(h,"carga",1); },
+    crit(h){ if((h.rec&&h.rec.carga||0)>=3){ zeraRecurso(h,"carga"); return "3 CARGAS"; } return null; }
+  },
+
+  passoDeSombra:{ danoCausado(h,alvo){
+    if(h.morto||!alvo.pos||temCond(h,"banido"))return;
+    const de=[...h.pos];
+    desloca(h,alvo.pos,1,1);
+    if(de[0]!==h.pos[0]||de[1]!==h.pos[1]) reg("b",`${h.n} recua uma casa na sombra`);
+  }},
+
+  coleta:{
+    hit(h){ ganhaRecurso(h,"sucata",1); },
+    morreu(h,quemMorreu){ if(!h.morto&&dist(...h.pos,...quemMorreu.pos)<=3) ganhaRecurso(h,"sucata",1); }
+  },
+
+  /* JURISPRUDÊNCIA — a metade que registra. A metade que executa é a Ultimate
+     `copia`. Os limites moram aqui, e são eles que impedem loop e referência
+     quebrada (§10): só habilidade INIMIGA, só slot 0 ou 1 (Ultimate nunca),
+     nunca uma habilidade que já seja cópia, e guarda-se o texto do efeito, não
+     um ponteiro para o herói — o autor pode morrer, trocar de item ou nem estar
+     mais em campo quando o Tribunal abrir. */
+  jurisprudencia:{ danoRecebido(h,quem,d,ctx){
+    if(!ctx||ctx.slot===undefined||ctx.slot>=2)return;
+    if(!quem||quem.t===h.t||ctx.copia)return;
+    h.autos={n:ctx.hb.n, de:quem.n, ef:ctx.hb.ef, f:ctx.hb.f, alvo:ctx.hb.alvo, slot:ctx.slot};
+    reg("b",`⚖ ${h.n} registra ${ctx.hb.n} nos autos`);
+  }},
+
+  /* ---- ATIRADOR ---- */
+  pulmaoDeAco:{
+    hit(h,alvo){
+      if(h.ultimoAlvo===alvo.id) ganhaRecurso(h,"folego",1);
+      else { zeraRecurso(h,"folego"); ganhaRecurso(h,"folego",1); }
+      h.ultimoAlvo=alvo.id;
+    },
+    danoBonus:h=>2*((h.rec&&h.rec.folego)||0)
+  },
+
+  juros:{ crit(h,alvo){
+    if(!alvo)return null;
+    if(alvo.preso)return "ALVO PRESO";
+    if(temCond(alvo,"atordoado"))return "ALVO ATORDOADO";
+    if(temCond(alvo,"lentidao"))return "ALVO LENTO";
+    return null;
+  }},
+
+  marcaDoCatarino:{ hit(h,alvo){ aplicaCond(alvo,"catarino",{st:1,dono:h}); }},
+
+  quatroTiros:{ crit(h){
+    if((h.rec&&h.rec.cartucho||0)>=3){ zeraRecurso(h,"cartucho"); return "QUARTO TIRO"; }
+    ganhaRecurso(h,"cartucho",1); return null;
+  }},
+
+  /* ---- SUPORTE ---- */
+  tristeza:{
+    danoRecebidoAliado(h,vitima){ if(vitima!==h) ganhaRecurso(h,"tristeza",1); },
+    morreu(h,quemMorreu){ if(quemMorreu.t===h.t&&quemMorreu!==h) ganhaRecurso(h,"tristeza",1); }
+  },
+
+  almasNaLanterna:{ morreu(h,quemMorreu){
+    if(h.morto||quemMorreu===h)return;
+    if(dist(...h.pos,...quemMorreu.pos)>3)return;
+    if(((h.rec&&h.rec.almas)||0)>=5)return;
+    ganhaRecurso(h,"almas",1); h.arm+=1;
+    reg("b",`${RECURSOS.almas.ico} ${h.n} recolhe uma alma — Armadura ${armTotal(h)}`);
+  }},
+
+  guardaCorpo:{ reduzDano:(h,alvo)=>(dist(...h.pos,...alvo.pos)<=1?2:0) },
+
+  videncia:{ inicioTurno(h){
+    const alvos=J.times[1-h.t].herois.filter(o=>!o.morto&&noJogo(o)
+      &&dist(...h.pos,...o.pos)<=4&&!visivelPara(o,h.t));
+    if(!alvos.length)return;
+    const o=alvos.sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+    aplicaCond(o,"revelado",{tu:1,dono:h});
+    reg("b",`${CONDS.revelado.ico} ${h.n} pressente ${o.n}`);
+  }}
+};
+
+/* a passiva declarada pelo herói, se o registro a conhecer */
+const passivaDe=h=>{ const d=CATALOGO[h.id]; return (d&&d.pas&&PASSIVAS[d.pas.id])||null; };
+
+/* DISPARO. Um evento, todos os heróis que se inscreveram nele. É a diferença
+   entre "cada passiva chamada de um lugar diferente do motor" e "um lugar que
+   chama todas": quem adiciona evento novo mexe em uma linha. */
+function dispara(ev,h,...args){
+  if(!h)return;
+  const p=passivaDe(h); if(!p||!p[ev])return;
+  try{ p[ev](h,...args); }catch(e){ /* passiva nunca derruba o turno */ }
+}
+/* eventos que interessam a TODO MUNDO no tabuleiro, não só ao dono da jogada */
+function disparaTodos(ev,...args){ todos().forEach(h=>dispara(ev,h,...args)); }
+
+/* ---------- RECURSOS DE PERSONAGEM ---------- */
+function ganhaRecurso(h,t,n){
+  if(!RECURSOS[t])return;
+  h.rec=h.rec||{};
+  const antes=h.rec[t]||0;
+  h.rec[t]=Math.min(RECURSOS[t].max,antes+n);
+  if(h.rec[t]!==antes) reg("b",`${RECURSOS[t].ico} ${h.n} — ${RECURSOS[t].n} ${h.rec[t]}/${RECURSOS[t].max}`);
+}
+function zeraRecurso(h,t){ if(h.rec) h.rec[t]=0; }
+const recursoDe=(h,t)=>((h.rec&&h.rec[t])||0);
+
+/* ---------- CONSULTAS QUE AS PASSIVAS RESPONDEM ---------- */
+const poderPassivo=h=>{ const p=passivaDe(h); return (p&&p.poder)?p.poder(h):0; };
+const danoPassivo =h=>{ const p=passivaDe(h); return (p&&p.danoBonus)?p.danoBonus(h):0; };
+const veMatoDeLonge=h=>{ const p=passivaDe(h); return !!(p&&p.veMato&&p.veMato(h)); };
+/* o quanto os aliados colados abatem do dano que chega neste herói */
+function reducaoDeAliados(alvo){
+  if(!alvo)return 0;
+  let r=0;
+  J.times[alvo.t].herois.forEach(o=>{
+    if(o===alvo||o.morto||!noJogo(o))return;
+    const p=passivaDe(o); if(!p||!p.reduzDano)return;
+    r+=p.reduzDano(o,alvo);
+  });
+  return r;
+}
+
+/* ---------- CRÍTICO ----------
+   Nunca por sorte. O desenho foi explícito: crítico com CONDIÇÃO, para o
+   adversário poder ver de longe que o golpe vem grande e ter o que fazer. Cada
+   caso abaixo é previsível olhando o tabuleiro — ou a peça diz (Marcado, Lento,
+   Invisível), ou o contador diz (Carga, Cartucho).
+   `ehCritico` devolve o MOTIVO, não um booleano: é o motivo que aparece na tela. */
+function ehCritico(h,hb,alvo){
+  const ef=hb.ef||{};
+  if(ef.critSempre) return "ATO FINAL";
+  if(ef.critSe==="isolado"&&alvo&&alvo.t!==undefined){
+    const acompanhado=J.times[alvo.t].herois.some(o=>o!==alvo&&!o.morto&&noJogo(o)
+      &&dist(...alvo.pos,...o.pos)<=2);
+    if(!acompanhado) return "ALVO ISOLADO";
+  }
+  if(ef.critSe==="eraInvisivel"&&temCond(h,"invisivel")) return "DAS SOMBRAS";
+  if(ef.critSe==="controlado"&&alvo&&(alvo.preso||temCond(alvo,"atordoado")||temCond(alvo,"lentidao")))
+    return "ALVO TRAVADO";
+  if(ef.critSe==="marcado"&&alvo&&temCond(alvo,"marcado")) return "ALVO MARCADO";
+  /* a passiva pergunta depois do efeito: assim uma habilidade pode declarar
+     crítico próprio sem gastar a contagem da passiva */
+  const p=passivaDe(h);
+  if(p&&p.crit&&(ef.dano||ef.danoFixo)) return p.crit(h,alvo);
+  return null;
+}
+
 /* ---------- ZONA — controle de área ----------
    A ward já provou que peça-no-mapa-com-prazo funciona neste motor, e a zona é a
    mesma ideia virada para o outro lado: em vez de acender o terreno, ela o
@@ -885,13 +1321,16 @@ const [RAIO_ATE,RAIO_ATE_ABERTO]=(()=>{
    ao lado, e é isso que faz existir escolha de onde plantar. */
 function campoDeVisao(t){
   const vistos=new Set();
-  const acende=(p,raio)=>{
+  const acende=(p,raio,atravessaMato)=>{
     if(!p)return;
-    const tabela = ehMato(...p) ? RAIO_ATE : RAIO_ATE_ABERTO;
+    const tabela = (atravessaMato||ehMato(...p)) ? RAIO_ATE : RAIO_ATE_ABERTO;
     const tab=tabela.get(k(...p));
     if(tab) tab[raio].forEach(x=>vistos.add(x));
   };
-  J.times[t].herois.filter(h=>!h.morto).forEach(h=>acende(h.pos,VISAO_HEROI));
+  /* herói banido não acende nada: ele não está lá. E o Olho de Mateiro do Valti
+     é a única fonte de visão que vê PARA DENTRO do mato de fora dele — a
+     passiva pergunta, `campoDeVisao` responde. */
+  J.times[t].herois.filter(h=>noJogo(h)).forEach(h=>acende(h.pos,VISAO_HEROI,veMatoDeLonge(h)));
   J.torres.filter(x=>x.t===t&&x.vida>0).forEach(x=>acende(ROTAS[x.rota][x.i],VISAO_TORRE));
   BASE[t].forEach(p=>acende(p,VISAO_BASE));
   /* a Frente de Onda é o creep: acende onde a sua onda está */
@@ -920,7 +1359,11 @@ function seloVisao(t){
   let x=0;
   const mix=n=>{ x=(Math.imul(x,31)+n)|0; };
   const hs=J.times[t].herois;
-  for(let i=0;i<hs.length;i++) mix(hs[i].pos[0]*13+hs[i].pos[1]*7+(hs[i].morto?1:0));
+  /* o estado de BANIMENTO entra no selo: um herói que sai do tabuleiro apaga a
+     visão dele, e sem este bit o cache continuaria acendendo o raio de uma peça
+     que não está mais lá. É o mesmo erro de magnitude que a v21 pagou. */
+  for(let i=0;i<hs.length;i++) mix(hs[i].pos[0]*13+hs[i].pos[1]*7
+    +(hs[i].morto?1:0)+(temCond(hs[i],"banido")?2:0));
   for(let i=0;i<J.torres.length;i++) if(J.torres[i].t===t) mix(J.torres[i].vida);
   mix(J.frentes.topo*7+J.frentes.meio*13+J.frentes.baixo*17);
   const w=J.times[t].wards||[];
@@ -935,6 +1378,18 @@ function visaoDe(t){
   return _visCache[t];
 }
 const enxergaCasa=(t,c,r)=>visaoDe(t).has(k(c,r));
+/* visão SÓ DE WARD, separada da geral. Existe porque a Invisibilidade precisa de
+   uma fonte de visão privilegiada e não de todas: a peça acende raio 2 e não
+   deveria enxergar o invisível colado nela. */
+function enxergaPorWard(t,c,r){
+  const ws=J.times[t].wards||[];
+  if(!ws.length)return false;
+  const alvo=k(c,r);
+  return ws.some(w=>{
+    const tab=(ehMato(...w.pos)?RAIO_ATE:RAIO_ATE_ABERTO).get(k(...w.pos));
+    return !!tab&&tab[VISAO_WARD].indexOf(alvo)>=0;
+  });
+}
 
 /* ---------- REVELADO POR TER ATACADO ----------
    Bater entrega a posição. Quem golpeia de dentro do mato fica visível para o
@@ -950,9 +1405,25 @@ const entregaPosicao=h=>{ h.revelou=[...h.pos]; };
 const reveladoPorAtaque=h=>!!h.revelou&&h.revelou[0]===h.pos[0]&&h.revelou[1]===h.pos[1];
 
 /* O herói `h` é visível para o time `t`? */
+/* A ORDEM AQUI É A REGRA, e cada linha tem contrajogo declarado:
+     1. os seus, você sempre vê;
+     2. BANIDO ninguém vê, nem o dono — ele não está no tabuleiro;
+     3. REVELADO vence tudo (é o que Ward-de-habilidade, Sinal Aberto, Ato Final
+        e a Vidência compram);
+     4. quem ATACOU entregou a posição, invisível ou não;
+     5. INVISÍVEL não é visto nem em campo aberto;
+     6. o resto é a névoa de sempre. */
 function visivelPara(h,t){
-  if(h.t===t||h.morto)return true;              // os seus você sempre vê
-  if(reveladoPorAtaque(h))return true;          // bateu: entregou onde está
+  if(h.t===t&&!temCond(h,"banido"))return true;
+  if(h.morto)return true;
+  if(temCond(h,"banido"))return false;
+  if(temCond(h,"revelado"))return true;
+  if(reveladoPorAtaque(h))return true;
+  /* A WARD É A RESPOSTA À INVISIBILIDADE, e é a resposta que o desenho nomeou
+     (§11 e §28). Névoa comum não pega o invisível; olho comprado e plantado
+     pega. É o que transforma "ele desapareceu" em "preciso usar Ward" em vez de
+     "não havia nada que eu pudesse fazer". */
+  if(temCond(h,"invisivel"))return enxergaPorWard(t,...h.pos);
   return enxergaCasa(t,...h.pos);
 }
 /* Escondido AGORA: fora do campo de visão inimigo. É a condição do bônus de
@@ -981,41 +1452,19 @@ function poeWard(t,pos){
    e foi descartada na mesa do desenho — dois assassinos sangrando o mesmo alvo
    viraria dano instantâneo com passos extras, que é justamente o que o efeito
    com prazo não deveria ser. */
+/* APELIDO HISTÓRICO. `poeDot` era a porta das duas únicas condições que existiam
+   antes da v45, e o `dano` que ela recebia virou número de balanceamento
+   centralizado (`COND_NUM`) — sangramento cobra por acúmulo, veneno cobra fixo.
+   A assinatura fica de pé porque zona, carta e teste antigo chamam por ela; o
+   parâmetro `dano` passa a ser lido como INTENSIDADE: quantos acúmulos de
+   sangramento, ou nada, no caso do veneno, que não tem intensidade. */
 function poeDot(alvo,quem,tipo,dano,rodadas){
-  if(!alvo||alvo.morto||!DOTS[tipo])return;
-  alvo.dots=alvo.dots||[];
-  const ja=alvo.dots.find(d=>d.tipo===tipo);
-  if(ja){ ja.dano=Math.max(ja.dano,dano); ja.rodadas=Math.max(ja.rodadas,rodadas); ja.dono=quem; }
-  else alvo.dots.push({tipo,dano,rodadas,dono:quem});
-  reg("b",`${alvo.n} está com ${DOTS[tipo].n} — ${dano} por rodada, ${rodadas} rodadas`);
+  if(!alvo||!CONDS[tipo])return;
+  if(tipo==="sangramento") aplicaCond(alvo,"sangramento",{st:Math.max(1,Math.round(dano||1)),dono:quem});
+  else                     aplicaCond(alvo,tipo,{tu:Math.max(1,rodadas||1),dono:quem});
 }
-/* Cobra os efeitos no início do turno do dono da peça, e só uma vez por rodada.
-   Ignora armadura e escudo — ver o comentário de DOTS. Não passa por aplicaDano
-   justamente por isso: aquele é o funil do golpe que CHEGA, e este é o do golpe
-   que já chegou. */
-function cobraDots(t){
-  J.times[t].herois.forEach(h=>{
-    if(h.morto||!h.dots||!h.dots.length)return;
-    /* o autor é guardado ANTES de a lista ser filtrada. Ler `h.dots[0].dono`
-       depois do filtro perdia o crédito exatamente no caso mais comum — a última
-       cobrança do efeito é justamente a que mata, e é também a que tira o efeito
-       da lista. O ouro da morte ia para o vizinho mais próximo em vez de para
-       quem aplicou. */
-    let autor=null;
-    h.dots.forEach(d=>{
-      if(h.vida<=0)return;
-      h.vida-=d.dano; autor=d.dono;
-      reg("b",`${DOTS[d.tipo].ico} ${h.n} perde ${d.dano} de ${DOTS[d.tipo].n} `
-             +`(${Math.max(0,h.vida)}/${h.vidaMax})`);
-      fx(h.pos,-d.dano,"dano");
-      d.rodadas--;
-    });
-    h.dots=h.dots.filter(d=>d.rodadas>0);
-    /* a morte por efeito credita o ouro a quem aplicou — mesmo que ele já tenha
-       morrido desde então. Herói morto continua existindo e continua tendo bolso. */
-    if(h.vida<=0) mata(h,autor||maisPertoDe(h,1-h.t));
-  });
-}
+/* idem: o nome antigo do início-de-turno */
+function cobraDots(t){ processaCondsInicio(t); }
 /* fallback de autoria: se o aplicador sumiu da mesa (não deveria acontecer, mas
    `mata` precisa de alguém para creditar), o crédito vai para o inimigo vivo mais
    próximo. Nunca fica sem dono, e nunca estoura. */
@@ -1038,7 +1487,11 @@ function zonasCobram(t){
       if(h.morto)return;
       if(dist(...h.pos,...z.pos)>z.raio)return;
       reg("b",`${h.n} começou o turno dentro de ${z.n}`);
-      poeDot(h,z.dono,z.tipo,z.dano,2);
+      /* a zona virou genérica na v45: ela pode pendurar QUALQUER condição, e não
+         só as duas de dano por turno. É o que faz a Armadilha do Cael e as
+         cascas do Valti serem território de verdade em vez de mais um veneno. */
+      if(z.cond) aplicaCond(h,z.cond.t,{st:z.cond.st||1,tu:z.cond.tu||1,dono:z.dono});
+      else       poeDot(h,z.dono,z.tipo,z.dano,2);
     });
     z.turnos--;
   });
@@ -1049,7 +1502,7 @@ function zonasCobram(t){
 function poeZona(t,pos,z){
   J.zonas=J.zonas||[];
   J.zonas.push({t,pos:[...pos],raio:z.raio||1,turnos:ZONA_TURNOS,
-                tipo:z.tipo,dano:z.dano,n:z.n||"uma zona",dono:z.dono});
+                tipo:z.tipo,dano:z.dano,cond:z.cond||null,n:z.n||"uma zona",dono:z.dono});
   reg(t?"c":"a",`${z.n||"zona"} criada — raio ${z.raio||1}, `
      +`os ${ZONA_TURNOS} próximos turnos do adversário`);
 }
@@ -1228,7 +1681,11 @@ function novo(){
         const b=CATALOGO[id];
         return{id,t,...b,vidaMax:b.vida,vida:b.vida,esc:0,ouro:0,pat:0,itens:[],veuAtivo:0,semCura:0,
           pos:[...BASE[t][i%2]], morto:0, agiu:0, preso:0, intoc:0, marca:0, recarga:0, extraPoder:0,
-          dots:[], curouSitiado:0, focoPoco:0};
+          dots:[], curouSitiado:0, focoPoco:0,
+          /* v45 — o estado que as condições e as passivas usam. Nasce vazio aqui,
+             e não na primeira aplicação, para que `h.conds.length` seja pergunta
+             segura em qualquer lugar do motor e de qualquer teste. */
+          conds:[], rec:{}, autos:null, voltaEm:null, alcTurno:0, andou:0, ultimoAlvo:null};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -1275,7 +1732,10 @@ const vivos=t=>J.times[t].herois.filter(h=>!h.morto);
    pressiona a rota e coleta acampamento normalmente — o adversário só não o VÊ.
    É a diferença entre a névoa desta versão e a rotação da v18, que tirava a peça
    do tabuleiro: aqui o Caçador nunca deixa de estar em algum lugar real. */
-const em=(c,r)=>todos().find(h=>!h.morto&&h.pos[0]===c&&h.pos[1]===r);
+/* Banido NÃO ocupa hexágono — é a regra explícita do §9. `em` é o lugar único
+   onde "tem alguém aqui?" é respondido, então passar por `noJogo` aqui resolve
+   de uma vez movimento, empurrão, desempilhamento, mira e zona. */
+const em=(c,r)=>todos().find(h=>noJogo(h)&&h.pos[0]===c&&h.pos[1]===r);
 const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
 
 /* ---------- FASE OCULTA ---------- */
@@ -1358,6 +1818,8 @@ function expiraDoTime(t){
     if(h.buffA){ h.arm-=h.buffA; h.buffA=0; }
     if(h.buffAgil){ h.agil=0; h.buffAgil=0; }
     h.focoPoco=0;
+    h.alcTurno=0;            /* o alcance emprestado pelo Encher o Pulmão */
+    h.andou=0;               /* usado pelo crítico condicional e pela IA */
   });
 }
 function iniciaTurno(){
@@ -1370,7 +1832,13 @@ function iniciaTurno(){
   /* a rotação NÃO mora mais aqui: desde a v38 o Caçador é reposicionado no
      instante da escolha, no início da rodada, e não no início do turno do dono */
   zonasCobram(t);
-  cobraDots(t);
+  /* ORDEM, e ela tem consequência: a condição cobra ANTES de a passiva rodar.
+     Sem isso o Miasma da Ilva envenenava um vizinho que ainda ia morrer de
+     veneno no mesmo instante, e o log contava a história ao contrário. */
+  processaCondsInicio(t);
+  /* PASSIVAS DE INÍCIO DE TURNO. Só do time da vez, e só de quem está em campo:
+     herói morto ou banido não aplica Lentidão em ninguém. */
+  J.times[t].herois.filter(h=>noJogo(h)).forEach(h=>dispara("inicioTurno",h));
   /* a Égide repõe DEPOIS da expiração, senão o escudo que ela deu morreria no
      mesmo instante em que é reposto */
   if(tm.barao>0&&tm.dadiva==="egide") daEgide(t);
@@ -1423,6 +1891,11 @@ function encerraPartida(vencedor,motivo,autor){
 }
 function encerraTurno(){
   if(J.fim!==null)return;
+  /* O PRAZO DAS CONDIÇÕES CAI AQUI, no fim do turno de quem as carrega. Cobrar e
+     gastar no mesmo instante (início) fazia `atordoado por 1 turno` nascer e
+     morrer antes de o jogador tentar agir — o atordoamento não atordoava nada. */
+  processaCondsFim(J.vez);
+  J.times[J.vez].herois.filter(h=>noJogo(h)).forEach(h=>dispara("fimTurno",h));
   /* PRESENÇA CONGELADA. A onda avança comparando quantos heróis cada time tem
      em cada rota, e essa contagem acontecia no fim da RODADA — ou seja, depois
      que o segundo jogador já tinha mexido. Ele via o posicionamento do
@@ -1600,24 +2073,49 @@ function fimDaRodada(){
 
 /* ---------- AÇÕES ---------- */
 /* calcula() mora na seção ESTADO DE INTERAÇÃO — é a versão baseada em `modo`. */
+/* ---------- LENTIDÃO ----------
+   A escolha de implementação, e por que ela e não as outras duas:
+
+     · "custa o dobro por casa" — o Dado Mestre é um bolo do TIME, então o
+       lento acabaria gastando o movimento dos outros quatro. Punia o time
+       inteiro por uma condição de um herói;
+     · "não pode andar" — isso é Prende, e o desenho foi explícito (§7) em que
+       Lentidão não é isso;
+     · TETO DE CASAS, que é o que está aqui. O lento anda 2 casas a menos do que
+       poderia, NUNCA menos de 1, e perde o passo grátis de Ágil. O custo em
+       movimento continua sendo o do caminho: quem paga é ele, não o time.
+
+   Nunca chega a zero de propósito: um herói lento continua jogando. */
+const LENTIDAO_CASAS=COND_NUM.lentidaoCasas;
+const temDescontoAgil=h=>ehAgil(h)&&!h.agilUsado&&!temCond(h,"lentidao");
+function tetoAndar(h){
+  let teto=J.mov.rest+(temDescontoAgil(h)?1:0);
+  if(temCond(h,"lentidao")) teto=Math.max(1,teto-LENTIDAO_CASAS);
+  return teto;
+}
 function moveAte(c,r){
   const h=selHeroi; if(!h)return;
+  if(temCond(h,"atordoado")||temCond(h,"banido"))return;
   /* ÁGIL — "a 1ª casa andada é grátis" era por MOVIMENTO, não por turno. Andando
      de 1 em 1 hexágono, todo passo custava zero: movimento infinito. Agora o
      desconto vale uma vez por turno, e `agilUsado` expira com o resto. */
-  const temDesconto = ehAgil(h) && !h.agilUsado;
+  const temDesconto = temDescontoAgil(h);
   /* o preço é o do CAMINHO, não o da linha reta: quem contorna o obstáculo paga
      o contorno. Sem isto, alcance e custo discordavam e o herói chegava de graça
      numa casa que a régua já dizia estar longe. */
   const andando=passosAte(h.pos,[c,r]);
   if(andando===null)return;                 // sem caminho: obstáculo fecha de vez
   const d=andando, custo=Math.max(0,d-(temDesconto?1:0));
+  if(d>tetoAndar(h))return;                 // lentidão: o teto é em CASAS
   if(temDesconto&&d>0) h.agilUsado=1;
   if(custo>J.mov.rest)return;
-  h.pos=[c,r]; J.mov.rest-=custo;
+  const de=[...h.pos];
+  h.pos=[c,r]; J.mov.rest-=custo; h.andou=(h.andou||0)+d;
   coletaAcampamento(h);
   reg(J.vez?"c":"a",
-    `${h.n} anda ${d} ${d>1?"casas":"casa"}${temDesconto&&d>0?" (ágil)":""} — movimento restante ${J.mov.rest}`);
+    `${h.n} anda ${d} ${d>1?"casas":"casa"}${temDesconto&&d>0?" (ágil)":""}`
+    +`${temCond(h,"lentidao")?" (lento)":""} — movimento restante ${J.mov.rest}`);
+  dispara("andou",h,de);
   calcula(); pinta();
 }
 /* ---------- FEITIÇOS DE INVOCADOR ---------- */
@@ -1760,7 +2258,6 @@ function atualizaAcampamentos(){
 function usaHab(alvo){
   const{h,forca}=ativo, hb=h.habs[habSel], F=forca, ef=hb.ef;
   if(F<hb.f)return;
-  const critico=ativo.seis;
   let txt=`${h.n} usa ${hb.n} (Força ${F})`;
 
   let bonusGank=0;
@@ -1772,7 +2269,18 @@ function usaHab(alvo){
     bonusGank=2;
     reg("b",`EMBOSCADA! ${h.n} atacou do mato sem ser visto: +2 de Força`);
   }
-  const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h)+bonusGank;
+  /* CRÍTICO é decidido ANTES de qualquer coisa mudar, e com o alvo ainda no
+     estado em que o jogador o viu — senão uma condição consumida no meio da
+     resolução tiraria o crítico que a tela já tinha prometido. */
+  const motivoCrit = (ef.dano||ef.danoFixo) ? ehCritico(h,hb,alvo) : null;
+  /* `custoVida` é pago primeiro: a Lâmina Sedenta é uma aposta, e quem aposta
+     paga antes de saber o resultado. Nunca mata o próprio dono — sobra 1. */
+  if(ef.custoVida){
+    const pago=Math.min(ef.custoVida,h.vida-1);
+    if(pago>0){ h.vida-=pago; fx(h.pos,-pago,"dano");
+      reg("b",`${h.n} paga ${pago} da própria vida (${h.vida}/${h.vidaMax})`); }
+  }
+  const poder=poderTotal(h)+(h.recarga?h.recarga:0)+dupla(h)+bonusGank+danoPassivo(h);
   const base=(mult)=>Math.round(F*mult*escalaDe(habSel))+poder;
 
   if(ef.doar){
@@ -1780,20 +2288,71 @@ function usaHab(alvo){
     alvo.agiu=0;
     reg(J.vez?"c":"a",`${h.n} doa um dado ${F} para ${alvo.n} — ele pode agir agora`);
     toast(`Dado ${F} doado para ${alvo.n}`,"");
+    if(ef.limpa) limpaCond(alvo,ef.limpa);
+    dispara("habUsada",h,hb,habSel,alvo);
     calcula(); return pinta();
   }
-  if(ef.escudo){ alvo.esc+=F+ef.escudo; txt+=` — escudo ${F+ef.escudo} em ${alvo.n}`; }
-  if(ef.cura){ if(h.semCura){txt+=' — CURA BLOQUEADA';} else {h.vida=Math.min(h.vidaMax,h.vida+ef.cura); txt+=` — cura ${ef.cura}`;} }
+  /* TRISTEZA — a única passiva que MULTIPLICA o efeito de uma habilidade em vez
+     de reagir a um evento. Fica aqui, no funil de cura e escudo, e é gasta na
+     hora: é o que faz o Emerson escolher QUANDO chorar. */
+  const luto = (ef.gastaTristeza?recursoDe(h,"tristeza"):0);
+  if(luto){ zeraRecurso(h,"tristeza");
+    reg("b",`${RECURSOS.tristeza.ico} ${h.n} descarrega ${luto} de Tristeza`); }
+
+  if(ef.escudo){ const q=F+ef.escudo+luto; alvo.esc+=q; txt+=` — escudo ${q} em ${alvo.n}`; }
+  if(ef.escudoAliados){
+    vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t===h.t&&!o.morto)
+      .forEach(o=>{ o.esc+=ef.escudoAliados; reg("b",`${o.n} recebe ${ef.escudoAliados} de escudo`); });
+  }
+  if(ef.cura){
+    const q=ef.cura+luto;
+    if(alvo.semCura){ txt+=' — CURA BLOQUEADA'; }
+    else { const quem=(hb.alvo==="al"?alvo:h);
+      quem.vida=Math.min(quem.vidaMax,quem.vida+q); txt+=` — cura ${q} em ${quem.n}`; }
+  }
   if(ef.ouro){ h.ouro+=ef.ouro; txt+=` (+${ef.ouro} de ouro)`; }
   if(ef.recarga){ h.recarga=ef.recarga; txt+=` — próximo golpe +${ef.recarga}`; }
+  if(ef.recurso){ h.rec=h.rec||{}; h.rec[ef.recurso.t]=Math.max(h.rec[ef.recurso.t]||0,ef.recurso.n);
+    reg("b",`${RECURSOS[ef.recurso.t].ico} ${h.n} — ${RECURSOS[ef.recurso.t].n} `
+           +`${h.rec[ef.recurso.t]}/${RECURSOS[ef.recurso.t].max}`); }
+  if(ef.alcanceTurno){ h.alcTurno=ef.alcanceTurno; txt+=` — alcance +${ef.alcanceTurno} até o próximo turno`; }
   if(ef.intocavel){ h.intoc=1; txt+=" — intocável até o próximo turno"; }
   if(ef.ward){
     /* a Ward nasce ONDE O HERÓI ESTÁ e acende um raio dali por algumas rodadas */
     poeWard(h.t,h.pos);
     txt+=` — ward posta aqui (raio ${VISAO_WARD}, ${WARD_RODADAS} rodadas)`;
   }
+  if(ef.revelaRaio) revelaAoRedor(h,ef.revelaRaio);
   if(ef.revive&&alvo.morto){ alvo.morto=Math.max(1,alvo.morto-1); txt+=` — ${alvo.n} volta 1 rodada antes`; }
-  if(ef.marca){ alvo.marca=ef.marca; txt+=` — ${alvo.n} marcado (+${ef.marca})`; }
+  /* MARCA. Era o campo `alvo.marca`, um número solto; virou condição de pilha,
+     e por isso agora aparece na peça, sai na limpeza e sai na morte como todas
+     as outras. O bônus que ela dá ao próximo golpe continua igual.
+
+     A CONDIÇÃO NO ALVO SÓ ENTRA DEPOIS DO DANO, e este é o conserto de um defeito
+     que era mais velho que a v45: `aplicaDano` consome a marca para somar o bônus,
+     e a marca era pendurada ANTES do golpe da própria habilidade que a criava. O
+     Arpão do Pyke marcava 3 e comia os 3 no mesmo instante; o Eco da Zhet marcava
+     4 e comia os 4. Na prática `marca` nunca existiu como marca — era só "+N de
+     dano neste golpe", e o texto da carta ("o próximo dano nele leva +N")
+     prometia uma coisa que o motor nunca fez. Medido com sim/condicoes.js: a
+     condição Marcado aparecia em 0% das partidas.
+
+     Agora é `poeCondsNoAlvo`, chamada DEPOIS da resolução do dano — e só se o
+     alvo sobreviveu, pela mesma razão de sempre: pendurar condição num defunto
+     sujaria o crédito da morte. Habilidade sem dano aplica na hora, porque para
+     ela não existe "depois do golpe". */
+  const poeCondsNoAlvo=()=>{
+    if(!alvo||alvo.morto||ehEpico(alvo))return;
+    if(ef.marca) aplicaCond(alvo,"marcado",{st:ef.marca,dono:h});
+    if(ef.cond)  ef.cond.forEach(c=>aplicaCond(alvo,c.t,{st:c.st,tu:c.tu,dono:h}));
+  };
+  if(ef.condEu)          ef.condEu.forEach(c=>aplicaCond(h,c.t,{st:c.st,tu:c.tu,dono:h}));
+  if(ef.limpa&&alvo)     limpaCond(alvo,ef.limpa);
+  if(ef.limpaEu)         limpaCond(h,ef.limpaEu);
+  if(ef.limpaAliados)    vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t===h.t&&!o.morto)
+                           .forEach(o=>limpaCond(o,ef.limpaAliados));
+  if(ef.condAliadosPerto)vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t===h.t&&!o.morto)
+                           .forEach(o=>ef.condAliadosPerto.forEach(c=>aplicaCond(o,c.t,{st:c.st,tu:c.tu,dono:h})));
   /* ZONA — o alvo é o CHÃO, não a peça. Nasce onde a habilidade aponta (ou sob o
      próprio herói, quando ela é `alvo:"eu"`), e continua lá depois do turno. */
   if(ef.zona){
@@ -1801,21 +2360,119 @@ function usaHab(alvo){
     poeZona(h.t,onde,{...ef.zona,n:hb.n,dono:h});
     txt+=` — ${hb.n} cobre ${ef.zona.raio||1} de raio pelos ${ZONA_TURNOS} próximos turnos do adversário`;
   }
+  /* CÓPIA — o Tribunal do Arden. Executa o efeito registrado pela Jurisprudência
+     como se fosse dele: Poder dele, dado dele, alvo escolhido por ele. Os
+     limites já foram aplicados no registro (nunca Ultimate, nunca cópia de
+     cópia); aqui resta o último, que é o que fecha o loop: a cópia roda com
+     `copia:1` no contexto, então ela própria não pode ser registrada por outro
+     Juiz nem por este. Um uso, e os autos ficam vazios. */
+  if(ef.copia){
+    if(h.autos){
+      const autos=h.autos; h.autos=null;
+      reg(J.vez?"c":"a",`⚖ TRIBUNAL — ${h.n} devolve ${autos.n}, de ${autos.de}`);
+      toast(`TRIBUNAL: ${autos.n}`,"");
+      const copiada={n:autos.n+" (cópia)",f:hb.f,alvo:autos.alvo,ef:{...autos.ef}};
+      /* a cópia não herda o que não é dano nem condição: sem ouro, sem cura de
+         inimigo, sem ward, sem zona e sem doar — ela é a SENTENÇA, não o kit */
+      ["ouro","ouroSeMatar","doar","ward","revive","recurso","copia","baneEu",
+       "custoVida","gastaTristeza","recuaLivre"].forEach(x=>delete copiada.ef[x]);
+      resolveCopia(h,copiada,alvo,F);
+    }else{
+      reg("b","⚖ os autos estão vazios — o Tribunal cai no dano em raio");
+    }
+  }
+
+  /* TROCA DE LUGAR — o Eco da Zhet. Ela vai para onde o alvo estava e o alvo para
+     onde ela estava, o que resolve num gesto o "cheguei perto para bater e agora
+     estou preso no meio deles".
+
+     ACONTECE ANTES DO DANO, e isso não é detalhe de ordem: o Passo de Sombra
+     (passiva dela) dispara em `danoCausado` e a tira uma casa de onde está. Com a
+     troca depois do dano, a passiva mexia na peça e a troca desfazia — as duas
+     metades do kit brigavam e a que valia era a última escrita. Trocando antes,
+     as duas somam: ela aparece do outro lado do alvo e recua um passo. */
+  if(ef.troca&&alvo&&!alvo.morto&&!ehEpico(alvo)&&noJogo(alvo)){
+    const meu=[...h.pos]; h.pos=[...alvo.pos]; alvo.pos=meu;
+    reg("b",`${h.n} troca de lugar com ${alvo.n}`);
+    seloCond(h,"TROCOU","bom");
+  }
 
   if(ef.dano||ef.danoFixo){
     let d = ef.danoFixo ? ef.danoFixo : base(ef.dano);
     if(ef.extra)d+=ef.extra;
     if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
-    if(ef.executa&&alvo.vida<=ef.executa){ reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n}`); mata(alvo,h); }
-    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo||!!ef.perfura);
+    if(ef.bonusCond&&temCond(alvo,ef.bonusCond.t))d+=ef.bonusCond.dano;
+    /* CONSOME — gasta a condição que o próprio kit plantou. É a sinergia interna
+       que o desenho pediu: a Ultimate não é "a básica com mais dano", ela cobra
+       a conta que as outras duas abriram. */
+    if(ef.consome&&temCond(alvo,ef.consome.t)){
+      const st=stacksDe(alvo,ef.consome.t);
+      d+=st*ef.consome.danoPorStack;
+      removeCond(alvo,ef.consome.t,"silencio");
+      reg("b",`${CONDS[ef.consome.t].ico} ${h.n} cobra ${st} `
+             +`acúmulo${st>1?"s":""} de ${CONDS[ef.consome.t].n}: +${st*ef.consome.danoPorStack}`);
+    }
+    if(ef.bonusPorRecurso){
+      const q=recursoDe(h,ef.bonusPorRecurso.t);
+      if(q){ d+=q*ef.bonusPorRecurso.dano; zeraRecurso(h,ef.bonusPorRecurso.t);
+        reg("b",`${RECURSOS[ef.bonusPorRecurso.t].ico} ${h.n} queima ${q} de `
+               +`${RECURSOS[ef.bonusPorRecurso.t].n}: +${q*ef.bonusPorRecurso.dano}`); }
+    }
+    if(motivoCrit){
+      d=Math.round(d*COND_NUM.critico);
+      reg("b",`CRÍTICO! ${h.n} — ${motivoCrit}`);
+      toast("CRÍTICO!","gank"); if(alvo&&alvo.pos) fx(alvo.pos,"CRÍTICO!","crit");
+      txt+=" — CRÍTICO";
+    }
+    /* EXECUÇÃO — o limiar deixou de ser número fixo em duas Ultimates: ele sobe
+       com a condição que o próprio kit plantou. Visível na peça do alvo, então o
+       adversário sabe quando saiu do alcance da execução. */
+    let limiar=ef.executa||0;
+    if(limiar&&ef.execPorStack) limiar+=stacksDe(alvo,ef.execPorStack.t)*ef.execPorStack.v;
+    if(limiar&&ef.execSeCond&&temCond(alvo,ef.execSeCond.t)) limiar+=ef.execSeCond.v;
+    if(limiar&&alvo.vida<=limiar&&!ehEpico(alvo)){
+      reg("b",`EXECUÇÃO — ${h.n} elimina ${alvo.n} (limiar ${limiar})`);
+      toast("EXECUÇÃO!","gank");
+      mata(alvo,h);
+    }
+    else aplicaDano(h,alvo,d,txt,habSel===2||h.habs[habSel].f>=5,!!ef.danoFixo||!!ef.perfura,
+                    {hb,slot:habSel});
+    /* a ordem dentro do golpe: dano → condição da habilidade → passiva de acerto.
+       A passiva vem por último para poder LER o que a habilidade deixou (é o que
+       faz a Chinelada empilhar em cima do Puxão de Orelha). */
+    poeCondsNoAlvo();
+    if(!ehEpico(alvo)&&!alvo.morto) dispara("hit",h,alvo);
     /* o efeito com prazo entra DEPOIS do dano e só se o alvo sobreviveu: pendurar
        sangramento num defunto não faz sentido e ainda sujaria o crédito da morte */
     if(ef.dot&&!alvo.morto) poeDot(alvo,h,ef.dot.tipo,ef.dot.dano,ef.dot.rodadas);
+    /* ESPALHA — o contágio da Ilva. Só espalha o que o alvo JÁ tinha: ela não
+       cria veneno de graça, ela transmite. Sem isso o Miasma bastaria. */
+    if(ef.espalha&&temCond(alvo,ef.espalha.t)&&alvo.pos){
+      const vizinhosDoAlvo=inimigosNosHex(vizinhos(...alvo.pos),h).filter(o=>!ehEpico(o));
+      vizinhosDoAlvo.forEach(o=>aplicaCond(o,ef.espalha.t,{tu:ef.espalha.tu||1,dono:h}));
+      if(vizinhosDoAlvo.length) reg("b",`${CONDS[ef.espalha.t].ico} o ${CONDS[ef.espalha.t].n.toLowerCase()} `
+        +`se espalha para ${vizinhosDoAlvo.length} vizinho${vizinhosDoAlvo.length>1?"s":""}`);
+    }
+    /* CONDIÇÃO COM ENDEREÇO — o Coco do Valti só atordoa quem pisou nas cascas.
+       É a resposta ao §28: o controle mais forte do jogo tem pré-requisito
+       visível no chão, e sair da zona é o contrajogo. */
+    if(ef.condSeNaZona&&alvo&&!alvo.morto){
+      const dentro=(J.zonas||[]).some(z=>z.t===h.t&&dist(...alvo.pos,...z.pos)<=z.raio);
+      if(dentro) ef.condSeNaZona.forEach(c=>aplicaCond(alvo,c.t,{st:c.st,tu:c.tu,dono:h}));
+      else reg("b",`${alvo.n} não estava em nenhuma armadilha de ${h.n} — sem efeito extra`);
+    }
+    /* DRENA — cura o que causou. Lê o dano REAL (o que entrou na vida), não o
+       bruto: drenar em cima de armadura e escudo daria cura de mentira. */
+    if(ef.drena&&h.vida>0&&!h.semCura&&J._ultimoDano>0){
+      const q=Math.min(J._ultimoDano,h.vidaMax-h.vida);
+      if(q>0){ h.vida+=q; reg("b",`${h.n} drena ${q} de vida (${h.vida}/${h.vidaMax})`);
+        fx(h.pos,"+"+q,"cura"); }
+    }
     if(ef.area) inimigosNosHex(vizinhos(...alvo.pos),h)
       .forEach(o=>danoEmEntidade(h,o,Math.round(d/2),hb.n,habSel===2,!!ef.danoFixo||!!ef.perfura));
     if(ef.ouroSeMatar&&alvo.morto)h.ouro+=ef.ouroSeMatar;
     h.recarga=0;
-  }else reg(J.vez?"c":"a",txt);
+  }else { poeCondsNoAlvo(); reg(J.vez?"c":"a",txt); }
 
   if(ef.danoVizinhos) inimigosNosHex(vizinhos(...h.pos),h)
     .forEach(o=>danoEmEntidade(h,o,base(ef.danoVizinhos),hb.n,habSel===2));
@@ -1825,15 +2482,90 @@ function usaHab(alvo){
       if(noTab(c,r)&&dist(...h.pos,c,r)<=ef.danoRaio) raio.push([c,r]);
     inimigosNosHex(raio,h).forEach(o=>danoEmEntidade(h,o,Math.round(F*escalaDe(habSel))+poder,hb.n,habSel===2));
   }
+  if(ef.condVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t&&!o.morto)
+    .forEach(o=>ef.condVizinhos.forEach(c=>aplicaCond(o,c.t,{st:c.st,tu:c.tu,dono:h})));
+  if(ef.condRaio) J.times[1-h.t].herois.filter(o=>!o.morto&&noJogo(o)&&dist(...h.pos,...o.pos)<=3)
+    .forEach(o=>ef.condRaio.forEach(c=>aplicaCond(o,c.t,{st:c.st,tu:c.tu,dono:h})));
   if(ef.prendeVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t)
-    .forEach(o=>{o.preso=2;reg("b",`${o.n} está preso`);});   /* prender só vale em herói */
-  if(ef.prende&&alvo){ alvo.preso=2; reg("b",`${alvo.n} está preso`); }
-  if(ef.puxar&&alvo&&!alvo.morto) desloca(alvo,h.pos,-1,ef.puxar);
-  if(ef.empurrar&&alvo&&!alvo.morto) desloca(alvo,h.pos,1,ef.empurrar);
-  if(critico) reg("b","CRÍTICO — dado 6 natural");
+    .forEach(o=>prende(o,h));   /* prender só vale em herói */
+  if(ef.empurraVizinhos) vizinhos(...h.pos).map(p=>em(...p)).filter(o=>o&&o.t!==h.t&&!o.morto)
+    .forEach(o=>desloca(o,h.pos,1,1));
+  /* o Vento Contrário limpa a vizinhança DO ALIADO, não a dela: é habilidade de
+     socorro, e o socorro acontece onde o outro está apanhando */
+  if(ef.empurraDoAlvo&&alvo&&alvo.pos) vizinhos(...alvo.pos).map(p=>em(...p))
+    .filter(o=>o&&o.t!==h.t&&!o.morto).forEach(o=>desloca(o,alvo.pos,1,1));
+  if(ef.prende&&alvo) prende(alvo,h);
+  if(ef.puxar&&alvo&&!alvo.morto&&!ehEpico(alvo)) desloca(alvo,h.pos,-1,ef.puxar);
+  if(ef.empurrar&&alvo&&!alvo.morto&&!ehEpico(alvo)) desloca(alvo,h.pos,1,ef.empurrar);
+  /* RECUO LIVRE — reposicionamento que não passa pelo Dado Mestre. O Catarino é
+     atirador: o valor dele é a distância, e é ela que a habilidade compra. */
+  if(ef.recuaLivre) recuaLonge(h,ef.recuaLivre);
+  /* BANIMENTO PRÓPRIO por último: depois de o Trio de Sombras já ter machucado
+     todo mundo. Sair antes seria sair sem pagar o preço de entrar. */
+  if(ef.baneEu) aplicaCond(h,"banido",{tu:1,dono:h});
 
   h.emboscada=0;
+  dispara("habUsada",h,hb,habSel,alvo);
   ativo=null; habSel=null; calcula(); pinta();
+}
+/* PRISÃO — porta única, para a Tenacidade poder responder a ela como responde a
+   qualquer controle. `preso=2` porque ele decresce no início do turno do dono
+   (ver expiraDoTime): 2 dá exatamente uma rodada parada. */
+function prende(alvo,quem){
+  if(!alvo||alvo.morto||ehEpico(alvo))return false;
+  if(temCond(alvo,"tenacidade")){
+    removeCond(alvo,"tenacidade","silencio");
+    reg("b",`${CONDS.tenacidade.ico} TENACIDADE — ${alvo.n} anula a prisão`);
+    seloCond(alvo,"TENACIDADE!","bom");
+    return false;
+  }
+  alvo.preso=2; reg("b",`🔒 ${alvo.n} está preso`); seloCond(alvo,"PRESO!","mal");
+  return true;
+}
+/* REVELAÇÃO — o contrajogo da Invisibilidade e do mato, num lugar só */
+function revelaAoRedor(h,raio){
+  const pegos=J.times[1-h.t].herois.filter(o=>!o.morto&&noJogo(o)&&dist(...h.pos,...o.pos)<=raio);
+  pegos.forEach(o=>aplicaCond(o,"revelado",{tu:1,dono:h}));
+  if(pegos.length){
+    reg("b",`${CONDS.revelado.ico} ${h.n} revela ${pegos.length} inimigo${pegos.length>1?"s":""}`);
+    toast("REVELADO!","gank");
+  }
+}
+/* recua até `n` casas de graça, sempre para longe do inimigo mais próximo */
+function recuaLonge(h,n){
+  /* recua do que ele VÊ. Usar a posição real de um inimigo escondido faria a
+     habilidade vazar informação — e vazaria para os dois lados, porque a IA usa
+     exatamente esta função. Sem ninguém à vista, não há de quem recuar. */
+  const visiveis=J.times[1-h.t].herois.filter(o=>!o.morto&&noJogo(o)&&visivelPara(o,h.t));
+  const perto=visiveis.sort((a,b)=>dist(...h.pos,...a.pos)-dist(...h.pos,...b.pos))[0];
+  if(!perto)return;
+  const de=[...h.pos];
+  desloca(h,perto.pos,1,n);
+  if(de[0]!==h.pos[0]||de[1]!==h.pos[1]){
+    reg(J.vez?"c":"a",`${h.n} recua ${dist(...de,...h.pos)} casa(s) de graça`);
+    animaMovimento(h,de);
+  }
+}
+/* Resolve a habilidade COPIADA. Não reentra em `usaHab` de propósito: aquela
+   função lê `ativo` e `habSel` globais, e reentrar nela do meio de si mesma foi
+   exatamente o loop que o desenho mandou impedir. Aqui só o que uma sentença
+   precisa: dano, condição e deslocamento. */
+function resolveCopia(h,hb,alvo,F){
+  const ef=hb.ef;
+  if(!alvo||alvo.morto)return;
+  const poder=poderTotal(h)+dupla(h);
+  if(ef.dano||ef.danoFixo){
+    let d=ef.danoFixo?ef.danoFixo:Math.round(F*(ef.dano||1))+poder;
+    if(ef.extra)d+=ef.extra;
+    if(ef.bonusFerido&&alvo.vida<=alvo.vidaMax/2)d+=ef.bonusFerido;
+    aplicaDano(h,alvo,d,`${h.n} devolve ${hb.n}`,false,!!ef.danoFixo||!!ef.perfura,
+               {hb,slot:0,copia:1});
+  }
+  if(ef.cond&&!alvo.morto) ef.cond.forEach(c=>aplicaCond(alvo,c.t,{st:c.st,tu:c.tu,dono:h}));
+  if(ef.marca&&!alvo.morto) aplicaCond(alvo,"marcado",{st:ef.marca,dono:h});
+  if(ef.prende&&!alvo.morto) prende(alvo,h);
+  if(ef.puxar&&!alvo.morto) desloca(alvo,h.pos,-1,ef.puxar);
+  if(ef.empurrar&&!alvo.morto) desloca(alvo,h.pos,1,ef.empurrar);
 }
 function dupla(h){                                   /* atirador perto do suporte */
   if(h.pos_!=="adc"&&CATALOGO[h.id].pos!=="adc")return 0;
@@ -1895,11 +2627,16 @@ function danoEmEntidade(quem,alvo,bruto,txt,ehUlt,ignoraArm){
   }
   aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm);
 }
-function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
+function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm,ctx){
   /* antes de qualquer coisa: bateu em herói inimigo, entregou a posição.
      Fica aqui e não em cada habilidade porque este é o funil por onde passam
-     básica, ultimate e respingo — três lugares, uma regra. */
+     básica, ultimate e respingo — três lugares, uma regra.
+     Vale para a Invisibilidade também, e é o contrajogo dela: atacar revela. */
   if(quem&&quem.t!==alvo.t&&!ehEpico(quem)&&!ehEpico(alvo)) entregaPosicao(quem);
+  /* BANIDO não está no tabuleiro. Vem antes de intocável porque é mais forte:
+     intocável recusa o golpe, banido não tem onde o golpe chegar. */
+  if(!ehEpico(alvo)&&temCond(alvo,"banido")){
+    reg("b",`${CONDS.banido.ico} ${alvo.n} está fora do tabuleiro — sem efeito`); return; }
   if(alvo.intoc){ reg("b",`${alvo.n} está intocável — sem efeito`); return; }
   if(ehUlt&&bonus(alvo,"veu")&&!alvo.veuAtivo){
     alvo.veuAtivo=1; reg("b",`VÉU PRISMÁTICO — ${alvo.n} anula a Ultimate`); return; }
@@ -1913,15 +2650,32 @@ function aplicaDano(quem,alvo,bruto,txt,ehUlt,ignoraArm){
      dano". Elas passam a IGNORAR ARMADURA. Agora são uma função diferente, não
      uma versão pior: previsíveis, e o melhor golpe do jogo contra tanque —
      exatamente onde a básica, que perde ponto a ponto para a armadura, falha. */
-  let d=Math.max(1,bruto+(alvo.marca||0)-(ignoraArm?0:armTotal(alvo)));
-  alvo.marca=0;
+  /* MARCADO virou condição, e o bônus dela é consumido AQUI, no funil, como o
+     campo `marca` sempre foi — mas agora aparece na peça antes de ser gasto. */
+  const marcado=(!ehEpico(alvo)?stacksDe(alvo,"marcado"):0);
+  if(marcado) removeCond(alvo,"marcado","silencio");
+  /* GUARDA-CORPO do Caramêlo: aliado colado nele apanha menos. Entra depois da
+     armadura e antes do escudo — reduz o dano que CHEGA, não o que é absorvido. */
+  const guarda=(!ehEpico(alvo)?reducaoDeAliados(alvo):0);
+  let d=Math.max(1,bruto+marcado-(ignoraArm?0:armTotal(alvo))-guarda);
+  if(guarda&&bruto+marcado-(ignoraArm?0:armTotal(alvo))>d)
+    reg("b",`🐕 guarda-corpo abate ${guarda} do golpe em ${alvo.n}`);
   if(alvo.esc>0){ const abs=Math.min(alvo.esc,d); alvo.esc-=abs; d-=abs;
     if(abs)reg("b",`escudo de ${alvo.n} absorve ${abs}`); }
   alvo.vida-=d;
+  /* guardado para quem drena: é o dano que ENTROU na vida, não o bruto */
+  J._ultimoDano=d;
   reg(quem.t?"c":"a",`${txt||quem.n+" ataca"} → ${d} em ${alvo.n} (${Math.max(0,alvo.vida)}/${alvo.vidaMax})`);
   const rb=bonus(quem,"roubo");
   if(rb&&quem.vida>0){ quem.vida=Math.min(quem.vidaMax,quem.vida+rb); reg("b",`${quem.n} rouba ${rb} de vida`); }
   if(bonus(quem,"antiCura")){ alvo.semCura=2; }
+  /* PASSIVAS DO GOLPE. Os três eventos saem do mesmo lugar, na ordem em que a
+     mesa os narraria: quem bateu, quem levou, e o time de quem levou. */
+  if(!ehEpico(quem)) dispara("danoCausado",quem,alvo,d);
+  if(!ehEpico(alvo)){
+    dispara("danoRecebido",alvo,quem,d,ctx);
+    J.times[alvo.t].herois.forEach(o=>dispara("danoRecebidoAliado",o,alvo,d));
+  }
   const esp=bonus(alvo,"espinho");
   if(esp&&dist(...quem.pos,...alvo.pos)<=1&&quem.vida>0){
     quem.vida-=esp; reg("b",`espinhos de ${alvo.n} devolvem ${esp}`);
@@ -1943,12 +2697,26 @@ const respawnAgora=()=>Math.min(RESPAWN_MAX,
   RESPAWN_BASE+Math.floor((J.rodada-1)/RESPAWN_PASSO));
 
 function mata(alvo,quem){
-  /* morrer limpa o que estava pendurado: o respawn devolve o herói inteiro, e
-     sangramento que sobrevivesse à morte cobraria duas vezes pelo mesmo golpe */
+  /* MORTE LIMPA A MESA. O respawn devolve o herói inteiro, e sangramento que
+     sobrevivesse à morte cobraria duas vezes pelo mesmo golpe. A regra do §40 é
+     ampla de propósito: SAI TUDO — sangramento, veneno, lentidão, atordoamento,
+     invisibilidade, marca, banimento, tenacidade. Voltar do respawn com
+     condição pendurada é a única coisa que precisaria de exceção declarada, e
+     nenhuma condição do jogo pediu uma.
+     Recurso de personagem NÃO sai: a Alma que o Torvald já recolheu é
+     permanente, e a Tristeza do Emerson é a memória dele. */
+  const ondeMorreu=[...alvo.pos];
   alvo.vida=0; alvo.morto=respawnAgora(); alvo.esc=0; alvo.intoc=0;
-  alvo.dots=[]; alvo.curouSitiado=0;
+  alvo.conds=[]; alvo.dots=[]; alvo.curouSitiado=0; alvo.preso=0; alvo.voltaEm=null;
+  alvo.autos=null; alvo.alcTurno=0; alvo.ultimoAlvo=null;
   quem.ouro+=4;
   reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva 4 de ouro`);
+  /* os dois eventos da morte. `morreu` vai para TODO MUNDO no tabuleiro porque
+     as passivas que o escutam (Digestão, Almas, Coleta, Tristeza) medem por
+     distância, e cada uma decide sozinha se estava perto o bastante. */
+  alvo.pos=ondeMorreu;
+  if(quem&&!ehEpico(quem)) dispara("matou",quem,alvo);
+  disparaTodos("morreu",alvo,quem);
 }
 
 /* conclui o Recuo: anda a casa escolhida sem tocar no Dado Mestre */
@@ -2089,11 +2857,41 @@ function descreve(h,hb,F){
   if(e.marca) t.push(`marca: próximo dano +${e.marca}`);
   if(e.doar) t.push("passa este dado a um aliado");
   if(e.puxar) t.push("puxa");
-  if(e.empurrar) t.push("empurra");
+  if(e.empurrar||e.empurraVizinhos||e.empurraDoAlvo) t.push("empurra");
   if(e.prende||e.prendeVizinhos) t.push("prende");
   if(e.executa) t.push(`executa com ${e.executa} de vida ou menos`);
+  if(e.execPorStack) t.push(`+${e.execPorStack.v} no limiar por ${CONDS[e.execPorStack.t].ico}`);
+  if(e.execSeCond) t.push(`+${e.execSeCond.v} no limiar contra ${CONDS[e.execSeCond.t].ico}`);
   if(e.bonusFerido) t.push(`+${e.bonusFerido} em alvo ferido`);
   if(e.semAlcance) t.push("qualquer distância");
+  /* v45 — o painel de comando fala o mesmo vocabulário do resto do jogo. Curto:
+     aqui é o botão, e a regra inteira mora no tooltip e na ficha. */
+  const ic=l=>l.map(c=>CONDS[c.t].ico+(c.st>1?"×"+c.st:"")).join("");
+  if(e.cond)            t.push("aplica "+ic(e.cond));
+  if(e.condEu)          t.push("ganha "+ic(e.condEu));
+  if(e.condVizinhos)    t.push("aplica "+ic(e.condVizinhos)+" nos vizinhos");
+  if(e.condRaio)        t.push("aplica "+ic(e.condRaio)+" no raio");
+  if(e.condAliadosPerto)t.push("dá "+ic(e.condAliadosPerto)+" aos aliados colados");
+  if(e.condSeNaZona)    t.push("aplica "+ic(e.condSeNaZona)+" se o alvo estiver na armadilha");
+  if(e.bonusCond)       t.push(`+${e.bonusCond.dano} contra ${CONDS[e.bonusCond.t].ico}`);
+  if(e.consome)         t.push(`consome ${CONDS[e.consome.t].ico}: +${e.consome.danoPorStack} cada`);
+  if(e.bonusPorRecurso) t.push(`+${e.bonusPorRecurso.dano} por ${RECURSOS[e.bonusPorRecurso.t].ico}`
+                              +` (tem ${recursoDe(h,e.bonusPorRecurso.t)})`);
+  if(e.critSempre)      t.push("sempre CRÍTICO");
+  if(e.critSe)          t.push("pode ser CRÍTICO");
+  if(e.custoVida)       t.push(`custa ${e.custoVida} da própria vida`);
+  if(e.drena)           t.push("cura o que causar");
+  if(e.espalha)         t.push(`espalha ${CONDS[e.espalha.t].ico}`);
+  if(e.limpa||e.limpaEu||e.limpaAliados) t.push("limpa condição ruim");
+  if(e.troca)           t.push("troca de lugar com o alvo");
+  if(e.baneEu)          t.push("some do tabuleiro por 1 turno");
+  if(e.recuaLivre)      t.push(`recua ${e.recuaLivre} de graça`);
+  if(e.copia)           t.push(h.autos?`devolve ${h.autos.n}`:"sem nada nos autos");
+  if(e.revelaRaio)      t.push(`revela até ${e.revelaRaio} casas`);
+  if(e.escudoAliados)   t.push(`escudo ${e.escudoAliados} nos aliados colados`);
+  if(e.recurso)         t.push(`enche ${RECURSOS[e.recurso.t].ico}`);
+  if(e.alcanceTurno)    t.push(`alcance +${e.alcanceTurno}`);
+  if(e.zona)            t.push("deixa uma zona no chão");
   return t.join(" · ")||"—";
 }
 
@@ -2112,6 +2910,20 @@ function fx(pos,txt,tipo){
   d.style.left=px+"px"; d.style.top=py+"px";
   G("fx").appendChild(d);
   setTimeout(()=>d.remove(),1050);
+}
+/* ---------- AVISO DE CONDIÇÃO ----------
+   O §23 e o §24 pediram a mesma coisa por dois lados: quando a condição CHEGA e
+   quando ela SAI, o jogador precisa ver, e depois só o indicador pequeno fica.
+   É o `fx` de sempre com outra classe — nada de tela nova, nada de modal. O aviso
+   de fim é discreto de propósito: "VENENO ACABOU" não merece o mesmo tamanho de
+   "ATORDOADO!".
+
+   Cala durante a SONDA da IA (ela chama iniciaHab dezenas de vezes por turno só
+   para descobrir o que dá para fazer) e cala fora do turno visível — senão a
+   tela do jogador piscaria com condições aplicadas do outro lado do mapa. */
+function seloCond(h,txt,tipo){
+  if(sondando||!h||!h.pos||simMode)return;
+  try{ fx(h.pos,txt,"selo-"+(tipo||"mal")); }catch(e){}
 }
 /* A IA descobre o que dá para fazer CHAMANDO iniciaHab em cada habilidade de cada
    herói e vendo o que sobra mirado — ou seja, ela erra de propósito, dezenas de vezes
@@ -2266,8 +3078,9 @@ function cancela(){ limpaModo(); selHeroi=null; pinta(); }
 
 function calcula(){
   mover=[]; alvos=[]; alvosTorre=[]; alvosEpico=[]; alvoNexus=null;
-  if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso&&J.mov.rest>0){
-    const teto=J.mov.rest+((ehAgil(selHeroi)&&!selHeroi.agilUsado)?1:0);
+  if(modo==="mover"&&selHeroi&&!selHeroi.morto&&selHeroi.t===J.vez&&!selHeroi.preso
+     &&!temCond(selHeroi,"atordoado")&&!temCond(selHeroi,"banido")&&J.mov.rest>0){
+    const teto=tetoAndar(selHeroi);
     /* a régua é ANDANDO, contornando obstáculo — casa atrás de um ônibus pode
        estar a 2 em linha reta e a 4 a pé, e é o 4 que vale */
     const passos=passosDe(selHeroi.pos);
@@ -2299,6 +3112,7 @@ function calcula(){
     const h=selHeroi, hb=h.habs[habAtual], alc=alcTotal(h)+(hb.ef.alcExtra||0);
     alvos=todos().filter(o=>{
       if(o.morto)return false;
+      if(!noJogo(o))return false;               // banido: não está no tabuleiro
       if(!visivelPara(o,h.t))return false;      // escondido no mato: não é alvo
       if(hb.alvo==="in"&&(o.t===h.t||o.intoc))return false;
       if(hb.alvo==="al"&&(o.t!==h.t||o===h))return false;
@@ -2381,12 +3195,26 @@ function escolheHeroi(h){
 }
 function iniciaMover(){
   if(!selHeroi||J.mov.rest<=0)return;
-  if(selHeroi.preso) return toast("preso nesta rodada","morte");
+  if(selHeroi.preso) return toast("🔒 preso nesta rodada","morte");
+  if(temCond(selHeroi,"atordoado")) return toast(`${CONDS.atordoado.ico} atordoado — não anda`,"morte");
+  if(temCond(selHeroi,"banido")) return toast("está fora do tabuleiro","morte");
   modo = modo==="mover" ? null : "mover";
   habAtual=null; confirmar=null; calcula(); vibra(8); pinta();
 }
+/* Por que o herói não pode agir agora. Uma função, para o painel, o tabuleiro e
+   a IA darem a MESMA resposta — e para a mensagem na tela ser a regra, não uma
+   frase escrita à mão em cada lugar. */
+function travaDeAcao(h,i){
+  if(!h)return null;
+  if(temCond(h,"banido"))    return "está fora do tabuleiro";
+  if(temCond(h,"atordoado")) return `${CONDS.atordoado.ico} atordoado — não age neste turno`;
+  if(temCond(h,"silenciado")&&i>0) return `${CONDS.silenciado.ico} silenciado — só a básica`;
+  return null;
+}
 function iniciaHab(i){
   if(!selHeroi)return;
+  const trava=travaDeAcao(selHeroi,i);
+  if(trava) return toast(trava,"morte");
   /* um dado de ação por herói por rodada. É o que o manual sempre prometeu:
      3 dados para 5 heróis, e quem fica de fora farma 3. Sem esta trava dava
      para empilhar os 3 dados no mesmo herói e atacar três vezes. */
@@ -2789,32 +3617,93 @@ moveAte=function(c,r){
    peça de 19px de raio, três etiquetas não são três informações — são zero.
    Primeiro o que IMPEDE a jogada (preso, intocável), depois o que a modifica
    (marcado, carregado), e por último o que é só posição (revelado, escondido). */
+/* ═══════════════════════════════════════════════════════════════════
+   OS INDICADORES DA PECA  (§17 a §22)
+   ═══════════════════════════════════════════════════════════════════
+   `condsDaPeca` é a lista única que alimenta os TRÊS lugares onde o estado
+   aparece: os iconezinhos ao lado do totem, a etiqueta grande e a seção
+   CONDIÇÕES da ficha. Um lugar só, então os três nunca discordam — que é
+   exatamente o defeito que o §22 pediu para não existir.
+
+   A ORDEM é a de consequência, e ela é a mesma que a etiqueta grande usa: o que
+   IMPEDE de jogar vem antes do que só dói, e o que só dói vem antes do que
+   modifica o próximo golpe. Assim, quando só cabem três ícones, os três que
+   ficam são os três que mudam a decisão.
+
+   `preso` e `escudo` entram aqui apesar de não morarem em `h.conds`: para quem
+   olha a mesa, "estou preso" é uma condição como qualquer outra, e obrigar o
+   jogador a saber qual delas o motor guarda em que variável seria absurdo. */
+const ORDEM_PECA=["atordoado","banido","silenciado","preso","lentidao","veneno",
+                  "sangramento","catarino","marcado","vulneravel","revelado",
+                  "invisivel","tenacidade","escudo"];
+function condsDaPeca(h){
+  const fora=[];
+  const meu = (typeof J!=="undefined" && J && h.t===ladoDaTela());
+  /* `un` é a UNIDADE do número, e existe porque os três tipos de contador do
+     jogo se leem diferente: acúmulo é "×2", prazo é "2 turnos", e escudo é
+     só "17". Sem isso a ficha dizia "escudo · 17 turnos". */
+  const poe=(o)=>{ fora.push(Object.assign({mal:0,q:0,un:"num",peso:99},o)); };
+  const peso=t=>{ const i=ORDEM_PECA.indexOf(t); return i<0?99:i; };
+
+  if(h.preso) poe({ico:"🔒",rot:"PRESO",n:"Preso",mal:1,q:0,peso:peso("preso"),
+    d:"Não anda nesta rodada. Continua agindo e continua sendo alvo."});
+
+  (h.conds||[]).forEach(c=>{
+    const d=CONDS[c.t]; if(!d)return;
+    /* INVISÍVEL só o dono vê — para o adversário, o ícone entregaria justamente
+       o que a condição comprou. Mesma regra que ESCONDIDO já seguia. */
+    if(c.t==="invisivel"&&!meu)return;
+    poe({ico:d.ico,rot:d.selo,n:d.n,mal:d.mal?1:0,d:d.d,peso:peso(c.t),
+         q:d.pilha?(c.st||0):(c.tu||0), un:d.pilha?"stack":"turno"});
+  });
+
+  if(h.esc>0) poe({ico:"⛨",rot:"ESCUDO",n:"Escudo",q:h.esc,peso:peso("escudo"),
+    d:"Absorve dano antes da vida. Vale até o começo do seu próximo turno."});
+  if(h.recarga) poe({ico:"🎯",rot:"CARREGADO",n:"Carregado",q:h.recarga,
+    d:"O próximo golpe dele leva o bônus e depois zera."});
+  if(h.semCura) poe({ico:"🚫",rot:"SEM CURA",n:"Sem cura",mal:1,
+    d:"Não pode ser curado enquanto durar."});
+
+  /* RECURSO DE PERSONAGEM entra na mesma fileira: para o jogador, "3 Cargas" é
+     informação de tabuleiro do mesmo tipo que "2 de sangramento". */
+  Object.entries(h.rec||{}).forEach(([t,q])=>{
+    if(!q||!RECURSOS[t])return;
+    const d=RECURSOS[t];
+    poe({ico:d.ico,rot:d.n.toUpperCase(),n:d.n,q,un:"stack",d:d.d});
+  });
+  return fora.sort((a,b)=>a.peso-b.peso);
+}
+/* o número do indicador, escrito do jeito que se lê */
+const qtdCond=x=>!x.q?"":x.un==="stack"?` ×${x.q}`
+  :x.un==="turno"?(x.q>1?` · ${x.q} turnos`:" · 1 turno"):` ${x.q}`;
+/* quantos ícones cabem ao lado do totem antes de virar sopa (§20) */
+const ICONES_NA_PECA=3;
+
+/* A ETIQUETA GRANDE — uma só, a de maior consequência, para não virar sopa de
+   ícone (a fileira pequena ao lado dá conta do resto).
+
+   A ESCADA VIROU LISTA. Antes era um `if` por estado, e a ordem estava escrita na
+   ordem dos `if` — com doze condições novas seriam doze edições e nenhuma
+   garantia de que a prioridade continuava fazendo sentido. Agora a prioridade
+   mora num lugar só (`ORDEM_PECA`) e vale para o ícone e para a etiqueta.
+
+   O que ainda é `if` aqui embaixo é o que NÃO é condição: intocável responde
+   "por que meu golpe não fez nada?", e escondido/revelado só interessam ao dono
+   da peça — para o adversário, "escondido" é justamente o que ele não deveria
+   saber. */
 function estadoDaPeca(h){
-  if(h.preso)  return {k:"mal",  txt:"PRESO"};
-  if(h.intoc)  return {k:"bom",  txt:"INTOCÁVEL"};
-  /* ESCUDO entra logo depois de INTOCÁVEL porque responde à mesma pergunta que
-     ele — "por que o meu golpe não fez nada?". Faltava, e o relato foi exato:
-     "dei 2 ataques contra o Vharn e não deu dano nem tirou escudo". A Muralha
-     dele dá até 17 num herói de 25, o golpe some inteiro dentro do escudo e a
-     peça não dizia nada. Vem antes de MARCADO por consequência: marca modifica
-     o próximo golpe, escudo decide se vale dar o golpe. */
-  if(h.esc>0)  return {k:"bom",  txt:"ESCUDO"};
-  /* o efeito com prazo vem antes de MARCADO porque já está cobrando: ele muda a
-     conta de "dá para aguentar mais uma rodada?", que é a decisão mais comum da
-     mesa. Marca só vale se um segundo golpe acertar. */
-  if(h.dots&&h.dots.length) return {k:"mal", txt:DOTS[h.dots[0].tipo].selo};
-  if(h.marca)  return {k:"mal",  txt:"MARCADO"};
-  if(h.recarga)return {k:"bom",  txt:"CARREGADO"};
-  if(h.semCura)return {k:"mal",  txt:"SEM CURA"};
-  /* os dois de posição só interessam ao dono da peça: para o adversário,
-     "escondido" é justamente o que ele não deveria saber */
+  if(h.intoc) return {k:"bom", txt:"INTOCÁVEL"};
+  const lista=condsDaPeca(h);
+  const pior=lista.find(x=>x.mal);
+  if(pior) return {k:"mal", txt:pior.rot+(pior.un==="stack"&&pior.q>1?" ×"+pior.q:"")};
+  const bom=lista.find(x=>!x.mal);
+  if(bom) return {k:"bom", txt:bom.rot+(bom.un==="stack"&&bom.q>1?" ×"+bom.q:"")};
   if(h.t===ladoDaTela()){
     if(escondido(h))          return {k:"bom", txt:"ESCONDIDO"};
     if(reveladoPorAtaque(h))  return {k:"mal", txt:"REVELADO"};
   }
   return null;
 }
-
 const R_TOQUE=15.5;
 const R_TOQUE_ESTRUTURA=9;
 const alvoDeToque=(g,x,y,aoTocar,raio)=>{
@@ -3060,6 +3949,30 @@ function desenhaMapa(){
        olhando — o mapa —, não numa tela que é preciso abrir.
        Uma etiqueta só, a de maior consequência, para não virar sopa de ícone: o
        que impede a jogada vem antes do que a modifica. */
+    /* A FILEIRA DE ÍCONES (§17 a §20). Fica ACIMA do retrato, do lado oposto à
+       barra de vida e à etiqueta grande, que já ocupam o rodapé da peça. Teto de
+       três: o §20 foi explícito em não querer uma fileira enorme cobrindo o
+       tabuleiro, e quem quiser ver todas toca a peça e abre a ficha.
+       O `+N` no fim é o que avisa que existe mais — sem ele, o jogador acharia
+       que três é tudo. */
+    const ind=condsDaPeca(h);
+    if(ind.length){
+      const mostra=ind.slice(0,ICONES_NA_PECA), sobra=ind.length-mostra.length;
+      const gi=el("g",{class:"cond-ico"});
+      const largura=mostra.length*7.6+(sobra?5.4:0);
+      let cx=x-largura/2+3.8;
+      mostra.forEach(c=>{
+        const t=el("text",{x:cx,y:y-11.2,class:"ci"+(c.mal?" mal":" bom")});
+        t.textContent=c.ico; gi.appendChild(t);
+        if(c.un==="stack"&&c.q>1){
+          const q=el("text",{x:cx+3.1,y:y-8.6,class:"ciq"}); q.textContent=c.q; gi.appendChild(q);
+        }
+        cx+=7.6;
+      });
+      if(sobra){ const m=el("text",{x:cx,y:y-11.2,class:"ci mais"});
+        m.textContent="+"+sobra; gi.appendChild(m); }
+      g.appendChild(gi);
+    }
     const et=estadoDaPeca(h);
     if(et){
       const larg=et.txt.length*2.55+5;
@@ -3092,11 +4005,20 @@ function abreCarta(h){
         <div><div class="k">Armad.</div><div class="v">${armTotal(h)}</div></div>
         <div><div class="k">Alcance</div><div class="v">${alcTotal(h)}</div></div>
       </div>
+      ${CATALOGO[h.id].ideia?`<div class="ideia">${CATALOGO[h.id].ideia}</div>`:""}
       <div class="lista">
+        ${CATALOGO[h.id].pas?`<div class="hb2 pas">
+          <div><span class="n">✦ ${CATALOGO[h.id].pas.n}</span>
+               <span class="d">${CATALOGO[h.id].pas.d}</span></div>
+          <span class="f">passiva</span></div>`:""}
         ${h.habs.map(hb=>`<div class="hb2">${svgIco(iconeDe(hb))}
           <div><span class="n">${hb.n}</span><span class="d">${descreve(h,hb)}</span></div>
           <span class="f">Força ${hb.f}${hb.f===6?"":"+"}</span></div>`).join("")}
       </div>
+      ${(()=>{const l=condsDaPeca(h);return l.length?`<div class="cond-lista">
+        <div class="ct">Condições</div>${l.map(x=>
+        `<div class="cl${x.mal?" mal":""}"><b>${x.ico} ${x.n}${qtdCond(x)}</b> ${x.d||""}</div>`)
+        .join("")}</div>`:"";})()}
       ${h.itens.length?`<div class="itens-g">${h.itens.map(i=>
         `<figure><img src="${RETRATO_ITEM(i)}" alt=""><figcaption>${ITEM[i].n}</figcaption></figure>`).join("")}</div>`:""}
       <div class="rodape">${ehAgil(h)?"ágil · 1ª casa grátis · ":""}${CATALOGO[h.id].patamar?"escala por ouro · ":""}ouro ${h.ouro}</div>
@@ -3107,18 +4029,20 @@ function abreCarta(h){
 function fichaHTML(h,meu){
   const pc=Math.max(0,h.vida)/h.vidaMax*100, esc=Math.min(100-pc,h.esc/h.vidaMax*100);
   const P=POS[CATALOGO[h.id].pos];
+  /* CONDIÇÕES na ficha (§22). Sai da MESMA lista que alimenta a peça, então a
+     ficha não pode discordar do tabuleiro — era o requisito explícito: "isso
+     deve refletir exatamente o estado real do personagem".
+     Cada linha é clicável e abre a regra da condição: no celular não existe
+     hover, e uma condição que o jogador não sabe ler é ruído. */
+  const cond=condsDaPeca(h).map(x=>
+    `<span class="selo-est cnd${x.mal?" mal":""}" data-cond="${x.n}">${x.ico} ${x.n}`
+    +`${qtdCond(x)}</span>`).join("");
   const selos=[
     h.morto?`<span class="selo-est mal">volta em ${h.morto}</span>`:"",
-    h.preso?'<span class="selo-est mal">preso</span>':"",
     h.intoc?'<span class="selo-est">intocável</span>':"",
     escondido(h)?'<span class="selo-est">escondido</span>':"",
     reveladoPorAtaque(h)&&!h.morto?'<span class="selo-est mal">revelado</span>':"",
-    h.esc>0?`<span class="selo-est">escudo ${h.esc}</span>`:"",
-    ...(h.dots||[]).map(d=>`<span class="selo-est mal">${DOTS[d.tipo].n} ${d.dano}/rodada `
-       +`· ${d.rodadas} rodada${d.rodadas>1?"s":""}</span>`),
-    h.recarga?`<span class="selo-est">carregado +${h.recarga}</span>`:"",
-    h.marca?`<span class="selo-est mal">marcado +${h.marca}</span>`:"",
-    h.semCura?'<span class="selo-est mal">sem cura</span>':"",
+    cond,
     h.pat?`<span class="selo-est">patamar ${h.pat}</span>`:""
   ].join("");
   return `<div class="fic${h.morto?" morto":""}${selHeroi===h?" sel":""}"
@@ -3133,8 +4057,23 @@ function fichaHTML(h,meu){
         <span>◈ <b>${h.ouro}</b></span></div>
       ${h.itens.length?`<div class="itens">${h.itens.map(i=>
         `<img src="${RETRATO_ITEM(i)}" title="${ITEM[i].n}" alt="">`).join("")}</div>`:""}
-      ${selos?`<div class="itens">${selos}</div>`:""}
+      ${selos?`<div class="itens cnds">${selos}</div>`:""}
     </div></div>`;
+}
+/* A REGRA DA CONDIÇÃO, em uma frase, onde o dedo alcança. O texto vem do
+   registro em data/catalogo.js — nunca escrito à mão aqui, senão o jogo e o guia
+   passariam a explicar a mesma condição de dois jeitos diferentes. */
+function explicaCond(nome){
+  const achado=Object.values(CONDS).find(d=>d.n===nome)
+           ||Object.values(RECURSOS).find(d=>d.n===nome);
+  const extra={Preso:"Não anda nesta rodada. Continua agindo e continua sendo alvo.",
+               Escudo:"Absorve dano antes da vida. Vale até o começo do seu próximo turno.",
+               Carregado:"O próximo golpe dele leva o bônus e depois zera.",
+               "Sem cura":"Não pode ser curado enquanto durar."}[nome];
+  const d=achado?achado.d:extra;
+  if(!d)return;
+  const ico=achado?achado.ico:"";
+  toast(`${ico} ${nome.toUpperCase()} — ${d}`,"");
 }
 function abreTime(){
   const meu=J.vez, out=1-meu, tm=J.times[meu];
@@ -3146,6 +4085,12 @@ function abreTime(){
      <div style="font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
        color:var(--ink-3);margin:16px 0 8px">Adversário · ${NOMES[out]}</div>
      <div class="fichas">${J.times[out].herois.map(h=>fichaHTML(h,false)).join("")}</div>`);
+  /* TOOLTIP DE TOQUE (§21). Registrado antes do `data-sel` e com `stopPropagation`
+     porque o selo mora DENTRO da ficha clicável: sem isso, tocar no ícone
+     selecionava o herói em vez de explicar a condição. */
+  G("shCorpo").querySelectorAll("[data-cond]").forEach(e=>e.onclick=ev=>{
+    ev.stopPropagation(); explicaCond(e.dataset.cond);
+  });
   G("shCorpo").querySelectorAll("[data-sel]").forEach(e=>e.onclick=()=>{
     const[t,id]=e.dataset.sel.split("-");
     const h=J.times[+t].herois.find(x=>x.id===id);
@@ -3708,13 +4653,82 @@ function texto(){
 function iaDanoReal(h,hb,slot,F,alvo){
   const ef=hb.ef;
   if(!ef.dano&&!ef.danoFixo)return 0;
-  const poder=poderTotal(h)+(h.recarga||0)+dupla(h);
+  const poder=poderTotal(h)+(h.recarga||0)+dupla(h)+danoPassivo(h);
   let bruto = ef.danoFixo ? ef.danoFixo : Math.round(F*ef.dano*escalaDe(slot))+poder;
   if(ef.extra)bruto+=ef.extra;
   if(ef.bonusFerido&&alvo&&alvo.vida<=alvo.vidaMax/2)bruto+=ef.bonusFerido;
+  /* v45 — a IA precisa contar o que o kit dela promete, senão ela nunca vê a
+     própria sinergia: bater no alvo que JÁ está envenenado, gastar a pilha de
+     sangramento que ela mesma plantou, queimar a Sucata. Sem isto ela usava a
+     Ceifa da Ilva em quem não estava envenenado e a Ultimate da Dona Chinela
+     antes de ter empilhado nada — dano igual na conta dela, muito menor na mesa. */
+  if(alvo&&!ehEpico(alvo)){
+    if(ef.bonusCond&&temCond(alvo,ef.bonusCond.t)) bruto+=ef.bonusCond.dano;
+    if(ef.consome&&temCond(alvo,ef.consome.t))
+      bruto+=stacksDe(alvo,ef.consome.t)*ef.consome.danoPorStack;
+  }
+  if(ef.bonusPorRecurso) bruto+=recursoDe(h,ef.bonusPorRecurso.t)*ef.bonusPorRecurso.dano;
+  /* CRÍTICO entra na conta, e é o que faz o Cael preferir bater em quem ele
+     travou e o Corvo guardar o quarto tiro para um alvo que vale. */
+  if(ehCritico(h,hb,alvo)) bruto=Math.round(bruto*COND_NUM.critico);
   if(!alvo)return bruto;
-  const d=Math.max(1,bruto+(alvo.marca||0)-(ef.danoFixo?0:armTotal(alvo)));
+  if(ehEpico(alvo)) return Math.max(1,bruto);
+  const d=Math.max(1,bruto+stacksDe(alvo,"marcado")-(ef.danoFixo?0:armTotal(alvo))
+                   -reducaoDeAliados(alvo));
   return Math.max(0,d-(alvo.esc||0));
+}
+/* O LIMIAR DE EXECUÇÃO que este golpe teria contra este alvo. A IA precisa dele
+   separado do dano porque execução não é dano: ela mata por baixo do limiar
+   independentemente de armadura, escudo ou vida restante. Sem isto a Dona Chinela
+   nunca via que 3 acúmulos de sangramento tinham transformado o Chinelo Voador
+   num golpe que executa com 14 de vida. */
+function iaLimiarExec(hb,alvo){
+  const ef=hb.ef;
+  if(!ef.executa||!alvo||ehEpico(alvo))return 0;
+  let l=ef.executa;
+  if(ef.execPorStack) l+=stacksDe(alvo,ef.execPorStack.t)*ef.execPorStack.v;
+  if(ef.execSeCond&&temCond(alvo,ef.execSeCond.t)) l+=ef.execSeCond.v;
+  return l;
+}
+/* O VALOR TÁTICO de uma habilidade que não é dano — ou de um dano cujo verdadeiro
+   prêmio é a condição que ele deixa. É aqui que a IA entende o novo vocabulário,
+   e a escala é a mesma da nota de dano (§ do bloco de IA): dezenas para jogada
+   comum, centenas para jogada que decide.
+
+   Tudo é medido em CONSEQUÊNCIA, nunca em "a condição é legal": atordoar um
+   inimigo cheio de vida no meio do nada vale pouco; atordoar o que está pronto
+   para matar alguém vale muito. */
+function iaValorCondicoes(h,hb,alvo){
+  const ef=hb.ef; let n=0;
+  const conds=[...(ef.cond||[]),...(ef.condVizinhos||[]),...(ef.condRaio||[])];
+  const jaTem=t=>alvo&&!ehEpico(alvo)&&temCond(alvo,t);
+  for(const c of conds){
+    if(jaTem(c.t)&&!CONDS[c.t].pilha) continue;    // renovar o que já está lá vale pouco
+    switch(c.t){
+      case "atordoado":  n+=42; break;             // tirar um turno é quase um golpe
+      case "silenciado": n+=26; break;
+      case "lentidao":   n+=14; break;
+      case "vulneravel": n+=12; break;
+      case "veneno":     n+=10*(c.tu||1); break;
+      case "sangramento":n+=8*(c.st||1); break;
+      case "marcado":    n+=6; break;
+      case "catarino":   n+=6; break;
+      default:           n+=4;
+    }
+  }
+  /* condição com endereço: o Coco só atordoa quem pisou nas cascas. Se o alvo não
+     está numa zona dela, a IA não deve pagar a Ultimate pelo atordoamento. */
+  if(ef.condSeNaZona&&alvo&&alvo.pos){
+    const dentro=(J.zonas||[]).some(z=>z.t===h.t&&dist(...alvo.pos,...z.pos)<=z.raio);
+    if(dentro) n+=40;
+  }
+  if(ef.zona)        n+=16;
+  if(ef.espalha&&jaTem(ef.espalha.t)) n+=18;
+  if(ef.troca)       n+=10;
+  if(ef.revelaRaio)  n+=6*J.times[1-h.t].herois.filter(o=>!o.morto&&!visivelPara(o,h.t)).length;
+  if(ef.puxar)       n+=8;
+  if(ef.prende)      n+=18;
+  return n;
 }
 /* o quanto vale tirar este herói do tabuleiro: quem está atrás na vida morre
    mais fácil, e atirador/mago pesam mais que tanque porque é deles o dano */
@@ -3775,15 +4789,35 @@ function iaJogadas(t){
            ferido, que é o que transforma dano espalhado em abate. */
         alvos.filter(o=>o.t!==h.t&&!o.morto).forEach(o=>{
           const d=iaDanoReal(h,hb,i,F,o);
-          const mata=d>=o.vida||(hb.ef.executa&&o.vida<=hb.ef.executa);
+          const mata=d>=o.vida||o.vida<=iaLimiarExec(hb,o);
           let nota = mata ? 300*iaValorHeroi(o)
                           : 10*Math.min(d,o.vida)*iaValorHeroi(o)/Math.max(1,o.vidaMax/6);
+          /* o valor da condição entra SOMADO e não multiplicado: uma habilidade
+             de controle puro (dano baixo, atordoamento) precisa poder ganhar de
+             um golpe forte sem condição, e multiplicar zero dá zero. */
+          if(!mata) nota+=iaValorCondicoes(h,hb,o);
           if(!mata&&i===2) nota*=.55;               /* não queima Ultimate sem fechar */
           /* FOCO (só o Mestre): alvo já ferido vale mais, porque dano em quem
              está caindo vira abate e dano espalhado vira nada. Não é bônus de
              número — é ordem de preferência entre alvos que ela já podia bater. */
           if(IA().foco&&!mata) nota*=1+.8*(1-o.vida/o.vidaMax);
           saida.push({h,i,tipo:"heroi",v:o,nota});
+        });
+
+        /* HABILIDADE NO ALIADO. A v44 não pontuava nenhuma: o suporte só agia
+           quando calhava de haver inimigo ao alcance, e nunca curava, nunca
+           escudava, nunca limpava. Com doze condições no jogo isso deixou de ser
+           detalhe — LIMPAR é metade do contrajogo, e quem limpa é ele. */
+        alvos.filter(o=>o.t===h.t&&o!==h).forEach(o=>{
+          const ef=hb.ef; let nota=0;
+          if(ef.cura&&o.vida<o.vidaMax) nota+=Math.round(24*(1-o.vida/o.vidaMax))+6;
+          if(ef.escudo)                 nota+=(o.vida<o.vidaMax*.7?26:8);
+          if(ef.limpa)                  nota+=20*condsMalignas(o).length+(o.preso?14:0);
+          if(ef.revive&&o.morto)        nota+=60;
+          if(ef.doar&&!o.agiu&&!o.morto) nota+=12;
+          if(ef.condAliadosPerto)       nota+=6;
+          if(o.morto&&!ef.revive)       nota=0;
+          if(nota>0) saida.push({h,i,tipo:"heroi",v:o,nota});
         });
 
         /* HABILIDADE EM SI MESMO — escudo, área, cura. Vale quando há inimigo
@@ -3797,6 +4831,15 @@ function iaJogadas(t){
           if(ef.cura&&h.vida<h.vidaMax*.7) nota=38;
           if(ef.ward) nota=8;
           if(ef.intocavel&&h.vida<=h.vidaMax*.35) nota=50;
+          /* v45 — as habilidades de si mesmo que a v44 não conhecia */
+          if(ef.limpaEu) nota=Math.max(nota,10+18*condsMalignas(h).length);
+          if(ef.condEu&&ef.condEu.some(c=>c.t==="invisivel"))
+            nota=Math.max(nota, escondido(h)?6:(h.vida<h.vidaMax*.6?46:20));
+          if(ef.condEu&&ef.condEu.some(c=>c.t==="tenacidade")) nota=Math.max(nota,perto?24:8);
+          if(ef.recurso) nota=Math.max(nota,20);
+          if(ef.alcanceTurno) nota=Math.max(nota,14);
+          if(ef.recuaLivre&&h.vida<h.vidaMax*.5) nota=Math.max(nota,30);
+          if(ef.condRaio) nota=Math.max(nota,10*perto);
           if(nota>0) saida.push({h,i,tipo:"eu",v:h,nota});
         }
         limpaModo();
@@ -4536,10 +5579,13 @@ function jogaCarta(id){
   if(ef.recall){ h.pos=[...BASE[t][0]]; desempilha(); msg+=` → ${h.n} volta à base`; }
   if(ef.ward){ poeWard(t,h.pos); msg+=` → ward posta em ${h.n}`; }
   if(ef.revelarCaca){
-    /* revela pelo LOG quem está fora do seu campo de visão agora — informação
-       pontual, sem virar uma ward de graça */
-    const ocultos=J.times[1-t].herois.filter(x=>!x.morto&&!visivelPara(x,t));
-    msg+=ocultos.length?` → escondidos: ${ocultos.map(x=>x.n).join(", ")}`
+    /* v45: a Contra-emboscada deixou de ser uma linha no log e virou REVELAÇÃO de
+       verdade. Ela já era a resposta ao mato; com a Invisibilidade no jogo ela
+       passa a ser também a resposta ao Pombo — e é o contrajogo que o §28 exige
+       estar disponível a QUALQUER time, não só a quem draftou a Vidente. */
+    const ocultos=J.times[1-t].herois.filter(x=>!x.morto&&noJogo(x)&&!visivelPara(x,t));
+    ocultos.forEach(x=>aplicaCond(x,"revelado",{tu:1}));
+    msg+=ocultos.length?` → REVELADOS: ${ocultos.map(x=>x.n).join(", ")}`
                        :" → ninguém escondido"; }
   if(ef.empurrarOnda){
     const rota=["topo","meio","baixo"][Math.floor(Math.random()*3)];

@@ -144,6 +144,26 @@ const PONTE = `
   encerraTurno:()=>encerraTurno(), moveAte:(c,r)=>moveAte(c,r),
   limpaModo:()=>limpaModo(), calcula:()=>calcula(),
   poeDot:(a,q,t,d,r)=>poeDot(a,q,t,d,r), cobraDots:t=>cobraDots(t),
+  /* ---- o sistema central de condições (v45) ---- */
+  get CONDS(){return CONDS}, get COND_NUM(){return COND_NUM},
+  get RECURSOS(){return RECURSOS}, get PASSIVAS(){return PASSIVAS},
+  aplicaCond:(a,t,o)=>aplicaCond(a,t,o), removeCond:(a,t,m)=>removeCond(a,t,m),
+  gastaCond:(a,t)=>gastaCond(a,t), limpaCond:(a,n)=>limpaCond(a,n),
+  temCond:(a,t)=>temCond(a,t), condDe:(a,t)=>condDe(a,t), stacksDe:(a,t)=>stacksDe(a,t),
+  condsMalignas:a=>condsMalignas(a), ehControle:t=>ehControle(t),
+  processaCondsInicio:t=>processaCondsInicio(t), processaCondsFim:t=>processaCondsFim(t),
+  noJogo:h=>noJogo(h), voltaDoBanimento:h=>voltaDoBanimento(h),
+  dispara:(ev,h,...a)=>dispara(ev,h,...a), passivaDe:h=>passivaDe(h),
+  ganhaRecurso:(h,t,n)=>ganhaRecurso(h,t,n), recursoDe:(h,t)=>recursoDe(h,t),
+  zeraRecurso:(h,t)=>zeraRecurso(h,t),
+  ehCritico:(h,hb,a)=>ehCritico(h,hb,a), poderPassivo:h=>poderPassivo(h),
+  reducaoDeAliados:a=>reducaoDeAliados(a), veMatoDeLonge:h=>veMatoDeLonge(h),
+  travaDeAcao:(h,i)=>travaDeAcao(h,i), tetoAndar:h=>tetoAndar(h),
+  prende:(a,q)=>prende(a,q), revelaAoRedor:(h,r)=>revelaAoRedor(h,r),
+  enxergaPorWard:(t,c,r)=>enxergaPorWard(t,c,r),
+  condsDaPeca:h=>condsDaPeca(h), get LENTIDAO_CASAS(){return LENTIDAO_CASAS},
+  mata:(a,q)=>mata(a,q), aplicaDano:(...a)=>aplicaDano(...a),
+  usaHab:a=>usaHab(a), confirmaHab:a=>confirmaHab(a), iniciaHab:i=>iniciaHab(i),
   poeZona:(t,p,z)=>poeZona(t,p,z), zonasCobram:t=>zonasCobram(t),
   curaDeBase:()=>curaDeBase(),
   get DOTS(){return DOTS}, get ZONA_TURNOS(){return ZONA_TURNOS},
@@ -166,7 +186,8 @@ const PONTE = `
   noTab:(...a)=>noTab(...a), em:(...a)=>em(...a), k:(...a)=>k(...a),
   todos:()=>todos(), vivos:t=>vivos(t), naBase:h=>naBase(h),
   torreExposta:(...a)=>torreExposta(...a), capacidade:h=>capacidade(h),
-  poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h)
+  poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h),
+  ehAgil:h=>ehAgil(h), fichaHTML:(h,m)=>fichaHTML(h,m)
 };`;
 
 function carrega(trocas = []) {
