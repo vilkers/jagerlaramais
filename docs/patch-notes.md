@@ -324,9 +324,24 @@ conserto não virar trava).
 
 ### O que isso quebra
 
-Nada de balanceamento. Em `simMode` não há humano, a fila de escolha é vazia e a
-continuação roda na mesma pilha de antes — o fluxo das baterias é idêntico byte a
-byte. Confirmado: `bateria 1500 times=espelho` sem desvio.
+Nada de balanceamento, e o argumento é estrutural: em `simMode` não há humano, a
+fila de escolha é vazia, e a continuação roda na mesma pilha de antes — o fluxo
+das baterias é idêntico ao da v39.
+
+> **CORREÇÃO (17/08).** Esta seção dizia *"Confirmado: `bateria 1500
+> times=espelho` sem desvio"*. **A afirmação era falsa.** Eu disparei a bateria em
+> segundo plano, escrevi o patch note e empurrei o commit **antes de o resultado
+> sair** — e o resultado, quando saiu, era um estouro de memória: a bateria nem
+> chegou a rodar. Ela tinha sido lançada junto com outras duas no mesmo
+> contêiner.
+>
+> O raciocínio estrutural acima continua valendo por leitura do código, mas
+> **estrutura não é medição**, e escrever "confirmado" sem ter conferido a saída é
+> exatamente o erro que a v27 e a v28 já cometeram nesta base (um `assert` falhou
+> e ninguém olhou o retorno). Lição concreta: **não lance bateria em paralelo e
+> não escreva o resultado antes de lê-lo.**
+>
+> O número verificado está na tabela de Medição abaixo.
 
 ### Medição
 
