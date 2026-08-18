@@ -804,7 +804,13 @@ const BONUS_REGIAO={
   topo:  {arm:2},
   meio:  {poder:2},
   baixo: {ouro:3},
-  selva: {cura:4, mov:1}
+  selva: {cura:4, mov:1},
+  /* CONTINUAR ONDE ESTÁ não paga bônus, e a entrada vazia é obrigatória:
+     `pagaBonusRegiao` sai cedo quando não acha a região, e sair cedo deixaria
+     `J.bonusPend` preso — o time pagaria o bônus da rodada seguinte duas vezes.
+     O prêmio desta opção é POSICIONAL: o Caçador não é teleportado, e quem já
+     estava em cima do acampamento, do poço ou do gank continua lá. */
+  ficar: {}
 };
 const REGIOES=[
   {id:"topo",  n:"Topo",  ico:"▲", d:"A selva colada na rota de cima.",
@@ -814,7 +820,14 @@ const REGIOES=[
   {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo.",
    b:"+3 de ouro, na hora"},
   {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço.",
-   b:"cura 4 e +1 no Dado Mestre"}
+   b:"cura 4 e +1 no Dado Mestre"},
+  /* A QUINTA OPÇÃO. Ela não é uma região: é a recusa de escolher uma.
+     `fica:1` é o que o resto do motor consulta — nada de comparar com a string
+     solta em quatro lugares. Não tem ponto de pouso em SELVA_PONTOS, e é de
+     propósito: reposicionar é exatamente o que ela não faz. */
+  {id:"ficar", n:"Continuar onde está", ico:"⊙", fica:1,
+   d:"Ele não é reposicionado: fica exatamente na casa em que parou.",
+   b:"nenhum bônus — o que você leva é a posição"}
 ];
 const REGIAO=Object.fromEntries(REGIOES.map(r=>[r.id,r]));
 const cacadorDe=t=>J.times[t].herois.find(h=>!h.morto&&CATALOGO[h.id].pos==="selva");
@@ -849,6 +862,12 @@ function reposicionaCacador(t,regiao){
   if(!REGIAO[regiao])return null;
   const h=cacadorDe(t);
   if(!h)return null;
+  /* CONTINUAR ONDE ESTÁ. Devolve a casa atual e não escreve em `h.pos`: o
+     pedido foi literal — *"não executar movimentação automática apenas porque
+     essa opção foi escolhida"*. Devolver a posição (em vez de `null`) importa
+     porque `null` é o código de "não coube em lugar nenhum", e o resto do motor
+     lê os dois de maneiras diferentes. */
+  if(REGIAO[regiao].fica) return [...h.pos];
   const destino=pousoNaSelva(t,regiao,h);
   if(!destino)return null;
   h.pos=[...destino];
@@ -947,6 +966,9 @@ function perguntaRotacao(fila,i,depois){
     <p>Ele reaparece <b>dentro da selva</b>, na parte dela colada à região escolhida —
     <b>nunca dentro da rota</b>. O outro jogador <b>não vê</b> a sua escolha: para saber
     onde ele caiu é preciso ter visão daquele mato.</p>
+    <p><b>Continuar onde está</b> não é uma região: ele <b>não sai do lugar</b> e não
+    ganha bônus nenhum. Serve para quando a casa em que ele parou já vale mais que
+    qualquer reposicionamento — em cima do acampamento, colado no poço ou de tocaia.</p>
     <p>Cada região paga um <b style="color:var(--brass)">bônus momentâneo</b>, que entra no
     <b>seu turno desta rodada</b> e vale só ele — não é prêmio por chegar, é o que aquela
     parte do mapa pede de quem vai para lá.</p>
@@ -988,6 +1010,45 @@ function iaEscolheRotacao(t){
   const inimigos=J.times[1-t].herois.filter(x=>!x.morto&&visivelPara(x,t));
   const aliados=J.times[t].herois.filter(x=>!x.morto&&x!==h);
   const nota=id=>{
+    /* CONTINUAR ONDE ESTÁ (§4 do pedido). A regra que a IA aplica é a mesma das
+       regiões, só que medida DE ONDE ELE JÁ ESTÁ: inimigo exposto ao alcance
+       dele, aliado por perto para fechar o gank, poço colado, acampamento
+       maduro na mão. Se não houver nada disso à volta, ficar vale zero e
+       qualquer região ganha — que é o comportamento certo para um Caçador
+       parado no mato sem nada acontecendo.
+
+       O alcance de medição é 3 e não 1: rotação acontece ANTES do turno, então
+       o que importa não é o que ele alcança agora, é o que ele alcança depois
+       de andar. Três casas é o que um Caçador percorre com um Dado Mestre
+       mediano. */
+    if(REGIAO[id]&&REGIAO[id].fica){
+      let s=0, presas=0;
+      inimigos.filter(x=>dist(...x.pos,...h.pos)<=3).forEach(x=>{
+        presas++;
+        s+=3;
+        /* O GANK QUE JÁ ESTÁ ENCOSTADO VALE MAIS. Sem esta linha, a nota da
+           região empatava com a de ficar sempre que a presa estivesse perto de
+           uma rota — e a IA trocava um alvo colado no Caçador por um ponto de
+           pouso a quatro casas dele. A régua da região é "tem inimigo naquela
+           rota"; a de ficar é "tem inimigo AQUI", e as duas coisas não valem o
+           mesmo. */
+        if(dist(...x.pos,...h.pos)<=1) s+=3;
+        s+=Math.round(3*(1-Math.max(0,x.vida)/x.vidaMax));   /* ferido vale mais */
+        if(!sobTorreAmiga(x)) s+=2;                          /* longe da torre dele */
+      });
+      /* O aliado só soma se houver PRESA. Na primeira versão ele somava sozinho,
+         e como o Caçador nasce ao lado dos próprios quatro companheiros, "ficar"
+         começava a partida valendo 8 sem nada acontecer — a IA plantava o
+         Caçador na base e nunca mais girava. Aliado é o que fecha o gank; sem
+         alvo, ele não é motivo para nada. */
+      if(presas) s+=aliados.filter(x=>dist(...x.pos,...h.pos)<=3).length*2;
+      if(J.poco.vida>0&&dist(...h.pos,...POCO)<=3) s+=(J.poco.id==="barao"?6:3);
+      if(J.camps.some(c=>c.ativo&&!c.respawn&&dist(...c.pos,...h.pos)<=2)) s+=2;
+      /* Caçador quase morto não fica: ele não tem o que fazer com a posição, e
+         a Selva ainda cura 4. */
+      if(h.vida<h.vidaMax*0.4) s-=4;
+      return s;
+    }
     const a=SELVA_PONTOS[t][id];
     if(!a) return -99;
     if(id==="selva"){

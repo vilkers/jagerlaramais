@@ -1850,11 +1850,12 @@ teste("ward em OUTRA região não revela: o que revela é a posição, não a es
 
 /* ---------- a IA ---------- */
 
-teste("a IA só devolve Topo, Meio, Baixo ou Selva, e nunca fica sem resposta", () => {
+teste("a IA só devolve uma das cinco opções, e nunca fica sem resposta", () => {
   const c = cenaSelva();
   const g = c.g;
   const ids = g.REGIOES.map(r => r.id);
-  eq(ids.sort().join(","), "baixo,meio,selva,topo", "o menu de regiões não é o dos quatro");
+  eq(ids.slice().sort().join(","), "baixo,ficar,meio,selva,topo",
+     "o menu de regiões não é o das cinco opções (v48: entrou CONTINUAR ONDE ESTÁ)");
 
   Object.keys(g.NIVEIS_IA).forEach(nivel => {
     g.nivelIA = nivel;
@@ -1864,6 +1865,129 @@ teste("a IA só devolve Topo, Meio, Baixo ou Selva, e nunca fica sem resposta", 
   g.nivelIA = "dificil";
   g.cacadorDe(1).morto = 2;
   ok(ids.includes(g.iaEscolheRotacao(1)), "sem Caçador vivo a IA não devolveu região");
+});
+
+/* ═══════════════ v48 — CONTINUAR ONDE ESTÁ ═══════════════
+
+   A quinta opção da rotação. Ela não é uma região e não paga bônus: o que ela
+   entrega é a POSIÇÃO. O relato foi explícito sobre o que ela NÃO pode ser —
+   não é Selva, não é voltar para a Selva, não é ir para o centro e não é
+   reescolher a região atual. É não mexer no Caçador. */
+
+teste("CONTINUAR ONDE ESTÁ não move o Caçador um hexágono sequer", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  /* uma casa qualquer que NÃO é ponto de pouso de região nenhuma, para o teste
+     não passar por coincidência */
+  const pousos = new Set(Object.values(g.SELVA_PONTOS[0]).filter(Boolean).map(p => g.k(...p)));
+  const casa = [...g.MATO].map(K => K.split(",").map(Number))
+                 .find(p => !pousos.has(g.k(...p)) && !g.em(...p) && !g.ehBloqueado(...p));
+  ok(casa, "não achei casa de mato fora dos pontos de pouso");
+  c.poe(h, casa);
+
+  g.escolheRotacao(0, "ficar");
+
+  eq(g.k(...h.pos), g.k(...casa), "CONTINUAR ONDE ESTÁ reposicionou o Caçador");
+  eq(g.J.rotacao[0], "ficar", "a escolha não foi registrada como 'ficar'");
+});
+
+teste("CONTINUAR ONDE ESTÁ não é a Selva nem o centro dela", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const centro = g.SELVA_PONTOS[0].selva;
+  c.poe(h, g.BASE[0][0]);                 // fora da selva de propósito
+  g.escolheRotacao(0, "ficar");
+  eq(g.k(...h.pos), g.k(...g.BASE[0][0]),
+     "escolher 'continuar onde está' arrastou o Caçador para dentro da selva");
+  ok(g.dist(...h.pos, ...centro) > 0, "'continuar onde está' virou 'ir para o centro da Selva'");
+});
+
+teste("CONTINUAR ONDE ESTÁ não paga bônus de região, e não deixa bônus pendurado", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  const h = g.cacadorDe(0);
+  const ouro0 = h.ouro, arm0 = g.armTotal(h), poder0 = g.poderTotal(h), vida0 = h.vida;
+  h.vida = Math.max(1, h.vidaMax - 6);
+  const ferido = h.vida;
+
+  g.escolheRotacao(0, "ficar");
+  eq(g.J.bonusPend[0], "ficar", "a escolha não ficou pendente como as outras");
+  g.pagaBonusRegiao(0, "ficar");
+
+  eq(h.ouro, ouro0, "'continuar onde está' pagou ouro");
+  eq(g.armTotal(h), arm0, "'continuar onde está' pagou Armadura");
+  eq(g.poderTotal(h), poder0, "'continuar onde está' pagou Poder");
+  eq(h.vida, ferido, "'continuar onde está' curou");
+  eq(g.J.bonusPend[0], null,
+     "o bônus ficou PENDENTE para sempre — o time pagaria o da rodada seguinte duas vezes");
+});
+
+teste("o timeout continua indo para a Selva, e não para 'continuar onde está'", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.simMode = false; g.aiMode = false;
+  g.rotacaoDeVerdade();
+  const h = g.cacadorDe(0);
+  const centro = g.SELVA_PONTOS[0].selva;
+  c.poe(h, g.BASE[0][0]);
+
+  g.abreRotacoes();
+  const rel = g.__timers.filter(t => t.vivo).pop();
+  ok(rel, "a tela abriu sem relógio");
+  for (let i = 0; i < 10; i++) rel.fn();
+
+  eq(g.J.rotacao[0], "selva",
+     "o timeout mudou de comportamento em silêncio — o pedido foi manter a regra atual");
+  eq(g.dist(...h.pos, ...centro), 0, "o timeout não reposicionou");
+});
+
+teste("a IA prefere FICAR quando o alvo ferido está colado no Caçador", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  /* o Caçador da IA em cima de um inimigo quase morto, longe das torres dele:
+     teleportar para qualquer região joga fora o gank que já está na mão */
+  const presa = g.J.times[0].herois.find(x => g.CATALOGO[x.id].pos === "meio");
+  /* a casa precisa estar LONGE de qualquer corredor de rota: colada numa rota, a
+     mesma presa contaria para 'ficar' e para aquela região, e o teste mediria o
+     desempate em vez da regra */
+  const longeDeRota = p => Object.values(g.ROTAS)
+    .every(l => l.every(q => g.dist(...p, ...q) > 1));
+  const casa = [...g.MATO].map(K => K.split(",").map(Number))
+                 .find(p => !g.em(...p) && !g.ehBloqueado(...p) && longeDeRota(p)
+                       && g.vizinhos(...p).some(v => g.noTab(...v) && !g.em(...v)
+                                                     && !g.ehBloqueado(...v) && longeDeRota(v)));
+  ok(casa, "não achei casa de mato longe de todas as rotas");
+  c.poe(h, casa);
+  const viz = g.vizinhos(...casa).find(p => g.noTab(...p) && !g.em(...p)
+                                            && !g.ehBloqueado(...p) && longeDeRota(p));
+  c.poe(presa, viz);
+  presa.vida = 3;
+  g.aplicaCond(presa, "revelado", { tu: 9 });     // a IA obedece à névoa
+
+  eq(g.iaEscolheRotacao(1), "ficar",
+     "a IA largou um gank pronto para trocar de região");
+});
+
+teste("a IA NÃO fica parada quando não há nada em volta do Caçador", () => {
+  const c = cenaSelva();
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = g.cacadorDe(1);
+  /* todo mundo do outro time trancado na própria base, longe do Caçador */
+  g.J.times[0].herois.forEach(x => c.poe(x, g.BASE[0][0]));
+  const longe = [...g.MATO].map(K => K.split(",").map(Number))
+                 .filter(p => !g.em(...p) && !g.ehBloqueado(...p))
+                 .sort((a, b) => g.dist(...b, ...g.BASE[0][0]) - g.dist(...a, ...g.BASE[0][0]))[0];
+  c.poe(h, longe);
+  g.J.poco.vida = 0;                                   // sem objetivo colado
+  g.J.camps.forEach(cp => { cp.ativo = 0; });
+
+  ok(g.iaEscolheRotacao(1) !== "ficar",
+     "a IA ficou parada no mato sem nada por perto — 'ficar' virou o padrão");
 });
 
 teste("a IA usa a mesma mecânica de pouso do jogador", () => {
@@ -1953,13 +2077,14 @@ teste("com o Barão de pé e o mapa quieto, a IA vai para a Selva", () => {
   eq(g.iaEscolheRotacao(1), "selva", "com o Barão vivo e nada nas rotas, a IA não foi à Selva");
 });
 
-teste("o Aprendiz sorteia entre as quatro regiões — e só entre elas", () => {
+teste("o Aprendiz sorteia entre as cinco opções — e só entre elas", () => {
   const g = cenaSelva().g;
   g.nivelIA = "facil";
+  const menu = g.REGIOES.map(r => r.id);       /* v48: as quatro regiões + 'ficar' */
   const vistos = new Set();
   for (let i = 0; i < 300; i++) vistos.add(g.iaEscolheRotacao(1));
-  ok([...vistos].every(x => REGS.includes(x)), `sorteou fora do menu: ${[...vistos]}`);
-  ok(vistos.size >= 3, `o sorteio do Aprendiz só produziu ${vistos.size} regiões em 300 tentativas`);
+  ok([...vistos].every(x => menu.includes(x)), `sorteou fora do menu: ${[...vistos]}`);
+  ok(vistos.size >= 3, `o sorteio do Aprendiz só produziu ${vistos.size} opções em 300 tentativas`);
 });
 
 /* ---------- o que saiu junto ---------- */
