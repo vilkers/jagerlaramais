@@ -214,7 +214,14 @@ const PONTE = `
   alcDeHab:(h,hb)=>alcDeHab(h,hb), alcanceUtil:h=>alcanceUtil(h),
   get ALCANCE_MAX(){return ALCANCE_MAX}, escolheHeroi:h=>escolheHeroi(h),
   get REGIAO(){return REGIAO}, atacaTorre:t=>atacaTorre(t),
-  perguntaRotacao:(f,i,d)=>perguntaRotacao(f,i,d)
+  perguntaRotacao:(f,i,d)=>perguntaRotacao(f,i,d),
+  /* ---- o draft (v48) ---- */
+  get dr(){return dr}, set dr(v){dr=v},
+  iniciaDraft:d=>iniciaDraft(d), draftLegais:()=>draftLegais(),
+  iaEscolheDraft:t=>iaEscolheDraft(t), draftAplica:id=>draftAplica(id),
+  draftTurnoAtual:()=>draftTurnoAtual(), draftNota:(id,t)=>draftNota(id,t),
+  draftForca:id=>draftForca(id), draftAmeaca:id=>draftAmeaca(id), draftSinergia:(id,tm)=>draftSinergia(id,tm),
+  get ORDEM_DRAFT(){return ORDEM_DRAFT}
 };`;
 
 function carrega(trocas = []) {

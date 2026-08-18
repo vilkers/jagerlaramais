@@ -2028,11 +2028,14 @@ let aiMode=false, simMode=false;
    partida. É o erro clássico de quem está aprendendo. */
 const NIVEIS_IA={
   facil:  {id:"facil",  n:"Aprendiz", d:"Erra bastante e joga passivo. Compra item, mas não warda, não volta para defender e não disputa o poço.",
-           erro:0.40, minimo:26, compra:1, wards:0, alcance:0, defende:0, objetivo:0, rotacaoBoa:0},
+           erro:0.40, minimo:26, compra:1, wards:0, alcance:0, defende:0, objetivo:0, rotacaoBoa:0,
+           draftK:4, draftPeso:0},
   normal: {id:"normal", n:"Veterano", d:"Joga o mapa inteiro: compra, warda, volta para defender o Nexus e disputa o poço.",
-           erro:0.20, minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1},
+           erro:0.20, minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1,
+           draftK:3, draftPeso:1},
   dificil:{id:"dificil",n:"Mestre",   d:"Não erra jogada e concentra fogo em quem já está caindo.",
-           erro:0,    minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1, foco:1}
+           erro:0,    minimo:15, compra:1, wards:1, alcance:1, defende:1, objetivo:1, rotacaoBoa:1, foco:1,
+           draftK:3, draftPeso:2}
 };
 let nivelIA="normal";
 const IA=()=>NIVEIS_IA[nivelIA]||NIVEIS_IA.normal;
@@ -6492,62 +6495,181 @@ function iniciaDraft(depois){
   telaDraft();
 }
 
+/* a ordem do draft mora no catálogo; o fallback existe para o caso de o guia
+   carregar o motor sem ele */
+const ORDEM_DRAFT_USADA=()=>typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
+  [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
+   {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
 function draftTurnoAtual(){
-  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
-    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
-     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
+  const ORDEM=ORDEM_DRAFT_USADA();
   if(dr.fase==="ban") return dr.passo;
   const et=ORDEM[Math.floor(dr.passo/2)];
   return dr.passo%2===0 ? et.primeiro : 1-et.primeiro;
 }
-function draftEscolhaIA(){
-  if(!aiMode || draftTurnoAtual()!==1)return false;
-  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
-    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
-     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
+/* ══════════════ A IA DRAFTA (v48) ══════════════
+   RELATO: *"a IA sempre bane e escolhe praticamente os mesmos heróis"*. E era
+   literal — ela ordenava por `vida + poder×2 + arm×1,5 + ruído×2` e pegava o
+   primeiro. O ruído de ±2 não chega perto da distância entre os chassis (a vida
+   sozinha varia 7 pontos), então a ordem era sempre a mesma e o draft também.
 
-  let legais=[];
+   A correção NÃO é `Math.random()` (§15). É o que §16 e §17 pediram:
+   **nota ponderada, e sorteio dentro do grupo dos melhores.** Um herói ruim
+   continua improvável; o mesmo herói deixa de ser certeza.
+
+   Cada peça da nota está separada de propósito, para poder ser discutida (e
+   medida) uma a uma. */
+
+/* 1. O CHASSI. Escala comprimida em relação à ordenação antiga: `vida` entrava
+      inteira e dominava tudo sozinha. Aqui ela vale um terço, e o que separa os
+      heróis passa a ser a soma do kit, não o tamanho da barra. */
+const draftForca=id=>{
+  const h=CATALOGO[id];
+  return h.vida*0.35 + h.poder*2.2 + h.arm*1.6 + h.alc*1.2
+       + (h.agil?1.5:0) + (h.movMax||MOV_MAX_PADRAO)*0.5;
+};
+
+/* 1b. A AMEAÇA DO KIT, lida das habilidades e não de uma lista de nomes. O
+      chassi diz quanto o herói aguenta; isto diz o quanto ele assusta. Sem
+      esta parcela a nota era quase só `vida`, e os quatro chassis mais gordos
+      dominavam picks e bans em qualquer situação — que é metade do defeito
+      relatado. Herói novo entra sozinho nesta conta: ela lê `ef`. */
+function draftAmeaca(id){
+  let n=0;
+  (CATALOGO[id].habs||[]).forEach(hb=>{
+    const e=hb.ef||{};
+    const conds=[...(e.cond||[]),...(e.condVizinhos||[]),...(e.condRaio||[]),
+                 ...(e.condEu||[]),...(e.condSeNaZona||[])];
+    conds.forEach(c=>{
+      if(c.t==="atordoado")  n+=3;
+      else if(c.t==="silenciado") n+=2.5;
+      else if(c.t==="invisivel")  n+=3;
+      else if(c.t==="banido")     n+=1;
+      else n+=0.6;
+    });
+    if(e.executa)  n+=2;
+    if(e.revive)   n+=3;
+    if(e.perfura)  n+=1.5;
+    if(e.prende||e.prendeVizinhos) n+=1.5;
+    if(e.zona)     n+=1;
+    if(e.cura>=5)  n+=1.5;
+    if(e.area||e.danoRaio||e.danoVizinhos) n+=1;
+    if(e.doar)     n+=1;
+  });
+  return n;
+}
+
+/* 2. A COMPOSIÇÃO do próprio time (§16, "sinergia"). Não é bônus de número
+      entre heróis: é o time olhando para os buracos que tem. Cinco magos é uma
+      composição, mas é uma composição ruim, e a IA precisa saber disso. */
+function draftSinergia(id,meuTime){
+  const h=CATALOGO[id], cls=meuTime.map(x=>CATALOGO[x].cls);
+  let n=0;
+  const iguais=cls.filter(c=>c===h.cls).length;
+  n-=iguais*2.2;                                          /* o terceiro igual pesa */
+  const temFrente=meuTime.some(x=>["Tanque","Lutador"].includes(CATALOGO[x].cls));
+  if(!temFrente&&["Tanque","Lutador"].includes(h.cls)) n+=2.5;
+  const temLonge=meuTime.some(x=>CATALOGO[x].alc>=3);
+  if(!temLonge&&h.alc>=3) n+=2;
+  const temCura=meuTime.some(x=>CATALOGO[x].cls==="Suporte");
+  if(!temCura&&h.cls==="Suporte") n+=1.5;
+  return n;
+}
+
+/* 3. O MATCHUP contra o time do adversário. **Hoje devolve zero de propósito**:
+      a rede de anti-picks é decisão do grupo (§24 e §59 do pedido pedem a
+      tabela aprovada ANTES de mexer nos kits), e o lugar onde ela entra é
+      exatamente aqui. Fica escrito para não haver dúvida sobre onde plugar. */
+function draftContra(id,timeDeles){
+  return 0;
+}
+
+/* 4. A NOTA. E o SORTEIO PONDERADO dentro do grupo dos melhores (§17): os `k`
+      primeiros entram no sorteio, com peso proporcional à vantagem sobre o
+      último do grupo. `draftPeso` é a personalidade do nível — o Aprendiz
+      sorteia liso entre quatro, o Mestre pende forte para os dois primeiros. */
+function draftNota(id,t){
+  return draftForca(id)+draftAmeaca(id)
+        +draftSinergia(id,dr.times[t])+draftContra(id,dr.times[1-t]);
+}
+function sorteiaPonderado(ids,nota,kPedido){
+  const cfg=IA();
+  const k=Math.max(1,Math.min(kPedido||cfg.draftK||3,ids.length));
+  const ordenados=ids.slice().sort((a,b)=>nota(b)-nota(a));
+  const grupo=ordenados.slice(0,k);
+  const piso=nota(grupo[grupo.length-1]);
+  const expo=cfg.draftPeso===undefined?1:cfg.draftPeso;
+  /* +1 no piso para que o último do grupo tenha peso, e não zero: variedade é
+     o objetivo, e um peso zero devolveria o determinismo pela porta dos fundos */
+  const pesos=grupo.map(id=>Math.pow(nota(id)-piso+1,expo));
+  const total=pesos.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<grupo.length;i++){ r-=pesos[i]; if(r<=0) return grupo[i]; }
+  return grupo[0];
+}
+
+/* AS OPÇÕES LEGAIS — uma porta só, para a tela, a IA e o teste lerem a mesma
+   lista. §18: heróis já escolhidos, banidos e a trava de uma rota por
+   banimento entram aqui, e não em três lugares diferentes. */
+function draftLegais(){
+  const ORDEM=ORDEM_DRAFT_USADA();
   if(dr.fase==="ban"){
     const rotasBanidas=dr.bans.map(id=>CATALOGO[id].pos);
-    legais=Object.keys(CATALOGO).filter(id=>!dr.bans.includes(id)&&!rotasBanidas.includes(CATALOGO[id].pos));
-  } else {
-    const et=ORDEM[Math.floor(dr.passo/2)], rota=et.rota;
-    legais=Object.keys(CATALOGO).filter(id=>
-      CATALOGO[id].pos===rota &&
-      !dr.bans.includes(id) &&
-      !dr.times[0].includes(id) &&
-      !dr.times[1].includes(id));
+    return Object.keys(CATALOGO).filter(id=>
+      !dr.bans.includes(id)&&!rotasBanidas.includes(CATALOGO[id].pos));
   }
-  if(!legais.length)return false;
+  const rota=ORDEM[Math.floor(dr.passo/2)].rota;
+  return Object.keys(CATALOGO).filter(id=>
+    CATALOGO[id].pos===rota&&!dr.bans.includes(id)
+    &&!dr.times[0].includes(id)&&!dr.times[1].includes(id));
+}
 
-  /* IA prefere, entre opções legais, mais vida+poder+armadura; pequeno ruído evita draft sempre idêntico. */
-  legais.sort((a,b)=>{
-    const A=CATALOGO[a], B=CATALOGO[b];
-    const sa=A.vida+A.poder*2+A.arm*1.5+Math.random()*2;
-    const sb=B.vida+B.poder*2+B.arm*1.5+Math.random()*2;
-    return sb-sa;
-  });
-  const id=legais[0];
+/* A ESCOLHA DA IA, pura: devolve o id e não mexe em nada. É por aqui que
+   `sim/draft.js` roda trinta drafts sem tela nenhuma. */
+function iaEscolheDraft(t){
+  const legais=draftLegais();
+  if(!legais.length)return null;
+  if(dr.fase==="ban"){
+    /* BANIR é tirar da mesa o que o ADVERSÁRIO mais gostaria de ter — e o que
+       mais assusta, que raramente é o chassi mais gordo. O grupo do sorteio é
+       TRÊS a mais que o dos picks: o pool do ban é o catálogo inteiro (20
+       heróis contra os 4 de uma rota), e com o mesmo `k` os dois bans caíam
+       sempre nos mesmos quatro nomes. Medido em 200 drafts: com +2, sete heróis
+       diferentes foram banidos alguma vez; com +3, nove. */
+    const cfg=IA(), k=(cfg.draftK||3)+3;
+    return sorteiaPonderado(legais,
+      id=>draftForca(id)+draftAmeaca(id)*1.5+draftSinergia(id,dr.times[1-t]), k);
+  }
+  return sorteiaPonderado(legais,id=>draftNota(id,t));
+}
 
+/* APLICA a escolha e avança o passo. Porta única: o clique humano e a IA
+   passam pelos mesmos oito de linha, então nunca divergem. */
+function draftAplica(id){
+  const ORDEM=ORDEM_DRAFT_USADA();
+  if(dr.fase==="ban"){
+    dr.bans.push(id); dr.passo++;
+    if(dr.passo>=2){ dr.fase="pick"; dr.passo=0; }
+    return false;
+  }
+  const et=ORDEM[Math.floor(dr.passo/2)];
+  const t=dr.passo%2===0?et.primeiro:1-et.primeiro;
+  dr.times[t].push(id); dr.passo++;
+  return dr.passo>=10;         /* true = o draft acabou */
+}
+
+function draftEscolhaIA(){
+  if(!aiMode || draftTurnoAtual()!==1)return false;
+  const id=iaEscolheDraft(1);
+  if(!id)return false;
   setTimeout(()=>{
-    if(dr.fase==="ban"){
-      dr.bans.push(id); dr.passo++;
-      if(dr.passo>=2){dr.fase="pick";dr.passo=0;}
-    } else {
-      const et=ORDEM[Math.floor(dr.passo/2)];
-      const t=dr.passo%2===0?et.primeiro:1-et.primeiro;
-      dr.times[t].push(id); dr.passo++;
-      if(dr.passo>=10){ fecha(); return dr.aoFim(dr.times); }
-    }
+    if(draftAplica(id)){ fecha(); return dr.aoFim(dr.times); }
     telaDraft();
   },500);
   return true;
 }
 
 function telaDraft(){
-  const ORDEM=typeof ORDEM_DRAFT!=="undefined"?ORDEM_DRAFT:
-    [{rota:"topo",primeiro:0},{rota:"selva",primeiro:1},{rota:"meio",primeiro:0},
-     {rota:"adc",primeiro:1},{rota:"sup",primeiro:0}];
+  const ORDEM=ORDEM_DRAFT_USADA();
   const NOMEROTA={topo:"Topo",selva:"Selva",meio:"Meio",adc:"Atirador",sup:"Suporte"};
 
   if(dr.fase==="ban"){
@@ -6593,15 +6715,7 @@ function telaDraft(){
   }
   document.querySelectorAll(".dr-h").forEach(b=>b.onclick=()=>{
     const id=b.dataset.id; vibra(10);
-    if(dr.fase==="ban"){
-      dr.bans.push(id); dr.passo++;
-      if(dr.passo>=2){ dr.fase="pick"; dr.passo=0; }
-    }else{
-      const et=ORDEM[Math.floor(dr.passo/2)];
-      const t = dr.passo%2===0 ? et.primeiro : 1-et.primeiro;
-      dr.times[t].push(id); dr.passo++;
-      if(dr.passo>=10){ fecha(); return dr.aoFim(dr.times); }
-    }
+    if(draftAplica(id)){ fecha(); return dr.aoFim(dr.times); }
     telaDraft();
   });
 }

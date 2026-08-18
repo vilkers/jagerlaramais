@@ -4696,6 +4696,120 @@ teste("a IA não pontua alto um mergulho que não derruba a torre", () => {
      `a IA dá a mesma nota ao mergulho com e sem creep (${semCreep} vs ${comCreep})`);
 });
 
+/* ═══════════════ v48 — O DRAFT DA IA ═══════════════
+
+   RELATO: *"a IA sempre bane e escolhe praticamente os mesmos heróis"*. A causa
+   era única: ela ordenava por `vida + poder×2 + arm×1,5 + ruído×2` e pegava o
+   primeiro. O ruído de ±2 não chega perto da distância entre os chassis, então
+   a ordem era sempre a mesma. */
+
+/* roda um draft inteiro em memória, IA dos dois lados */
+function draftInteiro(g) {
+  g.aiMode = true;
+  g.dr = { fase: "ban", passo: 0, bans: [], times: [[], []], aoFim: null };
+  let guarda = 0;
+  while (guarda++ < 40) {
+    const id = g.iaEscolheDraft(g.draftTurnoAtual());
+    if (!id) break;
+    if (g.draftAplica(id)) break;
+  }
+  return g.dr;
+}
+
+teste("o draft da IA fecha com cinco heróis por time, um por rota", () => {
+  const g = cena().g;
+  g.nivelIA = "normal";
+  const dr = draftInteiro(g);
+  eq(dr.times[0].length, 5, "o time 0 não fechou");
+  eq(dr.times[1].length, 5, "o time 1 não fechou");
+  ["topo", "selva", "meio", "adc", "sup"].forEach(r => {
+    [0, 1].forEach(t => {
+      eq(dr.times[t].filter(id => g.CATALOGO[id].pos === r).length, 1,
+         `time ${t} não tem exatamente um herói de ${r}`);
+    });
+  });
+});
+
+teste("o draft da IA nunca escolhe banido nem repetido", () => {
+  const g = cena().g;
+  g.nivelIA = "normal";
+  for (let i = 0; i < 20; i++) {
+    const dr = draftInteiro(g);
+    const todos = [...dr.times[0], ...dr.times[1]];
+    eq(new Set(todos).size, todos.length, "o mesmo herói entrou nos dois times");
+    dr.bans.forEach(b => ok(!todos.includes(b), `o banido ${b} foi escolhido`));
+    eq(new Set(dr.bans).size, dr.bans.length, "o mesmo herói foi banido duas vezes");
+    /* uma rota só pode perder um herói para o ban */
+    const rotas = dr.bans.map(id => g.CATALOGO[id].pos);
+    eq(new Set(rotas).size, rotas.length, "os dois bans saíram da mesma rota");
+  }
+});
+
+teste("trinta drafts da IA não produzem o mesmo time trinta vezes", () => {
+  const g = cena().g;
+  g.nivelIA = "normal";
+  const comps = new Set(), vistos = new Set();
+  for (let i = 0; i < 30; i++) {
+    const dr = draftInteiro(g);
+    comps.add(dr.times.map(x => x.slice().sort().join("+")).join("|"));
+    [...dr.times[0], ...dr.times[1]].forEach(id => vistos.add(id));
+  }
+  ok(comps.size >= 20, `só ${comps.size} composições distintas em 30 drafts`);
+  ok(vistos.size >= 16, `só ${vistos.size} heróis diferentes apareceram em 30 drafts`);
+});
+
+teste("variedade não é sorteio: a IA ainda pende para a nota maior", () => {
+  const g = cena().g;
+  g.nivelIA = "dificil";
+  const conta = {};
+  for (let i = 0; i < 200; i++) {
+    g.dr = { fase: "pick", passo: 0, bans: [], times: [[], []], aoFim: null };
+    const id = g.iaEscolheDraft(0);
+    conta[id] = (conta[id] || 0) + 1;
+  }
+  const legais = Object.keys(g.CATALOGO).filter(id => g.CATALOGO[id].pos === "topo");
+  const porNota = legais.slice().sort((a, b) => g.draftNota(b, 0) - g.draftNota(a, 0));
+  ok((conta[porNota[0]] || 0) > (conta[porNota[3]] || 0) * 1.5,
+     "o melhor da rota é escolhido quase tanto quanto o pior — isso é dado, não decisão");
+  ok((conta[porNota[0]] || 0) < 200,
+     "o melhor da rota foi escolhido 100% das vezes — o defeito relatado continua");
+});
+
+teste("a nota do draft lê o KIT, não só o tamanho da barra de vida", () => {
+  const g = cena().g;
+  /* dois heróis de vida igual e ameaça diferente precisam ter notas diferentes */
+  const ids = Object.keys(g.CATALOGO);
+  const ameacas = ids.map(id => g.draftAmeaca(id));
+  ok(Math.max(...ameacas) > Math.min(...ameacas) + 3,
+     "a ameaça do kit é igual para todo mundo — a nota voltou a ser só o chassi");
+  /* o Taxista atordoa; a Xhera não. Mesma rota, chassis parecidos. */
+  ok(g.draftAmeaca("vharn") > g.draftAmeaca("xhera"),
+     "quem atordoa não pontua mais que quem só bate");
+});
+
+teste("o ban da IA varia, e olha o kit e não só o chassi", () => {
+  const g = cena().g;
+  g.nivelIA = "normal";
+  const banidos = new Set();
+  for (let i = 0; i < 60; i++) {
+    g.dr = { fase: "ban", passo: 0, bans: [], times: [[], []], aoFim: null };
+    banidos.add(g.iaEscolheDraft(0));
+  }
+  ok(banidos.size >= 4, `em 60 bans a IA só tirou ${banidos.size} heróis diferentes`);
+  ok(banidos.size <= 14, "o ban virou sorteio — §15 pede decisão ponderada");
+});
+
+teste("a sinergia do draft evita empilhar a mesma classe", () => {
+  const g = cena().g;
+  /* Ilva é Maga. Num time que já tem dois Magos ela precisa valer menos. */
+  const sozinha = g.draftSinergia("ilva", []);
+  const comDoisMagos = g.draftSinergia("ilva", ["nira", "solenne"]);
+  ok(comDoisMagos < sozinha, "a terceira peça da mesma classe não pesa nada na nota");
+  /* e o time sem linha de frente valoriza quem segura */
+  ok(g.draftSinergia("vharn", ["nira", "solenne"]) > g.draftSinergia("vharn", ["grumo"]),
+     "time sem tanque nenhum não valoriza o tanque");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {
