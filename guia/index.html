@@ -517,9 +517,10 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <p class="eyebrow">08 — Loja</p>
   <h2>Itens</h2>
   <p class="lede">Camada única, sem árvore de componentes — jogo leve não aguenta. Três slots por herói. Os itens de resposta não são opcionais: sem eles todo mundo compra a mesma build e o meta morre no terceiro jogo.</p>
+  <p class="lede"><b>Três faixas de investimento</b> (v48): <b>simples 12</b>, <b>intermediário 18</b>, <b>forte 24</b>. Os preços quase triplicaram porque a build inteira ficava pronta na rodada 8 de uma partida de 34 — agora o primeiro item chega por volta da <b>rodada 7</b>, o segundo na <b>14</b> e os três slots só fecham na <b>20</b>. Comprar voltou a ser escolha: o item barato agora ou o item que decide a partida depois.</p>
   <div class="tblwrap">
     <table>
-      <thead><tr><th>Item</th><th>Ouro</th><th>Efeito</th><th>Tipo</th></tr></thead>
+      <thead><tr><th>Item</th><th>Ouro</th><th>Efeito</th><th>Faixa</th></tr></thead>
       <tbody id="titens"></tbody>
     </table>
   </div>
@@ -624,20 +625,16 @@ const RECURSOS_GUIA = Object.entries(RECURSOS).map(([id,d])=>({
   quem: (HEROIS[d.dono]||{}).n || "—"
 }));
 
-const ITENS = [
-  ["Lâmina do Eclipse",6,"+2 de poder físico","dano"],
-  ["Cetro Cinéreo",6,"+2 de poder mágico; dano em área leva +1","dano"],
-  ["Coração de Basalto",5,"+3 de vida","defesa"],
-  ["Égide do Juramento",5,"+2 de armadura","defesa"],
-  ["Manto de Cinzas",5,"+2 contra dano mágico","defesa"],
-  ["Passos do Vento",4,"+1 casa de passo","mobilidade"],
-  ["Ampulheta Rachada",6,"Re-rolar 1 dado por rodada","dado"],
-  ["Garra do Faminto",7,"Cura 2 sempre que causar dano","sustento"],
-  ["Coroa do Comando",5,"Aliados adjacentes levam +1 de dano nas ordens","suporte"],
-  ["Selo da Ruína",5,"Quem você atinge não cura por 1 rodada","resposta"],
-  ["Cota do Espinho",6,"Devolve 2 de dano a quem atacar de perto","resposta"],
-  ["Véu Prismático",7,"Bloqueia a próxima Ultimate que atingir este herói","resposta"]
-];
+/* A LOJA VEM DO CATÁLOGO (v48). Esta lista era escrita à mão aqui, com preços
+   e efeitos de outra versão — o terceiro catálogo divergente que o CLAUDE.md
+   proíbe. Agora `ITENS_BASE` e `ITENS_NOVOS` moram os dois em
+   data/catalogo.js, e o guia lê de lá como já lia heróis e condições.
+   A faixa de preço é derivada, não escrita: ela é o próprio `o`. */
+const FAIXA_ITEM = o => o >= 24 ? "forte" : o >= 18 ? "intermediário" : "simples";
+const ITENS = [...(typeof ITENS_BASE!=="undefined"?ITENS_BASE:[]),
+               ...(typeof ITENS_NOVOS!=="undefined"?ITENS_NOVOS:[])]
+  .sort((a,b)=>a.o-b.o||a.n.localeCompare(b.n))
+  .map(i=>[i.n, i.o, i.d, FAIXA_ITEM(i.o)]);
 
 const MONSTROS = [
   ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
@@ -678,9 +675,9 @@ const GLOSS = [
   ["Super-creep","Creep reforçado, gerado por inibidor caído. Desenhado, sem regra no motor."],
   ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão da rodada 5 à 12, Barão da 12 em diante — e o Barão toma o lugar mesmo com o Dragão vivo."],
   ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
-  ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (golpe de herói em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
-  ["Rotação do Caçador","No início de CADA rodada — inclusive a primeira, e antes de qualquer um jogar — os dois escolhem, escondido um do outro, a REGIÃO do próprio Caçador: Topo, Meio, Baixo ou Selva. Ele é reposicionado na hora, sempre dentro da selva, na parte dela colada à região, nunca dentro da rota. Dez segundos para decidir; sem escolha vai para a Selva. O turno só começa depois de os dois responderem."],
-  ["Bônus de região","O que cada região paga ao Caçador que vai para lá, na HORA da escolha e valendo até o início do próximo turno dele: Topo +2 de Armadura, Meio +2 de Poder, Baixo +3 de ouro, Selva cura 4 e +1 no Dado Mestre da rodada. Não é prêmio por chegar — é o que aquela parte do mapa pede. Nada disso aparece no log: dizer o bônus seria dizer a região."],
+  ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (o golpe de herói em torre vale o dobro; no Nexus causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
+  ["Rotação do Caçador","No início de CADA rodada — inclusive a primeira, e antes de qualquer um jogar — os dois escolhem, escondido um do outro, a REGIÃO do próprio Caçador: Topo, Meio, Baixo, Selva ou CONTINUAR ONDE ESTÁ. Nas quatro primeiras ele é reposicionado na hora, sempre dentro da selva, na parte dela colada à região, nunca dentro da rota; a quinta não é uma região — ele fica exatamente onde parou e não ganha bônus nenhum. Dez segundos para decidir; sem escolha vai para a Selva. O turno só começa depois de os dois responderem."],
+  ["Bônus de região","O que cada região paga ao Caçador que vai para lá, na HORA da escolha e valendo até o início do próximo turno dele: Topo +2 de Armadura, Meio +2 de Poder, Baixo +6 de ouro, Selva cura 4 e +1 no Dado Mestre da rodada. Não é prêmio por chegar — é o que aquela parte do mapa pede. Nada disso aparece no log: dizer o bônus seria dizer a região."],
   ["Alcance de habilidade","O alcance é da HABILIDADE, e não só do herói. Habilidade sem alcance próprio segue o do herói; alcance 1 é corpo a corpo de verdade, e item de alcance não a transforma em tiro; alcance próprio maior soma com item normalmente. É o que permite um herói de perto ter uma habilidade de longe, e vice-versa."],
   ["Vender item","Devolve 60% do preço de compra, arredondado para baixo, mínimo 1 — na mesma janela da compra: na própria base ou morto. A perda existe para que trocar de build custe alguma coisa; sem ela os três slots deixariam de ser escolha."],
   ["Condição","Estado com prazo pendurado num herói. Doze no jogo, num registro só (ver a seção Condições). O dano é cobrado no INÍCIO do turno de quem carrega; a duração cai no FIM. O prazo é contado em turnos do portador, nunca em rodadas — é o que dá ao primeiro e ao segundo jogador o mesmo número de cobranças. Morrer limpa todas."],
@@ -702,9 +699,12 @@ const GLOSS = [
   ["Zona","Condição posta no CHÃO: quem começa o turno dentro a recebe. Dura os 2 próximos turnos do adversário — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar o dobro da do segundo. Desde a v45 ela pode pendurar qualquer condição, e não só veneno: as cascas do Valti e a Armadilha do Cael deixam Lentidão."],
   ["Cura de base","Herói ferido na própria base recupera 3 por rodada. Com inimigo a 2 casas ou menos, trata uma vez e para até o cerco sair de perto."],
   ["Presença","Quantos heróis seus contam numa rota. É ela que decide para que lado a onda anda no fim da rodada: mais heróis, a onda avança; empate, ela fica parada. Você conta se PASSOU DA SUA TORRE EXTERIOR (é o que impede herói parado em casa de empurrar onda) OU se está ENCOSTADO NA FRENTE DE ONDA — ou seja, se você foi defender. Até a v46 só a primeira valia, e o defensor em cima da própria torre contava zero: na mesma casa, o atacante contava e ele não."],
-  ["Frente de Onda","O ponto da rota onde os creeps estão. Ela anda no fim da rodada para o lado de quem tem mais presença, e a torre que estiver embaixo dela leva 1 por rodada. Também acende 2 de visão."],
-  ["Defender","Levar heróis para a rota que está caindo. ATENÇÃO: empatar a presença NÃO salva a torre — a onda para de andar, mas continua cobrando 1 por rodada de quem está embaixo dela. Para salvar é preciso ter MAIS gente que o atacante, porque só assim a onda recua e sai de cima. Um corpo a mais já vira a conta, e ir com o time todo é como se perde o resto do mapa. O rótulo da rota mostra em três cores: verde (tenho mais), âmbar (empate, a torre ainda cai) e carmim (eles têm mais)."],
-  ["Ondas engrossam","O relógio da partida. A cada 16 rodadas a onda passa a tirar 1 a mais da torre, até 3 — da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. Vale igual para os dois lados, então não favorece quem está na frente; existe para que uma partida em que os dois defendem bem ainda termine."],
+  ["Frente de Onda","O ponto da rota onde os creeps estão — a peça de creep deste jogo. Ela anda no fim da rodada para o lado de quem tem mais presença, e a torre que estiver embaixo dela leva 7 por rodada (um terço de torre). Também acende 2 de visão. E desde a v48 ela é o que PROTEGE quem mergulha: herói colado numa torre inimiga sem a Frente de Onda dentro da mesma zona leva um tiro da torre no fim do turno."],
+  ["Torre","Vida 20 e armadura 5. A onda tira 7 por degrau; o golpe de herói é CALCULADO — dado × escala do slot + Poder + Carregado, menos a armadura da estrutura —, então investir passou a valer contra estrutura. Ultimate perfurante ignora a armadura da torre. Sangramento, veneno, atordoamento, execução e crítico não existem contra concreto. Ela revida 4 em quem encosta e bate, e atira 5 no fim do turno em quem ficou colado sem creep — um alvo por torre, e nunca mata: deixa em 1."],
+  ["Mergulho","Terminar o turno colado numa torre inimiga. Com a sua Frente de Onda na zona da torre, sai de graça: o creep está pagando o pedágio. Sem ela, a torre atira em UM herói — quem bateu nela primeiro, depois o mais ferido. Não gasta dado, ação nem carta de ninguém: é reação da estrutura."],
+  ["Movimento máximo","O teto de HEXÁGONOS que um herói atravessa por turno andando, e ele é do personagem: 3 nos pesados (Taxista, Grumo, Caramêlo, Torvald), 4 nos normais, 5 nos ágeis (Pombo, Valti, Pyk, Zhet, Catarino). O Dado Mestre continua sendo do time, mas não dá mais para gastá-lo todo numa peça só. Lampejo, Retorno, Puff de Emergência, Passo de Sombra, a carta Recuo e qualquer puxão ou troca NÃO contam — cada um já tem limite e preço próprios. Item de movimento sobe o teto em 1, e o teto absoluto é 6."],
+  ["Defender","Levar heróis para a rota que está caindo. ATENÇÃO: empatar a presença NÃO salva a torre — a onda para de andar, mas continua cobrando um degrau de onda por rodada de quem está embaixo dela. Para salvar é preciso ter MAIS gente que o atacante, porque só assim a onda recua e sai de cima. Um corpo a mais já vira a conta, e ir com o time todo é como se perde o resto do mapa. O rótulo da rota mostra em três cores: verde (tenho mais), âmbar (empate, a torre ainda cai) e carmim (eles têm mais)."],
+  ["Ondas engrossam","O relógio da partida. A cada 16 rodadas a onda passa a tirar um degrau a mais da torre (7 por degrau), até 3 — da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. Vale igual para os dois lados, então não favorece quem está na frente; existe para que uma partida em que os dois defendem bem ainda termine."],
   ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
 ];
 

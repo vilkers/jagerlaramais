@@ -20,21 +20,16 @@ const porRota=r=>Object.keys(CATALOGO).filter(id=>CATALOGO[id].pos===r);
 
 
 /* ---------- LOJA ---------- */
-const ITENS=[
- {id:"eclipse",  n:"Lâmina do Eclipse", o:18, d:"+2 de Poder",                        ef:{poder:2}},
- {id:"cetro",    n:"Cetro Cinéreo",     o:18, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
- {id:"basalto",  n:"Coração de Basalto",o:12, d:"+4 de Vida máxima",                  ef:{vida:4}},
- {id:"egide",    n:"Égide do Juramento",o:12, d:"+2 de Armadura",                     ef:{arm:2}},
- {id:"manto",    n:"Manto de Cinzas",   o:12, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
- {id:"passos",   n:"Passos do Vento",   o:12, d:"Ágil: a 1ª casa andada é grátis, e +1 de Movimento máximo", ef:{agil:1,movMax:1}},
- {id:"ampulheta",n:"Ampulheta Rachada", o:18, d:"+1 no Dado Mestre e +1 de Movimento máximo", ef:{mov:1,movMax:1}},
- {id:"garra",    n:"Garra do Faminto",  o:18, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
- {id:"coroa",    n:"Coroa do Comando",  o:12, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
- {id:"selo",     n:"Selo da Ruína",     o:12, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
- {id:"espinho",  n:"Cota do Espinho",   o:18, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
- {id:"veu",      n:"Véu Prismático",    o:18, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
-];
-if(typeof ITENS_NOVOS!=="undefined") ITENS.push(...ITENS_NOVOS);
+/* ---------- OS ITENS MORAM NO CATÁLOGO (v48) ----------
+   Os doze originais viviam AQUI e os dez novos em `data/catalogo.js`. Meia
+   verdade em cada arquivo é a receita do defeito que o CLAUDE.md proíbe em
+   letras maiúsculas: o guia mantinha uma TERCEIRA lista, escrita à mão, com
+   preços e efeitos de outra versão — "Cetro Cinéreo: +2 de poder mágico; dano
+   em área leva +1" quando o item real dá +2 de Poder e +1 de Alcance.
+   Agora a loja inteira é `ITENS_BASE + ITENS_NOVOS`, os dois no catálogo, e o
+   guia lê de lá como jogo e cartas já liam. */
+const ITENS=[...(typeof ITENS_BASE!=="undefined"?ITENS_BASE:[]),
+             ...(typeof ITENS_NOVOS!=="undefined"?ITENS_NOVOS:[])];
 const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
 /* Vale a base E o entorno imediato, não o hexágono exato. A base tem dois hexágonos
    e o time tem cinco heróis: `desempilha()` empurra três deles para as casas vizinhas

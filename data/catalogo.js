@@ -435,6 +435,30 @@ const CLASSES = [
   ["Suporte",   "Força 1+, e doa o próprio dado","Faz o outro jogar melhor. Nunca fica sem nada para fazer."]
 ];
 
+/* ═══════════ ITENS — os 12 originais ═══════════
+   Moravam dentro de jogo/jogo.js até a v48. Vieram para cá pelo mesmo motivo
+   que os heróis vieram na v0.4: com metade da loja em cada arquivo, o guia
+   acabou mantendo uma terceira lista escrita à mão, com preços e efeitos de
+   outra versão. Fonte única de verdade, como manda o CLAUDE.md.
+
+   `o` é o preço, em três faixas desde a v48: 12 simples · 18 intermediário ·
+   24 forte. `movMax` sobe o TETO de casas por turno do portador, não devolve
+   movimento. */
+const ITENS_BASE = [
+ {id:"eclipse",  n:"Lâmina do Eclipse", o:18, d:"+2 de Poder",                        ef:{poder:2}},
+ {id:"cetro",    n:"Cetro Cinéreo",     o:18, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
+ {id:"basalto",  n:"Coração de Basalto",o:12, d:"+4 de Vida máxima",                  ef:{vida:4}},
+ {id:"egide",    n:"Égide do Juramento",o:12, d:"+2 de Armadura",                     ef:{arm:2}},
+ {id:"manto",    n:"Manto de Cinzas",   o:12, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
+ {id:"passos",   n:"Passos do Vento",   o:12, d:"Ágil: a 1ª casa andada é grátis, e +1 de Movimento máximo", ef:{agil:1,movMax:1}},
+ {id:"ampulheta",n:"Ampulheta Rachada", o:18, d:"+1 no Dado Mestre e +1 de Movimento máximo", ef:{mov:1,movMax:1}},
+ {id:"garra",    n:"Garra do Faminto",  o:18, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
+ {id:"coroa",    n:"Coroa do Comando",  o:12, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
+ {id:"selo",     n:"Selo da Ruína",     o:12, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
+ {id:"espinho",  n:"Cota do Espinho",   o:18, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
+ {id:"veu",      n:"Véu Prismático",    o:18, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
+];
+
 /* ═══════════ ITENS — 10 novos (loja passa a 22) ═══════════ */
 const ITENS_NOVOS = [
  {id:"presagio",  n:"Presságio de Ferro", o:24, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:5}},
@@ -534,4 +558,4 @@ const BANS=1;   /* por jogador */
 
 if(typeof module!=="undefined")
   module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,condTxt,TEXTO_PATAMAR,
-                CONDS,COND_NUM,RECURSOS,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
+                CONDS,COND_NUM,RECURSOS,ITENS_BASE,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
