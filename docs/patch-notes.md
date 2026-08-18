@@ -16,6 +16,280 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v48 — o jungle decide ficar, a torre vira objetivo, o ouro volta a doer · 2026-08-18
+
+Sete frentes, todas a partir de relato. Cada número aqui foi medido antes e
+depois; onde não deu para medir, está escrito que não deu.
+
+---
+
+### 1. Rotação do Caçador: entra **CONTINUAR ONDE ESTÁ**
+
+Quinta opção, ao lado de Topo, Meio, Baixo e Selva. Ela **não é uma região**:
+
+- **não reposiciona** — o Caçador fica exatamente na casa em que parou;
+- **não paga bônus** — o que ela entrega é a posição;
+- **não é a Selva**, não é voltar para a Selva, não é ir para o centro e não é
+  reescolher a região atual.
+
+O **timeout continua em 10 segundos e continua indo para a Selva**. Não mudou em
+silêncio, que era o pedido explícito.
+
+A IA avalia a quinta opção com a mesma régua das regiões, medida **de onde ele
+está**: presa ao alcance, aliado para fechar o gank, poço colado, acampamento
+maduro. **Gank já encostado vale +3**, porque a régua da região é "tem inimigo
+naquela rota" e a de ficar é "tem inimigo AQUI" — e as duas não valem o mesmo.
+Sem nada em volta, ficar vale 0 e qualquer região ganha.
+
+`BONUS_REGIAO.ficar = {}` é obrigatório e não é enfeite: sem a entrada,
+`pagaBonusRegiao` sai cedo e deixa `J.bonusPend` preso — o time pagaria o bônus
+da rodada seguinte duas vezes.
+
+---
+
+### 2. O dado emprestado do Emo (BUG)
+
+Relato: *"o Emo empresta o dado, o aliado ataca, e o jogo consome um dado de ação
+normal — o jogador perde uma ação à toa."* Reproduzido, e verdadeiro.
+
+**Causa.** `dadoPara()` escolhia o **menor** dado que atendesse à Força, e o dado
+doado era só mais um da fila. Doado 6, com um 1 livre na mesa: ia o 1. O 6 doado
+ficava inútil — ele tem **dono** (ninguém mais o gasta) e o dono já tinha `agiu`.
+O time pagava **duas vezes**: o dado que o Emo queimou para doar e o dado que o
+aliado gastou.
+
+**Correção.** O emprestado sai primeiro entre os que atendem: é o único da mesa
+que não serve a mais ninguém e que expira no fim do turno. A escolha à mão do
+jogador continua ganhando de tudo.
+
+**Não virou ação de graça.** O empréstimo continua valendo UMA ação, a de quem
+recebeu, paga com o dado e o turno do Emo.
+
+Dois defeitos vizinhos saíram junto: `iaJogadas` media a jogada com o dado errado
+(chamava `dadoPara` antes de selecionar o herói, então a dona do dado era a peça
+do laço anterior), e o dado emprestado não dizia de quem era na mesa.
+
+---
+
+### 3. Movimento máximo por herói
+
+Relato: *"no fim da partida alguns heróis atravessam uma parcela enorme do mapa
+numa jogada só"*.
+
+Medido em `node sim/movimento.js` (script novo): o bolso do time — Dado Mestre
+mais todos os dados de ação convertidos — tem **mediana 15 e máximo 21**. De base
+a base são **15 casas**. Sem teto, um herói atravessava o mapa inteiro.
+
+**O teto é em CASAS, não em pontos.** O herói pode ter 20 no bolso e ainda assim
+andar no máximo `movMax` hexágonos por turno.
+
+| Perfil | Teto | Quem |
+|---|---|---|
+| Pesado | **3** | Taxista, Grumo, Caramêlo, Torvald (Armadura 3+, alcance 1) |
+| Normal | **4** | os onze do meio |
+| Ágil | **5** | Pombo, Valti, Pyk, Zhet, Catarino |
+
+**Ninguém tem 6**, e é escolha: 6 é o vão inteiro entre as duas torres exteriores
+de uma rota — exatamente a jogada que o teto existe para tirar da mesa.
+
+**NÃO contam para o teto** (decisão documentada): Lampejo, Retorno, Puff de
+Emergência, Passo de Sombra, a carta Recuo e qualquer puxão/empurrão/troca.
+Nenhum é caminhada, todos têm limite próprio e custo próprio.
+
+**Item sobe o TETO**, não devolve movimento: Passos do Vento, Botas Rúnicas,
+Ampulheta Rachada e Ampulheta Dourada dão **+1 cada**, com teto absoluto de **6**.
+
+Ordem importa: o teto pessoal entra **depois** do piso de 1 da Lentidão, senão a
+Lentidão devolvia movimento a quem já tinha andado tudo.
+
+**Medido (n=400, `estilo=pvp`):** maior caminhada **8 → 5**, mediana inalterada
+(2). Duração **38,5 → 42,6** rodadas; bola de neve **67,8% → 66,5%**.
+
+---
+
+### 4. A torre vira objetivo
+
+Relato: *"está muito fácil derrubar torres"*. A torre tinha **3 de vida** e todo
+golpe de herói tirava **1 fixo** — do tanque com dado 1 ao atirador com Ultimate e
+três itens. Investir não mudava nada.
+
+| | antes | depois |
+|---|---|---|
+| Vida da torre | 3 | **20** |
+| Dano da onda | 1 por degrau | **7 por degrau** (`ONDA_GOLPE`) |
+| Golpe de herói | 1 fixo | **calculado** — média 7,7, de 1 a 30 |
+| Armadura da estrutura | não existia | **5** |
+| Aríete do Barão em torre | +1 | **dobra o golpe** |
+
+**A cadência da onda não mudou:** 3 rodadas de cerco para derrubar uma torre
+cheia, 2 com a onda grossa, 1 no terceiro degrau. É a mesma da v47, que foi
+medida e escolhida lá.
+
+`golpeEmEstrutura()` é a porta única — motor e IA leem daqui, como em
+`golpeNoPoco`. Entra: dado, escala do slot, Poder, Carregado, multiplicador da
+habilidade, Aríete. **Não entra:** crítico, emboscada, drena, execução, condição.
+Concreto não sangra.
+
+**Perfurante ignora a armadura da estrutura**, e é assim que "boa contra
+estrutura" aparece por mecânica, sem exceção por nome de herói.
+
+**A armadura 5 saiu de varredura** (`node sim/torres.js 60 dificil arm=N`):
+
+| arm | 1ª torre cai | torres/partida | duração |
+|---|---|---|---|
+| (v47) | rodada 5 | 7,8 | 30 |
+| 3 | rodada 6 | 7,8 | 35 |
+| **5** | **rodada 8** | **7,0** | **35** |
+| 7 | rodada 9 | 6,5 | 36 |
+
+Com 3 a torre volta a cair como caía; com 7 o golpe fraco vira 1 de 20 e a
+estrutura começa a virar esponja, que é o que o pedido proibiu.
+
+---
+
+### 5. Creep protege, torre pune
+
+```
+CREEP PRESENTE  → o herói consegue pressionar.
+SEM CREEP       → a torre pune o herói.
+```
+
+- **Perto** = **1 hexágono**. É a MESMA régua do +1 de Armadura de quem defende
+  junto da própria torre: a zona de proteção e a de ameaça são a mesma casa,
+  vistas dos dois lados;
+- **Creep aliado** = a **Frente de Onda daquela rota, dentro da zona da torre** —
+  não em qualquer lugar da rota. A Frente é a peça de creep deste jogo, e ela só
+  encosta na torre inimiga quando a sua onda venceu o empurra-empurra;
+- **Quando** = no encerramento do turno de quem se expôs, **antes** de a presença
+  ser congelada, para que quem cair conte como morto na conta da rota;
+- **Quantos** = **UM alvo por torre**: quem bateu na torre neste turno, depois o
+  mais ferido, distância desempata;
+- **Dano** = **5**, e **não mata** — deixa em 1, como o revide sempre fez.
+  `mata()` precisa de autor para creditar o ouro. Na prática a torre não rouba o
+  abate, ela **arma** o abate;
+- **Não gasta** dado, ação, carta nem recurso de ninguém;
+- **Torre caída não atira.**
+
+A IA entende: pontua o golpe pelo dano real, desconta o risco de mergulhar sem
+creep, e **sai de baixo da torre** no fim do turno. O Aprendiz não recua —
+mergulhar é o erro de quem está aprendendo.
+
+**Medido** (`sim/torres.js`, IA de verdade nos dois lados, 120 partidas):
+primeira torre cai na **rodada 5 → 7**; torres por partida **7,8 → 7,1**;
+mergulho punido **0 → 14,6 por partida**. Em `sim/defesa.js 400 estilo=pvp`:
+duração **38,5 → 41,5**, bola de neve **67,8% → 63,0%**.
+
+---
+
+### 6. Economia: os itens deixam de estar prontos na rodada 8
+
+Relato: *"os itens são adquiridos cedo demais"*.
+
+**Auditoria** (`node sim/ouro.js 300`, com a medição de tempo nova): ouro inicial
+0 · agiu 1 · farmou 3 · abate 4 · acampamento 3 (neutro 4) · **torre e objetivo
+não pagam ouro nenhum** · renda **2,59 por herói por rodada**.
+
+| | antes | depois |
+|---|---|---|
+| 1º item | rodada **4** | rodada **7** |
+| 2º item | rodada **6** | rodada **14** |
+| três slots cheios | rodada **8** | rodada **20** |
+| renda por herói na partida | 88 | 96 |
+| renda ÷ build mais caro | 3,5× | **1,3×** |
+| ouro sobrando no fim | 63 | **24** |
+
+**Preço em três faixas**, mantendo a ordem relativa de antes — o equilíbrio entre
+itens já estava certo, errada estava a escala:
+
+| Faixa | Preço | Itens |
+|---|---|---|
+| Simples | **12** (era 4–5) | Passos do Vento, Coração de Basalto, Égide, Manto de Cinzas, Coroa, Selo |
+| Intermediário | **18** (era 6–7) | Eclipse, Cetro, Ampulheta Rachada, Espinho, Botas, Garra, Véu, Lente, Elmo, Espectro, Grilhão |
+| Forte | **24** (era 8–9) | Presságio, Runa do Vazio, Cálice, Couraça, Ampulheta Dourada |
+
+**E o que você FAZ passa a pagar mais que o que você espera.** Só subir o preço
+faria a gota passiva (3 por rodada de quem farma) virar a fonte quase inteira, e o
+jogo cobraria paciência em vez de jogo:
+
+| Fonte | antes | depois |
+|---|---|---|
+| Abate | 4 | **8** |
+| Acampamento próprio | 3 | **6** |
+| Acampamento neutro | 4 | **8** |
+| Invasão de acampamento | +1 | **+2** |
+| Bônus da região Baixo | 3 | **6** |
+| Agiu / farmou por rodada | 1 / 3 | **não mudou** |
+
+Junto, o que media ouro em número antigo: **Suborno** (+4 → **+10**),
+**Pechincha** (desconto 3 → **8**), as duas cartas de item grátis (passaram a
+falar em **faixa**, não em número solto) e o **Digerir** do Grumo (3 → **8**).
+
+A sobra de 24 ainda paga **dois Reforços** (10+14) — exatamente onde a curva foi
+calibrada na v25. Ouro não virou inútil.
+
+---
+
+### 7. O draft da IA deixa de ser sempre o mesmo
+
+Relato: *"a IA sempre bane e escolhe praticamente os mesmos heróis"*.
+
+**Causa, literal:** ela ordenava por `vida + poder×2 + arm×1,5 + ruído×2` e pegava
+o primeiro. O ruído de ±2 não chega perto da distância entre os chassis (a vida
+sozinha varia 7 pontos), então a ordem era sempre a mesma.
+
+**Não virou `Math.random()`.** Virou nota ponderada com sorteio dentro do grupo
+dos melhores:
+
+| Parcela | O que lê |
+|---|---|
+| `draftForca` | o chassi, com a vida comprimida a um terço do peso antigo |
+| `draftAmeaca` | o **kit**, lido de `ef`: atordoamento, silêncio, invisibilidade, execução, revive, perfurante, prende, zona, cura grande, área |
+| `draftSinergia` | a composição do próprio time: a terceira peça da mesma classe pesa, time sem linha de frente valoriza quem segura |
+| `draftContra` | o matchup — **hoje devolve 0 de propósito**, esperando a aprovação de `docs/MATCHUPS.md` |
+
+O sorteio pega os `k` primeiros com peso proporcional à vantagem sobre o último do
+grupo. `k` é personalidade de nível: Aprendiz 4 e peso liso, Veterano e Mestre 3,
+e o Mestre pende forte para os dois primeiros. **No ban o grupo é três maior** — o
+pool é o catálogo inteiro, e com o mesmo `k` os dois bans caíam sempre nos mesmos
+quatro nomes.
+
+**Medido** (`sim/draft.js`, novo, 200 drafts, IA dos dois lados, Veterano):
+
+| | resultado |
+|---|---|
+| heróis que apareceram em algum time | **20/20** |
+| composições distintas em 200 drafts | **199** |
+| herói mais escolhido | 39% dos slots da rota dele |
+| heróis banidos alguma vez | 9/20 |
+
+Nos **30 drafts** que o pedido exige, os três níveis dão **30 composições
+distintas**.
+
+---
+
+### O que isso quebra
+
+- **Toda medição anterior à v48 sobre torre, ouro e duração está velha.** A escala
+  da torre mudou de 3 para 20 e os preços quase triplicaram;
+- `DANO_TORRE` **não existe mais** — quem lia a constante lê `golpeEmEstrutura`;
+- a ponte do harness ganhou `movMaxDe`, `casasRestantes`, `golpeEmEstrutura`,
+  `creepApoia`, `torreQueAmeaca`, `torresAtiram`, `iaEscolheDraft`, `draftAplica`
+  e as constantes novas;
+- quatro scripts de medição novos: `sim/movimento.js`, `sim/torres.js`,
+  `sim/draft.js` e a seção de tempo em `sim/ouro.js`;
+- **testes: 231 → 275.**
+
+### O que NÃO mudou, de propósito
+
+- o relógio da onda (`ONDA_ENGROSSA=16`, teto 3) e a cadência de cerco;
+- a vida do Nexus (3) e o golpe de herói nele (1);
+- a Última Muralha;
+- a renda por rodada (agiu 1 · farmou 3);
+- **nenhum kit de herói.** A rede de anti-picks está em `docs/MATCHUPS.md`
+  esperando aprovação, e o gancho `draftContra` devolve 0 até lá.
+
+---
+
 ## v47 — o defensor passa a contar · 2026-08-18
 
 Relato do Vilker: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter

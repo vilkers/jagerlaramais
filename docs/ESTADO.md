@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v47 (o defensor passa a contar) · **Atualizado em:** 2026-08-18
+**Versão:** v48 (o jungle fica, a torre vira objetivo, o ouro volta a doer) · **Atualizado em:** 2026-08-18
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -32,20 +32,20 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Ultimates perfurantes | Julgamento, Ato Final e Sentença **escalam** (`dano 0,8 × 1,25 + Poder`) e **ignoram Armadura**. Eram `danoFixo 8`, travadas desde a v19 |
 | Alvos no mesmo hexágono | o toque abre **janela de escolha** (herói, torre, poço, Nexus). Antes o alvo de toque do herói escondia o Nexus e travava o fim de partida |
 | Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
-| Vida de torre | **3** — a onda tira 1/rodada; o herói tira 1 por golpe, **sem trava por rodada** (a torre revida 2 a cada golpe). O herói bate na **torre exposta** da rota |
+| **Vida de torre** | **20** (v48, era 3) · barra no mapa e no painel · **armadura 5** · a onda tira **7 por degrau** (a cadência de cerco não mudou: 3 rodadas para uma torre cheia) · o golpe de herói é **calculado** em `golpeEmEstrutura` — dado × escala do slot + Poder + Carregado − armadura, média 7,7 e nada de crítico, drena, execução ou condição. **Perfurante ignora a armadura da estrutura**. Revide 4 a cada golpe. O herói bate na **torre exposta** da rota |
 | Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
 | Poço épico | casa **[8,8]** (derivada) · **Dragão** (3 de vida) até a rodada 12, **Barão a partir da 12 — toma o poço mesmo com o Dragão vivo** |
 | Dragão — como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1, o dado não entra. Cai em **Ultimate + básica**, nunca numa Ultimate só. Revide 2 |
 | Barão — como apanha | **conta DANO, pela regra dos heróis**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura. **16 de vida, 3 de armadura** — menos vida que qualquer herói; é a **armadura** que o faz exigir grupo (básica de dado 2 tira 2; Ultimate de dado 6 tira 8). Fechar num turno pede **4 dos 5**. Revide 4 |
 | Teto de escudo | **12** — metade da vida do maior herói. Muralha 17→12, Vento Contrário 15→11, Anteparo 13→10. Égide do Barão **4** por turno (era 7, e a própria carta já dizia 4) |
-| Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (golpe em estrutura causa 2). Nenhuma dá Poder |
+| Dádiva do Barão | quem fecha escolhe **1 de 3** por 2 rodadas: **Ondas de Ferro** (as 3 ondas andam sozinhas), **Égide** (4 de escudo no time por turno), **Aríete** (v48: o golpe de herói em **torre vale o dobro**; no Nexus continua somando 1). Nenhuma dá Poder |
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
-| Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz |
+| Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: **Mestre 87,9% × Aprendiz** na v48 (era 72,7%: o Aprendiz não recua de baixo da torre e sorteia o draft mais liso). Desde a v48 o nível também muda o **draft** (`draftK`/`draftPeso`) e o **recuo de torre** |
 | **Presença de rota** | um herói conta na rota se **passou da própria Torre Exterior** (empurrar) **ou se está encostado na Frente de Onda** (defender, v47). Até a v46 só a primeira valia, e o defensor em cima da própria torre contava **zero** — na mesma casa o atacante contava e ele não. Herói na própria base continua sem contar: isso é acampar |
-| Bola de neve | quem derruba a primeira torre vence **61,2%** em PvP (era 75,7% na v46). `node sim/defesa.js 800 estilo=pvp` |
+| Bola de neve | quem derruba a primeira torre vence **63,0%** em PvP na v48 (era 67,8% antes do teto de movimento e da torre nova, n=400). `node sim/defesa.js 800 estilo=pvp` |
 | **As ondas engrossam** | a cada **16 rodadas** a onda tira **1 a mais** da torre, até **3**. Simétrico — não é alavanca de quem está na frente, e só morde partida longa. É o relógio que garante que o hotseat fecha: dois defensores competentes iam a **49,3 rodadas** sem ele |
-| Duração, por cenário | PvP dois defensores (pior caso) **40,1** · agente quase-aleatório 32,4 · **IA de verdade, mediana 25** |
+| Duração, por cenário | v48, PvP dois defensores (pior caso) **41,5** (era 38,5) · **IA de verdade, mediana 34** em `sim/torres.js` (era 30). O teto de movimento e a torre nova cobram ~3 e ~5 rodadas. Se na mesa parecer arrastado, a alavanca medida continua sendo `ONDA_ENGROSSA` — e ela **vaza vantagem de ordem** |
 | Passo do relógio | **16, e não menos**: passo curto encurta mais e **vaza vantagem de ordem** (54,4% para quem começa com passo 10, contra 51,6% sem relógio). 16 é o único que fica na faixa histórica. Teto 3 e não 2 — com 2 a duração empaca em ~41 rodadas |
 | Defesa — o que foi medido e **descartado** | *empate segura* (a onda só machuca com presença estritamente maior) e *reparo de torre*: as duas alongam a partida **e pioram** a bola de neve, porque **defesa forte demais protege quem está na frente**. *Cerco pesado* (2 corpos a mais tiram 2) compra 2,5 rodadas e devolve 2,8 pontos de bola de neve. Números no patch note da v47 |
 | Rótulo da rota | contagem **viva** de presença (`TOPO 1 · 2`) em **três cores**: **verde** = tenho mais (a onda recua e a torre para de apanhar) · **âmbar** = empate (a onda não anda, **mas a torre ainda cai**) · **carmim** = eles têm mais. Rota vazia não pinta. **Obedece à névoa** — só conta o inimigo que este lado enxerga, e em hotseat vira com o aparelho |
@@ -54,7 +54,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Vender item | devolve **60%** do preço de compra (arredonda para baixo, mínimo 1), na **mesma janela da compra** — base ou morto. Item de vida desfaz o `vidaMax` |
 | **A trava da mesa** | `mesaTravada()` é a **porta única** de todo gesto humano: fase que não é de jogar, vez da máquina (incluindo `iaRodando`, que segue ligado no fecho do turno dela) e a janela de 350ms do arrasto. **A IA não passa por ela** — chama `moveAte`/`iniciaHab`/`confirmaHab` direto, sem evento, e é por isso que a trava mora nos ouvintes de clique |
 | Fases | `oculto` → **`rotacao`** (v46: existe um estado entre rodadas em que ninguém joga) → `jogando` → `fim` |
-| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva** — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Com bônus de REGIÃO desde a v46**, momentâneo: a escolha deixa o bônus **pendente** e ele é pago no **início do turno do dono**, valendo só aquele turno (pagar na virada não funciona — `expiraDoTime` limpa buff antes de o dono jogar): **Topo +2 Armadura · Meio +2 Poder · Baixo +3 ouro · Selva cura 4 e +1 no Dado Mestre**. Nada disso vai para o log — dizer o bônus é dizer a região. **A rodada 1 também tem rotação**, e o turno só começa depois de os dois responderem. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
+| Rotação do Caçador | no **início da rodada** os dois escolhem, às cegas, a **região** do próprio Caçador — **Topo · Meio · Baixo · Selva · Continuar onde está** (v48: a quinta opção não reposiciona e não paga bônus; o que ela entrega é a posição) — e ele é **reposicionado na hora**, sempre **dentro da selva**, na parte dela colada à região, **nunca dentro da rota**. **10 segundos** para decidir; sem escolha vai para a **Selva**. As 4 casas são derivadas da planta e espelhadas (`gira` troca topo por baixo). **Com bônus de REGIÃO desde a v46**, momentâneo: a escolha deixa o bônus **pendente** e ele é pago no **início do turno do dono**, valendo só aquele turno (pagar na virada não funciona — `expiraDoTime` limpa buff antes de o dono jogar): **Topo +2 Armadura · Meio +2 Poder · Baixo +3 ouro · Selva cura 4 e +1 no Dado Mestre**. Nada disso vai para o log — dizer o bônus é dizer a região. **A rodada 1 também tem rotação**, e o turno só começa depois de os dois responderem. Secreta: nada no log, quem quiser saber precisa de **visão daquele mato** |
 | Emboscada | atacar **sem ter sido visto** dá **+2 de Força** — e **quem ataca fica revelado até sair da casa de onde bateu**. A IA obedece à mesma névoa — não trapaceia. Contra IA, a tela é sempre a do humano |
 | Defesa de torre | herói a **1 de distância de torre viva do próprio time** ganha **+1 de Armadura**. Torre inimiga não protege quem mergulha |
 | Vida dos heróis | **18 a 25** (escala ×1,8 na v21) · Ultimate rende **1,25×** o dado · nenhuma mata de um golpe |
@@ -74,12 +74,14 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Zona | condição posta no **chão**: quem **começa o turno dentro** a recebe. Prazo em **turnos do adversário** (2), nunca em rodadas. Desde a v45 pendura **qualquer** condição, não só veneno |
 | Indicadores de estado | até **3 ícones** ao lado do totem (ordenados por consequência, com `+N` quando sobra) + a etiqueta grande. Seção **CONDIÇÕES** na ficha, com tooltip **de toque** — no celular não existe hover |
 | Cura de base | **3 por rodada** na própria base. Com inimigo a **2 ou menos**, trata **1 vez** e para até ele sair de perto |
+| **A torre pune quem mergulha** | fim do turno: herói a **1 hexágono** de torre inimiga viva **sem a Frente de Onda daquela rota dentro da mesma zona** leva **5**. **Um alvo por torre** (quem bateu nela, depois o mais ferido, distância desempata) · **não gasta dado, ação, carta nem recurso** · **não mata**, deixa em 1 · torre caída não atira |
+| **Movimento máximo** | teto **em casas por turno, por herói**: **3** pesado (Taxista, Grumo, Caramêlo, Torvald) · **4** normal · **5** ágil (Pombo, Valti, Pyk, Zhet, Catarino). Ninguém tem 6 — 6 é o vão inteiro entre as torres exteriores. **Não contam:** Lampejo, Retorno, Puff, Passo de Sombra, carta Recuo, puxão/empurrão/troca. Item de movimento sobe o TETO em +1 (teto absoluto 6) |
 | Alcance | teto de **4**, itens incluídos |
 | Quem começa | **cara ou coroa** no início da partida |
 | Acampamento | pisar ocupa; **o ouro sai no fim da rodada**, para quem ficou |
 | Gasto de ouro tardio | **Reforço** (**10, +4** por compra) → +1 de Poder · **Requisição** (5) → 1 carta · **Leva de Ferro** (4, +1 a cada 3 rodadas, teto 12) → sua onda avança 1 · **Sentinela** (4, +2 por compra, máx. 2) → ward na mochila, plantada de graça. Só compra na base |
 | Vantagem de quem começa | **~52,9%** no confronto **espelhado** (n=9000), que é o único jeito de medir ORDEM. Os ~51% históricos vinham do confronto fixo e assimétrico da bateria — ver `times=espelho` |
-| Economia | herói acumula **61** de ouro na partida; o build de 3 itens mais caro custa **25**. A renda paga o build **2,4×** — medido em `sim/ouro.js` |
+| **Economia** | preço em três faixas (v48): **simples 12 · intermediário 18 · forte 24** (eram 4–9). Abate **8** · acampamento **6** (neutro **8**, invasão +2) · região Baixo **6**. A gota por rodada **não mudou** (agiu 1 · farmou 3). Medido em `sim/ouro.js 300`: 1º item na **rodada 7**, 2º na **14**, três slots cheios na **20** (eram 4, 6 e 8); renda 96 por herói, **1,3×** o build mais caro, 24 de sobra |
 | Hexágonos bloqueados | **6** casas de selva (3 pares espelhados) com **ônibus, carros empilhados e caixa-d'água** em cima. Herói **não entra e não atravessa** — a selva virou corredor. Bloqueiam visão como todo mato; nunca em rota, base, acampamento, ponto de pouso ou vizinha do poço. Derivadas da planta, com trava de mapa inteiro e de selva inteira |
 | Andar × alcançar | **duas réguas.** `distância` (linha reta) vale para **alcance de habilidade**; para **andar**, vale o caminho que contorna o obstáculo. Herói não bloqueia caminho — só o obstáculo |
 | Direção de arte | `docs/DIRECAO-DE-ARTE.md` é **canon**: Brasil pós-cataclisma de gambiarra, dia claro, sucata colorida, verde-limão pontual. O tabuleiro 2D já está na paleta; 3D e miniaturas não começaram |
@@ -105,7 +107,10 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 123 testes de regressão — um por bug já relatado
+node sim/testes.js        # 275 testes de regressão — um por bug já relatado
+node sim/movimento.js 200 # quantas casas um herói atravessa mesmo, e o teto estrutural
+node sim/torres.js 120    # a torre é objetivo ou esponja? mergulho sem creep acontece?
+node sim/draft.js 200     # a IA repete o mesmo draft?
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói
@@ -145,6 +150,7 @@ colide com medição já registrada.
 
 | O quê | Por que importa |
 |---|---|
+| **Rede de anti-picks** | `docs/MATCHUPS.md` tem as 40 linhas propostas, e **nenhuma exige mudar kit** — todas saem dos kits atuais. O gancho `draftContra` em `jogo/jogo.js` devolve `0` até o grupo aprovar. |
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
