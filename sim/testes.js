@@ -4178,6 +4178,124 @@ teste("o rótulo distingue VENCER a rota de EMPATAR nela", () => {
   eq(g.contaRota("topo").estado, "seg", "com um corpo a mais o rótulo não ficou verde");
 });
 
+/* ═══════════════ v48 — O DADO EMPRESTADO DO EMO ═══════════════
+
+   RELATO: *"o Emo empresta o dado, o aliado ataca, e o jogo consome um dado de
+   ação normal em vez do emprestado — o jogador perde uma ação à toa."*
+
+   CAUSA: `dadoPara` escolhia o MENOR dado que atendesse à Força da habilidade,
+   e o dado doado é só mais um da lista. Doado 6, mão com um 1 livre: o 1 é
+   menor, então era ele que ia embora. O doado ficava na mesa sem poder ser
+   usado por mais ninguém (ele tem dono) e sem que o dono pudesse agir de novo
+   (`agiu` já estava marcado) — ou seja, era 100% desperdício, e o time pagava
+   duas vezes: o dado do Emo e o dado do aliado.
+
+   Estes testes montam exatamente essa mão. */
+
+const cenaEmo = () => cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                                     ["vharn", "grumo", "zhet", "cael", "gorm"]] })
+                        .mov(0).vez(0);
+
+/* o Emo doa usando o dado de índice `i`; devolve o índice do dado doado */
+function doaComOEmo(c, aliado, i) {
+  const g = c.g;
+  const emo = c.heroi(0, "sup");
+  /* alcance 3: o aliado precisa estar ao alcance dele */
+  c.poe(aliado, g.vizinhos(...emo.pos).find(p => g.noTab(...p) && !g.em(...p)) || emo.pos);
+  const antes = g.J.dados.length;
+  g.dadoSel = i;                          // o jogador escolheu ESTE dado para doar
+  c.usa(emo, 1, aliado);                  // Empresta o Fone
+  eq(g.J.dados.length, antes + 1, "o dado doado não entrou na mesa");
+  return antes;                           // o doado é o último da lista
+}
+
+teste("o dado doado pelo Emo é o que se gasta — e não um dado de ação normal", () => {
+  const c = cenaEmo().dados(6, 1, 1);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");
+  const iDoado = doaComOEmo(c, aliado, 0);          // doa o 6
+  eq(g.J.dados[iDoado].v, 6, "não foi o 6 que ele doou");
+
+  const inimigo = c.heroi(1, "topo");
+  c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
+  const vida0 = inimigo.vida;
+
+  c.usa(aliado, 0, inimigo);
+
+  ok(g.J.dados[iDoado].usado,
+     "o dado EMPRESTADO continua na mesa sem uso — o jogo gastou outro no lugar dele");
+  eq(g.J.dados.filter((d, i) => i !== iDoado && i !== 0 && d.usado).length, 0,
+     "além do emprestado, um dado de ação normal também foi consumido");
+  ok(inimigo.vida < vida0, "o golpe do aliado não saiu");
+});
+
+teste("o dado emprestado não vira ação de graça: o aliado age uma vez só", () => {
+  const c = cenaEmo().dados(6, 1, 1);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");
+  doaComOEmo(c, aliado, 0);
+  const inimigo = c.heroi(1, "topo");
+  c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
+
+  c.usa(aliado, 0, inimigo);
+  eq(aliado.agiu, 1, "o aliado não ficou marcado como tendo agido");
+  const vidaDepois = inimigo.vida;
+  c.usa(aliado, 0, inimigo);              // segunda tentativa, sem novo empréstimo
+  eq(inimigo.vida, vidaDepois, "o aliado agiu duas vezes com um empréstimo só");
+});
+
+teste("empréstimo do Emo: o aliado usa a HABILIDADE do meio com o dado doado", () => {
+  const c = cenaEmo().dados(6, 1, 1);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");      // Dona Chinela — Puxão de Orelha pede Força 3
+  const iDoado = doaComOEmo(c, aliado, 0);
+  const inimigo = c.heroi(1, "topo");
+  c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
+
+  c.usa(aliado, 1, inimigo);
+  ok(g.J.dados[iDoado].usado, "a habilidade do meio não consumiu o dado emprestado");
+  ok(g.stacksDe(inimigo, "sangramento") > 0, "o Puxão de Orelha não saiu com o dado doado");
+});
+
+teste("com dados próprios e um emprestado, o emprestado sai primeiro", () => {
+  const c = cenaEmo().dados(5, 5, 5);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");
+  const iDoado = doaComOEmo(c, aliado, 0);
+  const inimigo = c.heroi(1, "topo");
+  c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
+
+  c.usa(aliado, 0, inimigo);
+  ok(g.J.dados[iDoado].usado,
+     "com todos os dados do mesmo valor, o emprestado deveria sair primeiro — ele é o que expira");
+  eq(g.J.dados.filter(d => d.usado).length, 2, "gastou mais dados do que a jogada pedia");
+});
+
+teste("dado emprestado é de quem recebeu: outro herói não pode gastá-lo", () => {
+  const c = cenaEmo().dados(6, 1, 1);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");
+  const iDoado = doaComOEmo(c, aliado, 0);
+  const outro = c.heroi(0, "meio");
+  const inimigo = c.heroi(1, "topo");
+  c.poe(inimigo, g.vizinhos(...outro.pos).find(p => g.noTab(...p) && !g.em(...p)));
+
+  c.usa(outro, 0, inimigo);
+  ok(!g.J.dados[iDoado].usado, "outro herói gastou o dado que era do aliado");
+});
+
+teste("o empréstimo do Emo morre com o turno — não atravessa para a rodada seguinte", () => {
+  const c = cenaEmo().dados(6, 1, 1);
+  const g = c.g;
+  const aliado = c.heroi(0, "topo");
+  doaComOEmo(c, aliado, 0);
+  ok(g.J.dados.some(d => d.doado), "o dado doado não está na mesa");
+
+  g.encerraTurno();                       // passa a vez: a mão inteira é rerolada
+  ok(!g.J.dados.some(d => d.doado),
+     "o dado emprestado sobreviveu ao fim do turno — dá para acumular empréstimo");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

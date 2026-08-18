@@ -3510,14 +3510,46 @@ function nexusAoAlcance(h,hb,alc){
   return (hb.ef.semAlcance||d<=alc) ? lado : null;
 }
 
-/* dado que será gasto: o escolhido à mão, senão o menor que atende */
-function dadoPara(hb){
+/* dado que será gasto: o escolhido à mão, senão o EMPRESTADO, senão o menor que
+   atende.
+
+   ── O BUG DO DADO DO EMO (v48) ──
+   Relato: *"o Emo empresta um dado, o aliado ataca, e o jogo consome um dado de
+   ação normal — o jogador perde uma ação à toa."* Reproduzido e verdadeiro.
+
+   A causa era esta função. Ela escolhia o MENOR dado que atendesse à Força, e o
+   dado doado era só mais um da fila. Doado 6, com um 1 livre na mesa: o 1 é
+   menor, então era o 1 que ia embora — e o 6 doado ficava lá, inútil, porque
+   ele tem DONO (ninguém mais o gasta) e o dono já tinha `agiu`. O time pagava
+   duas vezes: o dado que o Emo queimou para doar e o dado que o aliado gastou.
+
+   A regra que conserta é uma frase: **o dado emprestado substitui o recurso,
+   então ele sai primeiro.** Ele é o único da mesa que não serve a mais ninguém
+   e que expira no fim do turno; guardá-lo é jogá-lo fora.
+
+   O que NÃO mudou, de propósito (§7 do pedido): o empréstimo continua valendo
+   UMA ação, a do herói que recebeu. Ele não vira ataque grátis — quem paga o
+   preço é o Emo, com o próprio dado e o próprio turno.
+
+   A escolha à mão continua ganhando de tudo: se o jogador tocou num dado, é
+   aquele que ele quer gastar, emprestado ou não.
+
+   `quem` existe porque a IA pergunta por vários heróis em sequência ANTES de
+   selecionar qualquer um (`iaJogadas` só faz `selHeroi=h` depois de chamar
+   aqui): sem o parâmetro, a dona do dado era a peça do laço anterior, e a IA
+   media a jogada com o dado errado. */
+function dadoPara(hb,quem){
+  const dono=quem||selHeroi;
   if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f
-     &&(!J.dados[dadoSel].dono||J.dados[dadoSel].dono===selHeroi?.id)) return dadoSel;
+     &&(!J.dados[dadoSel].dono||J.dados[dadoSel].dono===dono?.id)) return dadoSel;
+  const serve=d=>!d.usado&&d.v>=hb.f&&(!d.dono||d.dono===dono?.id);
   let melhor=null;
   J.dados.forEach((d,i)=>{
-    if(d.usado||d.v<hb.f||(d.dono&&d.dono!==selHeroi?.id))return;
-    if(melhor===null||d.v<J.dados[melhor].v) melhor=i;
+    if(!serve(d))return;
+    const atual=melhor===null?null:J.dados[melhor];
+    /* emprestado ganha de qualquer dado comum; entre dois iguais, o menor */
+    if(atual===null||(!!d.doado&&!atual.doado)
+       ||(!!d.doado===!!atual.doado&&d.v<atual.v)) melhor=i;
   });
   return melhor;
 }
@@ -4940,9 +4972,18 @@ function pinta(){
 
   const assina=J.dados.map(d=>d.v+(d.usado?"u":"")).join(",");
   const cx=G("dadosAcao");
+  /* O dado EMPRESTADO ganha dono no rótulo. Ele não é como os outros: só uma
+     peça pode gastá-lo e ele morre no fim do turno. Sem dizer de quem é, o
+     jogador vê quatro dados iguais e não entende por que um deles não serve
+     para o herói que ele selecionou. */
+  const donoDoDado=d=>{
+    if(!d.dono)return "";
+    const o=todos().find(x=>x.id===d.dono);
+    return o?` — emprestado para ${o.n}`:" — emprestado";
+  };
   cx.innerHTML=J.dados.map((d,i)=>
-    `<div class="dado${d.usado?" usado":""}${dadoSel===i?" sel":""}${d.v===6?" seis":""}${d.extra?" extra":""}"
-      data-i="${i}">${d.v}</div>`).join("");
+    `<div class="dado${d.usado?" usado":""}${dadoSel===i?" sel":""}${d.v===6?" seis":""}${d.extra?" extra":""}${d.doado?" doado":""}"
+      data-i="${i}" title="dado ${d.v}${donoDoDado(d)}">${d.v}</div>`).join("");
   if(assina!==assinaturaDados){
     cx.querySelectorAll(".dado").forEach((e,i)=>{
       e.classList.add("rola"); setTimeout(()=>e.classList.remove("rola"),320+i*40); });
@@ -5021,7 +5062,7 @@ function feiticoBt(h,qual){
       ${feiticoBt(h,"lampejo")}
       ${feiticoBt(h,"retorno")}
       ${h.habs.map((hb,i)=>{
-        const di=dadoPara(hb), pode=di!==null&&!h.agiu;
+        const di=dadoPara(hb,h), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
         return `<button class="opc${emMira?" on":""}${pode?" pode":" naoPode"}" id="hab${i}">
           <span class="ico">${svgIco(iconeDe(hb))}</span>
@@ -5213,7 +5254,7 @@ function iaJogadas(t){
     for(const h of vivos(t)){
       if(h.agiu)continue;
       for(let i=0;i<h.habs.length;i++){
-        const hb=h.habs[i], di=dadoPara(hb);
+        const hb=h.habs[i], di=dadoPara(hb,h);
         if(di===null)continue;
         const F=J.dados[di].v;
         limpaModo(); selHeroi=h; iniciaHab(i);
