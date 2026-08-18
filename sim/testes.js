@@ -101,10 +101,14 @@ teste("torre aceita dois golpes de heróis diferentes na mesma rodada", () => {
   c.poe(b, c.g.vizinhos(...p).find(v => c.g.noTab(...v) && !c.g.em(...v)));
   const vida0 = tr.vida;
 
+  /* v48: o golpe deixou de ser 1 fixo, então o teste mede o que ele sempre quis
+     medir — que a torre ACEITA o segundo golpe —, e não o número do primeiro. */
   c.mira(a, 0); c.g.atacaTorre(tr);
-  eq(tr.vida, vida0 - 1, "primeiro golpe");
+  const primeiro = vida0 - tr.vida;
+  ok(primeiro > 0, "primeiro golpe não tirou vida");
+  const meio = tr.vida;
   c.mira(b, 0); c.g.atacaTorre(tr);
-  eq(tr.vida, vida0 - 2, "segundo golpe, outro herói, mesma rodada");
+  ok(tr.vida < meio, "segundo golpe, outro herói, mesma rodada: a torre não aceitou");
 });
 
 teste("torre aceita segundo golpe do mesmo herói reativado pelo Suporte", () => {
@@ -114,12 +118,13 @@ teste("torre aceita segundo golpe do mesmo herói reativado pelo Suporte", () =>
   const vida0 = tr.vida;
 
   c.mira(a, 0); c.g.atacaTorre(tr);
-  eq(tr.vida, vida0 - 1, "primeiro golpe");
+  ok(tr.vida < vida0, "primeiro golpe não tirou vida");
+  const meio = tr.vida;
 
   /* é o que a carta Dobradinha e o dado doado pelo Suporte fazem: devolvem a ação */
   a.agiu = 0;
   c.mira(a, 0); c.g.atacaTorre(tr);
-  eq(tr.vida, vida0 - 2, "segundo golpe do mesmo herói na mesma rodada");
+  ok(tr.vida < meio, "segundo golpe do mesmo herói na mesma rodada: a torre não aceitou");
 });
 
 teste("torre aceita golpe de longe repetido", () => {
@@ -137,8 +142,10 @@ teste("torre aceita golpe de longe repetido", () => {
   const vida0 = tr.vida;
 
   c.mira(arq, 0); c.g.atacaTorre(tr);
+  const meio = tr.vida;
+  ok(meio < vida0, "o primeiro golpe à distância não tirou vida");
   c.mira(mid, 0); c.g.atacaTorre(tr);
-  eq(tr.vida, vida0 - 2, "dois golpes à distância na mesma rodada");
+  ok(tr.vida < meio, "dois golpes à distância na mesma rodada: o segundo não entrou");
 });
 
 /* ═══════════════ BUG 2 — escudo vira invulnerabilidade ═══════════════ */
@@ -844,7 +851,7 @@ teste("Égide dá escudo agora e repõe no início do próximo turno do dono", (
   ok(h.esc > 0, "a Égide não repôs o escudo no turno seguinte do dono");
 });
 
-teste("Aríete dobra o golpe de herói em torre, e a onda continua tirando 1", () => {
+teste("Aríete dobra o golpe de herói em torre", () => {
   const c = cena().dados(6, 6, 6).mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
@@ -853,12 +860,13 @@ teste("Aríete dobra o golpe de herói em torre, e a onda continua tirando 1", (
 
   c.mira(a, 0); c.g.atacaTorre(tr);
   const semDadiva = vida0 - tr.vida;
-  eq(semDadiva, 1, "o golpe base na torre deixou de ser 1");
+  ok(semDadiva > 0, "o golpe de herói na torre não tirou vida");
 
   tr.vida = vida0; a.agiu = 0;
   g.aplicaDadiva(0, "ariete");
   c.mira(a, 0); c.g.atacaTorre(tr);
-  eq(vida0 - tr.vida, 2, "o Aríete não dobrou o golpe na torre");
+  eq(vida0 - tr.vida, semDadiva * g.ARIETE_MULT,
+     "o Aríete não dobrou o golpe na torre");
 });
 
 teste("a dádiva expira e some do time", () => {
@@ -4443,6 +4451,249 @@ teste("a IA não gasta dado para um deslocamento que o herói não pode andar", 
   g.iaPlanejaAlcance(1);
   eq(g.J.mov.rest, 0,
      "a IA queimou um dado para andar mais casas do que o herói pode andar num turno");
+});
+
+/* ═══════════════ v48 — TORRE COM VIDA, DANO CALCULADO E CREEP ═══════════════
+
+   RELATO: *"está muito fácil derrubar torres"*. A torre tinha 3 de vida e todo
+   golpe de herói tirava exatamente 1 — do tanque com dado 1 ao atirador com
+   Ultimate e três itens. Investir não mudava nada.
+
+   Os testes abaixo cobrem os oito casos que o pedido listou em §58. */
+
+/* leva `h` para uma casa colada na torre `tr` */
+function colaNaTorre(c, h, tr) {
+  const g = c.g;
+  const p = g.ROTAS[tr.rota][tr.i];
+  const livre = g.vizinhos(...p).find(v => g.noTab(...v) && !g.em(...v) && !g.ehBloqueado(...v));
+  ok(livre, "sem casa livre colada na torre");
+  c.poe(h, livre);
+  return livre;
+}
+/* põe a Frente de Onda daquela rota EM CIMA da torre (creep apoiando) ou longe */
+function creep(g, tr, perto) {
+  const l = g.ROTAS[tr.rota];
+  g.J.frentes[tr.rota] = perto ? tr.i
+    : (tr.t === 0 ? Math.min(l.length - 1, tr.i + 5) : Math.max(0, tr.i - 5));
+}
+
+teste("a torre tem vida em escala de herói, e a onda mantém a cadência antiga", () => {
+  const g = cena().g;
+  ok(g.VIDA_TORRE >= 10, `a torre continua com ${g.VIDA_TORRE} de vida`);
+  /* três rodadas de cerco para derrubar uma torre cheia — o mesmo da v47 */
+  eq(Math.ceil(g.VIDA_TORRE / g.danoDaOnda()), 3,
+     "a onda deixou de levar 3 rodadas para derrubar uma torre cheia");
+  eq(g.degrauDaOnda(), 1, "o degrau da onda na rodada 1 não é 1");
+});
+
+teste("golpes diferentes tiram quantidades diferentes da torre", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+
+  const golpes = [1, 3, 6].map(v => {
+    tr.vida = g.VIDA_TORRE; a.agiu = 0;
+    c.dados(v, v, v);
+    c.mira(a, 0); g.atacaTorre(tr);
+    return g.VIDA_TORRE - tr.vida;
+  });
+  ok(golpes[2] > golpes[0],
+     `dado 6 tirou ${golpes[2]} e dado 1 tirou ${golpes[0]} — o dano na torre continua fixo`);
+  ok(golpes.every(x => x >= 1), "algum golpe tirou zero da torre");
+});
+
+teste("Poder e item entram no golpe contra a torre", () => {
+  const c = cena().dados(4, 4, 4).mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+
+  tr.vida = g.VIDA_TORRE;
+  c.mira(a, 0); g.atacaTorre(tr);
+  const semItem = g.VIDA_TORRE - tr.vida;
+
+  const item = g.ITENS.find(i => i.ef.poder);
+  a.itens.push(item.id);
+  tr.vida = g.VIDA_TORRE; a.agiu = 0;
+  c.dados(4, 4, 4);
+  c.mira(a, 0); g.atacaTorre(tr);
+  ok(g.VIDA_TORRE - tr.vida > semItem, "comprar Poder não ajudou a derrubar torre");
+});
+
+teste("a Ultimate perfurante ignora a armadura da torre", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "corvo", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "gorm"]] }).mov(0).vez(0);
+  const g = c.g;
+  const corvo = c.heroi(0, "adc");                 // Ato Final: perfura
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, corvo, tr);
+  const hb = corvo.habs[2];
+  ok(hb.ef.perfura, "esta cena precisa de uma Ultimate perfurante");
+  const semArm = g.golpeEmEstrutura(corvo, hb, 2, 6);
+  const comArm = g.golpeEmEstrutura(corvo, { ...hb, ef: { ...hb.ef, perfura: 0 } }, 2, 6);
+  eq(semArm - comArm, g.ARM_ESTRUTURA, "a perfurante não está ignorando a armadura da torre");
+});
+
+teste("habilidade sem dano não atinge estrutura, e o registro é central", () => {
+  const g = cena().g;
+  const escudo = { alvo: "eu", ef: { escudo: 4 } };
+  ok(!g.podeAtingirEstrutura(escudo), "uma habilidade de escudo virou golpe em torre");
+  const cura = { alvo: "al", ef: { cura: 5 } };
+  ok(!g.podeAtingirEstrutura(cura), "uma cura virou golpe em torre");
+  const veneno = { alvo: "in", ef: { cond: [{ t: "veneno", tu: 2 }] } };
+  ok(!g.podeAtingirEstrutura(veneno), "veneno puro virou golpe em torre");
+  const golpe = { alvo: "in", ef: { dano: 1 } };
+  ok(g.podeAtingirEstrutura(golpe), "uma habilidade de dano deixou de atingir estrutura");
+  /* a trava por propriedade, sem exceção por nome de herói */
+  ok(!g.podeAtingirEstrutura({ alvo: "in", ef: { dano: 1, estrutura: 0 } }),
+     "estrutura:0 não trancou a habilidade contra construção");
+  eq(g.multEstrutura({ ef: { dano: 1, estrutura: 2 } }), 2, "o multiplicador não é lido");
+});
+
+teste("herói COM creep na zona termina o turno sob a torre e não apanha", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, true);
+  ok(g.creepApoia(tr), "a Frente de Onda não ficou na zona da torre");
+  const vida0 = a.vida;
+  g.torresAtiram(0);
+  eq(a.vida, vida0, "a torre atirou mesmo com creep aliado na zona dela");
+});
+
+teste("herói SEM creep termina o turno sob a torre e leva dano", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, false);
+  ok(!g.creepApoia(tr), "a Frente de Onda continuou na zona da torre");
+  const vida0 = a.vida;
+  g.torresAtiram(0);
+  eq(a.vida, vida0 - g.TIRO_TORRE, "a torre não puniu o mergulho sem creep");
+});
+
+teste("o creep morreu no meio do turno: quem ficou embaixo da torre paga", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, true);
+  const vida0 = a.vida;
+  creep(g, tr, false);                       // a onda foi empurrada de volta
+  g.torresAtiram(0);
+  ok(a.vida < vida0, "a onda recuou e a torre continuou deixando o herói em paz");
+});
+
+teste("torre destruída não atira em ninguém", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, false);
+  tr.vida = 0;
+  const vida0 = a.vida;
+  g.torresAtiram(0);
+  eq(a.vida, vida0, "uma torre já derrubada atirou");
+});
+
+teste("com dois heróis na zona, a torre escolhe UM — e prefere quem bateu nela", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo"), b = c.heroi(0, "meio");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  const p = g.ROTAS[tr.rota][tr.i];
+  const livres = g.vizinhos(...p).filter(v => g.noTab(...v) && !g.em(...v) && !g.ehBloqueado(...v));
+  ok(livres.length >= 2, "a torre desta cena não tem duas vizinhas livres");
+  c.poe(a, livres[0]); c.poe(b, livres[1]);
+  creep(g, tr, false);
+  b.vida = b.vidaMax;  a.vida = a.vidaMax;
+
+  c.mira(a, 0); g.atacaTorre(tr);            // quem MERGULHOU foi o `a`
+  const vidaA = a.vida, vidaB = b.vida;
+  g.torresAtiram(0);
+  ok(a.vida < vidaA, "a torre não cobrou de quem bateu nela");
+  eq(b.vida, vidaB, "a torre atingiu os dois — a regra é um alvo por torre");
+});
+
+teste("o disparo da torre não gasta dado, ação nem carta de ninguém", () => {
+  const c = cena().dados(6, 6, 6).mov(4).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, false);
+  const dados = g.J.dados.map(d => d.usado).join(",");
+  const mov = g.J.mov.rest, mao = g.maos[1] ? g.maos[1].length : 0;
+  g.torresAtiram(0);
+  eq(g.J.dados.map(d => d.usado).join(","), dados, "o disparo da torre gastou dado");
+  eq(g.J.mov.rest, mov, "o disparo da torre gastou movimento");
+  eq(g.maos[1] ? g.maos[1].length : 0, mao, "o disparo da torre gastou carta do defensor");
+});
+
+teste("a torre não mata: deixa em 1", () => {
+  const c = cena().mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, false);
+  a.vida = 2;
+  g.torresAtiram(0);
+  eq(a.vida, 1, "a torre matou o herói — morte sem autor é buraco de motor");
+  eq(a.morto, 0, "a torre marcou o herói como morto");
+});
+
+teste("o disparo entra no fim do turno de verdade, não só na função solta", () => {
+  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  creep(g, tr, false);
+  const vida0 = a.vida;
+  g.encerraTurno();
+  ok(a.vida < vida0, "encerrar o turno debaixo da torre sem creep saiu de graça");
+});
+
+teste("a IA sai de baixo da torre quando não há creep e a torre não cai", () => {
+  const c = cena().mov(6).vez(1);
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = c.heroi(1, "topo");
+  const tr = g.J.torres.find(x => x.t === 0 && x.vida > 0 && g.torreExposta(x.rota, 0) === x);
+  colaNaTorre(c, h, tr);
+  creep(g, tr, false);
+  ok(g.torreQueAmeaca(h), "a cena não pôs o herói em risco de torre");
+  g.iaRecuaDeTorre(1);
+  ok(!g.torreQueAmeaca(h), "a IA ficou parada debaixo da torre inimiga sem creep");
+});
+
+teste("a IA não pontua alto um mergulho que não derruba a torre", () => {
+  const c = cena().dados(3, 3, 3).mov(0).vez(1);
+  const g = c.g;
+  g.nivelIA = "dificil";
+  const h = c.heroi(1, "topo");
+  const tr = g.J.torres.find(x => x.t === 0 && x.vida > 0 && g.torreExposta(x.rota, 0) === x);
+  colaNaTorre(c, h, tr);
+  h.vida = g.REVIDE_TORRE + g.TIRO_TORRE;         // o mergulho o deixa em 1
+
+  creep(g, tr, false);
+  const semCreep = g.iaJogadas(1).filter(j => j.tipo === "torre" && j.h === h)
+                    .reduce((a, j) => Math.max(a, j.nota), 0);
+  creep(g, tr, true);
+  const comCreep = g.iaJogadas(1).filter(j => j.tipo === "torre" && j.h === h)
+                    .reduce((a, j) => Math.max(a, j.nota), 0);
+  ok(semCreep < comCreep,
+     `a IA dá a mesma nota ao mergulho com e sem creep (${semCreep} vs ${comCreep})`);
 });
 
 /* ---------- resumo ---------- */

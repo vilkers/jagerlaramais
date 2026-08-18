@@ -846,3 +846,13 @@ button:disabled{cursor:not-allowed}
 #mapa .rotulo.empate text{fill:var(--brass)}
 #mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
 #mapa .rotulo.perig text{fill:var(--dano)}
+
+/* ── v48: a torre passou a ter vida de verdade (12), e vida se lê em barra ── */
+#mapa .tbar{stroke:none}
+#mapa .tbar.bg{fill:var(--ink-3);fill-opacity:.35}
+#mapa .tbar.t0{fill:var(--azul)}
+#mapa .tbar.t1{fill:var(--carmim)}
+#estruturas .tw .hp{display:inline-block;width:34px;height:5px;border-radius:3px;
+  background:rgba(0,0,0,.28);overflow:hidden;vertical-align:middle}
+#estruturas .tw .hp i{display:block;height:100%;background:currentColor}
+#estruturas .tw .hpn{font-family:var(--mono);font-size:10px;margin-left:5px;opacity:.85}

@@ -325,7 +325,23 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
 /* Torre passou de 2 para 3 de vida em v0.5.1, quando o herói virou fonte de dano nela.
    Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
    O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
-const VIDA_TORRE=3, VIDA_NEXUS=3;
+/* ---------- A TORRE PASSA A TER VIDA DE VERDADE (v48) ----------
+   RELATO: *"está muito fácil derrubar torres"*. Até aqui a torre tinha 3 de
+   vida e todo golpe de herói tirava exatamente 1 — três golpes, viesse de quem
+   viesse, com o dado que fosse. A estrutura não comunicava resistência e não
+   respondia a investimento: Poder, item e Ultimate não mudavam nada.
+
+   A escala nova é 20, e ela foi escolhida para NÃO MUDAR O RELÓGIO DA ONDA:
+   com `ONDA_GOLPE=7`, a onda continua levando exatamente 3 rodadas de cerco
+   para derrubar uma torre cheia, 2 com a onda grossa e 1 no terceiro degrau —
+   a mesma cadência da v47, medida e escolhida lá. O que muda é o golpe de
+   HERÓI, que deixa de ser 1 fixo e passa a ser calculado.
+
+   §49 do pedido, e é a régua deste bloco inteiro: a torre não pode virar
+   esponja de HP. A resistência dela vem de quatro coisas juntas — vida,
+   necessidade de creep, risco de aproximação e dano variável — e não de
+   obrigar vinte golpes. */
+const VIDA_TORRE=20, VIDA_NEXUS=3;
 /* ---------- AS ONDAS ENGROSSAM (v47) ----------
    O relógio da partida, e ele existe por causa do HOTSEAT.
 
@@ -377,7 +393,13 @@ const VIDA_TORRE=3, VIDA_NEXUS=3;
    Parecia a alavanca simples e é pior nos dois eixos (PvP 38,9 rodadas, bola de
    neve 67,0%). */
 const ONDA_ENGROSSA=16, ONDA_MAX=3;
-const danoDaOnda=()=>Math.min(ONDA_MAX,1+Math.floor((J.rodada-1)/ONDA_ENGROSSA));
+/* O DEGRAU continua sendo 1, 2 ou 3 — é ele que o relógio faz subir, e é ele
+   que os testes e as variantes de medição conhecem. `ONDA_GOLPE` é só a
+   conversão para a escala nova da torre: 1 degrau = 7 de vida = um terço de
+   torre, exatamente o que valia antes de a torre ter 20. */
+const ONDA_GOLPE=7;
+const degrauDaOnda=()=>Math.min(ONDA_MAX,1+Math.floor((J.rodada-1)/ONDA_ENGROSSA));
+const danoDaOnda=()=>degrauDaOnda()*ONDA_GOLPE;
 /* ---------- O DEFENSOR PASSA A CONTAR (v47) ----------
    Relato: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter uma
    forma de defender mais efetiva"*. Medido com `sim/defesa.js`, 300 partidas:
@@ -415,8 +437,55 @@ const danoDaOnda=()=>Math.min(ONDA_MAX,1+Math.floor((J.rodada-1)/ONDA_ENGROSSA))
    mais corpos numa rota, o **golpe de herói** (que ignora presença) e as **Ondas
    de Ferro** do Barão. O NEXUS não mudou — a fase final é a de sempre, com a
    Última Muralha. */
-const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
-const REVIDE_TORRE=4;      /* e a torre cobra o pedágio de quem encostou */
+/* ---------- ESTRUTURA: O QUE ATINGE, E QUANTO (v48) ----------
+   §38 e §39 do pedido: a classificação mora AQUI, num lugar só, e nunca num
+   `if(heroi==="X" && alvo==="torre")`. Um herói novo entra declarando
+   `estrutura` na habilidade; sem declarar nada, ele se comporta como todo
+   mundo.
+
+     · `podeAtingirEstrutura` — só habilidade de DANO e mirada em inimigo.
+       Sangramento, Veneno, Atordoamento, Silêncio, Marca, cura, escudo, puxão e
+       execução simplesmente não existem contra concreto: nenhum deles entra na
+       conta, porque a conta só lê a parte de dano;
+     · `estrutura` (multiplicador) — `0` tranca a habilidade contra estrutura,
+       `1` é o padrão, acima de 1 é a habilidade explicitamente boa contra
+       construção. Hoje ninguém declara nada: a vantagem contra estrutura
+       aparece por mecânica, não por exceção — as Ultimates PERFURANTES ignoram
+       a armadura da torre pelo mesmo motivo que ignoram a de um herói;
+     · `ARM_ESTRUTURA` — a torre é de concreto. Ela não tem escudo, nem status,
+       nem condição: tem armadura, e é ela que faz um golpe fraco arranhar e um
+       golpe grande abrir buraco. O 5 saiu de varredura (`node sim/torres.js 60
+       dificil arm=N`), com a IA de verdade nos dois lados:
+
+         arm   1ª torre cai   torres/partida   duração
+         ───   ────────────   ──────────────   ───────
+         (v47)   rodada 5          7,8           30
+          3      rodada 6          7,8           35
+          5      rodada 8          7,0           35   ← escolhido
+          7      rodada 9          6,5           36
+
+       Com 3 a torre volta a cair como caía; com 7 o golpe fraco vira 1 de 20 e
+       a estrutura começa a virar esponja, que é o que §49 proíbe. */
+const ARM_ESTRUTURA=5;
+const DANO_ESTRUTURA_MIN=1;   /* nem o golpe mais fraco bate em nada */
+const REVIDE_TORRE=4;         /* o pedágio de quem encosta e bate */
+/* O DISPARO AUTOMÁTICO da torre no fim do turno, contra quem ficou colado nela
+   sem creep. Não gasta dado, ação, carta nem recurso de ninguém: é reação da
+   estrutura (§45). E NÃO MATA — deixa em 1, exatamente como o revide sempre
+   fez. A regra da casa é antiga e continua valendo: `mata()` precisa de um
+   autor para creditar o ouro, e morte sem autor é buraco de motor. Na prática a
+   torre não rouba o abate, ela ARMA o abate: quem mergulhou sozinho termina o
+   turno em 1 de vida, à mão de qualquer inimigo. */
+const TIRO_TORRE=5;
+/* "PERTO DA TORRE" (§41). Um hexágono — a MESMA régua que já existia no jogo
+   para o +1 de Armadura de quem defende junto da própria torre
+   (`sobTorreAmiga`). Não inventamos alcance novo: a zona de proteção e a zona
+   de ameaça são a mesma casa, vistas dos dois lados. */
+const ZONA_TORRE=1;
+const ARIETE_MULT=2;       /* Aríete do Barão: o golpe de herói em torre vale o dobro */
+const podeAtingirEstrutura=hb=>
+  !!(hb.ef.dano||hb.ef.danoFixo)&&hb.alvo==="in"&&hb.ef.estrutura!==0;
+const multEstrutura=hb=>hb.ef.estrutura===undefined?1:hb.ef.estrutura;
 /* Meio do vão neutro. Com as torres espelhadas o meio é (a+b)/2 — inteiro só quando a
    rota tem comprimento ímpar. Rota par não TEM hexágono central: a frente começa meio
    passo para um dos lados, e esse meio passo é vantagem de siege para alguém.
@@ -1892,7 +1961,7 @@ const DADIVAS=[
    d:"Todos os seus heróis ganham 4 de escudo no início de cada turno seu.",
    porque:"Compra as brigas que você não podia comprar."},
   {id:"ariete", n:"Aríete", ico:"⌂",
-   d:"Os seus golpes de herói em torre e Nexus causam 2 em vez de 1.",
+   d:"Os seus golpes de herói em torre valem o dobro, e no Nexus causam 2 em vez de 1.",
    porque:"Dobra a velocidade de derrubar estrutura."}
 ];
 const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
@@ -1903,7 +1972,10 @@ const DADIVA=Object.fromEntries(DADIVAS.map(d=>[d.id,d]));
    que ainda "compra as brigas que você não podia comprar" sem apagar duas rodadas
    de combate. */
 const BARAO_ESCUDO=4;
-const BARAO_ARIETE=1;      /* dano somado ao golpe em estrutura */
+/* O Aríete tem DUAS réguas, e é de propósito: a torre passou para a escala de
+   12 na v48 e o Nexus continua na de 3. Na torre ele DOBRA o golpe
+   (`ARIETE_MULT`); no Nexus ele soma 1, como sempre somou. */
+const BARAO_ARIETE=1;      /* somado ao golpe de herói no NEXUS */
 const BARAO_RODADAS=2;     /* e ela dura pouco — é botão de ponto-sem-volta, não renda */
 const GOLPE_HAB=1, GOLPE_ULT=2;   /* quanto cada golpe tira do poço — ver atacaEpico */
 
@@ -1957,7 +2029,8 @@ function novo(){
           /* v45 — o estado que as condições e as passivas usam. Nasce vazio aqui,
              e não na primeira aplicação, para que `h.conds.length` seja pergunta
              segura em qualquer lugar do motor e de qualquer teste. */
-          conds:[], rec:{}, autos:null, voltaEm:null, alcTurno:0, andou:0, ultimoAlvo:null};
+          conds:[], rec:{}, autos:null, voltaEm:null, alcTurno:0, andou:0, ultimoAlvo:null,
+          mergulhou:0};
       })
     })),
     dados:[], mov:{v:0,rest:0},
@@ -2096,6 +2169,7 @@ function expiraDoTime(t){
     h.alcTurno=0;            /* o alcance emprestado pelo Encher o Pulmão */
     h.bonusRegiao=null;      /* o selo do bônus de rotação sai com o buff dele */
     h.andou=0;               /* usado pelo crítico condicional e pela IA */
+    h.mergulhou=0;           /* quem bateu em torre neste turno — alvo do disparo dela */
   });
 }
 function iniciaTurno(){
@@ -2171,6 +2245,75 @@ function encerraPartida(vencedor,motivo,autor){
   reg("b",`FIM — ${NOMES[vencedor]} venceu. ${motivo}`);
   pinta(); telaFim();
 }
+/* ---------- A TORRE PUNE QUEM MERGULHA SOZINHO (v48) ----------
+   §40 a §48 do pedido, e a ideia central cabe em duas linhas:
+
+     CREEP PRESENTE  → o herói consegue pressionar.
+     SEM CREEP       → a torre pune o herói.
+
+   AS DEFINIÇÕES, todas espaciais e todas escritas para não virar dúvida na mesa:
+
+   · **Perto** é `ZONA_TORRE` = **um hexágono**. É a mesma régua que já existia
+     para o +1 de Armadura de quem defende junto da própria torre: a zona de
+     proteção e a zona de ameaça são a mesma casa, vistas dos dois lados.
+
+   · **Creep aliado** é a **Frente de Onda daquela rota**, e ela precisa estar
+     DENTRO da zona da torre — não em qualquer lugar da rota (§43). A Frente é
+     a peça de creep deste jogo, e ela só encosta na torre inimiga quando a sua
+     onda venceu o empurra-empurra da rota. É exatamente a leitura de MOBA:
+     enquanto a sua onda está lá, você mergulha; quando ela é empurrada de
+     volta, você está sozinho embaixo da torre.
+
+   · **Quando** — no encerramento do turno de quem se expôs, antes de a presença
+     ser congelada, para que quem cair conte como morto na conta da rota.
+
+   · **Quantos** — UM alvo por torre (§47). A alternativa "atinge todos" fazia
+     da torre uma máquina de matar time inteiro, e o pedido pediu a mais simples
+     e equilibrada. A ordem é: **quem bateu na torre neste turno** (o mergulho
+     tem autor), depois **o mais ferido**, e o mais próximo desempata. É a
+     leitura de MOBA — a torre troca de alvo para quem a atacou — e cabe numa
+     frase na mesa.
+
+   · **Não gasta nada** (§45): nem dado, nem ação, nem carta, nem recurso. É
+     reação da estrutura.
+
+   · **Não mata** — deixa em 1, como o revide sempre fez. `mata()` precisa de um
+     autor para creditar o ouro, e morte sem autor é buraco de motor. Na prática
+     a torre não rouba o abate, ela ARMA o abate. */
+const posDaTorre=tr=>ROTAS[tr.rota][tr.i];
+const posDaFrente=rota=>{
+  const l=ROTAS[rota];
+  return l[Math.max(0,Math.min(l.length-1,J.frentes[rota]))];
+};
+const creepApoia=tr=>dist(...posDaFrente(tr.rota),...posDaTorre(tr))<=ZONA_TORRE;
+const naZonaDaTorre=(h,tr)=>dist(...h.pos,...posDaTorre(tr))<=ZONA_TORRE;
+/* a torre inimiga que ameaça este herói AGORA, se houver — a IA lê daqui */
+const torreQueAmeaca=h=>J.torres.find(tr=>tr.t!==h.t&&tr.vida>0
+  &&naZonaDaTorre(h,tr)&&!creepApoia(tr))||null;
+
+function torresAtiram(t){
+  J.torres.forEach(tr=>{
+    if(tr.t===t||tr.vida<=0)return;          /* torre própria, e torre já caída não atira */
+    if(creepApoia(tr))return;                /* creep na zona: o mergulho está pago */
+    const dentro=vivos(t).filter(h=>noJogo(h)&&naZonaDaTorre(h,tr));
+    if(!dentro.length)return;
+    const alvo=dentro.sort((a,b)=>
+      (b.mergulhou?1:0)-(a.mergulhou?1:0)
+      || a.vida-b.vida
+      || dist(...a.pos,...posDaTorre(tr))-dist(...b.pos,...posDaTorre(tr)))[0];
+    const levou=Math.min(TIRO_TORRE,alvo.vida-1);
+    reg("b",`TORRE ATACA — ${tr.rota}, lado ${NOMES[tr.t]}: ${alvo.n} está sob a torre sem creep`);
+    if(levou>0){
+      alvo.vida-=levou;
+      reg("b",`${alvo.n} leva ${levou} da torre (${alvo.vida}/${alvo.vidaMax})`);
+      fx(alvo.pos,-levou,"dano"); tremer(alvo);
+      if(!souIA()) toast(`TORRE ATACA ${alvo.n}`,"morte");
+    }else{
+      reg("b",`${alvo.n} já está em 1 — a torre não mata, ela deixa você à mão de qualquer um`);
+    }
+  });
+}
+
 function encerraTurno(){
   if(J.fim!==null)return;
   /* O PRAZO DAS CONDIÇÕES CAI AQUI, no fim do turno de quem as carrega. Cobrar e
@@ -2178,6 +2321,10 @@ function encerraTurno(){
      morrer antes de o jogador tentar agir — o atordoamento não atordoava nada. */
   processaCondsFim(J.vez);
   J.times[J.vez].herois.filter(h=>noJogo(h)).forEach(h=>dispara("fimTurno",h));
+  /* A TORRE ATIRA ANTES DE A PRESENÇA SER CONGELADA: quem termina o turno
+     debaixo dela sem creep paga na hora, e o estado que a rota vê é o de
+     depois do tiro. */
+  torresAtiram(J.vez);
   /* PRESENÇA CONGELADA. A onda avança comparando quantos heróis cada time tem
      em cada rota, e essa contagem acontecia no fim da RODADA — ou seja, depois
      que o segundo jogador já tinha mexido. Ele via o posicionamento do
@@ -2288,8 +2435,8 @@ function fimDaRodada(){
     if(alvo){
       const golpe=danoDaOnda();
       alvo.vida-=golpe;
-      reg("b",`Onda do ${nome} bate na torre ${NOMES[alvo.t]}`
-             +`${golpe>1?` — onda grossa (−${golpe})`:""} (${Math.max(0,alvo.vida)}/${VIDA_TORRE})`);
+      reg("b",`Onda do ${nome} bate na torre ${NOMES[alvo.t]} −${golpe}`
+             +`${degrauDaOnda()>1?" — onda grossa":""} (${Math.max(0,alvo.vida)}/${VIDA_TORRE})`);
       if(alvo.vida<=0) reg("b",`TORRE CAIU — ${nome}, lado ${NOMES[alvo.t]}`);
       return;
     }
@@ -3668,8 +3815,13 @@ function confirmaHab(alvo){
   modo=null; habAtual=null; confirmar=null; ativo=null; habSel=null;
   calcula(); pinta();
 }
-/* o golpe na torre não passa por usaHab: torre não tem armadura, escudo nem status.
-   Dano fixo e o revide é o preço de encostar.
+/* o golpe na torre não passa por usaHab: torre não tem escudo, status nem
+   condição. Tem ARMADURA, e a conta é a de `golpeEmEstrutura`.
+
+   O que mudou na v48: o golpe deixou de ser 1 fixo. Antes, três golpes
+   derrubavam qualquer torre — do tanque com dado 1 ao atirador com Ultimate e
+   três itens de Poder. Investir não mudava nada, e a estrutura não comunicava
+   resistência nenhuma.
 
    A trava de "um golpe por rodada" saiu na v16. Ela era invisível e enganava:
    o jogador que gastava o dado doado pelo Suporte para bater de novo na mesma
@@ -3680,14 +3832,19 @@ function atacaTorre(tr){
   if(!selHeroi||habAtual===null)return;
   const h=selHeroi, hb=h.habs[habAtual], di=dadoPara(hb);
   if(di===null)return;
+  const F=J.dados[di].v;
   J.dados[di].usado=1; h.agiu=1; dadoSel=null; vibra(16);
 
-  const somaAriete=(J.times[h.t].barao>0&&J.times[h.t].dadiva==="ariete")?BARAO_ARIETE:0;
-  tr.vida-=DANO_TORRE+somaAriete;
+  const comAriete=(J.times[h.t].barao>0&&J.times[h.t].dadiva==="ariete");
+  const golpe=golpeEmEstrutura(h,hb,habAtual,F);
+  tr.vida-=golpe;
+  /* quem mergulhou fica marcado até o fim do turno: é ele que a torre procura
+     primeiro no disparo automático */
+  h.mergulhou=1;
   agendaAnim(()=>animaAtaque(h,ROTAS[tr.rota][tr.i]));
-  reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n}${somaAriete?" (ARÍETE)":""} `+
-      `(${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
-  fx(ROTAS[tr.rota][tr.i],"-"+(DANO_TORRE+somaAriete),"dano");
+  reg(J.vez?"c":"a",`${h.n} bate na torre do ${tr.rota} com ${hb.n} (dado ${F}) `+
+      `−${golpe}${comAriete?" (ARÍETE)":""} (${Math.max(0,tr.vida)}/${VIDA_TORRE})`);
+  fx(ROTAS[tr.rota][tr.i],"-"+golpe,"dano");
 
   if(tr.vida<=0){
     reg("b",`TORRE CAIU — ${tr.rota}, lado ${NOMES[tr.t]}`);
@@ -3758,6 +3915,29 @@ function golpeNoPoco(h,hb,slot,F,ep){
   if(ef.danoFixo) return ef.danoFixo+foco;
   if(ef.perfura)  return Math.max(1,bruto+foco);
   return Math.max(1,bruto+foco-(d.arm||0));
+}
+/* O GOLPE DE HERÓI EM ESTRUTURA — uma porta só, pela mesma razão que
+   `golpeNoPoco` existe: o motor cobra e a IA avalia lendo daqui, então os dois
+   nunca discordam. Espelha a fórmula do herói de propósito (Força × escala do
+   slot + Poder), porque foi ela que o jogador aprendeu a ler.
+
+   O que ENTRA: o dado, a escala do slot, o Poder (item incluído), o Carregado
+   do Recarregar e do Encher o Pulmão, o multiplicador de estrutura da
+   habilidade e o Aríete do Barão.
+   O que NÃO entra: crítico, emboscada, drena, execução, condição e qualquer
+   passiva que fale de um alvo vivo. Concreto não sangra, não se assusta e não
+   está isolado. */
+function golpeEmEstrutura(h,hb,slot,F){
+  const ef=hb.ef;
+  if(!podeAtingirEstrutura(hb)) return 0;
+  const ariete=(J.times[h.t].barao>0&&J.times[h.t].dadiva==="ariete")?ARIETE_MULT:1;
+  const mult=multEstrutura(hb)*ariete;
+  if(ef.danoFixo) return Math.max(DANO_ESTRUTURA_MIN,Math.round(ef.danoFixo*mult));
+  const bruto=Math.round(F*(ef.dano||1)*escalaDe(slot))+poderTotal(h)+(h.recarga||0);
+  /* perfurante ignora a armadura da estrutura pelo mesmo motivo que ignora a de
+     um herói e a do Barão — é a função dela */
+  const util=ef.perfura?bruto:bruto-ARM_ESTRUTURA;
+  return Math.max(DANO_ESTRUTURA_MIN,Math.round(util*mult));
 }
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
@@ -4290,7 +4470,16 @@ function desenhaMapa(){
     if(mirando) rc.onclick=()=>{ if(mesaTravada())return; vibra(10); tocaAlvo(...ROTAS[t.rota][t.i]); };
     gM.appendChild(rc);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
-    if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
+    if(t.vida>0){
+      const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);
+      /* BARRA DE VIDA DA TORRE (v48, §36). Com 12 de vida o número sozinho não
+         diz o quanto falta — a barra diz, e é a mesma leitura que o jogador já
+         faz na peça de herói. Ela some junto com a torre. */
+      const L=13, A=1.8, yb=y+8.4, pc=Math.max(0,t.vida)/VIDA_TORRE;
+      gM.appendChild(el("rect",{x:x-L/2,y:yb,width:L,height:A,class:"tbar bg"}));
+      if(pc>0) gM.appendChild(el("rect",{x:x-L/2,y:yb,width:L*pc,height:A,
+        class:"tbar t"+t.t}));
+    }
 
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
@@ -5318,11 +5507,21 @@ function iaJogadas(t){
           saida.push({h,i,tipo:"epico",v:ep,nota});
         }
 
-        /* TORRE — objetivo de verdade, mas o revide de 2 é real. */
+        /* TORRE — objetivo de verdade, e agora com duas contas reais: quanto
+           este golpe TIRA (deixou de ser 1 fixo) e quanto custa estar ali.
+
+           §50 e §51 do pedido: antes de avançar para a torre ela pesa a vida da
+           torre, a própria vida, o creep, e o disparo que leva no fim do turno
+           se ficar sem creep. O `55` continua calibrado em "um terço de torre
+           por golpe", que era o valor da v47 — a proporção é que virou conta. */
         alvosTorre.forEach(tr=>{
-          const cai=tr.vida<=DANO_TORRE;
-          let nota = cai?150:55;
-          if(REVIDE_TORRE>=h.vida&&!cai) nota=4;    /* não se mata por 1 de torre */
+          const golpe=golpeEmEstrutura(h,hb,i,F);
+          const cai=tr.vida<=golpe;
+          const semCreep=!creepApoia(tr);
+          const risco=REVIDE_TORRE+(semCreep?TIRO_TORRE:0);
+          let nota = cai?150:Math.round(55*golpe*3/VIDA_TORRE);
+          if(!cai&&semCreep) nota=Math.round(nota*0.55);   /* mergulhar sozinho é caro */
+          if(!cai&&risco>=h.vida) nota=4;                  /* não se mata por um arranhão */
           saida.push({h,i,tipo:"torre",v:tr,nota});
         });
 
@@ -5679,6 +5878,29 @@ let iaRodando=false, pularIA=false;
    compradas e zero plantadas, com o ouro morrendo na mochila. O que a ward
    compra é visão que FICA depois que o herói sai. Logo o critério é cobertura:
    planta se não houver ward dela por perto. */
+/* §51 — A IA SABE RECUAR. Se ela vai terminar o turno debaixo de uma torre
+   inimiga sem creep, e não derrubou a torre, isso é risco real: sai de lá com o
+   movimento que sobrou. Roda depois do laço de jogadas, quando já se sabe o que
+   ela conseguiu fazer no turno. O Aprendiz não faz — mergulhar é exatamente o
+   erro de quem está aprendendo, e a IA fácil precisa errar em algum lugar. */
+function iaRecuaDeTorre(t){
+  if(!IA().defende)return false;
+  let saiu=false;
+  for(const h of vivos(t)){
+    if(J.mov.rest<=0)break;
+    if(h.preso||!noJogo(h)||!casasRestantes(h))continue;
+    if(!torreQueAmeaca(h))continue;
+    selHeroi=h; modo="mover"; calcula();
+    const seguro=p=>!J.torres.some(x=>x.t!==h.t&&x.vida>0
+      &&dist(...p,...posDaTorre(x))<=ZONA_TORRE&&!creepApoia(x));
+    const fuga=mover.filter(seguro)
+      .sort((a,b)=>dist(...h.pos,...a)-dist(...h.pos,...b))[0];
+    if(fuga){ moveAte(...fuga); saiu=true; }
+    limpaModo();
+  }
+  limpaModo(); selHeroi=null;
+  return saiu;
+}
 function iaPlantaWards(t){
   if(!IA().wards)return false;   // visão é a última coisa que o iniciante compra
   J.times[t].herois.forEach(h=>{
@@ -5800,6 +6022,7 @@ async function iaExecutaTurno(){
     break;
   }
 
+  if(iaRecuaDeTorre(lado)&&aiMode) falaIA("sai de baixo da torre");
   iaPlantaWards(lado);
   limpaModo(); selHeroi=null;
   pinta();
@@ -5981,8 +6204,13 @@ function abreEstruturas(){
       const torres=ts.map(x=>{
         if(x.vida<=0) return `<span class="tw caiu" title="passo ${x.i}">✕</span>`;
         const eu=x===exp;
+        /* v48: a torre tem 12 de vida, e doze bolinhas não se leem. Barra mais
+           número, que é o que o pedido chamou de "HP 12/12". */
+        const pc=Math.round(Math.max(0,x.vida)/VIDA_TORRE*100);
         return `<span class="tw${eu?" exposta":""}" title="passo ${x.i}">`+
-               `${pip(x.vida,VIDA_TORRE)}${eu?'<em>alvo</em>':""}</span>`;
+               `<span class="hp"><i style="width:${pc}%"></i></span>`+
+               `<b class="hpn">${Math.max(0,x.vida)}/${VIDA_TORRE}</b>`+
+               `${eu?'<em>alvo</em>':""}</span>`;
       }).join("");
       return `<div class="er${caiu?" aberta":""}">
         <b>${nome.toUpperCase()}</b>
