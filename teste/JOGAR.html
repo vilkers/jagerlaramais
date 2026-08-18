@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 7124ac0 2026-08-17
+     commit 4a605e3 2026-08-18
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -850,6 +850,10 @@ button:disabled{cursor:not-allowed}
    posição do Caçador escondido. */
 #mapa .rotulo.seg rect{stroke:var(--vivo);stroke-width:.7}
 #mapa .rotulo.seg text{fill:var(--vivo)}
+/* ÂMBAR é o empate, e ele merece cor própria: a onda não anda, mas a torre que
+   está embaixo dela continua apanhando. Verde aqui seria mentira. */
+#mapa .rotulo.empate rect{stroke:var(--brass);stroke-width:.7}
+#mapa .rotulo.empate text{fill:var(--brass)}
 #mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
 #mapa .rotulo.perig text{fill:var(--dano)}
 
@@ -1789,6 +1793,58 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
    Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
    O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
 const VIDA_TORRE=3, VIDA_NEXUS=3;
+/* ---------- AS ONDAS ENGROSSAM (v47) ----------
+   O relógio da partida, e ele existe por causa do HOTSEAT.
+
+   A correção do defensor (ver `rotaDaPos`) foi medida com o agente quase-aleatório
+   e com a IA, e nos dois a duração mal se moveu. Mas este jogo é jogador contra
+   jogador no mesmo aparelho, e dois humanos que sabem que defender funciona jogam
+   diferente dos dois. Medido com `sim/defesa.js estilo=pvp`, que é uma política
+   curta e competente rodando dos DOIS lados:
+
+     v46 (defensor não contava)      25,4 rodadas
+     v47 sem relógio                 49,3 rodadas   ← quase o dobro
+
+   Nenhuma partida travou — empate continua derrubando a torre, então turtle puro
+   não existe. Mas 49 rodadas em hotseat são ~100 passagens de aparelho, e isso
+   não é um jogo que alguém termina.
+
+   O relógio resolve pelo lado certo: **a onda tira 1 a mais a cada 10 rodadas,
+   até 3**. É simétrico (as duas ondas engrossam juntas), então não é uma
+   alavanca para quem está na frente; e só morde partida longa, que é exatamente
+   o caso que precisava de cura.
+
+     rodadas 1–16    a onda tira 1
+     rodadas 17–32   tira 2
+     rodadas 33+     tira 3  — uma torre cheia cai numa rodada de cerco
+
+   POR QUE 16, E NÃO UM RELÓGIO MAIS CURTO. Passo curto encurta mais, mas VAZA
+   VANTAGEM DE ORDEM: a partida fica mais decisiva por rodada e quem joga primeiro
+   colhe. Medido, e é reprodutível — duas execuções de 1500 partidas deram 54,6% e
+   54,4% com passo 10, contra 51,6% sem relógio nenhum:
+
+     passo   PvP (pior caso)   1ª torre vence   quem começa
+     ─────   ───────────────   ──────────────   ───────────
+     (sem)        49,3              66,7%          51,6%
+      16          40,0              62,7%          52,9%   ← escolhido
+      14          38,5              66,6%            —
+      12            —                 —            54,7%
+      10          34,3              65,4%          54,4%
+
+   16 é o único que fica dentro da faixa histórica de "quem começa" (52,4% a
+   53,2%, item 11 de DECISOES-PENDENTES) e ainda assim corta um terço do pior
+   caso. Passo menor troca 5 rodadas por 1,5 ponto de desequilíbrio de ordem, e
+   esse não é um câmbio que este projeto aceita sem o grupo decidir.
+
+   E POR QUE O TETO É 3, e não 2: com teto 2 a duração empaca em ~41 rodadas
+   qualquer que seja o passo. É o terceiro degrau — o que derruba uma torre cheia
+   numa rodada de cerco — que de fato fecha a partida.
+
+   MEDIDO E DESCARTADO no mesmo lugar: **torre com 2 de vida** em vez do relógio.
+   Parecia a alavanca simples e é pior nos dois eixos (PvP 38,9 rodadas, bola de
+   neve 67,0%). */
+const ONDA_ENGROSSA=16, ONDA_MAX=3;
+const danoDaOnda=()=>Math.min(ONDA_MAX,1+Math.floor((J.rodada-1)/ONDA_ENGROSSA));
 /* ---------- O DEFENSOR PASSA A CONTAR (v47) ----------
    Relato: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter uma
    forma de defender mais efetiva"*. Medido com `sim/defesa.js`, 300 partidas:
@@ -3599,7 +3655,15 @@ function contaRota(nome){
   const meus=vivos(eu).filter(h=>noJogo(h)&&rotaDaPos(h)===nome).length;
   const deles=J.times[1-eu].herois.filter(h=>!h.morto&&noJogo(h)
     &&visivelPara(h,eu)&&rotaDaPos(h)===nome).length;
-  return {meus,deles,seguro:meus>=deles};
+  /* TRÊS estados, e não dois. A primeira versão pintava de verde o EMPATE, com o
+     rótulo "dá para segurar" — e mentia: empate impede a onda de ANDAR, mas a
+     torre que está embaixo dela continua apanhando 1 por rodada. Quem lesse o
+     verde levaria o time para outra rota e voltaria com a torre no chão.
+     Para salvar a torre é preciso ter MAIS gente, porque só assim a onda recua e
+     sai de cima dela. O âmbar é exatamente esse aviso: "está parada, mas caindo". */
+  const estado = (!meus&&!deles) ? ""            /* rota vazia não é empate, é rota vazia */
+    : meus>deles ? "seg" : (meus===deles ? "empate" : "perig");
+  return {meus,deles,estado,seguro:meus>deles};
 }
 
 /* Alguma rota do time `t` está sem torre e com a onda encostada na base dele?
@@ -3628,8 +3692,10 @@ function fimDaRodada(){
     const f=J.frentes[nome];
     const alvo=J.torres.find(x=>x.rota===nome&&x.vida>0&&x.i===f);
     if(alvo){
-      alvo.vida--;
-      reg("b",`Onda do ${nome} bate na torre ${NOMES[alvo.t]} (${Math.max(0,alvo.vida)}/${VIDA_TORRE})`);
+      const golpe=danoDaOnda();
+      alvo.vida-=golpe;
+      reg("b",`Onda do ${nome} bate na torre ${NOMES[alvo.t]}`
+             +`${golpe>1?` — onda grossa (−${golpe})`:""} (${Math.max(0,alvo.vida)}/${VIDA_TORRE})`);
       if(alvo.vida<=0) reg("b",`TORRE CAIU — ${nome}, lado ${NOMES[alvo.t]}`);
       return;
     }
@@ -5621,7 +5687,7 @@ function desenhaMapa(){
   const rot=(txt,x,y,nome)=>{
     const c=nome?contaRota(nome):null;
     const rotulo=c?`${txt}  ${c.meus}\u2009·\u2009${c.deles}`:txt;
-    const g=el("g",{class:"rotulo"+(c?(c.seguro?" seg":" perig"):"")}),w=rotulo.length*5.4+13;
+    const g=el("g",{class:"rotulo"+(c&&c.estado?" "+c.estado:"")}),w=rotulo.length*5.4+13;
     g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:2}));
     const t=el("text",{x:x,y:y+2.2});t.textContent=rotulo;g.appendChild(t);gM.appendChild(g);};
   rot("TOPO",centro(...L_TOPO[6])[0],11,"topo");
@@ -6145,11 +6211,15 @@ function abreManual(){
       <p><b>Com inimigo a 2 casas ou menos, ele se trata UMA vez e para.</b> A cura só volta quando o cerco sair de perto. Mergulhar na base do adversário continua sendo decisão, e não suicídio garantido.</p></section>
     <section><h4>Defender junto da torre</h4>
       <p>Herói colado numa torre <b>viva do próprio time</b> ganha <b>+1 de Armadura</b>. Lutar em casa é diferente de lutar no vão da rota — e o bônus cai junto com a torre.</p></section>
-    <section class="destaque"><h4>Regra de mesa · presença na rota</h4>
-      <p>Um herói só conta para empurrar uma rota depois de <b>passar da própria Torre Exterior</b>. Antes dela, está em desenvolvimento e não gera Top/Meio/Bot. Mais heróis ativos que o rival: a onda anda 1. Empate: não anda.</p></section>
+    <section class="destaque"><h4>Presença · como se defende uma rota</h4>
+      <p>No fim da rodada, cada rota compara <b>quantos heróis</b> cada time tem nela. Mais que o rival: a onda anda 1 casa para o lado dele. Empate: ela não anda — <b>mas continua batendo na torre que estiver embaixo</b>.</p>
+      <p><b>Você conta na rota se:</b> passou da <b>sua Torre Exterior</b> (empurrar) <b>ou</b> está <b>encostado na Frente de Onda</b> (defender). Herói parado na própria base não conta — isso é acampar, não defender.</p>
+      <p><b>Para SALVAR a torre não basta empatar: é preciso ter mais gente que o atacante</b>, porque só assim a onda recua e sai de cima dela. Um corpo a mais já vira a conta — e ir com o time todo é como se perde o resto do mapa.</p>
+      <p>O <b>rótulo de cada rota</b>, no tabuleiro, mostra a contagem: <b>verde</b> quando dá para segurar, <b>carmim</b> quando eles têm gente a mais. Ele só conta o inimigo que <b>você enxerga</b> — o que está escondido no mato não aparece.</p></section>
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
       <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada, e o golpe de herói tira <b>1</b> — qualquer habilidade ofensiva, inclusive a Ultimate. Torre não é poço: quem quer derrubar mais rápido junta heróis, não gasta a Ultimate.</p>
+      <p><b>As ondas engrossam.</b> A cada <b>16 rodadas</b> elas passam a tirar <b>1 a mais</b> da torre, até 3. Da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. É o relógio da partida: numa disputa em que os dois defendem bem, é ele que garante que alguém fecha.</p>
       <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> a cada golpe — e é esse pedágio, não uma trava de rodada, que decide quantas vezes vale bater. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>

@@ -114,6 +114,8 @@ if (opcoes.alchab === "off")
 /* v47 — a chave que liga e desliga a correção do defensor, para o A/B continuar
    possível depois que ela virar o padrão. Duas irmãs dela (empate segura, reparo
    de torre) foram escritas, medidas e descartadas — ver docs/patch-notes.md. */
+if (opcoes.ondamax) trocas.push([/ONDA_MAX=\d+/, `ONDA_MAX=${+opcoes.ondamax}`]);
+if (opcoes.engrossa) trocas.push([/const ONDA_ENGROSSA=\d+/, `const ONDA_ENGROSSA=${+opcoes.engrossa}`]);
 if (opcoes.defensor === "off")    // quem está na briga volta a NÃO contar
   trocas.push([/if\(f!==undefined&&Math\.abs\(idx-f\)<=1\) return melhor;/, ""]);
 /* v22 — as três mudanças da revisão, cada uma desligável sozinha. Existem porque

@@ -840,5 +840,9 @@ button:disabled{cursor:not-allowed}
    posição do Caçador escondido. */
 #mapa .rotulo.seg rect{stroke:var(--vivo);stroke-width:.7}
 #mapa .rotulo.seg text{fill:var(--vivo)}
+/* ÂMBAR é o empate, e ele merece cor própria: a onda não anda, mas a torre que
+   está embaixo dela continua apanhando. Verde aqui seria mentira. */
+#mapa .rotulo.empate rect{stroke:var(--brass);stroke-width:.7}
+#mapa .rotulo.empate text{fill:var(--brass)}
 #mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
 #mapa .rotulo.perig text{fill:var(--dano)}

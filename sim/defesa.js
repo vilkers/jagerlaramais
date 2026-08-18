@@ -32,10 +32,14 @@ const n = parseInt(process.argv[2], 10) || 400;
 
 /* as mesmas chaves de `sim/bateria.js`, para os dois scripts falarem a mesma
    língua quando for hora de comparar builds:
-     node sim/defesa.js 400 defensor=off   → como era antes da v47            */
+     node sim/defesa.js 400 defensor=off   → como era antes da v47
+     node sim/defesa.js 400 estilo=pvp     → DOIS jogadores que sabem defender  */
 const opc = {};
 process.argv.slice(3).forEach(a => { const [k, v] = a.split("="); opc[k] = v; });
 const trocas = [];
+if (opc.torre) trocas.push([/const VIDA_TORRE=\d+/, `const VIDA_TORRE=${+opc.torre}`]);
+if (opc.ondamax) trocas.push([/ONDA_MAX=\d+/, `ONDA_MAX=${+opc.ondamax}`]);
+if (opc.engrossa) trocas.push([/const ONDA_ENGROSSA=\d+/, `const ONDA_ENGROSSA=${+opc.engrossa}`]);
 if (opc.defensor === "off") trocas.push([/if\(f!==undefined&&Math\.abs\(idx-f\)<=1\) return melhor;/, ""]);
 
 const g = carrega(trocas);
@@ -64,12 +68,56 @@ let cercosVistos = 0, defesasQueTiraramAOnda = 0;
 let primeiraTorreVenceu = 0, partidasComTorre = 0;
 let torresPorPartida = [], rodadasPorPartida = [];
 
+/* ---------- O JOGADOR QUE SABE DEFENDER (modo `pvp`) ----------
+   O agente quase-aleatório mede ESTRUTURA, e para isso ele serve: não tem plano,
+   então não esconde a regra atrás de esperteza. Mas ele também não DEFENDE de
+   propósito — e a pergunta que sobra depois da v47 é justamente a de dois humanos
+   em hotseat, os dois sabendo que defender agora funciona.
+
+   Este modo é o mais perto disso que dá para simular sem um humano: uma política
+   curta e competente, IGUAL nos dois lados, que faz o que um jogador faria depois
+   de ler a regra uma vez —
+
+     1. tem torre minha sob a onda e eles com presença igual ou maior? mando o
+        herói livre mais perto para lá (é o que salva a torre);
+     2. senão, empurro a rota onde já tenho vantagem;
+     3. gasto os dados no que estiver ao alcance.
+
+   O QUE ELE EXISTE PARA REPROVAR: partida que não termina. Se dois defensores
+   competentes conseguem travar o tabuleiro, a regra da v47 quebra o modo
+   principal do jogo, e aí ela está errada por mais que os outros números
+   melhorem. É o mesmo teste que a v22 fez e reprovou com o piso duro da onda:
+   0 de 1200 partidas terminadas. */
+const PVP = opc.estilo === "pvp";
+
+function defendeSePreciso(t) {
+  if (!PVP) return false;
+  const sitiadas = g.J.torres.filter(tr => tr.t === t && tr.vida > 0
+      && g.J.frentes[tr.rota] === tr.i)
+    .filter(tr => ((g.J.presenca[1 - t][tr.rota] || 0) - (g.J.presenca[t][tr.rota] || 0)) >= 0);
+  if (!sitiadas.length) return false;
+  const alvo = sitiadas.sort((a, b) => a.vida - b.vida)[0];
+  const casa = g.ROTAS[alvo.rota][alvo.i];
+  const cand = g.vivos(t).filter(h => g.rotaDaPos(h) !== alvo.rota)
+    .sort((a, b) => g.dist(...a.pos, ...casa) - g.dist(...b.pos, ...casa));
+  for (const h of cand) {
+    if (g.J.mov.rest <= 0) return false;
+    g.limpaModo(); g.selHeroi = h; g.modo = "mover"; g.calcula();
+    const passo = g.mover
+      .filter(p2 => g.dist(...p2, ...casa) < g.dist(...h.pos, ...casa))
+      .sort((a, b) => g.dist(...a, ...casa) - g.dist(...b, ...casa))[0];
+    if (passo) { g.moveAte(...passo); return true; }
+  }
+  return false;
+}
+
 for (let p = 0; p < n; p++) {
   g.comeca(false, false);
   let primeiraTorreDe = null;
   let passos = 0;
   while (passos++ < 4000 && g.J.fim === null && g.J.fase === "jogando") {
     const vez = g.J.vez;
+    while (defendeSePreciso(vez)) { /* leva quantos couberem no Dado Mestre */ }
     const livres = g.vivos(vez).filter(h => !h.agiu);
     if (livres.length && Math.random() < 0.75) {
       const h = livres[Math.floor(Math.random() * livres.length)];

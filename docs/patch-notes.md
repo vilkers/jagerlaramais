@@ -88,8 +88,8 @@ pontos de bola de neve — exatamente o que o relato pedia para reduzir.
 | golpes de herói em torre, por partida | 3,4 | **4,8** |
 | golpes de herói em épico, por partida | 4,1 | **6,5** |
 | torres caídas por partida | 4,5/12 | 5,3/12 |
-| quem começa | 52,1% | **51,7%** (z=1,29, dentro do ruído) |
-| Testes de regressão | 223 | **230** |
+| quem começa | 52,1% | 53,4% (o relógio cobra ~1 ponto; ver abaixo) |
+| Testes de regressão | 223 | **231** |
 
 ### A duração, e por que os dois números discordam
 
@@ -128,6 +128,107 @@ rodada passada, porque é sobre a viva que o jogador ainda pode agir. E **obedec
 entregaria de graça a posição do Caçador escondido, que é a informação em torno da
 qual a partida inteira gira.
 
+### O hotseat era o teste que faltava
+
+*"Essa mudança tem que ocorrer para que quando for jogador × jogador também faça
+sentido."* Estava certo, e a v47 tinha sido medida com o agente quase-aleatório e
+com a IA — **nenhum dos dois é dois humanos que sabem defender.** Este jogo é
+hotseat; PvP é o modo principal.
+
+`sim/defesa.js estilo=pvp` (novo) roda dos DOIS lados uma política curta e
+competente: *torre minha sob a onda e eles com presença igual ou maior? mando o
+herói livre mais perto*. É o pior caso — um jogador que sempre defende.
+
+| | v46 | v47 sem relógio |
+|---|---|---|
+| PvP, duração média | 25,4 | **49,3 rodadas** |
+
+Nenhuma partida travou (0 de 1200 sem fim) — empate continua derrubando a torre,
+então turtle puro não existe. Mas **49 rodadas são ~100 passagens de aparelho**, e
+isso não é um jogo que alguém termina.
+
+### O relógio: as ondas engrossam
+
+A cada **16 rodadas** a onda passa a tirar **1 a mais** da torre, até 3.
+
+```
+rodadas 1–16    a onda tira 1
+rodadas 17–32   tira 2
+rodadas 33+     tira 3   — uma rodada de cerco derruba uma torre cheia
+```
+
+É **simétrico** (as duas ondas engrossam juntas), então não é alavanca para quem
+está na frente, e só morde partida longa — exatamente o caso doente.
+
+**Por que 16 e não menos, que encurtaria mais.** Porque passo curto **vaza
+vantagem de ordem**: a partida fica mais decisiva por rodada e quem joga primeiro
+colhe. Reprodutível em duas execuções de 1500 partidas — 54,6% e 54,4% com passo
+10, contra 51,6% sem relógio nenhum.
+
+| passo | PvP (pior caso) | 1ª torre vence | quem começa |
+|---|---|---|---|
+| sem relógio | 49,3 | 66,7% | 51,6% |
+| **16** | **40,0** | **62,7%** | **52,9% e 53,4%** |
+| 14 | 38,5 | 66,6% | — |
+| 12 | — | — | 54,7% |
+| 10 | 34,3 | 65,4% | 54,4% |
+
+16 é o único que fica na faixa histórica de "quem começa" (52,4% a 53,2%, item 11
+de `DECISOES-PENDENTES`) e ainda corta um terço do pior caso. Passo menor troca 5
+rodadas por 1,5 ponto de desequilíbrio de ordem, e esse câmbio é decisão do grupo,
+não do motor.
+
+**O teto é 3 e não 2** porque com teto 2 a duração empaca em ~41 rodadas qualquer
+que seja o passo: é o terceiro degrau que de fato fecha a partida.
+
+**Medida e descartada no mesmo lugar:** torre com **2 de vida** em vez do relógio.
+Parecia a alavanca simples e é pior nos dois eixos — PvP 38,9 rodadas e bola de
+neve 67,0%.
+
+### Os quatro cenários, no fim
+
+| | v46 | v47 |
+|---|---|---|
+| **PvP, dois defensores** (pior caso) | 25,4 | **40,1 rodadas · 1ª torre vence 61,2%** |
+| agente quase-aleatório | 25,3 | 32,4 · 64,3% |
+| **IA de verdade** (mediana) | 24 | **25** |
+| bateria, quem começa | 52,1% | 53,4% |
+
+### O rótulo tem TRÊS cores, e o erro que isso corrigiu
+
+A primeira versão pintava o **empate de verde**, com a leitura "dá para segurar".
+**Mentia.** Empate impede a onda de ANDAR, mas a torre que está embaixo dela
+continua apanhando 1 por rodada. Quem lesse o verde levaria o time para outra rota
+e voltaria com a torre no chão.
+
+```
+verde    tenho MAIS gente  — a onda recua e a torre para de apanhar
+âmbar    empate            — a onda está parada, mas a torre ainda cai
+carmim   eles têm mais     — a onda avança
+```
+
+Rota vazia (`0 · 0`) não pinta nada: rota vazia não é empate.
+
+### O hotseat foi conferido no navegador
+
+Com a mesma torre sitiada, um defensor azul e dois carmins — **um deles
+invisível**:
+
+```
+turno AZUL     TOPO 1 · 1    (não vê o inimigo escondido)
+turno CARMIM   TOPO 2 · 1    (sabe do próprio invisível)
+```
+
+O contador **vira com o aparelho** e cada jogador recebe só a informação dele. Sem
+vazamento — que era o risco real de pôr essa conta na tela.
+
+### E a regra foi escrita no jogo
+
+Em PvP não existe IA para imitar: regra que não está no manual não é jogada. A
+seção *Presença · como se defende uma rota* foi reescrita e diz as três coisas que
+faltavam — quem conta, que **empatar não salva a torre**, e o que as cores do
+rótulo significam.
+
 ### O que isso quebra
 
 - **`rotaDaPos` mudou de resposta** para herói perto da Frente de Onda. Quem
@@ -139,6 +240,7 @@ qual a partida inteira gira.
 
 ```
 node sim/defesa.js 800              # defender é viável?
+node sim/defesa.js 800 estilo=pvp   # DOIS jogadores que sabem defender (hotseat)
 node sim/defesa.js 800 defensor=off # como era antes da v47
 ```
 
@@ -160,6 +262,14 @@ engana. Foi ele que reprovou as três regras descartadas.
    já tinha levado na v45.
 3. **Confiei num número de 250 partidas.** Anunciei "77,6% → 63,6%" e, a 1500,
    virou "72,8% → 65,5%". A direção estava certa, a precisão não.
+4. **Medi um jogo de hotseat sem simular hotseat.** Validei com o agente
+   quase-aleatório e com a IA, e os dois esconderam o problema — a IA compromete
+   e por isso a duração dela mal mudou. Dois humanos cautelosos dobram a partida,
+   e foi o Vilker quem teve de apontar que faltava esse teste. `estilo=pvp`
+   nasceu daí e devia ter nascido antes.
+5. **Pintei o empate de verde.** O rótulo dizia "dá para segurar" numa situação em
+   que a torre continua caindo. Informação errada na tela é pior que informação
+   nenhuma: ela faz o jogador sair da rota.
 
 ---
 

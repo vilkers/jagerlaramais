@@ -4025,6 +4025,34 @@ teste("o rótulo da rota conta presença e obedece à névoa", () => {
   ok(visto.deles >= 1, "o rótulo não contou o inimigo revelado ao lado");
 });
 
+teste("o rótulo distingue VENCER a rota de EMPATAR nela", () => {
+  const c = cena().vez(0); const g = c.g;
+  g.aiMode = false;
+  const tr = torreExterior(g, 0, "topo");
+  g.J.frentes.topo = tr.i;
+  const casa = g.ROTAS.topo[tr.i];
+  g.todos().forEach(h => c.poe(h, g.BASE[h.t][0]));
+  const meu = c.heroi(0, "topo"), dele = c.heroi(1, "topo");
+  c.poe(meu, casa);
+  const viz = g.vizinhos(...casa).filter(p => g.noTab(...p) && !g.em(...p));
+  c.poe(dele, viz[0]);
+  g.aplicaCond(dele, "revelado", { tu: 5 });
+
+  /* 1 contra 1: a onda não anda, MAS a torre embaixo dela continua apanhando.
+     Pintar isso de verde foi o primeiro erro desta tela — o jogador leria "dá
+     para segurar", sairia da rota e voltaria com a torre no chão. */
+  eq(g.contaRota("topo").estado, "empate",
+     "o empate está sendo mostrado como vitória ou como derrota na rota");
+  ok(!g.contaRota("topo").seguro,
+     "o rótulo diz que a torre está segura no empate — empate não salva torre, "
+     + "porque a onda só sai de cima dela quando RECUA");
+
+  /* 2 contra 1: aí sim a onda recua e a torre para de apanhar */
+  const outro = c.heroi(0, "sup");
+  c.poe(outro, viz[1] || viz[0]);
+  eq(g.contaRota("topo").estado, "seg", "com um corpo a mais o rótulo não ficou verde");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {
