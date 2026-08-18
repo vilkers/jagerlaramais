@@ -125,7 +125,7 @@ const HEROIS_BASE = {
 /* ─────────── TOPO ─────────── */
 
 vharn:{n:"O Taxista",ep:"o Piloto da Quebrada",pos:"topo",cls:"Tanque",ref:"Ornn / Sion",
-  vida:25,poder:3,arm:3,alc:1,
+  vida:25,poder:3,arm:3,alc:1,movMax:3,
   ideia:"O dono do espaço. Perto dele o tabuleiro fica lento, e ele é o único que ATORDOA.",
   pas:{id:"pontoDeOnibus",n:"Ponto de Ônibus",
        d:"No início do turno dele, todo inimigo colado fica Lento."},
@@ -134,7 +134,7 @@ vharn:{n:"O Taxista",ep:"o Piloto da Quebrada",pos:"topo",cls:"Tanque",ref:"Ornn
         {n:"Escudo de Porta",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1,condEu:[{t:"tenacidade",tu:2}]}}]},
 
 kaross:{n:"Dona Chinela",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",ref:"Darius",
-  vida:22,poder:3,arm:2,alc:1,
+  vida:22,poder:3,arm:2,alc:1,movMax:4,
   ideia:"Empilha Sangramento e cobra a conta: quanto mais o alvo sangra, mais alto o chinelo executa.",
   pas:{id:"chinelada",n:"Chinelada",
        d:"Todo golpe dela deixa 1 acúmulo de Sangramento no alvo."},
@@ -144,7 +144,7 @@ kaross:{n:"Dona Chinela",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",re
            execPorStack:{t:"sangramento",v:3},consome:{t:"sangramento",danoPorStack:3}}}]},
 
 ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
-  vida:20,poder:4,arm:2,alc:2,
+  vida:20,poder:4,arm:2,alc:2,movMax:4,
   ideia:"Espalha Veneno e depois colhe: a Ceifa bate muito mais forte em quem já está envenenado.",
   pas:{id:"miasma",n:"Miasma",
        d:"No início do turno dela, todo inimigo colado é Envenenado por 1 turno."},
@@ -153,7 +153,7 @@ ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
         {n:"Ceifa",f:5,alvo:"in",alc:1,ef:{dano:1,area:1,bonusCond:{t:"veneno",dano:4}}}]},
 
 xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven",
-  vida:22,poder:4,arm:2,alc:1,
+  vida:22,poder:4,arm:2,alc:1,movMax:4,
   ideia:"Paga com a própria vida e recompra bebendo a do outro. Quanto mais ferida, mais forte.",
   pas:{id:"insaciavel",n:"Insaciável",
        d:"Cura 2 sempre que causa dano. Abaixo de metade da vida, cura 4 e ganha +2 de Poder."},
@@ -164,7 +164,7 @@ xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven
 /* ─────────── SELVA ─────────── */
 
 nyx:{n:"Pombo Ciborgue",ep:"o Correio da Sarjeta",pos:"selva",cls:"Assassino",ref:"Kha'Zix / Rengar",
-  vida:18,poder:3,arm:1,alc:1,agil:1,
+  vida:18,poder:3,arm:1,alc:1,agil:1,movMax:5,
   ideia:"Desaparece. Você não sabe onde ele está, e ele bate Crítico em quem andou sozinho.",
   pas:{id:"vooSilencioso",n:"Voo Silencioso",
        d:"No início do turno dele, se nenhum inimigo estiver colado, ele fica Invisível."},
@@ -173,7 +173,7 @@ nyx:{n:"Pombo Ciborgue",ep:"o Correio da Sarjeta",pos:"selva",cls:"Assassino",re
         {n:"Rasante Final",f:5,alvo:"in",ef:{dano:1,extra:3,executa:6,critSe:"eraInvisivel"}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
-  vida:23,poder:3,arm:3,alc:1,
+  vida:23,poder:3,arm:3,alc:1,movMax:3,
   ideia:"Digere tudo: veneno, sangramento e cadáver. O tanque que não fica com condição pendurada.",
   pas:{id:"digestao",n:"Digestão",
        d:"Cura 4 quando qualquer herói morre a até 2 casas dele."},
@@ -182,7 +182,7 @@ grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,condVizinhos:[{t:"lentidao",tu:1}]}}]},
 
 kurr:{n:"Valti",ep:"o Homem do Coco",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
-  vida:18,poder:3,arm:1,alc:2,agil:1,
+  vida:18,poder:3,arm:1,alc:2,agil:1,movMax:5,
   ideia:"Prepara terreno. O coco só atordoa quem pisou nas cascas — o Atordoamento tem endereço.",
   pas:{id:"olhoDeMateiro",n:"Olho de Mateiro",
        d:"Enxerga dentro do mato de qualquer lugar do tabuleiro."},
@@ -193,7 +193,7 @@ kurr:{n:"Valti",ep:"o Homem do Coco",pos:"selva",cls:"Assassino",ref:"Nidalee / 
            condSeNaZona:[{t:"atordoado",tu:1}]}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
-  vida:18,poder:4,arm:2,alc:2,agil:1,
+  vida:18,poder:4,arm:2,alc:2,agil:1,movMax:5,
   ideia:"Marca, arrasta e executa. Contra ele a pergunta é sempre a mesma: dá para morrer daqui?",
   pas:{id:"contabilidade",n:"Contabilidade do Coveiro",
        d:"Quando ele mata, leva +3 de ouro e o aliado mais próximo leva +2."},
@@ -204,7 +204,7 @@ pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
 /* ─────────── MEIO ─────────── */
 
 solenne:{n:"Parabólica Diabólica",ep:"que capta até o que não existe",pos:"meio",cls:"Mago",ref:"Lux / Syndra",
-  vida:18,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,movMax:4,
   ideia:"Junta Carga para o Crítico e TRANCA habilidade: perto dela a sua Ultimate pode não sair.",
   pas:{id:"captacao",n:"Captação",
        d:"Ganha 1 Carga a cada golpe. Com 3 Cargas, o golpe seguinte é Crítico e gasta as Cargas."},
@@ -213,7 +213,7 @@ solenne:{n:"Parabólica Diabólica",ep:"que capta até o que não existe",pos:"m
         {n:"Sinal Aberto",f:6,alvo:"in",ef:{dano:0.8,perfura:1,revelaRaio:4}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
-  vida:18,poder:4,arm:1,alc:1,agil:1,
+  vida:18,poder:4,arm:1,alc:1,agil:1,movMax:5,
   ideia:"Troca de lugar com você e some do tabuleiro. Nunca está onde você bateu.",
   pas:{id:"passoDeSombra",n:"Passo de Sombra",
        d:"Depois de causar dano, ele recua 1 casa de graça."},
@@ -222,7 +222,7 @@ zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Z
         {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1,baneEu:1}}]},
 
 nira:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
-  vida:18,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,movMax:4,
   ideia:"Limpa os aliados e acumula Sucata. A Ultimate dele vale o que ele varreu na partida.",
   pas:{id:"coleta",n:"Coleta",
        d:"Ganha 1 Sucata a cada golpe e a cada herói que morre a até 3 casas. Máximo 5."},
@@ -232,7 +232,7 @@ nira:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"meio",cls:"Mago",ref:"Orian
            zona:{tipo:"veneno",dano:2,raio:1},bonusPorRecurso:{t:"sucata",dano:2}}}]},
 
 arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
-  vida:22,poder:3,arm:2,alc:2,
+  vida:22,poder:3,arm:2,alc:2,movMax:4,
   ideia:"COPIA. Ele guarda a última habilidade que te viu usar contra ele e devolve.",
   pas:{id:"jurisprudencia",n:"Jurisprudência",
        d:"Guarda a última habilidade inimiga que o acertou. Ultimate não entra nos autos."},
@@ -243,7 +243,7 @@ arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
 /* ─────────── ATIRADOR ─────────── */
 
 vesper:{n:"Zé Griteco",ep:"o Regente das Gemas",pos:"adc",cls:"Atirador",ref:"Jinx / Kog'Maw",
-  vida:20,poder:3,arm:1,alc:3,patamar:1,
+  vida:20,poder:3,arm:1,alc:3,patamar:1,movMax:4,
   ideia:"Rampa. Se ele te escolher e você não sair, cada turno dele dói mais que o anterior.",
   pas:{id:"pulmaoDeAco",n:"Pulmão de Aço",
        d:"Cada golpe seguido no MESMO alvo dá +1 Fôlego (+2 de dano cada). Trocar de alvo zera."},
@@ -252,7 +252,7 @@ vesper:{n:"Zé Griteco",ep:"o Regente das Gemas",pos:"adc",cls:"Atirador",ref:"J
         {n:"Caminhão Fantasma",f:5,alvo:"eu",ef:{danoRaio:3,condRaio:[{t:"lentidao",tu:1}]}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
-  vida:18,poder:3,arm:1,alc:3,
+  vida:18,poder:3,arm:1,alc:3,movMax:4,
   ideia:"Armadilha primeiro, Crítico depois. Ele não crita por sorte — crita em quem ele travou.",
   pas:{id:"juros",n:"Juros",
        d:"Crítico contra alvo Preso, Atordoado ou Lento."},
@@ -262,7 +262,7 @@ cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
         {n:"Sentença",f:5,alvo:"in",ef:{dano:0.8,perfura:1,alcExtra:2}}]},
 
 nessa:{n:"Catarino",ep:"o Menino do Cilindro",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
-  vida:18,poder:3,arm:1,alc:3,patamar:1,agil:1,
+  vida:18,poder:3,arm:1,alc:3,patamar:1,agil:1,movMax:5,
   ideia:"Três marcas e o cilindro estoura. Contra ele conta-se de três em três, não de vida em vida.",
   pas:{id:"marcaDoCatarino",n:"Marca do Catarino",
        d:"Todo golpe dele deixa 1 Marca. Na terceira, 5 de dano que ignora armadura e escudo."},
@@ -271,7 +271,7 @@ nessa:{n:"Catarino",ep:"o Menino do Cilindro",pos:"adc",cls:"Atirador",ref:"Vayn
         {n:"Crise Alérgica",f:5,alvo:"in",ef:{dano:1,executa:5,execSeCond:{t:"catarino",v:4}}}]},
 
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
-  vida:18,poder:3,arm:1,alc:3,patamar:1,
+  vida:18,poder:3,arm:1,alc:3,patamar:1,movMax:4,
   ideia:"Quatro tiros. O quarto é Crítico, e ele escolhe QUANDO — o Recarregar adianta a conta.",
   pas:{id:"quatroTiros",n:"Quatro Tiros",
        d:"Conta os golpes: o quarto sai Crítico e zera a contagem."},
@@ -282,7 +282,7 @@ corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
 /* ─────────── SUPORTE ─────────── */
 
 mirrha:{n:"Emerson Emo",ep:"a Trilha Sonora",pos:"sup",cls:"Suporte",ref:"Lulu / Janna",
-  vida:20,poder:2,arm:2,alc:3,
+  vida:20,poder:2,arm:2,alc:3,movMax:4,
   ideia:"Transforma coisa ruim em vantagem: quanto mais o time dele apanha, mais forte ele cura.",
   pas:{id:"tristeza",n:"Tristeza",
        d:"Ganha 1 Tristeza quando um aliado sofre dano (máx 5). Cura e escudo dele levam +1 por Tristeza."},
@@ -292,7 +292,7 @@ mirrha:{n:"Emerson Emo",ep:"a Trilha Sonora",pos:"sup",cls:"Suporte",ref:"Lulu /
            condAliadosPerto:[{t:"tenacidade",tu:2}]}}]},
 
 torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nautilus",
-  vida:22,poder:3,arm:3,alc:1,
+  vida:22,poder:3,arm:3,alc:1,movMax:3,
   ideia:"Colhe alma de quem morre por perto e endurece a partida inteira. Começa frágil, termina muro.",
   pas:{id:"almasNaLanterna",n:"Almas na Lanterna",
        d:"Cada herói que morre a até 3 casas dele dá +1 de Armadura permanente, até +5."},
@@ -301,7 +301,7 @@ torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nauti
         {n:"Cerco",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,escudoAliados:5}}]},
 
 gorm:{n:"Caramêlo 2.0",ep:"o Cachorro Pilotado",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
-  vida:25,poder:3,arm:4,alc:1,
+  vida:25,poder:3,arm:4,alc:1,movMax:3,
   ideia:"Corpo na frente. Aliado colado nele custa 2 de dano a menos para o adversário.",
   pas:{id:"guardaCorpo",n:"Guarda-Corpo",
        d:"Aliado colado nele sofre 2 de dano a menos."},
@@ -310,7 +310,7 @@ gorm:{n:"Caramêlo 2.0",ep:"o Cachorro Pilotado",pos:"sup",cls:"Suporte",ref:"Br
         {n:"Latido Caótico",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,empurraVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
-  vida:18,poder:2,arm:2,alc:3,
+  vida:18,poder:2,arm:2,alc:3,movMax:4,
   ideia:"A resposta ao invisível. Ela não bate forte: ela diz onde o outro está.",
   pas:{id:"videncia",n:"Vidência",
        d:"No início do turno dela, o inimigo escondido mais próximo (até 4 casas) fica Revelado."},
@@ -440,13 +440,13 @@ const ITENS_NOVOS = [
  {id:"presagio",  n:"Presságio de Ferro", o:8, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:5}},
  {id:"runa",      n:"Runa do Vazio",      o:8, d:"+4 de Poder",                        ef:{poder:4}},
  {id:"lente",     n:"Lente de Âmbar",     o:7, d:"+1 de Alcance e +2 de Poder",     ef:{alc:1,poder:2}},
- {id:"botas",     n:"Botas Rúnicas",      o:6, d:"Ágil e +1 no Dado Mestre",           ef:{agil:1,mov:1}},
+ {id:"botas",     n:"Botas Rúnicas",      o:6, d:"Ágil, +1 no Dado Mestre e +1 de Movimento máximo", ef:{agil:1,mov:1,movMax:1}},
  {id:"calice",    n:"Cálice Partido",     o:8, d:"Cura 3 ao causar dano; +2 de Vida",  ef:{roubo:5,vida:2}},
  {id:"elmo",      n:"Elmo do Comando",    o:7, d:"Aliados adjacentes +1 Poder; +2 Arm",ef:{aura:1,arm:2}},
  {id:"espectro",  n:"Manto do Espectro",  o:7, d:"Bloqueia uma Ultimate; +1 Armadura", ef:{veu:1,arm:1}},
  {id:"grilhao",   n:"Grilhão de Cinzas",  o:7, d:"Impede cura no alvo; +2 de Poder",   ef:{antiCura:1,poder:2}},
  {id:"couraca",   n:"Couraça de Ossos",   o:8, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:5,vida:2}},
- {id:"ampuldour", n:"Ampulheta Dourada",  o:9, d:"+2 no Dado Mestre, toda rodada",     ef:{mov:2}}
+ {id:"ampuldour", n:"Ampulheta Dourada",  o:9, d:"+2 no Dado Mestre e +1 de Movimento máximo", ef:{mov:2,movMax:1}}
 ];
 
 /* ═══════════ DECK DE COMANDO — 30 cartas ═══════════

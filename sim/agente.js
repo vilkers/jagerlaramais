@@ -87,7 +87,14 @@ function jogaUma(ctx, opc = {}) {
       }
     }
 
-    if (!fez) { g.limpaModo(); g.selHeroi = null; g.encerraTurno(); }
+    if (!fez) {
+      /* GANCHO DE FIM DE TURNO. Existe porque medir de fora só funciona se for
+         no instante certo: `h.andou` é zerado no início do turno do dono, então
+         só aqui — com o turno feito e antes de `encerraTurno` — ele diz quanto
+         aquele herói realmente caminhou. Ver sim/movimento.js. */
+      if (opc.aoFimDeTurno) opc.aoFimDeTurno(g, g.J.vez);
+      g.limpaModo(); g.selHeroi = null; g.encerraTurno();
+    }
   }
 
   return {

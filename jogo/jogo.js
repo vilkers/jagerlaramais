@@ -26,8 +26,8 @@ const ITENS=[
  {id:"basalto",  n:"Coração de Basalto",o:5, d:"+4 de Vida máxima",                  ef:{vida:4}},
  {id:"egide",    n:"Égide do Juramento",o:5, d:"+2 de Armadura",                     ef:{arm:2}},
  {id:"manto",    n:"Manto de Cinzas",   o:5, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
- {id:"passos",   n:"Passos do Vento",   o:4, d:"Ágil: a 1ª casa andada é grátis",    ef:{agil:1}},
- {id:"ampulheta",n:"Ampulheta Rachada", o:6, d:"+1 no Dado Mestre, toda rodada",     ef:{mov:1}},
+ {id:"passos",   n:"Passos do Vento",   o:4, d:"Ágil: a 1ª casa andada é grátis, e +1 de Movimento máximo", ef:{agil:1,movMax:1}},
+ {id:"ampulheta",n:"Ampulheta Rachada", o:6, d:"+1 no Dado Mestre e +1 de Movimento máximo", ef:{mov:1,movMax:1}},
  {id:"garra",    n:"Garra do Faminto",  o:7, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
  {id:"coroa",    n:"Coroa do Comando",  o:5, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
  {id:"selo",     n:"Selo da Ruína",     o:5, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
@@ -2428,10 +2428,49 @@ function fimDaRodada(){
    Nunca chega a zero de propósito: um herói lento continua jogando. */
 const LENTIDAO_CASAS=COND_NUM.lentidaoCasas;
 const temDescontoAgil=h=>ehAgil(h)&&!h.agilUsado&&!temCond(h,"lentidao");
+
+/* ---------- MOVIMENTO MÁXIMO POR HERÓI (v48) ----------
+   RELATO: *"no fim da partida alguns heróis acumulam movimento suficiente para
+   atravessar uma parcela enorme do mapa numa jogada só"*. Verdadeiro, e medido
+   em `node sim/movimento.js`: o Dado Mestre somado a todos os dados de ação
+   convertidos dá um **bolso mediano de 15 e máximo de 21** — e a distância de
+   base a base são **15 casas**. Sem teto, um herói literalmente atravessa o
+   mapa inteiro, e posicionamento, rota, emboscada e Caçador deixam de importar.
+
+   O teto é em CASAS, não em pontos de movimento: o herói pode ter 20 no bolso
+   do time e ainda assim andar no máximo `movMax` hexágonos por turno. O custo
+   continua saindo do bolso do time — o teto não devolve movimento, ele impede
+   de gastar tudo numa peça só.
+
+   OS NÚMEROS, e de onde vieram:
+     3 · pesado   Taxista, Grumo, Caramêlo, Torvald — Armadura 3+ e alcance 1
+     4 · normal   os onze do meio
+     5 · ágil     Pombo, Valti, Pyk, Zhet, Catarino — os cinco com `agil`
+   Ninguém tem 6, e isso é escolha: **6 é o vão inteiro entre as duas torres
+   exteriores de uma rota**, ou seja, exatamente a jogada que este teto existe
+   para tirar da mesa. O teto absoluto de 6 abaixo é só a trava dos itens.
+
+   NÃO CONTAM PARA O TETO, e a decisão está escrita para não virar dúvida na
+   mesa: Lampejo, Retorno, Puff de Emergência, Passo de Sombra, a carta Recuo e
+   qualquer puxão/empurrão/troca. Nenhum deles é caminhada, todos já têm limite
+   próprio (1, 2 casas ou a régua do feitiço) e cada um custa uma ação ou uma
+   carta. É o que preserva a identidade de quem é móvel sem devolver o problema:
+   o deslocamento total de um turno passa a ser `movMax` mais um punhado de
+   casas com nome e preço, e não o bolso inteiro do time. */
+const MOV_MAX_PADRAO=4, MOV_MAX_TETO=6;
+const movMaxDe=h=>Math.min(MOV_MAX_TETO,
+  (CATALOGO[h.id].movMax||MOV_MAX_PADRAO)+bonus(h,"movMax"));
+/* quantas casas ainda restam a ESTE herói neste turno */
+const casasRestantes=h=>Math.max(0,movMaxDe(h)-(h.andou||0));
+
 function tetoAndar(h){
   let teto=J.mov.rest+(temDescontoAgil(h)?1:0);
   if(temCond(h,"lentidao")) teto=Math.max(1,teto-LENTIDAO_CASAS);
-  return teto;
+  /* O TETO PESSOAL VEM POR ÚLTIMO, e a ordem importa: o piso de 1 da Lentidão
+     existe para um herói lento continuar jogando, mas aplicá-lo depois faria
+     um herói que JÁ gastou as casas dele voltar a ter 1 — a Lentidão daria
+     movimento. */
+  return Math.min(teto,casasRestantes(h));
 }
 function moveAte(c,r){
   const h=selHeroi; if(!h)return;
@@ -4439,6 +4478,7 @@ function abreCarta(h){
           if(!l.length) return alcTotal(h);
           const lo=Math.min(...l), hi=Math.max(...l);
           return lo===hi?lo:`${lo}–${hi}`;})()}</div></div>
+        <div><div class="k">Mov. máx.</div><div class="v">${movMaxDe(h)}</div></div>
       </div>
       ${CATALOGO[h.id].ideia?`<div class="ideia">${CATALOGO[h.id].ideia}</div>`:""}
       <div class="lista">
@@ -5042,7 +5082,7 @@ function feiticoBt(h,qual){
       +`acompanhe pelo tabuleiro e pelo canto</div>`;
   }else if(selHeroi&&!selHeroi.morto){
     const h=selHeroi;
-    const podeMover=J.mov.rest>0&&!h.preso;
+    const podeMover=J.mov.rest>0&&!h.preso&&casasRestantes(h)>0;
     cmd.innerHTML=`
       <div class="cmd-cab">
         <img src="${RETRATO(h.id)}" alt="">
@@ -5056,7 +5096,8 @@ function feiticoBt(h,qual){
         <span class="ico">${svgIco(ICO.passos)}</span>
         <span class="txt"><span class="t1">Mover</span>
           <span class="t2">${h.preso?"preso nesta rodada":
-            podeMover?`até <b>${J.mov.rest+((ehAgil(h)&&!h.agilUsado)?1:0)}</b> casas · sai do bolso do time`:"sem movimento restante"}</span></span>
+            podeMover?`até <b>${tetoAndar(h)}</b> casas · sai do bolso do time`
+                     +` · máx. ${movMaxDe(h)} por turno`:"sem movimento restante"}</span></span>
         <span class="mark">${J.mov.rest}</span>
       </button>
       ${feiticoBt(h,"lampejo")}
@@ -5597,9 +5638,15 @@ function iaPlanejaAlcance(t){
   for(const h of vivos(t)){
     if(h.agiu||h.preso)continue;
     const alc=alcanceUtil(h);
+    /* §33 — a IA não planeja caminho impossível. Converter um dado em movimento
+       que este herói não tem como andar é queimar ação por nada, e era
+       exatamente o que ela faria no primeiro turno em que o teto pessoal
+       mordesse. O teto conta as casas que ELE ainda pode dar neste turno. */
+    const podeAndar=casasRestantes(h);
+    if(!podeAndar)continue;
     for(const alvo of cobicados){
       const falta=dist(...h.pos,...alvo.pos)-alc;
-      if(falta<=0||falta>6)continue;
+      if(falta<=0||falta>6||falta>podeAndar)continue;
       if(!melhor||falta<melhor.falta) melhor={h,alvo,falta};
     }
   }

@@ -41,6 +41,8 @@ if (opc.torre) trocas.push([/const VIDA_TORRE=\d+/, `const VIDA_TORRE=${+opc.tor
 if (opc.ondamax) trocas.push([/ONDA_MAX=\d+/, `ONDA_MAX=${+opc.ondamax}`]);
 if (opc.engrossa) trocas.push([/const ONDA_ENGROSSA=\d+/, `const ONDA_ENGROSSA=${+opc.engrossa}`]);
 if (opc.defensor === "off") trocas.push([/if\(f!==undefined&&Math\.abs\(idx-f\)<=1\) return melhor;/, ""]);
+/* movmax=off → como era antes da v48, sem teto de casas por herói */
+if (opc.movmax === "off") trocas.push([/return Math\.min\(teto,casasRestantes\(h\)\);/, "return teto;"]);
 
 const g = carrega(trocas);
 g.simMode = true;

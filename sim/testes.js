@@ -418,10 +418,20 @@ teste("a IA converte ação em movimento para alcançar e atacar", () => {
   const c = cena().vez(1);
   const g = c.g;
   const atacante = c.heroi(1, "topo"), vitima = c.heroi(0, "topo");
-  /* vítima a 3 de distância: fora do alcance 1, alcançável se converter dado em movimento */
+  /* A vítima fica a DUAS CASAS ALÉM do alcance útil do atacante: fora de mira,
+     e alcançável se ele converter um dado em movimento.
+     v48: a régua é `alcanceUtil` e não "3", e as duas casas cabem no MOVIMENTO
+     MÁXIMO de qualquer herói — com o teto pessoal em jogo, uma distância que
+     ele não conseguiria andar num turno faz a IA (corretamente) não gastar
+     dado nenhum, e o teste mediria o teto em vez da conversão. */
+  const falta = 2;
+  const alvoDist = g.alcanceUtil(atacante) + falta;
+  ok(falta <= g.movMaxDe(atacante), "a cena pede um deslocamento maior que o teto do herói");
   const perto = [];
   for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++)
-    if (g.noTab(col, r) && g.dist(col, r, ...vitima.pos) === 3 && !g.em(col, r)) perto.push([col, r]);
+    if (g.noTab(col, r) && g.dist(col, r, ...vitima.pos) === alvoDist && !g.em(col, r))
+      perto.push([col, r]);
+  ok(perto.length, "não achei casa livre na distância pedida");
   atacante.pos = [...perto[0]];
   /* v45: a vítima precisa ESTAR VISÍVEL, e agora isso não é de graça — o Pombo
      Ciborgue fica Invisível sozinho, e a IA não pode ler posição que não vê
@@ -3227,9 +3237,13 @@ teste("Prende passa pela mesma porta da Tenacidade que o atordoamento", () => {
 /* ---------- LENTIDÃO ---------- */
 
 teste("Lentidão tira casas de caminhada, nunca impede de andar, e mata o passo Ágil", () => {
-  const c = cena().vez(0).mov(6); const g = c.g;
+  /* v48: o bolso é 3 e não 6 de propósito — com 6 quem corta primeiro é o
+     MOVIMENTO MÁXIMO do herói, e o teste mediria o teto novo em vez da
+     Lentidão. Aqui a Lentidão é a única régua que morde. */
+  const c = cena().vez(0).mov(3); const g = c.g;
   const h = c.heroi(0, "selva");                       // ágil
   ok(g.ehAgil(h), "o herói de selva desta cena deveria ser Ágil");
+  ok(g.movMaxDe(h) > 3 + 1, "esta cena precisa de um herói cujo teto pessoal não morda em 3");
   const cheio = g.tetoAndar(h);
   g.aplicaCond(h, "lentidao", { tu: 1 });
   const lento = g.tetoAndar(h);
@@ -4294,6 +4308,141 @@ teste("o empréstimo do Emo morre com o turno — não atravessa para a rodada s
   g.encerraTurno();                       // passa a vez: a mão inteira é rerolada
   ok(!g.J.dados.some(d => d.doado),
      "o dado emprestado sobreviveu ao fim do turno — dá para acumular empréstimo");
+});
+
+/* ═══════════════ v48 — MOVIMENTO MÁXIMO POR HERÓI ═══════════════
+
+   RELATO: *"no fim da partida alguns heróis atravessam uma parcela enorme do
+   mapa numa jogada só"*. Medido em `node sim/movimento.js`: o bolso do time
+   (Dado Mestre + dados de ação convertidos) tem mediana 15 e máximo 21, e de
+   base a base são 15 casas — dava para atravessar o mapa inteiro.
+
+   O teto é em CASAS. O bolso continua sendo do time; o que o teto impede é
+   gastá-lo todo numa peça só. */
+
+const cenaMov = () => cena({ times: [["vharn", "nyx", "solenne", "vesper", "mirrha"],
+                                     ["kaross", "grumo", "zhet", "cael", "torvald"]] })
+                        .vez(0);
+
+teste("cada herói tem MOVIMENTO MÁXIMO, e ele varia por personagem", () => {
+  const g = cenaMov().g;
+  const vals = {};
+  g.todos().forEach(h => { vals[h.id] = g.movMaxDe(h); });
+  const distintos = new Set(Object.values(vals));
+  ok(distintos.size >= 3, `só ${distintos.size} valores distintos — o teto virou universal`);
+  Object.entries(vals).forEach(([id, v]) => {
+    ok(v >= 3 && v <= g.MOV_MAX_TETO, `${id} tem teto ${v}, fora da faixa`);
+  });
+  /* o pesado anda menos que o ágil — é a regra de perfil que o pedido descreve */
+  const taxista = g.todos().find(h => h.id === "vharn");
+  const pombo = g.todos().find(h => h.id === "nyx");
+  ok(g.movMaxDe(taxista) < g.movMaxDe(pombo),
+     "o tanque de alcance 1 anda tanto quanto o assassino ágil");
+});
+
+teste("com o bolso do time cheio, o herói ainda para no teto dele", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");                 // Taxista, pesado
+  eq(g.tetoAndar(h), g.movMaxDe(h),
+     "20 de movimento no bolso e o herói pôde andar mais que o próprio teto");
+});
+
+teste("o teto é POR TURNO e acumulativo: dois passos curtos somam", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");
+  const teto = g.movMaxDe(h);
+  g.selHeroi = h; g.modo = "mover"; g.calcula();
+  /* anda de 1 em 1 até estourar o teto */
+  let passos = 0;
+  for (let i = 0; i < teto + 3; i++) {
+    g.selHeroi = h; g.modo = "mover"; g.calcula();
+    const um = g.mover.filter(p => g.dist(...h.pos, ...p) === 1)[0];
+    if (!um) break;
+    g.moveAte(...um);
+    passos++;
+  }
+  eq(passos, teto, `andou ${passos} casas de 1 em 1, e o teto dele é ${teto}`);
+  eq(g.casasRestantes(h), 0, "o contador de casas do turno não fechou");
+});
+
+teste("o teto zera no início do próximo turno do dono", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.andou = g.movMaxDe(h);
+  eq(g.tetoAndar(h), 0, "o herói que já andou tudo continua com casas");
+  g.expiraDoTime(0);
+  eq(g.casasRestantes(h), g.movMaxDe(h), "o teto não foi devolvido na virada do turno");
+});
+
+teste("item de movimento sobe o TETO, não devolve movimento infinito", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");
+  const antes = g.movMaxDe(h);
+  const it = g.ITENS.find(i => i.ef.movMax);
+  ok(it, "nenhum item mexe no movimento máximo");
+  h.itens.push(it.id);
+  eq(g.movMaxDe(h), antes + it.ef.movMax, "o item não subiu o teto do herói");
+  ok(g.movMaxDe(h) <= g.MOV_MAX_TETO, "o item furou o teto absoluto");
+});
+
+teste("nem cem itens furam o teto absoluto de movimento", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");
+  g.ITENS.filter(i => i.ef.movMax).forEach(i => h.itens.push(i.id, i.id, i.id));
+  eq(g.movMaxDe(h), g.MOV_MAX_TETO, "empilhar item de movimento passou do teto absoluto");
+});
+
+teste("a Lentidão continua tirando casas de quem está abaixo do teto", () => {
+  const c = cenaMov().mov(3); const g = c.g;
+  const h = c.heroi(0, "selva");                // Pombo, ágil, teto alto
+  const cheio = g.tetoAndar(h);
+  g.aplicaCond(h, "lentidao", { tu: 1 });
+  ok(g.tetoAndar(h) < cheio, "a Lentidão parou de morder por causa do teto novo");
+  ok(g.tetoAndar(h) >= 1, "a Lentidão zerou o movimento — isso é Prende");
+});
+
+teste("quem já gastou o teto não recupera casa por estar Lento", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "topo");
+  h.andou = g.movMaxDe(h);
+  g.aplicaCond(h, "lentidao", { tu: 1 });
+  eq(g.tetoAndar(h), 0,
+     "o piso de 1 da Lentidão devolveu movimento a quem já tinha andado tudo");
+});
+
+teste("movimento especial não gasta o teto de caminhada", () => {
+  const c = cenaMov().mov(20); const g = c.g;
+  const h = c.heroi(0, "meio");
+  const casas = g.casasRestantes(h);
+  const de = [...h.pos];
+  /* o Lampejo é salto: régua própria, custo próprio (o feitiço do time) */
+  g.selHeroi = h;
+  const destino = g.vizinhos(...h.pos).find(p => g.noTab(...p) && !g.em(...p)
+                                                 && !g.ehBloqueado(...p));
+  g.lampejaAte(...destino);
+  ok(g.k(...h.pos) !== g.k(...de), "o Lampejo não saiu");
+  eq(g.casasRestantes(h), casas, "o salto consumiu o teto de CAMINHADA");
+});
+
+teste("a IA não gasta dado para um deslocamento que o herói não pode andar", () => {
+  const c = cenaMov().vez(1); const g = c.g;
+  const atacante = c.heroi(1, "topo"), vitima = c.heroi(0, "topo");
+  /* longe demais para o teto dele, mas dentro dos 6 que a função aceitava */
+  const alvoDist = g.alcanceUtil(atacante) + g.movMaxDe(atacante) + 1;
+  const casas = [];
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++)
+    if (g.noTab(col, r) && g.dist(col, r, ...vitima.pos) === alvoDist && !g.em(col, r))
+      casas.push([col, r]);
+  if (!casas.length) return;                    // mapa não comporta a cena
+  g.todos().forEach(h => { if (h !== atacante && h !== vitima) h.pos = [...g.BASE[h.t][0]]; });
+  atacante.pos = [...casas[0]];
+  g.aplicaCond(vitima, "revelado", { tu: 3 });
+  g.J.mov = { v: 0, rest: 0 };
+  g.J.dados = [{ v: 6, usado: 0 }, { v: 6, usado: 0 }];
+
+  g.iaPlanejaAlcance(1);
+  eq(g.J.mov.rest, 0,
+     "a IA queimou um dado para andar mais casas do que o herói pode andar num turno");
 });
 
 /* ---------- resumo ---------- */
