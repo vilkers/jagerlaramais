@@ -178,7 +178,7 @@ grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
   pas:{id:"digestao",n:"Digestão",
        d:"Cura 4 quando qualquer herói morre a até 2 casas dele."},
   habs:[{n:"Investida",f:1,alvo:"in",alc:2,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:3,limpaEu:9}},
+        {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:8,limpaEu:9}},
         {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,condVizinhos:[{t:"lentidao",tu:1}]}}]},
 
 kurr:{n:"Valti",ep:"o Homem do Coco",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
@@ -437,16 +437,16 @@ const CLASSES = [
 
 /* ═══════════ ITENS — 10 novos (loja passa a 22) ═══════════ */
 const ITENS_NOVOS = [
- {id:"presagio",  n:"Presságio de Ferro", o:8, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:5}},
- {id:"runa",      n:"Runa do Vazio",      o:8, d:"+4 de Poder",                        ef:{poder:4}},
- {id:"lente",     n:"Lente de Âmbar",     o:7, d:"+1 de Alcance e +2 de Poder",     ef:{alc:1,poder:2}},
- {id:"botas",     n:"Botas Rúnicas",      o:6, d:"Ágil, +1 no Dado Mestre e +1 de Movimento máximo", ef:{agil:1,mov:1,movMax:1}},
- {id:"calice",    n:"Cálice Partido",     o:8, d:"Cura 3 ao causar dano; +2 de Vida",  ef:{roubo:5,vida:2}},
- {id:"elmo",      n:"Elmo do Comando",    o:7, d:"Aliados adjacentes +1 Poder; +2 Arm",ef:{aura:1,arm:2}},
- {id:"espectro",  n:"Manto do Espectro",  o:7, d:"Bloqueia uma Ultimate; +1 Armadura", ef:{veu:1,arm:1}},
- {id:"grilhao",   n:"Grilhão de Cinzas",  o:7, d:"Impede cura no alvo; +2 de Poder",   ef:{antiCura:1,poder:2}},
- {id:"couraca",   n:"Couraça de Ossos",   o:8, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:5,vida:2}},
- {id:"ampuldour", n:"Ampulheta Dourada",  o:9, d:"+2 no Dado Mestre e +1 de Movimento máximo", ef:{mov:2,movMax:1}}
+ {id:"presagio",  n:"Presságio de Ferro", o:24, d:"+3 de Armadura e +3 de Vida",        ef:{arm:3,vida:5}},
+ {id:"runa",      n:"Runa do Vazio",      o:24, d:"+4 de Poder",                        ef:{poder:4}},
+ {id:"lente",     n:"Lente de Âmbar",     o:18, d:"+1 de Alcance e +2 de Poder",     ef:{alc:1,poder:2}},
+ {id:"botas",     n:"Botas Rúnicas",      o:18, d:"Ágil, +1 no Dado Mestre e +1 de Movimento máximo", ef:{agil:1,mov:1,movMax:1}},
+ {id:"calice",    n:"Cálice Partido",     o:24, d:"Cura 3 ao causar dano; +2 de Vida",  ef:{roubo:5,vida:2}},
+ {id:"elmo",      n:"Elmo do Comando",    o:18, d:"Aliados adjacentes +1 Poder; +2 Arm",ef:{aura:1,arm:2}},
+ {id:"espectro",  n:"Manto do Espectro",  o:18, d:"Bloqueia uma Ultimate; +1 Armadura", ef:{veu:1,arm:1}},
+ {id:"grilhao",   n:"Grilhão de Cinzas",  o:18, d:"Impede cura no alvo; +2 de Poder",   ef:{antiCura:1,poder:2}},
+ {id:"couraca",   n:"Couraça de Ossos",   o:24, d:"Devolve 3 de dano; +2 de Vida",      ef:{espinho:5,vida:2}},
+ {id:"ampuldour", n:"Ampulheta Dourada",  o:24, d:"+2 no Dado Mestre e +1 de Movimento máximo", ef:{mov:2,movMax:1}}
 ];
 
 /* ═══════════ DECK DE COMANDO — 30 cartas ═══════════
@@ -489,9 +489,9 @@ const DECK = [
 
  /* ECONOMIA — ouro e desconto */
  {id:"pilhagem", n:"Pilhagem",         fam:"economia", copias:2, quando:"turno",
-  d:"+4 de ouro para um herói.",                                 ef:{ouro:4}},
+  d:"+10 de ouro para um herói.",                                ef:{ouro:10}},
  {id:"barganha", n:"Barganha",         fam:"economia", copias:2, quando:"turno",
-  d:"O próximo item custa 3 a menos.",                           ef:{desconto:3}},
+  d:"O próximo item custa 8 a menos.",                           ef:{desconto:8}},
  {id:"heranca",  n:"Herança",          fam:"economia", copias:1, quando:"turno",
   d:"Recupere uma carta do cemitério.",                          ef:{doCemiterio:1}},
 
@@ -509,9 +509,9 @@ const DECK = [
 
  /* ITEM — equipamento sem passar pela loja */
  {id:"achado",   n:"Achado de Guerra", fam:"item",     copias:3, quando:"turno",
-  d:"Um herói na base equipa um item de até 6 de ouro, de graça.", ef:{itemGratis:6}},
+  d:"Um herói na base equipa um item INTERMEDIÁRIO, de graça.", ef:{itemGratis:18}},
  {id:"forja",    n:"Forja de Campo",   fam:"item",     copias:2, quando:"turno",
-  d:"Escolha 1 de 3 itens de até 5 de ouro, onde estiver.",         ef:{itemGratis:5,ondeEstiver:1}},
+  d:"Escolha 1 de 3 itens SIMPLES, onde estiver.",                  ef:{itemGratis:12,ondeEstiver:1}},
  {id:"relicario",n:"Relicário",        fam:"item",     copias:1, quando:"turno",
   d:"Um herói ganha um 4º slot de item nesta partida.",            ef:{slotExtra:1}}
 ];

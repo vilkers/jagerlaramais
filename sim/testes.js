@@ -3060,7 +3060,7 @@ teste("quem aplicou o efeito leva o ouro da morte, mesmo na última cobrança", 
 
   g.cobraDots(1);
   ok(vitima.morto, "o sangramento não matou a vítima");
-  eq(autor.ouro, ouro0 + 4, "o ouro da morte não foi para quem aplicou o sangramento");
+  eq(autor.ouro, ouro0 + g.OURO_ABATE, "o ouro da morte não foi para quem aplicou o sangramento");
   eq(outro.ouro, ouroOutro0, "o crédito escorregou para o inimigo mais próximo");
 });
 

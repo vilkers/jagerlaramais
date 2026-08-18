@@ -21,18 +21,18 @@ const porRota=r=>Object.keys(CATALOGO).filter(id=>CATALOGO[id].pos===r);
 
 /* ---------- LOJA ---------- */
 const ITENS=[
- {id:"eclipse",  n:"Lâmina do Eclipse", o:6, d:"+2 de Poder",                        ef:{poder:2}},
- {id:"cetro",    n:"Cetro Cinéreo",     o:6, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
- {id:"basalto",  n:"Coração de Basalto",o:5, d:"+4 de Vida máxima",                  ef:{vida:4}},
- {id:"egide",    n:"Égide do Juramento",o:5, d:"+2 de Armadura",                     ef:{arm:2}},
- {id:"manto",    n:"Manto de Cinzas",   o:5, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
- {id:"passos",   n:"Passos do Vento",   o:4, d:"Ágil: a 1ª casa andada é grátis, e +1 de Movimento máximo", ef:{agil:1,movMax:1}},
- {id:"ampulheta",n:"Ampulheta Rachada", o:6, d:"+1 no Dado Mestre e +1 de Movimento máximo", ef:{mov:1,movMax:1}},
- {id:"garra",    n:"Garra do Faminto",  o:7, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
- {id:"coroa",    n:"Coroa do Comando",  o:5, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
- {id:"selo",     n:"Selo da Ruína",     o:5, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
- {id:"espinho",  n:"Cota do Espinho",   o:6, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
- {id:"veu",      n:"Véu Prismático",    o:7, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
+ {id:"eclipse",  n:"Lâmina do Eclipse", o:18, d:"+2 de Poder",                        ef:{poder:2}},
+ {id:"cetro",    n:"Cetro Cinéreo",     o:18, d:"+2 de Poder e +1 de Alcance",        ef:{poder:2,alc:1}},
+ {id:"basalto",  n:"Coração de Basalto",o:12, d:"+4 de Vida máxima",                  ef:{vida:4}},
+ {id:"egide",    n:"Égide do Juramento",o:12, d:"+2 de Armadura",                     ef:{arm:2}},
+ {id:"manto",    n:"Manto de Cinzas",   o:12, d:"+1 de Armadura e +2 de Vida",        ef:{arm:1,vida:2}},
+ {id:"passos",   n:"Passos do Vento",   o:12, d:"Ágil: a 1ª casa andada é grátis, e +1 de Movimento máximo", ef:{agil:1,movMax:1}},
+ {id:"ampulheta",n:"Ampulheta Rachada", o:18, d:"+1 no Dado Mestre e +1 de Movimento máximo", ef:{mov:1,movMax:1}},
+ {id:"garra",    n:"Garra do Faminto",  o:18, d:"Cura 2 sempre que causar dano",      ef:{roubo:2}},
+ {id:"coroa",    n:"Coroa do Comando",  o:12, d:"Aliados adjacentes ganham +1 de Poder", ef:{aura:1}},
+ {id:"selo",     n:"Selo da Ruína",     o:12, d:"RESPOSTA — quem você atinge não é curado por 1 rodada", ef:{antiCura:1}},
+ {id:"espinho",  n:"Cota do Espinho",   o:18, d:"RESPOSTA — devolve 2 a quem atacar de perto", ef:{espinho:2}},
+ {id:"veu",      n:"Véu Prismático",    o:18, d:"RESPOSTA — anula a próxima Ultimate que te atingir", ef:{veu:1}}
 ];
 if(typeof ITENS_NOVOS!=="undefined") ITENS.push(...ITENS_NOVOS);
 const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
@@ -108,6 +108,29 @@ const armTotal=h=>Math.max(0,h.arm+bonus(h,"arm")+(sobTorreAmiga(h)?ARM_TORRE:0)
    atirava a SETE hexágonos — atravessava meio tabuleiro sem sair do lugar, que
    foi a queixa "os range tão conseguindo 4, 5 hexágonos". Quatro é o teto: ainda
    é o dobro do corpo a corpo, e ainda dá para fugir andando. */
+/* ---------- A ECONOMIA, NUM LUGAR SÓ (v48) ----------
+   RELATO: *"os itens são adquiridos cedo demais"*. Medido com `node sim/ouro.js
+   300`, e é literal: com o catálogo antigo (4 a 9 de ouro) o herói mediano
+   cruzava o preço do **primeiro item na rodada 4**, do **segundo na 6** e
+   fechava **os três slots na rodada 8** — de uma partida que dura 34. O build
+   inteiro acontecia no primeiro quarto do jogo, e o resto da partida era ouro
+   sem destino: 63 de sobra por herói.
+
+   A correção tem DOIS lados, e os dois foram medidos juntos:
+
+   1. PREÇO EM TRÊS FAIXAS (§11), com a mesma ordem relativa de antes — o
+      equilíbrio entre itens já estava certo, o que estava errado era a escala:
+        · SIMPLES 12 — um atributo, efeito pequeno;
+        · INTERMEDIÁRIO 18 — dois atributos, ou um efeito de verdade;
+        · FORTE 24 — o item que define a build.
+   2. O QUE VOCÊ FAZ passa a pagar mais que o que você espera. Se só o preço
+      subisse, a renda passiva (3 por rodada de quem farma) continuaria sendo a
+      fonte quase inteira, e o jogo cobraria PACIÊNCIA em vez de jogo. Abate,
+      acampamento e invasão sobem junto; a gota por rodada, não. */
+const OURO_ABATE=8;          /* era 4 */
+const OURO_CAMP=6;           /* acampamento do próprio lado, era 3 */
+const OURO_CAMP_NEUTRO=8;    /* o do meio, era 4 */
+const OURO_REGIAO=6;         /* bônus da região Baixo na rotação, era 3 */
 const ALCANCE_MAX=4;
 const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc")+(h.alcTurno||0));
 
@@ -872,7 +895,7 @@ const passosAte=(de,ate)=>{ const v=passosDe(de).get(k(...ate)); return v===unde
 const BONUS_REGIAO={
   topo:  {arm:2},
   meio:  {poder:2},
-  baixo: {ouro:3},
+  baixo: {ouro:OURO_REGIAO},
   selva: {cura:4, mov:1},
   /* CONTINUAR ONDE ESTÁ não paga bônus, e a entrada vazia é obrigatória:
      `pagaBonusRegiao` sai cedo quando não acha a região, e sair cedo deixaria
@@ -2040,9 +2063,9 @@ function novo(){
     /* vida 0 = o poço está vazio; `volta` é a rodada em que o próximo morador desce */
     poco:{id:"dragao", vida:0, vidaMax:EPICO.dragao.vida, volta:R_DRAGAO},
     camps:[
-      {id:"azul",  t: 0,pos:[...CAMP_AZUL],  ouro:3,respawn:0,ativo:1},
-      {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:3,respawn:0,ativo:1},
-      {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:4,respawn:0,ativo:1}
+      {id:"azul",  t: 0,pos:[...CAMP_AZUL],  ouro:OURO_CAMP,respawn:0,ativo:1},
+      {id:"carmim",t: 1,pos:[...CAMP_CARMIM],ouro:OURO_CAMP,respawn:0,ativo:1},
+      {id:"neutro",t:-1,pos:[...sorteiaNeutro()],ouro:OURO_CAMP_NEUTRO,respawn:0,ativo:1}
     ],
     zonas:[], rotacao:[null,null], bonusPend:[null,null],
     nexus:[VIDA_NEXUS,VIDA_NEXUS], motivoFim:null, golpeFinal:null, log:[]
@@ -2767,7 +2790,7 @@ function colheAcampamentos(){
     const h=em(...cp.pos);
     if(!h||h.morto)return;
     const invadindo = cp.t!==-1 && cp.t!==h.t;
-    const ouro = cp.ouro + (invadindo?1:0);
+    const ouro = cp.ouro + (invadindo?2:0);
     cp.ativo=0; cp.respawn=3; h.ouro+=ouro;
     reg(invadindo?"b":(h.t?"c":"a"),
       invadindo ? `${h.n} segurou o acampamento inimigo a rodada inteira e roubou ${ouro} de ouro`
@@ -3235,8 +3258,8 @@ function mata(alvo,quem){
   alvo.vida=0; alvo.morto=respawnAgora(); alvo.esc=0; alvo.intoc=0;
   alvo.conds=[]; alvo.dots=[]; alvo.curouSitiado=0; alvo.preso=0; alvo.voltaEm=null;
   alvo.autos=null; alvo.alcTurno=0; alvo.ultimoAlvo=null;
-  quem.ouro+=4;
-  reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva 4 de ouro`);
+  quem.ouro+=OURO_ABATE;
+  reg("b",`☠ ${alvo.n} morreu — volta em ${alvo.morto} rodada${alvo.morto>1?"s":""} · ${quem.n} leva ${OURO_ABATE} de ouro`);
   /* os dois eventos da morte. `morreu` vai para TODO MUNDO no tabuleiro porque
      as passivas que o escutam (Digestão, Almas, Coleta, Tristeza) medem por
      distância, e cada uma decide sozinha se estava perto o bastante. */
