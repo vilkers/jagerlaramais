@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v46 (os seis relatos do playtest) · **Atualizado em:** 2026-08-17
+**Versão:** v47 (o defensor passa a contar) · **Atualizado em:** 2026-08-18
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -42,6 +42,10 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Acampamentos | Azul [3,4] · Carmim [7,6] (espelhos) · **neutro sorteado entre 2 posições, ambas a 7 das duas bases** |
 | Visão | **vem das peças**: herói 2 · torre viva 2 · base 2 · Frente de Onda 2 · **ward 3**. O resto é escuridão. Ward é peça no mapa, dura 3 rodadas. **O mato bloqueia: só se enxerga de dentro do mato** — inclusive para ward. 61 de 116 casas visíveis na rodada 1 |
 | Níveis da IA | **Aprendiz · Veterano · Mestre**. Muda só a **qualidade da decisão** — nenhum nível ganha número nem visão a mais. Medido em `sim/niveis.js`: Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz |
+| **Presença de rota** | um herói conta na rota se **passou da própria Torre Exterior** (empurrar) **ou se está encostado na Frente de Onda** (defender, v47). Até a v46 só a primeira valia, e o defensor em cima da própria torre contava **zero** — na mesma casa o atacante contava e ele não. Herói na própria base continua sem contar: isso é acampar |
+| Bola de neve | quem derruba a primeira torre vence **65,5%** (era 72,8% na v46). `node sim/defesa.js 800` |
+| Defesa — o que foi medido e **descartado** | *empate segura* (a onda só machuca com presença estritamente maior) e *reparo de torre*: as duas alongam a partida **e pioram** a bola de neve, porque **defesa forte demais protege quem está na frente**. *Cerco pesado* (2 corpos a mais tiram 2) compra 2,5 rodadas e devolve 2,8 pontos de bola de neve. Números no patch note da v47 |
+| Rótulo da rota | mostra a contagem **viva** de presença (`TOPO 1 · 2`), verde quando dá para segurar. **Obedece à névoa** — só conta o inimigo que este lado enxerga |
 | **Alcance** | é da **HABILIDADE**, não só do herói (v46). Sem `alc` no catálogo → segue o herói; `alc:1` → **corpo a corpo, e item de alcance não muda isso**; `alc:n` → régua própria, maior ou menor que a do herói, e aí o item soma. 19 habilidades têm régua própria. A ficha mostra **faixa** (`1–3`) quando divergem |
 | Vender item | devolve **60%** do preço de compra (arredonda para baixo, mínimo 1), na **mesma janela da compra** — base ou morto. Item de vida desfaz o `vidaMax` |
 | **A trava da mesa** | `mesaTravada()` é a **porta única** de todo gesto humano: fase que não é de jogar, vez da máquina (incluindo `iaRodando`, que segue ligado no fecho do turno dela) e a janela de 350ms do arrasto. **A IA não passa por ela** — chama `moveAte`/`iniciaHab`/`confirmaHab` direto, sem evento, e é por isso que a trava mora nos ouvintes de clique |

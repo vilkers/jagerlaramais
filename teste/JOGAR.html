@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit f08cf23 2026-08-17
+     commit 7124ac0 2026-08-17
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -841,6 +841,17 @@ button:disabled{cursor:not-allowed}
 .itC.vender .iO{color:var(--carmim-2,#e08a7a)}
 .itC.vender .iO small{opacity:.6;font-size:.85em}
 .itC.vender:active{background:rgba(160,70,60,.12)}
+
+/* ══ v47 · a presença da rota, na tela ══
+   A regra que decide quem empurra quem sempre existiu no motor e nunca apareceu:
+   defender era adivinhar. Agora o rótulo da rota conta os corpos — verde quando
+   dá para segurar, carmim quando o adversário tem gente a mais. Só entra na
+   conta o inimigo que este lado ENXERGA, senão o rótulo entregaria de graça a
+   posição do Caçador escondido. */
+#mapa .rotulo.seg rect{stroke:var(--vivo);stroke-width:.7}
+#mapa .rotulo.seg text{fill:var(--vivo)}
+#mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
+#mapa .rotulo.perig text{fill:var(--dano)}
 
 </style>
 
@@ -1778,6 +1789,43 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
    Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
    O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
 const VIDA_TORRE=3, VIDA_NEXUS=3;
+/* ---------- O DEFENSOR PASSA A CONTAR (v47) ----------
+   Relato: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter uma
+   forma de defender mais efetiva"*. Medido com `sim/defesa.js`, 300 partidas:
+
+     · **100%** das partidas terminavam com a onda dando o golpe final;
+     · **17,7%** do dano em torre acontecia com a presença EMPATADA na rota;
+     · quem derrubava a primeira torre vencia **76,3%** das vezes;
+     · de 2408 viradas com torre sitiada, só **118** terminaram com o defensor
+       tirando a onda de cima dela.
+
+   O diagnóstico não é "a torre tem pouca vida", e não é o número do cerco. É que
+   **o defensor não contava** — ver `rotaDaPos`, que é onde a correção mora.
+
+   TRÊS REGRAS FORAM ESCRITAS E DUAS FORAM DESCARTADAS PELA MEDIÇÃO, e vale
+   registrar porque as duas parecem obviamente boas:
+
+     1. `defensor conta` — quem está encostado na Frente de Onda entra na conta
+        de presença. **Ficou.** É correção de defeito, não ajuste de número;
+     2. `empate segura` — a onda só machucaria a torre com presença estritamente
+        maior. **Saiu**;
+     3. `reparo` — torre ferida recuperaria 1 por rodada fora da onda. **Saiu**.
+
+   Medido com `sim/defesa.js`, 800 partidas por build:
+
+     só a (1)         35,0 rodadas · quem derruba a 1ª torre vence 66,3%
+     (1) + (2)        37,4 rodadas · 70,0%
+
+   As duas descartadas deixam a partida mais longa **e pioram a bola de neve**, e
+   o motivo é o que não era óbvio: **defesa forte protege quem está na frente.**
+   Quem lidera tem mapa para bancar o corpo a mais e continua sitiando; quem está
+   atrás precisa de uma virada, e virada é ataque. Empilhar defesa cobrava
+   justamente de quem precisava reagir.
+
+   Ficam de pé, como sempre, as saídas que fazem a partida terminar: comprometer
+   mais corpos numa rota, o **golpe de herói** (que ignora presença) e as **Ondas
+   de Ferro** do Barão. O NEXUS não mudou — a fase final é a de sempre, com a
+   Última Muralha. */
 const DANO_TORRE=1;        /* golpe de herói tira sempre 1 — Força não derruba torre sozinha */
 const REVIDE_TORRE=4;      /* e a torre cobra o pedágio de quem encostou */
 /* Meio do vão neutro. Com as torres espelhadas o meio é (a+b)/2 — inteiro só quando a
@@ -3510,8 +3558,50 @@ function rotaDaPos(h){
   if(!minhas.length)return melhor;
   const exterior = h.t===0 ? Math.max(...minhas) : Math.min(...minhas);
   const passou = h.t===0 ? idx>exterior : idx<exterior;
-  return passou?melhor:null;
+  if(passou) return melhor;
+
+  /* ---------- QUEM ESTÁ NA BRIGA CONTA (v47) ----------
+     Esta é a causa raiz de *"tá muito fácil ganhar só empurrando torre"*, e ela
+     era mais funda que qualquer número: **o defensor não contava.**
+
+     A linha de cima existe para impedir que herói parado em casa empurre onda —
+     e para EMPURRAR ela está certa. Mas ela media pressão pelo mesmo critério
+     nos dois sentidos, e por isso, na MESMA CASA, o atacante contava e o
+     defensor não: quem está em cima da própria torre exterior tem `idx ===
+     exterior`, e `passou` pede estritamente MAIOR. Medido, e é literal:
+
+         defensor em cima da própria torre  → rota: null
+         atacante do outro time, mesma casa → rota: topo
+
+     Ou seja, defender não era difícil, era impossível: nenhuma posição do mapa
+     fazia o defensor somar na conta que decide se a torre cai. Ele podia trazer
+     os cinco heróis e a onda continuava andando.
+
+     A regra nova é uma frase: **quem está encostado na Frente de Onda está na
+     briga, e conta** — esteja de que lado estiver. Ela não afrouxa a de cima,
+     porque só liga quando a onda VEIO até você: enquanto a frente está no vão
+     neutro, ninguém atrás da própria torre alcança 1 de distância dela. É o
+     equivalente de mesa a "você foi defender". */
+  const f=J.frentes[melhor];
+  if(f!==undefined&&Math.abs(idx-f)<=1) return melhor;
+  return null;
 }
+/* A CONTAGEM DE PRESENÇA DE UMA ROTA, do ponto de vista de quem olha a tela.
+   Mora aqui e não dentro de `desenhaMapa` porque é REGRA DE LEITURA, não desenho:
+   é a mesma conta que decide quem empurra quem, e o teste precisa alcançá-la.
+
+   OBEDECE À NÉVOA. Só entra na conta o inimigo que este lado ENXERGA — mostrar o
+   número real entregaria de graça a posição do Caçador escondido, que é a
+   informação em torno da qual a partida inteira gira. O jogador vê o que ele
+   sabe, e a incerteza continua sendo dele. */
+function contaRota(nome){
+  const eu=ladoDaTela();
+  const meus=vivos(eu).filter(h=>noJogo(h)&&rotaDaPos(h)===nome).length;
+  const deles=J.times[1-eu].herois.filter(h=>!h.morto&&noJogo(h)
+    &&visivelPara(h,eu)&&rotaDaPos(h)===nome).length;
+  return {meus,deles,seguro:meus>=deles};
+}
+
 /* Alguma rota do time `t` está sem torre e com a onda encostada na base dele?
    É a condição de "a onda vai bater no meu Nexus na virada da rodada". */
 function rotaAbertaContra(t){
@@ -5470,6 +5560,7 @@ function desenhaMapa(){
     gM.appendChild(rc);
     if(mirando) alvoDeToque(gM,x,y,()=>{vibra(10);atacaTorre(t);},R_TOQUE_ESTRUTURA);
     if(t.vida>0){const v=el("text",{x:x,y:y+2.2,class:"tvida"});v.textContent=t.vida;gM.appendChild(v);}
+
   });
   Object.entries(ROTAS).forEach(([nome,l])=>{
     const[x,y]=centro(...l[Math.max(0,Math.min(l.length-1,J.frentes[nome]))]);
@@ -5513,12 +5604,29 @@ function desenhaMapa(){
     if(mirando) alvoDeToque(gM,x,y,()=>{ if(mesaTravada())return; vibra(12); tocaAlvo(...BASE[t][0]); },R_TOQUE_ESTRUTURA);
     const v=el("text",{x:x,y:y+2.4,class:"tvida"});v.textContent=Math.max(0,J.nexus[t]);gM.appendChild(v);
   });
-  const rot=(txt,x,y)=>{const g=el("g",{class:"rotulo"}),w=txt.length*5.4+13;
+  /* ---------- O PLACAR DE PRESENÇA DA ROTA (v47) ----------
+     A regra nova — empate segura a torre — só vira jogada se o jogador conseguir
+     CONTAR. Até aqui a presença era invisível: existia no motor, decidia quem
+     empurrava quem, e não aparecia em lugar nenhum da tela. Defender era adivinhar.
+
+     Mostra a contagem VIVA (onde os heróis estão agora), e não a congelada da
+     rodada passada, porque é sobre a viva que o jogador ainda pode agir — é ela
+     que vai virar a congelada quando o turno dele acabar.
+
+     E OBEDECE À NÉVOA: só entram os inimigos que este lado ENXERGA. Mostrar a
+     contagem real entregaria de graça a posição do Caçador escondido, que é a
+     informação que a partida inteira gira em torno de esconder.
+
+     Verde quando dá para segurar (meus ≥ vistos), vermelho quando não dá. */
+  const rot=(txt,x,y,nome)=>{
+    const c=nome?contaRota(nome):null;
+    const rotulo=c?`${txt}  ${c.meus}\u2009·\u2009${c.deles}`:txt;
+    const g=el("g",{class:"rotulo"+(c?(c.seguro?" seg":" perig"):"")}),w=rotulo.length*5.4+13;
     g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:2}));
-    const t=el("text",{x:x,y:y+2.2});t.textContent=txt;g.appendChild(t);gM.appendChild(g);};
-  rot("TOPO",centro(...L_TOPO[6])[0],11);
-  rot("BAIXO",centro(...L_BOT[2])[0],275);
-  rot("MEIO",...centro(3,2));
+    const t=el("text",{x:x,y:y+2.2});t.textContent=rotulo;g.appendChild(t);gM.appendChild(g);};
+  rot("TOPO",centro(...L_TOPO[6])[0],11,"topo");
+  rot("BAIXO",centro(...L_BOT[2])[0],275,"baixo");
+  rot("MEIO",...centro(3,2),"meio");
 
   /* WARDS do lado que olha. Antes era só um pontinho com o prazo embaixo, e a
      queixa foi direta: *"quando usar um ward, sinalizar no mapa onde ele tá"*.
@@ -6716,6 +6824,30 @@ function iaDestino(h,t){
     const perto=vivos(t).slice().sort((a,b)=>
       dist(...a.pos,...BASE[t][0])-dist(...b.pos,...BASE[t][0]))[0];
     if(perto===h) return {p:BASE[t][0],motivo:"defende o Nexus"};
+  }
+
+  /* DEFENDER A TORRE SITIADA (v47). Antes desta versão a IA só voltava para casa
+     com o Nexus em 1 — ou seja, defendia quando já era tarde. Não era falta de
+     vontade: até a v46 defender torre não FUNCIONAVA, porque a onda cobrava a
+     torre mesmo com a presença empatada, e mandar um herói para lá só o tirava
+     do mapa. A regra nova (empate segura) transformou a defesa na jogada mais
+     barata do jogo, e a IA precisa saber disso — senão a regra existe só para o
+     humano, que é o mesmo erro que a Última Muralha quase cometeu.
+
+     A conta é a que o jogador faz olhando a rota: a torre está caindo porque
+     eles têm MAIS gente ali. Um corpo a mais empata, e empate segura. Por isso
+     vai UM herói, o mais perto — dois seria pagar caro por um empate que um só
+     já compra, e é assim que se perde o resto do mapa. */
+  if(IA().defende){
+    const sitiadas=J.torres.filter(tr=>tr.t===t&&tr.vida>0&&J.frentes[tr.rota]===tr.i)
+      .filter(tr=>((J.presenca[1-t][tr.rota]||0)-(J.presenca[t][tr.rota]||0))>0);
+    if(sitiadas.length){
+      /* a mais adiantada primeiro: torre perdida abre rota, e rota aberta é o Nexus */
+      const alvo=sitiadas.sort((a,b)=>a.vida-b.vida)[0];
+      const casa=ROTAS[alvo.rota][alvo.i];
+      const perto=vivos(t).slice().sort((a,b)=>dist(...a.pos,...casa)-dist(...b.pos,...casa))[0];
+      if(perto===h&&rotaDaPos(h)!==alvo.rota) return {p:casa,motivo:"defende a torre"};
+    }
   }
 
   if(IA().objetivo && J.poco.vida>0&&dist(...h.pos,...POCO)<=4) return {p:POCO,motivo:"objetivo"};

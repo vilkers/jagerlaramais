@@ -831,3 +831,14 @@ button:disabled{cursor:not-allowed}
 .itC.vender .iO{color:var(--carmim-2,#e08a7a)}
 .itC.vender .iO small{opacity:.6;font-size:.85em}
 .itC.vender:active{background:rgba(160,70,60,.12)}
+
+/* ══ v47 · a presença da rota, na tela ══
+   A regra que decide quem empurra quem sempre existiu no motor e nunca apareceu:
+   defender era adivinhar. Agora o rótulo da rota conta os corpos — verde quando
+   dá para segurar, carmim quando o adversário tem gente a mais. Só entra na
+   conta o inimigo que este lado ENXERGA, senão o rótulo entregaria de graça a
+   posição do Caçador escondido. */
+#mapa .rotulo.seg rect{stroke:var(--vivo);stroke-width:.7}
+#mapa .rotulo.seg text{fill:var(--vivo)}
+#mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
+#mapa .rotulo.perig text{fill:var(--dano)}

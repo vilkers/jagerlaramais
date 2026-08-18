@@ -140,6 +140,8 @@ const PONTE = `
   get nivelIA(){return nivelIA}, set nivelIA(v){nivelIA=v},
   get iaRodando(){return iaRodando}, set iaRodando(v){iaRodando=v},
   podeArrastar:h=>podeArrastar(h), dadoPara:hb=>dadoPara(hb),
+  rotaDaPos:h=>rotaDaPos(h), contaRota:nome=>contaRota(nome),
+  get REVIDE_TORRE(){return REVIDE_TORRE}, get DANO_TORRE(){return DANO_TORRE},
   iaMelhorJogada:(t,m)=>iaMelhorJogada(t,m), iaJogadas:t=>iaJogadas(t),
   iaDestino:(h,t)=>iaDestino(h,t), iaCompra:t=>iaCompra(t),
   iaPlanejaAlcance:t=>iaPlanejaAlcance(t), iaJogaCartas:t=>iaJogaCartas(t),

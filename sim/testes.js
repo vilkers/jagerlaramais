@@ -3896,6 +3896,135 @@ teste("a IA se aproxima pelo maior alcance do kit, não pelo do herói", () => {
      "a IA acha que a Dona Chinela só alcança 1 — ela nunca usaria o Chinelo Voador de longe");
 });
 
+/* ═══════════════ v47 — o defensor passa a contar ═══════════════
+   Relato: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter uma
+   forma de defender mais efetiva"*. A causa não era número: era que o defensor
+   não entrava na conta de presença em posição nenhuma do mapa. */
+
+/* posição da torre exterior do time `t` numa rota */
+function torreExterior(g, t, rota) {
+  const minhas = g.J.torres.filter(x => x.t === t && x.rota === rota);
+  ok(minhas.length, `time ${t} não tem torre no ${rota}`);
+  return minhas.reduce((a, b) => (t === 0 ? (b.i > a.i ? b : a) : (b.i < a.i ? b : a)));
+}
+
+teste("na MESMA casa, atacante e defensor contam igual", () => {
+  const c = cena(); const g = c.g;
+  const tr = torreExterior(g, 0, "topo");
+  const casa = g.ROTAS.topo[tr.i];
+  g.J.frentes.topo = tr.i;                       // a onda chegou na torre: há cerco
+
+  const meu = c.heroi(0, "topo"), dele = c.heroi(1, "topo");
+  c.poe(meu, casa); c.poe(dele, casa);
+  eq(g.rotaDaPos(meu), "topo",
+     "o defensor em cima da própria torre não conta na rota — nenhuma posição do "
+     + "mapa fazia ele somar, então defender era impossível, não difícil");
+  eq(g.rotaDaPos(dele), "topo", "o atacante deixou de contar");
+});
+
+teste("quem está encostado na Frente de Onda conta; quem está em casa, não", () => {
+  const c = cena(); const g = c.g;
+  const tr = torreExterior(g, 0, "topo");
+  g.J.frentes.topo = tr.i;
+  const h = c.heroi(0, "topo");
+
+  c.poe(h, g.ROTAS.topo[tr.i]);
+  eq(g.rotaDaPos(h), "topo", "em cima da torre sitiada não contou");
+
+  c.poe(h, g.ROTAS.topo[Math.max(0, tr.i - 1)]);
+  eq(g.rotaDaPos(h), "topo", "um passo atrás da torre sitiada não contou");
+
+  c.poe(h, g.ROTAS.topo[0]);
+  eq(g.rotaDaPos(h), null,
+     "herói na própria base contou como presença — isso é acampar, não defender");
+});
+
+teste("sem cerco, estar atrás da própria torre continua NÃO contando", () => {
+  const c = cena(); const g = c.g;
+  const tr = torreExterior(g, 0, "topo");
+  const h = c.heroi(0, "topo");
+  /* a onda no vão neutro: ninguém está atacando esta torre */
+  g.J.frentes.topo = g.J.frentes.topo;
+  const longe = Math.abs(g.J.frentes.topo - tr.i) > 1;
+  if (!longe) return;                            // cena degenerada, não mede nada
+  c.poe(h, g.ROTAS.topo[tr.i]);
+  eq(g.rotaDaPos(h), null,
+     "a regra nova ligou sem cerco — ela só pode valer quando a onda VEIO até você, "
+     + "senão quem fica em casa passa a empurrar onda de graça");
+});
+
+teste("trazer um corpo a mais empurra a onda de volta e a torre para de cair", () => {
+  const c = cena(); const g = c.g;
+  const tr = torreExterior(g, 0, "topo");
+  g.J.frentes.topo = tr.i;
+  const casa = g.ROTAS.topo[tr.i];
+
+  /* o atacante sozinho na rota: a onda fica e a torre cai */
+  g.todos().forEach(h => c.poe(h, g.BASE[h.t][0]));
+  c.poe(c.heroi(1, "topo"), casa);
+  g.J.presenca = [{}, {}];
+  g.J.vez = 0; g.encerraTurno();                 // congela a presença do time 0
+  g.J.vez = 1; g.encerraTurno();                 // congela a do time 1 e vira a rodada
+  const vidaSo = g.J.torres.find(x => x === tr).vida;
+  ok(vidaSo < g.VIDA_TORRE, "sem defensor a torre deveria ter levado dano");
+
+  /* agora com um defensor colado: a presença empata e a onda para de andar */
+  const def = c.heroi(0, "topo");
+  c.poe(def, casa);
+  eq(g.rotaDaPos(def), "topo", "o defensor não contou");
+  eq(g.rotaDaPos(c.heroi(1, "topo")), "topo", "o atacante não contou");
+});
+
+teste("a IA defende torre sitiada em vez de esperar o Nexus chegar a 1", () => {
+  const c = cena(); const g = c.g;
+  g.nivelIA = "dificil";
+  const tr = torreExterior(g, 1, "topo");        // torre da IA (time 1)
+  g.J.frentes.topo = tr.i;
+  /* dois heróis do time 0 pressionando, nenhum do time 1 */
+  g.J.presenca = [{ topo: 2 }, { topo: 0 }];
+  const casa = g.ROTAS.topo[tr.i];
+  const perto = g.vivos(1).slice()
+    .sort((a, b) => g.dist(...a.pos, ...casa) - g.dist(...b.pos, ...casa))[0];
+  const d = g.iaDestino(perto, 1);
+  ok(d && d.motivo === "defende a torre",
+     `a IA decidiu "${d ? d.motivo : "nada"}" com uma torre dela caindo — `
+     + "a regra nova existiria só para o humano");
+});
+
+teste("a IA não larga a rota para defender uma torre que já está segura", () => {
+  const c = cena(); const g = c.g;
+  g.nivelIA = "dificil";
+  const tr = torreExterior(g, 1, "topo");
+  g.J.frentes.topo = tr.i;
+  g.J.presenca = [{ topo: 1 }, { topo: 2 }];     // a IA já tem gente a mais lá
+  const casa = g.ROTAS.topo[tr.i];
+  const perto = g.vivos(1).slice()
+    .sort((a, b) => g.dist(...a.pos, ...casa) - g.dist(...b.pos, ...casa))[0];
+  const d = g.iaDestino(perto, 1);
+  ok(!d || d.motivo !== "defende a torre",
+     "a IA mandou reforço para uma torre que não estava caindo — assim se perde o mapa");
+});
+
+teste("o rótulo da rota conta presença e obedece à névoa", () => {
+  const c = cena().vez(0); const g = c.g;
+  g.aiMode = false;
+  const tr = torreExterior(g, 0, "topo");
+  g.J.frentes.topo = tr.i;
+  const casa = g.ROTAS.topo[tr.i];
+  const meu = c.heroi(0, "topo"), dele = c.heroi(1, "topo");
+  c.poe(meu, casa);
+  /* o inimigo colado e INVISÍVEL não pode aparecer na conta */
+  const viz = g.vizinhos(...casa).find(p => g.noTab(...p) && !g.em(...p));
+  c.poe(dele, viz);
+  g.aplicaCond(dele, "invisivel", { tu: 3 });
+  ok(!g.visivelPara(dele, 0), "não ficou invisível");
+  const oculto = g.contaRota("topo");
+  g.aplicaCond(dele, "revelado", { tu: 3 });
+  const visto = g.contaRota("topo");
+  eq(oculto.deles, 0, "o rótulo entregou a posição de um inimigo invisível");
+  ok(visto.deles >= 1, "o rótulo não contou o inimigo revelado ao lado");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

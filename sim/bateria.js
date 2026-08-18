@@ -45,6 +45,7 @@
      times=espelho  os dois lados jogam com os MESMOS cinco heróis.
      bonusrot=off   desliga o bônus de região da rotação do Caçador (v46).
      alchab=off     desliga o alcance por habilidade — tudo volta a seguir o herói (v46).
+     defensor=off   quem está encostado na Frente de Onda volta a não contar (v47).
                  OBRIGATÓRIO quando a mudança toca herói, habilidade ou item:
                  sem isto "quem começa" mede o confronto, não a ordem  — v25    */
 
@@ -110,6 +111,11 @@ if (opcoes.bonusrot === "off")
   trocas.push([/const BONUS_REGIAO=\{[\s\S]*?\n\};/, "const BONUS_REGIAO={};"]);
 if (opcoes.alchab === "off")
   trocas.push([/const propria = hb && hb\.alc;/, "const propria = undefined;"]);
+/* v47 — a chave que liga e desliga a correção do defensor, para o A/B continuar
+   possível depois que ela virar o padrão. Duas irmãs dela (empate segura, reparo
+   de torre) foram escritas, medidas e descartadas — ver docs/patch-notes.md. */
+if (opcoes.defensor === "off")    // quem está na briga volta a NÃO contar
+  trocas.push([/if\(f!==undefined&&Math\.abs\(idx-f\)<=1\) return melhor;/, ""]);
 /* v22 — as três mudanças da revisão, cada uma desligável sozinha. Existem porque
    a medição do lote inteiro deu 52,6% e não dizia de quem era a culpa: sem poder
    desligar uma de cada vez, "quem começa" vira número sem endereço. */

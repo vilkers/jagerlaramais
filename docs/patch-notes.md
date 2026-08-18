@@ -16,6 +16,153 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v47 — o defensor passa a contar · 2026-08-18
+
+Relato do Vilker: *"tá muito fácil ganhar o jogo só empurrando torre, tem que ter
+uma forma de defender mais efetiva"*.
+
+Ele estava certo, e a causa não era número nenhum. **O defensor não contava.**
+
+### O defeito
+
+`rotaDaPos` decide quem exerce presença numa rota, e a presença é o que decide se
+a onda anda. A regra dizia: *só conta quem já passou da própria Torre Exterior* —
+correta para EMPURRAR (herói parado em casa não deve empurrar onda), e aplicada
+igual nos dois sentidos. O efeito, medido e literal:
+
+```
+defensor em cima da própria torre exterior  → rota: null
+atacante do outro time, na MESMA CASA       → rota: topo
+```
+
+Quem defende tem `idx === exterior`, e o teste pedia estritamente MAIOR. Ou seja:
+**nenhuma posição do mapa fazia o defensor somar na conta que derruba a torre
+dele.** Ele podia trazer os cinco heróis e a onda continuava andando. Defender
+não era difícil — era impossível.
+
+### A correção
+
+Uma frase, em `rotaDaPos`:
+
+> **Quem está encostado na Frente de Onda está na briga, e conta** — esteja de que
+> lado estiver.
+
+Ela não afrouxa a regra de cima: só liga quando a onda VEIO até você. Enquanto a
+frente está no vão neutro, ninguém atrás da própria torre chega a 1 de distância
+dela, então herói em casa continua não empurrando nada. É o equivalente de mesa a
+"você foi defender".
+
+### Duas irmãs foram escritas, medidas e DESCARTADAS
+
+Junto da correção nasceram mais duas, e as duas parecem obviamente boas:
+
+| | o que fazia |
+|---|---|
+| **empate segura** | a onda só machucaria a torre com presença estritamente maior |
+| **reparo** | torre ferida recuperaria 1 por rodada enquanto a onda não estivesse em cima |
+
+`sim/defesa.js` (script novo), 800 partidas por build:
+
+| build | duração | quem derruba a 1ª torre vence |
+|---|---|---|
+| só a correção | 35,0 | **66,3%** |
+| correção + empate segura | 37,4 | 70,0% |
+
+**As duas deixam a partida mais longa E PIORAM a bola de neve.** O motivo não era
+óbvio e vale guardar:
+
+> **Defesa forte demais protege quem está na frente.** Quem lidera tem mapa para
+> bancar o corpo a mais e continua sitiando; quem está atrás precisa de uma
+> virada, e virada é ataque. Empilhar defesa cobrava justamente de quem precisava
+> reagir.
+
+Uma terceira também caiu: **cerco pesado** (dois corpos a mais fariam a onda tirar
+2 em vez de 1), pensada para devolver ritmo. Comprava 2,5 rodadas e devolvia 2,8
+pontos de bola de neve — exatamente o que o relato pedia para reduzir.
+
+### O que mudou — números
+
+| | v46 | v47 |
+|---|---|---|
+| quem derruba a primeira torre vence | 72,8% | **65,5%** |
+| golpes de herói em torre, por partida | 3,4 | **4,8** |
+| golpes de herói em épico, por partida | 4,1 | **6,5** |
+| torres caídas por partida | 4,5/12 | 5,3/12 |
+| quem começa | 52,1% | **51,7%** (z=1,29, dentro do ruído) |
+| Testes de regressão | 223 | **230** |
+
+### A duração, e por que os dois números discordam
+
+| | v46 | v47 |
+|---|---|---|
+| `sim/defesa.js` — agente quase-aleatório | 25,3 | **35,2** |
+| `sim/niveis.js` — **a IA de verdade** | 24 | **25** |
+
+O agente quase-aleatório alonga porque ele não sabe fechar: com a defesa
+funcionando, ele empurra e recua sem nunca comprometer. A IA de verdade
+compromete, e por isso a partida praticamente não mudou de tamanho — **25 rodadas
+de mediana contra 24.** É o número da IA que se parece com o que se joga.
+
+### A IA aprendeu a defender
+
+Até aqui ela só voltava para casa com o Nexus em **1** — defendia quando já era
+tarde. Não era falta de vontade: **defender não funcionava**, e mandar um herói
+para lá só o tirava do mapa. Agora ela lê a rota como o jogador lê ("a torre está
+caindo porque eles têm mais gente ali") e manda **um** herói, o mais perto. Um,
+porque um corpo já muda a conta e dois seriam perder o resto do mapa.
+
+Efeito colateral bem-vindo: os níveis se separaram mais. `sim/niveis.js 300`
+passou de **68,0%** para **75,3%** de Mestre sobre Aprendiz (z=8,78) — o Aprendiz
+não defende (`defende:0`), e agora isso custa.
+
+### A presença virou informação de tela
+
+A regra que decide quem empurra quem sempre existiu no motor e **nunca apareceu**:
+defender era adivinhar. O rótulo de cada rota passa a mostrar a contagem —
+`TOPO 1 · 2` —, **verde** quando dá para segurar e **carmim** quando o adversário
+tem corpos a mais.
+
+Conta a presença **viva** (onde os heróis estão agora), e não a congelada da
+rodada passada, porque é sobre a viva que o jogador ainda pode agir. E **obedece
+à névoa**: só entra o inimigo que este lado enxerga — mostrar o número real
+entregaria de graça a posição do Caçador escondido, que é a informação em torno da
+qual a partida inteira gira.
+
+### O que isso quebra
+
+- **`rotaDaPos` mudou de resposta** para herói perto da Frente de Onda. Quem
+  medir presença em teste precisa saber que a frente agora faz parte da conta;
+- **`contaRota` saiu de dentro de `desenhaMapa`** e virou função de módulo. Era
+  regra de leitura morando no desenho, e o teste não a alcançava.
+
+### Script novo
+
+```
+node sim/defesa.js 800              # defender é viável?
+node sim/defesa.js 800 defensor=off # como era antes da v47
+```
+
+Mede os dois eixos juntos — **bola de neve e duração** — porque mexer só num
+engana. Foi ele que reprovou as três regras descartadas.
+
+### Erros que eu cometi nesta sessão
+
+1. **Empilhei três regras e medi as três juntas.** Mediana de 24 para 41 rodadas,
+   sem saber qual cobrava. A regra do projeto (*uma mudança de cada vez quando for
+   medir*) existe exatamente para isso; tive que voltar e criar as chaves de
+   isolamento depois.
+2. **Instrumentei o cerco duas vezes errado.** Primeiro fotografando a presença
+   antes de cada turno — mas ela é congelada no fim do turno de cada time, então o
+   retrato já estava velho para um dos lados, e o script acusou "9,7% de dano com
+   empate" numa build onde empate não podia causar dano nenhum. Depois tentei
+   envolver `fimDaRodada`, que não pega: a atribuição cai na PONTE e as chamadas
+   internas seguem indo para a original. É o mesmo tropeço que `sim/condicoes.js`
+   já tinha levado na v45.
+3. **Confiei num número de 250 partidas.** Anunciei "77,6% → 63,6%" e, a 1500,
+   virou "72,8% → 65,5%". A direção estava certa, a precisão não.
+
+---
+
 ## v46 — os seis relatos do playtest · 2026-08-17
 
 Seis pedidos do Vilker, três deles bugs reproduzidos antes de consertar. Dois já
