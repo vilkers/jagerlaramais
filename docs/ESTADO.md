@@ -156,7 +156,7 @@ colide com medição já registrada.
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
-| **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
+| **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. **Pedido na v48** ("PvP com criação de salas") e registrado no item **13** de `docs/DECISOES-PENDENTES.md`: não é feature, é decisão de arquitetura — sala exige servidor, e sem servidor autoritativo a **névoa vira decoração**, porque hoje o cliente tem o `J` inteiro. Nada começa antes de o grupo escolher o caminho. |
 
 ## Onde as coisas moram
 

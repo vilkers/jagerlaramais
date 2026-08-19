@@ -353,3 +353,88 @@ duas condições em `desenhaMapa` e nenhuma regra nova.
 
 Sugiro **(b)** se o grupo achar que farm de acampamento inimigo deve ser aposta,
 e **(a)** se o mapa já estiver pesado de ler no celular.
+
+---
+
+## 13. PvP em rede, com salas — PEDIDO, e a decisão de arquitetura é do grupo
+
+**Pedido do Vilker (v48):** *"cria uma opção de PvP com criação de salas"*.
+
+Nada implementado. Está aqui porque **não é uma feature, é uma decisão de
+arquitetura** — e ela colide de frente com a regra fundadora do projeto.
+
+### A colisão
+
+O `CLAUDE.md` diz: *"o guia e o jogo são vanilla — sem framework, sem npm, sem
+CDN. Abre com duplo clique."* É por isso que o jogo hoje é um zip que se arrasta
+no Netlify Drop e um `JOGAR.html` que abre offline.
+
+**Sala é servidor.** Não existe "criar sala" sem alguém no meio para dizer *esta
+sala existe, e você é o segundo a entrar nela*. Mesmo o caminho P2P (WebRTC)
+precisa de um servidor de sinalização para os dois se acharem. Ou seja: o modo
+online **deixa de abrir com duplo clique** — e passa a depender de alguma coisa
+ligada.
+
+O hotseat continua funcionando offline em qualquer caminho. A pergunta é só o
+que o modo online exige.
+
+### O problema que ninguém vê antes de implementar: a NÉVOA
+
+Hoje o cliente tem o **estado inteiro** (`J`) e a névoa é aplicada **na
+pintura** — `ladoDaTela()` decide o que desenhar. Isso é perfeito em hotseat: só
+existe uma tela.
+
+Em rede, se os dois clientes receberem o `J` inteiro, **a névoa vira decoração**:
+qualquer um abre o console e lê a posição do Caçador. E a névoa não é um detalhe
+deste jogo — a rotação secreta, a emboscada e o blefe do gank são a coisa em
+torno da qual a partida gira.
+
+Portanto: **ou o servidor é autoritativo (guarda o estado e manda para cada
+cliente só o que ele enxerga), ou a névoa passa a ser questão de honra.**
+
+### Os três caminhos
+
+| | Como funciona | Névoa | Custo |
+|---|---|---|---|
+| **A · servidor autoritativo** | Um Node pequeno guarda o `J`, valida a jogada e manda para cada lado a **visão dele** | **real** | precisa de hospedagem ligada (Deno Deploy, Fly, Render — todos com free tier) |
+| **B · relay burro** | O servidor só repassa mensagens; um dos clientes é o dono do estado | por honra — dá para espiar no console | quase o mesmo trabalho de A, com metade do valor |
+| **C · P2P por código** | WebRTC com sinalização na mão: um gera um código, o outro cola | por honra | zero servidor, mas conectar é chato e cai fácil |
+
+**Minha recomendação: A.** O servidor cabe em ~200 linhas, e é o único caminho em
+que a mecânica central do jogo continua sendo o que ela é. B custa quase o mesmo
+e entrega menos. C só se a regra "nada ligado" for inegociável.
+
+### O que já está pronto para isso, e não é pouco
+
+O motor está mais perto do que parece, e por acidente feliz:
+
+- **`ladoDaTela()` é a porta única da névoa.** Em rede vira "eu sou sempre o
+  jogador X" — é uma linha;
+- **`mesaTravada()` é a porta única do gesto humano.** Vira "não é o meu turno" —
+  é uma linha;
+- **A rotação do Caçador já é assíncrona e com fila** (`abreRotacoes` espera os
+  dois responderem). O desenho dela já é o de rede;
+- **`J` é um objeto serializável** — dá para mandar em JSON sem cerimônia.
+
+### O que NÃO está pronto
+
+- **Separar `J` em estado público e privado.** É o trabalho de verdade do
+  caminho A, e é o que decide se a névoa sobrevive. Vale começar por aqui:
+  serve ao online e **também** conserta o vazamento que já existe hoje para quem
+  abre o console num hotseat;
+- **Reconexão, desistência e abandono.** Partida de 34 rodadas com celular ruim
+  precisa disso, e é chato de fazer bem;
+- **Onde hospedar**, e quem paga se passar do free tier.
+
+### O que muda no código quando a decisão sair
+
+Caminho A, em quatro passos, cada um entregável sozinho:
+
+1. `visaoDe(t)` passa a produzir um **`J` filtrado** — e o teste vira "o estado
+   que sai para o jogador 0 não contém a posição do Caçador escondido do 1";
+2. um servidor mínimo com `criar sala` / `entrar por código` / `jogada`;
+3. o cliente ganha o modo `rede`, ao lado de `hotseat`, `aiMode` e `simMode`;
+4. reconexão e abandono.
+
+**Nada disso começa sem o grupo escolher A, B ou C** — e sem decidir se o jogo
+aceita depender de alguma coisa ligada.
