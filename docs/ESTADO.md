@@ -89,7 +89,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
 | Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
-| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. Os três foram atualizados na v48 e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
+| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados na v48 e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
 | Patamar do Atirador | **20 de ouro na mão** por degrau (era 10), até 3 · consequência do preço novo, não ajuste de atirador |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
@@ -156,7 +156,7 @@ colide com medição já registrada.
 | **Zona de armadilha** (cartas de reação) | O catálogo declara `quando:"reacao"` em 3 cartas e **o motor nunca lê esse campo** — elas só funcionam como escudo antecipado no próprio turno. Aprovado virar zona virada para baixo, estilo armadilha. |
 | **Highlight estilo LoL no tutorial** | Hoje a caixa de diálogo explica, mas não aponta. Falta escurecer a tela e iluminar só a região certa. |
 | **Arauto** | O terceiro monstro tem arte (`arte/monstros/arauto.jpg`) e não tem regra. O poço já sabe trocar de morador, então cabe sem motor novo. |
-| **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. Publicar não muda isso. |
+| **Multiplayer em rede** | O jogo é *hotseat*: um aparelho, passando a vez. **Pedido na v48** ("PvP com criação de salas") e registrado no item **13** de `docs/DECISOES-PENDENTES.md`: não é feature, é decisão de arquitetura — sala exige servidor, e sem servidor autoritativo a **névoa vira decoração**, porque hoje o cliente tem o `J` inteiro. Nada começa antes de o grupo escolher o caminho. |
 
 ## Onde as coisas moram
 

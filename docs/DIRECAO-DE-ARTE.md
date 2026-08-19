@@ -323,6 +323,7 @@ produção de arte são da trilha de criação** (Vilker + ChatGPT, em `visual-l
 | §14 verde-limão pontual | **parcial** — só no poço, por enquanto |
 | §19 rotas abertas | **feito no 2D** |
 | §21 rio como canal urbano | **parcial** — cor de concreto com água; falta o desenho do canal |
+| **A ilustração `arte/mapa/mapa.jpg`** | **contradiz o canon** — castelo medieval, cristal, covil de dragão e cova de ossos (dois covis, quando o jogo tem **um** poço), em paleta de fantasia escura. Saiu do guia na v48; o arquivo ficou em `arte/`. **Refazer é da trilha de criação** |
 | §20 selva urbana | **parcial** — vegetação e obstáculos; falta quintal, muro, beco |
 | §22 torres improvisadas | **pendente** — silhueta atual é genérica |
 | §24 Nexus como gerador | **pendente** |
