@@ -13,17 +13,28 @@
   --ink-2:#9FB3AD;
   --ink-3:#6C817C;
 
-  --brass:#C99A46;         /* único acento saturado: ouro, latão, objetivo */
+  --brass:#D4A24C;         /* o mesmo latão de jogo/estilo.css */
   --brass-dim:#8A6A2F;
-  --brass-glow:rgba(201,154,70,.14);
+  --brass-glow:rgba(212,162,76,.16);
 
-  --azul:#5B93B8;          /* semântica de time — não é acento */
-  --carmim:#B75C52;
+  --azul:#4C9BD6;          /* semântica de time — os mesmos do jogo */
+  --carmim:#D45B4E;
 
-  --terreno-rota:#41564D;
-  --terreno-selva:#141E1A;
-  --terreno-rio:#1E3B44;
-  --estrada:#6E8A7C;
+  /* ── O TABULEIRO É DE DIA, NOS DOIS TEMAS ──
+     Direção de arte, itens 8 e 9: *"Não: filtro cinza, cenário escuro,
+     pós-apocalipse militar. Sim: luz quente, céu azul, cores, vegetação"*.
+     Estes valores são os MESMOS de jogo/estilo.css — o manual e o jogo têm de
+     parecer o mesmo universo, e até a v48 o guia pintava a selva de #141E1A,
+     que é quase preto. O chrome da página continua seguindo o tema; o
+     tabuleiro, não: ele é o objeto iluminado em cima da mesa. */
+  --terreno-rota:#C3B7A4;    /* asfalto e calçada gastos, claros */
+  --terreno-selva:#7FA65C;   /* vegetação viva, que retomou a cidade */
+  --terreno-rio:#8FB0AE;     /* canal urbano de concreto com água parada */
+  --terreno-bloq:#8A7452;    /* a casa bloqueada: ônibus, carros, caixa-d'água */
+  --terreno-traco:#5A5142;   /* o contorno: tem de dar para CONTAR o hexágono */
+  --estrada:#6E6355;         /* a costura da rua, escura sobre o concreto */
+  --limao:#C6F53F;           /* energia do cataclisma — pontual, sempre */
+  --ceu:#BBD3E0;             /* o azul do céu, atrás do tabuleiro */
 
   --rota-topo:#6E8F6A;
   --rota-selva:#4F7F7A;
@@ -46,7 +57,6 @@
     --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
     --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
     --azul:#3B6C90; --carmim:#8F3E36;
-    --terreno-rota:#DCD5BB; --terreno-selva:#A9B49C; --terreno-rio:#A9C6CF; --estrada:#8E8A6A;
   }
 }
 :root[data-theme="light"]{
@@ -55,15 +65,13 @@
   --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
   --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
   --azul:#3B6C90; --carmim:#8F3E36;
-  --terreno-rota:#DCD5BB; --terreno-selva:#A9B49C; --terreno-rio:#A9C6CF; --estrada:#8E8A6A;
 }
 :root[data-theme="dark"]{
   --ground:#0E1614; --ground-2:#141F1C; --ground-3:#1B2926;
   --line:#2A3B37; --line-soft:#213230;
   --ink:#E4EDE9; --ink-2:#9FB3AD; --ink-3:#6C817C;
-  --brass:#C99A46; --brass-dim:#8A6A2F; --brass-glow:rgba(201,154,70,.14);
-  --azul:#5B93B8; --carmim:#B75C52;
-  --terreno-rota:#41564D; --terreno-selva:#141E1A; --terreno-rio:#1E3B44; --estrada:#6E8A7C;
+  --brass:#D4A24C; --brass-dim:#8A6A2F; --brass-glow:rgba(212,162,76,.16);
+  --azul:#4C9BD6; --carmim:#D45B4E;
 }
 
 *{box-sizing:border-box}
@@ -187,12 +195,17 @@ td .req{font-family:var(--mono); font-size:12px; color:var(--brass)}
 .mapa-shell{display:grid; grid-template-columns:minmax(0,1fr) 232px; gap:26px; margin-top:28px; align-items:start}
 .mapa-box{border:1px solid var(--line); background:var(--ground-2); padding:14px; position:relative}
 #svg-mapa{width:100%; height:auto; display:block; touch-action:manipulation}
-#svg-mapa .hx{stroke:var(--line-soft); stroke-width:.9; cursor:pointer}
+#svg-mapa{background:var(--ceu); border-radius:8px}
+#svg-mapa .hx{stroke:var(--terreno-traco); stroke-width:.7; stroke-opacity:.55; cursor:pointer}
 #svg-mapa .hx.selva{fill:var(--terreno-selva)}
 #svg-mapa .hx.rota{fill:var(--terreno-rota)}
 #svg-mapa .hx.rio{fill:var(--terreno-rio)}
-#svg-mapa .hx.base-A{fill:var(--azul); fill-opacity:.34}
-#svg-mapa .hx.base-B{fill:var(--carmim); fill-opacity:.34}
+#svg-mapa .hx.poco{fill:var(--limao); fill-opacity:.55}
+#svg-mapa .hx.base0{fill:var(--azul); fill-opacity:.55}
+#svg-mapa .hx.base1{fill:var(--carmim); fill-opacity:.55}
+/* a casa bloqueada tem de ler como "não entro aqui" ANTES de o jogador tentar */
+#svg-mapa .hx.bloq{fill:var(--terreno-bloq); cursor:not-allowed}
+#svg-mapa .hx.bloq.marca{stroke:#3A3226; stroke-width:1.2; stroke-opacity:.9}
 #svg-mapa .hx:hover{stroke:var(--brass); stroke-width:1.8}
 #svg-mapa .hx.alvo{stroke:var(--brass); stroke-width:1.8; stroke-dasharray:3 2}
 #svg-mapa .estrada{fill:none; stroke:var(--estrada); stroke-width:5; stroke-opacity:.5; stroke-linecap:round; stroke-linejoin:round; pointer-events:none}
@@ -202,7 +215,9 @@ td .req{font-family:var(--mono); font-size:12px; color:var(--brass)}
 #svg-mapa .torre.A{stroke:var(--azul)} #svg-mapa .torre.B{stroke:var(--carmim)}
 #svg-mapa .obj{fill:var(--brass); fill-opacity:.16; stroke:var(--brass); stroke-width:1.1}
 #svg-mapa .objtxt{font-family:var(--mono); font-size:6.4px; fill:var(--brass); text-anchor:middle; pointer-events:none}
-#svg-mapa .camp{fill:none; stroke:var(--ink-3); stroke-width:1; stroke-dasharray:2 1.6}
+#svg-mapa .camp{fill:none; stroke:#4A4032; stroke-width:1.1; stroke-dasharray:2 1.6}
+#svg-mapa .camp.neutro{stroke:var(--brass); stroke-opacity:.7; stroke-dasharray:1.6 2.2}
+#svg-mapa .obstaculo{stroke:#3A3226; stroke-width:1.5; stroke-linecap:round; stroke-opacity:.75; pointer-events:none}
 #svg-mapa .peca{cursor:grab}
 #svg-mapa .peca circle{stroke-width:1.4}
 #svg-mapa .peca.A circle{fill:var(--azul); stroke:var(--ground)}
@@ -445,15 +460,20 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <p class="eyebrow">05 — Tabuleiro</p>
   <h2>O mapa</h2>
   <p class="lede">Três rotas, selva nos dois quadrantes, rio na diagonal. O Meio é mais curto de propósito — é por isso que ele chega primeiro em qualquer lugar.</p>
+  <p class="lede"><b>Este é o tabuleiro de verdade</b>, e não um desenho parecido com ele: os
+    <b>116 hexágonos</b>, as três rotas, as <b>12 torres</b>, os <b>3 acampamentos</b>, o poço e as
+    <b>6 casas bloqueadas</b> são gerados a partir do motor (<code>sim/gera-mapa.js</code>). Se a
+    planta mudar no jogo e ninguém atualizar aqui, um teste falha.</p>
 
-  <figure class="mapa-arte">
-    <img src="../arte/mapa/mapa.jpg" alt="Mapa ilustrado do Jagerlaramais">
-    <figcaption>O mapa como ele é na ficção: as duas bases nas pontas da diagonal, três estradas
-      ligando-as, selva fechada entre elas, rio cortando o meio. O <b>poço</b> fica no meio, em terreno
-      de ninguém — é um só, e ele <b>troca de morador</b>: o Dragão até a rodada 12, o Barão a partir
-      dela. O tabuleiro hexagonal abaixo é um <b>esquema</b> da planta; o tabuleiro jogável tem
-      <b>11 por 11</b> e é desenhado pelo próprio motor.</figcaption>
-  </figure>
+  <div class="nota">
+    <b>A ilustração antiga saiu daqui.</b> Ela mostrava castelo medieval, cristal, covil de dragão e
+    uma cova de ossos — dois covis separados, quando o jogo tem <b>um poço só</b>, que troca de
+    morador. E a paleta era fantasia escura, o oposto do que a direção de arte fixou:
+    <i>"não: cenário escuro, filtro cinza, realismo deprimente; sim: luz quente, céu azul, cores,
+    vegetação"</i>. O arquivo continua em <code>arte/mapa/</code> — refazer a ilustração é da
+    trilha de criação, e o §21, §22 e §27 de <code>docs/DIRECAO-DE-ARTE.md</code> dizem o que ela
+    precisa ter.
+  </div>
 
   <div class="mapa-shell">
     <div class="mapa-box">
@@ -466,17 +486,20 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
           <li><span class="sw" style="background:var(--terreno-rota)"></span>Rota</li>
           <li><span class="sw" style="background:var(--terreno-selva)"></span>Selva</li>
           <li><span class="sw" style="background:var(--terreno-rio)"></span>Rio</li>
-          <li><span class="sw" style="background:var(--azul);opacity:.5"></span>Base azul</li>
-          <li><span class="sw" style="background:var(--carmim);opacity:.5"></span>Base carmim</li>
+          <li><span class="sw" style="background:var(--terreno-bloq)"></span>Casa bloqueada — ninguém entra nem atravessa</li>
+          <li><span class="sw" style="background:var(--limao);opacity:.6"></span>Poço — o épico desce aqui</li>
+          <li><span class="sw" style="background:transparent;border:1px dashed var(--brass)"></span>Acampamento · o neutro é sorteado entre dois lugares</li>
+          <li><span class="sw" style="background:var(--azul);opacity:.55"></span>Base azul</li>
+          <li><span class="sw" style="background:var(--carmim);opacity:.55"></span>Base carmim</li>
         </ul>
       </div>
       <div class="bloco">
         <h4>Comprimento das rotas</h4>
-        <p class="dica" style="margin:0 0 8px">No tabuleiro jogável, de 11 por 11. O esquema ao lado é menor, só para mostrar a planta.</p>
+        <p class="dica" style="margin:0 0 8px">Contadas no tabuleiro ao lado, que é o de verdade.</p>
         <ul id="lenrotas"></ul>
       </div>
       <div class="bloco">
-        <p class="dica"><b>Clique numa peça</b> para selecionar e depois <b>numa casa</b> para mover. As casas válidas ficam tracejadas.</p>
+        <p class="dica"><b>Clique numa peça</b> para selecionar e depois <b>numa casa</b> para mover. As casas válidas ficam tracejadas. A demo obedece ao que a partida obedece: não entra em casa bloqueada, não empilha peça, e anda no máximo <b>4 casas</b> — o teto de verdade é do herói, e vai de <b>3</b> (pesado) a <b>5</b> (ágil).</p>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button id="reset">Repor peças</button>
           <button id="tema">Tema</button>
@@ -563,6 +586,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 </div>
 
 <script src="../data/catalogo.js"></script>
+<script src="../data/mapa.js"></script>
 <script src="../arte/imagens.js"></script>
 <script>
 /* ==================== CONTEÚDO DO JOGO ==================== */
@@ -727,25 +751,22 @@ const GLOSS = [
   ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
 ];
 
-/* ==================== MAPA ==================== */
-const COLS=7, LINS=7, R=19;
-const BASE_A=[[0,6],[1,6]], BASE_B=[[6,0],[6,1]];
-const LANE_TOPO=[[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0]];
-let LANE_MEIO=[]; // traçada por geometria mais abaixo — a reta entre as duas bases
-const LANE_BOT =[[2,6],[3,6],[4,6],[5,6],[6,6],[6,5],[6,4],[6,3],[6,2]];
-const RIO=[[1,1],[2,2],[2,3],[3,4],[3,5],[4,6]];
-/* Esquema, não o tabuleiro: o jogável é 11x11 e é derivado pelo motor. O que
-   estes dois arrays precisam acertar é a CONTAGEM — três acampamentos, e UM
-   poço que troca de morador. Antes havia quatro campos e dois covis, o que
-   ensinava um mapa que não existe. */
-const CAMPOS=[[1,2],[5,4],[3,3]];
-const OBJETIVOS=[[2,3,"POÇO"]];
+/* ==================== MAPA ====================
+   O TABULEIRO VEM DO MOTOR. Até a v48 este bloco desenhava um mapa próprio,
+   escrito à mão: 7x7, quatro acampamentos e dois covis separados. O tabuleiro
+   de verdade é 11x11, com três acampamentos, UM poço que troca de morador e
+   seis casas bloqueadas — ou seja, o manual ensinava uma planta que não existe.
 
+   Agora a planta é gerada do motor (`node sim/gera-mapa.js` → `data/mapa.js`) e
+   lida aqui, do mesmo jeito que heróis, itens e condições vêm do catálogo. Um
+   teste em sim/testes.js falha se alguém mexer no mapa e esquecer de gerar. */
+const G = typeof MAPA !== "undefined" ? MAPA : null;
+const COLS = G ? G.cols : 11, LINS = G ? G.lins : 11, R = 13.4;
 const chave=(c,r)=>c+","+r;
 
 function centro(c,r){
   const w=Math.sqrt(3)*R;
-  return [26 + w*(c + 0.5*(r&1)) + w/2, 26 + R*1.5*r + R];
+  return [w*(c + 0.5*(r&1)) + w/2, R*1.5*r + R];
 }
 function pontos(c,r){
   const [x,y]=centro(c,r); let p=[];
@@ -757,132 +778,88 @@ function dist(c1,r1,c2,r2){
   const bx=c2-(r2-(r2&1))/2, bz=r2, by=-bx-bz;
   return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(az-bz));
 }
-function vizinhos(c,r){
-  const d = (r&1) ? [[-1,0],[1,0],[0,-1],[1,-1],[0,1],[1,1]]
-                  : [[-1,0],[1,0],[-1,-1],[0,-1],[-1,1],[0,1]];
-  return d.map(([dc,dr])=>[c+dc,r+dr]).filter(([a,b])=>a>=0&&a<COLS&&b>=0&&b<LINS);
-}
 
-/* O Meio é a reta entre as duas bases: em cada linha, a casa mais próxima dela.
-   Traçar por geometria em vez de na mão é o que impede o ziguezague. */
-LANE_MEIO=(()=>{
-  const ocupado=new Set([...BASE_A,...BASE_B,...LANE_TOPO,...LANE_BOT].map(([c,r])=>chave(c,r)));
-  const [x1,y1]=centro(...BASE_A[1]), [x2,y2]=centro(...BASE_B[1]);
-  const L=Math.hypot(y2-y1,x2-x1);
-  const cam=[];
-  for(let r=LINS-2;r>=1;r--){
-    let melhor=null,d0=1e9;
-    for(let c=0;c<COLS;c++){
-      if(ocupado.has(chave(c,r))) continue;
-      const [x,y]=centro(c,r);
-      const d=Math.abs((y2-y1)*x-(x2-x1)*y+x2*y1-y2*x1)/L;
-      if(d<d0){d0=d;melhor=[c,r];}
-    }
-    if(!melhor) continue;
-    const ant=cam.at(-1)||BASE_A[1];
-    if(dist(...ant,...melhor)>1){                       // fecha o buraco por vizinho comum
-      const ponte=vizinhos(...ant).find(v=>
-        dist(...v,...melhor)===1 && !ocupado.has(chave(...v)) && !cam.some(k=>k[0]===v[0]&&k[1]===v[1]));
-      if(ponte) cam.push(ponte);
-    }
-    cam.push(melhor);
-  }
-  return cam;
-})();
+/* índice rápido do terreno, direto da planta */
+const TERRENO=new Map(), BLOQ=new Set();
+if(G) G.casas.forEach(([c,r,t,b])=>{ TERRENO.set(chave(c,r),t); if(b) BLOQ.add(chave(c,r)); });
+const noTab=(c,r)=>TERRENO.has(chave(c,r));
 
-/* torres derivadas da própria rota. Índices contados das pontas, nunca por fração —
-   com rota curta a fração arredonda duas torres para o mesmo hex. */
-const TORRES=[LANE_TOPO,LANE_MEIO,LANE_BOT].flatMap(l=>{
-  const n=l.length, meio=Math.floor(n/2);
-  return [[...l[1],"A"],[...l[meio-1],"A"],[...l[n-meio],"B"],[...l[n-2],"B"]];
-});
+/* As peças nascem na entrada da própria rota, como na partida de verdade. O
+   TETO de casas por turno é o do herói (3 a 5 desde a v48) — aqui a demo usa 4,
+   que é o normal, e a dica ao lado explica a faixa. */
+const TETO_DEMO = 4;
+const PECAS = G ? [
+  {id:"A-topo", t:"A",rot:"topo",    lbl:"T", ini:G.rotas.topo[2]},
+  {id:"A-selva",t:"A",rot:"selva",   lbl:"S", ini:(G.casas.find(([c,r,t,b])=>t==="selva"&&!b&&r>COLS/2)||[3,7]).slice(0,2)},
+  {id:"A-meio", t:"A",rot:"meio",    lbl:"M", ini:G.rotas.meio[2]},
+  {id:"A-adc",  t:"A",rot:"atirador",lbl:"A", ini:G.rotas.baixo[2]},
+  {id:"A-sup",  t:"A",rot:"suporte", lbl:"U", ini:G.rotas.baixo[3]},
+  {id:"B-topo", t:"B",rot:"topo",    lbl:"T", ini:G.rotas.topo.at(-3)},
+  {id:"B-selva",t:"B",rot:"selva",   lbl:"S", ini:(G.casas.find(([c,r,t,b])=>t==="selva"&&!b&&r<COLS/2)||[7,3]).slice(0,2)},
+  {id:"B-meio", t:"B",rot:"meio",    lbl:"M", ini:G.rotas.meio.at(-3)},
+  {id:"B-adc",  t:"B",rot:"atirador",lbl:"A", ini:G.rotas.baixo.at(-3)},
+  {id:"B-sup",  t:"B",rot:"suporte", lbl:"U", ini:G.rotas.baixo.at(-4)}
+] : [];
 
-const LANE_SET=new Map();
-LANE_TOPO.forEach(([c,r])=>LANE_SET.set(chave(c,r),"topo"));
-LANE_MEIO.forEach(([c,r])=>LANE_SET.set(chave(c,r),"meio"));
-LANE_BOT .forEach(([c,r])=>LANE_SET.set(chave(c,r),"bot"));
-const RIO_SET=new Set(RIO.map(([c,r])=>chave(c,r)));
-const BASE_SET=new Map();
-BASE_A.forEach(([c,r])=>BASE_SET.set(chave(c,r),"A"));
-BASE_B.forEach(([c,r])=>BASE_SET.set(chave(c,r),"B"));
-
-const PECAS=[
-  {id:"A-topo",t:"A",rot:"topo",ini:LANE_TOPO[1],lbl:"T"},
-  {id:"A-selva",t:"A",rot:"selva",ini:[1,4],lbl:"S"},
-  {id:"A-meio",t:"A",rot:"meio",ini:LANE_MEIO[1],lbl:"M"},
-  {id:"A-adc",t:"A",rot:"atirador",ini:LANE_BOT[1],lbl:"A"},
-  {id:"A-sup",t:"A",rot:"suporte",ini:LANE_BOT[2],lbl:"U"},
-  {id:"B-topo",t:"B",rot:"topo",ini:LANE_TOPO.at(-2),lbl:"T"},
-  {id:"B-selva",t:"B",rot:"selva",ini:[4,1],lbl:"S"},
-  {id:"B-meio",t:"B",rot:"meio",ini:LANE_MEIO.at(-2),lbl:"M"},
-  {id:"B-adc",t:"B",rot:"atirador",ini:LANE_BOT.at(-2),lbl:"A"},
-  {id:"B-sup",t:"B",rot:"suporte",ini:LANE_BOT.at(-3),lbl:"U"}
-];
 let pos={}, sel=null;
 const svg=document.getElementById("svg-mapa");
 const NS="http://www.w3.org/2000/svg";
 const el=(t,a)=>{const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e;};
 
 function repor(){ PECAS.forEach(p=>pos[p.id]=[...p.ini]); sel=null; desenha(); }
+const ocupada=(c,r)=>Object.values(pos).some(([pc,pr])=>pc===c&&pr===r);
 
 function desenha(){
+  if(!svg||!G) return;
   svg.textContent="";
-  const gHex=el("g"), gMarc=el("g"), gPec=el("g");
-  let gEst;
+  const gHex=el("g"), gEst=el("g"), gMarc=el("g"), gPec=el("g");
 
-  for(let r=0;r<LINS;r++) for(let c=0;c<COLS;c++){
-    const k=chave(c,r);
-    let cls="hx ";
-    if(BASE_SET.has(k)) cls+="base-"+BASE_SET.get(k);
-    else if(LANE_SET.has(k)) cls+="rota";
-    else if(RIO_SET.has(k)) cls+="rio";
-    else cls+="selva";
-    const h=el("polygon",{points:pontos(c,r),class:cls,"data-c":c,"data-r":r});
+  G.casas.forEach(([c,r,terr,bloq])=>{
+    const h=el("polygon",{points:pontos(c,r),class:"hx "+terr+(bloq?" bloq":""),"data-c":c,"data-r":r});
     if(sel && podeMover(c,r)) h.classList.add("alvo");
     h.addEventListener("click",()=>clicaHex(c,r));
     gHex.appendChild(h);
-  }
-
-  /* estradas: ligam base → rota → base, tornando os três caminhos legíveis de longe */
-  gEst=el("g");
-  [[BASE_A[0],LANE_TOPO,BASE_B[0]],[BASE_A[1],LANE_MEIO,BASE_B[1]],[BASE_A[1],LANE_BOT,BASE_B[1]]]
-    .forEach(([ini,lane,fim])=>{
-      const pts=[ini,...lane,fim].map(([c,r])=>centro(c,r).map(n=>n.toFixed(1)).join(",")).join(" ");
-      gEst.appendChild(el("polyline",{points:pts,class:"estrada"}));
-    });
-
-  TORRES.forEach(([c,r,t])=>{
-    const [x,y]=centro(c,r);
-    gMarc.appendChild(el("rect",{x:x-5.5,y:y-5.5,width:11,height:11,class:"torre "+t,transform:`rotate(45 ${x} ${y})`}));
-  });
-  CAMPOS.forEach(([c,r])=>{
-    const [x,y]=centro(c,r);
-    gMarc.appendChild(el("circle",{cx:x,cy:y,r:6,class:"camp"}));
-  });
-  OBJETIVOS.forEach(([c,r,nome])=>{
-    const [x,y]=centro(c,r);
-    gMarc.appendChild(el("circle",{cx:x,cy:y,r:11.5,class:"obj"}));
-    const t=el("text",{x:x,y:y+2.4,class:"objtxt"}); t.textContent=nome; gMarc.appendChild(t);
+    /* o obstáculo desenhado: um X curto, para a casa bloqueada se explicar sem legenda */
+    if(bloq){
+      const [x,y]=centro(c,r);
+      gMarc.appendChild(el("path",{d:`M${x-4},${y-4} L${x+4},${y+4} M${x+4},${y-4} L${x-4},${y+4}`,
+        class:"obstaculo"}));
+    }
   });
 
-  /* rótulos fora do grid, na margem — dentro do mapa eles competem com o terreno */
-  const rot=(txt,x,y)=>{
-    const g=el("g",{class:"rotulo"});
-    const w=txt.length*5.2+13;
-    g.appendChild(el("rect",{x:x-w/2,y:y-6.5,width:w,height:13,rx:1.5}));
-    const t=el("text",{x:x,y:y+2.2}); t.textContent=txt; g.appendChild(t);
-    gMarc.appendChild(g);
-  };
-  rot("TOPO",  centro(...LANE_TOPO[6])[0], 11);
-  rot("BAIXO", centro(...LANE_BOT[2])[0],  275);
-  rot("MEIO",  ...centro(3,2));
+  /* as três estradas, para os caminhos serem legíveis de longe */
+  ["topo","meio","baixo"].forEach(nome=>{
+    const pts=G.rotas[nome].map(([c,r])=>centro(c,r).map(n=>n.toFixed(1)).join(",")).join(" ");
+    gEst.appendChild(el("polyline",{points:pts,class:"estrada"}));
+  });
+
+  G.torres.forEach(t=>{
+    const [x,y]=centro(...t.pos);
+    gMarc.appendChild(el("rect",{x:x-4.6,y:y-4.6,width:9.2,height:9.2,
+      class:"torre "+(t.t===0?"A":"B"),transform:`rotate(45 ${x} ${y})`}));
+  });
+  G.camps.forEach(cp=>{
+    const [x,y]=centro(...cp.pos);
+    gMarc.appendChild(el("circle",{cx:x,cy:y,r:5.2,class:"camp"}));
+  });
+  /* o neutro é SORTEADO entre dois lugares a cada partida — desenhar os dois,
+     mais apagados, é a única forma honesta de mostrar uma regra que varia */
+  (G.neutro?G.neutro.lados:[]).forEach(pos=>{
+    const [x,y]=centro(...pos);
+    gMarc.appendChild(el("circle",{cx:x,cy:y,r:5.2,class:"camp neutro"}));
+  });
+  (()=>{
+    const [x,y]=centro(...G.poco);
+    gMarc.appendChild(el("circle",{cx:x,cy:y,r:9.5,class:"obj"}));
+    const t=el("text",{x:x,y:y+2.2,class:"objtxt"}); t.textContent="POÇO"; gMarc.appendChild(t);
+  })();
 
   PECAS.forEach(p=>{
     const [c,r]=pos[p.id]; const [x,y]=centro(c,r);
     const g=el("g",{class:"peca "+p.t+(sel===p.id?" sel":""),tabindex:"0",role:"button"});
     g.setAttribute("aria-label",p.t+" "+ROTAS[p.rot].nome);
-    g.appendChild(el("circle",{cx:x,cy:y,r:8.4}));
-    const t=el("text",{x:x,y:y+3}); t.textContent=p.lbl; g.appendChild(t);
+    g.appendChild(el("circle",{cx:x,cy:y,r:6.6}));
+    const t=el("text",{x:x,y:y+2.6}); t.textContent=p.lbl; g.appendChild(t);
     const pega=e=>{e.stopPropagation(); sel = (sel===p.id? null : p.id); desenha();};
     g.addEventListener("click",pega);
     g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pega(e);}});
@@ -890,14 +867,23 @@ function desenha(){
   });
 
   svg.append(gHex,gEst,gMarc,gPec);
+  /* viewBox derivado das casas que existem — mapa novo não pede ajuste à mão */
+  const xs=[], ys=[];
+  G.casas.forEach(([c,r])=>{ const [x,y]=centro(c,r); xs.push(x); ys.push(y); });
+  const pad=R*1.35;
+  svg.setAttribute("viewBox",
+    `${(Math.min(...xs)-pad).toFixed(1)} ${(Math.min(...ys)-pad).toFixed(1)} `
+   +`${(Math.max(...xs)-Math.min(...xs)+pad*2).toFixed(1)} `
+   +`${(Math.max(...ys)-Math.min(...ys)+pad*2).toFixed(1)}`);
 }
 
+/* A demo obedece às regras que a partida obedece: não entra em casa bloqueada,
+   não empilha peça, e não anda mais que o teto de casas por turno. */
 function podeMover(c,r){
-  if(!sel) return false;
+  if(!sel || !noTab(c,r)) return false;
+  if(BLOQ.has(chave(c,r)) || ocupada(c,r)) return false;
   const [pc,pr]=pos[sel];
-  const p=PECAS.find(x=>x.id===sel);
-  const passo = (p.rot==="selva"||p.rot==="meio") ? 3 : 2;
-  return dist(pc,pr,c,r)<=passo && !(pc===c&&pr===r);
+  return dist(pc,pr,c,r)<=TETO_DEMO && !(pc===c&&pr===r);
 }
 function clicaHex(c,r){
   if(sel && podeMover(c,r)){ pos[sel]=[c,r]; sel=null; }

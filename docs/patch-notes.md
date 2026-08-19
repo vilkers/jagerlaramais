@@ -65,6 +65,45 @@ Torre, Mergulho e Movimento máximo no glossário.
 
 ---
 
+### 9. O mapa do manual era outro mapa, e a paleta era a antiga
+
+Relato: *"ainda tem algumas coisas antigas, como o mapa anterior, além disso
+atualize a paleta de cores"*.
+
+**O mapa.** O guia desenhava um tabuleiro **próprio, escrito à mão**: 7×7, quatro
+acampamentos e dois covis separados. O tabuleiro é **11×11**, com **116
+hexágonos**, três acampamentos, **um** poço que troca de morador e **seis casas
+bloqueadas**. Nada ligava os dois arquivos, então o desenho envelheceu sozinho.
+
+Agora a planta é **gerada do motor** — `node sim/gera-mapa.js` escreve
+`data/mapa.js`, e o guia lê de lá como já lia heróis, itens e condições do
+catálogo. **Dois testes novos** falham se alguém mexer no mapa e esquecer de
+gerar. O mapa do manual passou a mostrar as casas bloqueadas com o obstáculo
+desenhado, o poço, as 12 torres e os dois lugares possíveis do acampamento
+neutro (ele é sorteado — pinar um seria publicar uma planta que muda sozinha).
+
+**A ilustração.** `arte/mapa/mapa.jpg` é **castelo medieval, cristal, covil de
+dragão e cova de ossos**, em paleta de fantasia escura — e mostra **dois covis**
+quando o jogo tem um poço só. Contradiz o canon em quatro itens
+(`docs/DIRECAO-DE-ARTE.md` §8, §9, §13, §25). Saiu do guia; o arquivo ficou em
+`arte/`, e **refazer é da trilha de criação**, não desta. Registrado na tabela de
+estado da direção de arte.
+
+**A paleta.** O terreno do guia era `--terreno-selva:#141E1A` — quase preto. É a
+paleta de "selva noturna" de antes da v39, exatamente o que o §8 proíbe. O
+tabuleiro do manual passa a usar **os mesmos tokens de `jogo/estilo.css`**:
+cimento bege na rota, vegetação viva na selva, concreto com água no rio, marrom
+na casa bloqueada, verde-limão no poço, céu atrás. E ele é **de dia nos dois
+temas** — o chrome da página segue claro ou escuro, o tabuleiro não, porque ele
+é o objeto iluminado em cima da mesa.
+
+Os acentos das três telas (home, manual, jogo) foram alinhados no mesmo latão e
+nos mesmos azul e carmim. O latão da home era `#C99A46` e o do jogo `#D4A24C` —
+perto o bastante para ninguém notar, e diferente o bastante para a tela piscar de
+cor na hora de entrar.
+
+---
+
 ### O que isso quebra
 ```
 

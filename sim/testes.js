@@ -4810,6 +4810,46 @@ teste("a sinergia do draft evita empilhar a mesma classe", () => {
      "time sem tanque nenhum não valoriza o tanque");
 });
 
+/* ═══════════════ v48 — A PLANTA PUBLICADA ═══════════════
+
+   O guia desenhava um mapa PRÓPRIO, escrito à mão: 7x7, quatro acampamentos e
+   dois covis separados, quando o tabuleiro é 11x11 com três acampamentos e UM
+   poço. Ninguém percebeu porque nada ligava os dois arquivos.
+
+   Agora `data/mapa.js` é GERADO do motor (`node sim/gera-mapa.js`) e o guia lê
+   de lá. Este teste é o que impede a divergência de voltar: se alguém mexer no
+   mapa e esquecer de gerar, ele falha e diz o comando. */
+
+teste("a planta publicada em data/mapa.js bate com a do motor", () => {
+  const publicada = require("../data/mapa.js").MAPA;
+  const viva = require("./gera-mapa.js").planta();
+  const chaves = ["cols", "lins", "poco", "bases", "casas", "rotas", "torres", "camps",
+                  "neutro", "vidaTorre", "vidaNexus"];
+  chaves.forEach(k => {
+    eq(JSON.stringify(publicada[k]), JSON.stringify(viva[k]),
+       `data/mapa.js está velho em "${k}" — rode: node sim/gera-mapa.js`);
+  });
+});
+
+teste("a planta publicada tem o tabuleiro inteiro, e nada a mais", () => {
+  const g = cena().g;
+  const m = require("../data/mapa.js").MAPA;
+  /* os números que docs/ESTADO.md promete */
+  eq(m.casas.length, 116, "o tabuleiro deixou de ter 116 casas");
+  eq(m.casas.filter(c => c[3]).length, 6, "as casas bloqueadas deixaram de ser 6");
+  eq(m.camps.length + 1, 3, "os acampamentos deixaram de ser 3 (dois fixos e um neutro)");
+  eq(m.neutro.lados.length, 2, "o acampamento neutro deixou de ser sorteado entre duas posições");
+  eq(m.torres.length, 12, "as torres deixaram de ser 12");
+  eq(m.cols, g.COLS, "colunas divergentes");
+  eq(m.lins, g.LINS, "linhas divergentes");
+  /* toda casa publicada existe no motor, e com o mesmo terreno */
+  m.casas.forEach(([c, r, terr, bloq]) => {
+    ok(g.noTab(c, r), `a planta publica ${c},${r}, que não está no tabuleiro`);
+    eq(!!bloq, g.ehBloqueado(c, r), `bloqueio divergente em ${c},${r}`);
+    if (terr === "selva") ok(g.ehMato(c, r), `${c},${r} está publicada como selva e não é mato`);
+  });
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

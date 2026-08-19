@@ -89,7 +89,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
 | Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
-| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. Os três foram atualizados na v48 e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
+| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados na v48 e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
 | Patamar do Atirador | **20 de ouro na mão** por degrau (era 10), até 3 · consequência do preço novo, não ajuste de atirador |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
