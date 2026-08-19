@@ -4850,6 +4850,75 @@ teste("a planta publicada tem o tabuleiro inteiro, e nada a mais", () => {
   });
 });
 
+/* ═══════════════ v49 — O NEXUS NÃO CAI SEM VOCÊ VER ═══════════════
+
+   RELATO: *"o jogo acabou quando o Nexus tava com 1 vida. Tenho quase certeza"*.
+   Ele estava certo, e o defeito não era o fim: era o CAMINHO até ele.
+
+   A onda cobra do Nexus DENTRO de um laço por rota. Com as três rotas abertas,
+   as três cobram na MESMA virada de rodada — e o Nexus vai de 3 a 0 sem que
+   ninguém jogue no meio. O "1" aparece no log e some no mesmo instante.
+
+   Isso derrota a Última Muralha, que existe justamente para garantir que **o
+   último ponto é de herói**: você nunca chega a ver o Nexus em 1 no seu turno
+   para ir defender. */
+
+teste("a onda não fecha a partida na mesma virada em que começou a cobrar", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  /* as três rotas do time 1 abertas, a onda encostada na base dele, ninguém em casa */
+  g.J.torres.forEach(t => { if (t.t === 1) t.vida = 0; });
+  Object.entries(g.ROTAS).forEach(([nome, l]) => { g.J.frentes[nome] = l.length - 1; });
+  g.J.times[1].herois.forEach(h => { h.pos = [0, 0]; });
+  g.J.nexus[1] = 3;
+
+  g.fimDaRodada();
+
+  eq(g.J.nexus[1], 1, "a onda passou de 1 na mesma virada — o defensor nunca teve vez");
+  eq(g.J.fim, null, "a partida acabou numa virada só, sem o defensor ter vez");
+
+  /* na rodada seguinte, com o Nexus já em 1 e a base vazia, ela leva:
+     o dono teve um turno inteiro para voltar e não voltou */
+  g.fimDaRodada();
+  eq(g.J.nexus[1], 0, "com o Nexus já em 1 e ninguém em casa, a onda tem de fechar");
+  ok(g.J.fim !== null, "a partida não fechou — base aberta e vazia tem de cair");
+});
+
+teste("a partida NUNCA termina com o Nexus ainda em 1", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  g.J.torres.forEach(t => { if (t.t === 1) t.vida = 0; });
+  Object.entries(g.ROTAS).forEach(([nome, l]) => { g.J.frentes[nome] = l.length - 1; });
+  g.J.times[1].herois.forEach(h => { h.pos = [0, 0] });
+  g.J.nexus[1] = 3;
+  for (let i = 0; i < 6 && g.J.fim === null; i++) {
+    ok(g.J.nexus[1] >= 0, "o Nexus ficou negativo");
+    g.fimDaRodada();
+    if (g.J.fim !== null) eq(g.J.nexus[1], 0, "a partida terminou com o Nexus ainda de pé");
+  }
+  ok(g.J.fim !== null, "com a base aberta e vazia a partida não fechou — isso trava o jogo");
+});
+
+teste("a Última Muralha ganha uma rodada de verdade para reagir", () => {
+  const c = cena().vez(0);
+  const g = c.g;
+  g.J.torres.forEach(t => { if (t.t === 1) t.vida = 0; });
+  Object.entries(g.ROTAS).forEach(([nome, l]) => { g.J.frentes[nome] = l.length - 1; });
+  g.J.times[1].herois.forEach(h => { h.pos = [0, 0]; });
+  g.J.nexus[1] = 2;
+
+  g.fimDaRodada();
+  eq(g.J.nexus[1], 1, "o Nexus deveria parar em 1 e dar a vez ao defensor");
+  eq(g.J.fim, null, "acabou antes de o defensor poder voltar para casa");
+
+  /* agora ele volta para casa: a muralha segura */
+  const defensor = g.J.times[1].herois.find(h => !h.morto);
+  defensor.pos = [...g.BASE[1][0]];
+  g.fimDaRodada();
+  eq(g.J.nexus[1], 1, "a Última Muralha não segurou com o defensor em casa");
+  eq(g.J.fim, null, "a partida acabou com o defensor no Nexus");
+});
+
 /* ---------- resumo ---------- */
 console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);
 if (falhou) {

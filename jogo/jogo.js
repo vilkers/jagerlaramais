@@ -2455,6 +2455,32 @@ function fimDaRodada(){
     if(!d) return;
     J.frentes[nome]=limitaFrente(nome,J.frentes[nome]+d);
   });
+  /* ── A ONDA COBRA NO MÁXIMO 1 DO NEXUS POR RODADA (v49) ──
+     RELATO: *"o jogo acabou quando o Nexus tava com 1 vida"*. Estava certo, e o
+     defeito não era o fim — era o caminho até ele. O cerco roda DENTRO de um
+     laço por rota, e com as três rotas abertas as três cobravam na MESMA
+     virada: o Nexus ia de 3 a 0 sem ninguém jogar no meio, e chegava a ficar
+     NEGATIVO. O "1" aparecia no log e sumia no mesmo instante.
+
+     Isso derrotava a Última Muralha, que existe exatamente para garantir que o
+     último ponto seja de herói: não adianta a regra checar se há defensor em
+     casa se o jogador nunca chega a ver o Nexus em 1 no próprio turno para
+     poder voltar.
+
+     A REGRA MÍNIMA que conserta isso, e não outra: **a onda não fecha a partida
+     na mesma virada em que começou a cobrar.** Se o Nexus estava em 2 ou mais
+     quando a rodada virou, ela para em 1 — e o dono tem uma vez para voltar
+     para casa. Se já estava em 1, ela leva: ele teve o turno inteiro para
+     defender e não voltou.
+
+     Medido, e é por isso que não é "1 por rodada": travar em 1 por rodada
+     custava DEZ rodadas de duração com a IA de verdade (mediana 34 → 44),
+     porque a base passava a levar três rodadas para cair mesmo com tudo aberto.
+     Parar em 1 custa quase nada e entrega a mesma coisa — a janela.
+
+     Abrir a segunda e a terceira rota continua valendo tudo: caminho para o
+     herói, três frentes para o adversário cobrir, e o golpe de herói. */
+  const nexusNoInicio=[...J.nexus];
   Object.entries(ROTAS).forEach(([nome,l])=>{     // cerco: só as torres do lado pressionado
     const f=J.frentes[nome];
     const alvo=J.torres.find(x=>x.rota===nome&&x.vida>0&&x.i===f);
@@ -2486,6 +2512,11 @@ function fimDaRodada(){
        Base vazia continua caindo sozinha, então a partida sempre termina. Base
        defendida exige matar o defensor — a última luta volta a existir, e o
        Aríete do Barão (golpe de herói em estrutura vale 2) ganha função. */
+    /* Nexus já no chão: as outras rotas não cobram de novo. Sem isto ele ia a
+       −2 com as três abertas, e a tela mostrava a vida do Nexus negativa. */
+    if(J.nexus[lado]<=0) return;
+    /* a onda não tira o último ponto na mesma virada em que tirou outro */
+    if(nexusNoInicio[lado]>=2&&J.nexus[lado]<=1) return;
     const golpeFinal = J.nexus[lado]<=1;
     const defensor = golpeFinal && J.times[lado].herois.some(h=>
       !h.morto && dist(...h.pos,...BASE[lado][0])<=1);

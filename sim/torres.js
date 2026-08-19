@@ -41,6 +41,10 @@ if (opc.arm)   trocas.push([/const ARM_ESTRUTURA=\d+/, `const ARM_ESTRUTURA=${+o
 if (opc.torre) trocas.push([/const VIDA_TORRE=\d+/, `const VIDA_TORRE=${+opc.torre}`]);
 if (opc.onda)  trocas.push([/const ONDA_GOLPE=\d+/, `const ONDA_GOLPE=${+opc.onda}`]);
 if (opc.tiro)  trocas.push([/const TIRO_TORRE=\d+/, `const TIRO_TORRE=${+opc.tiro}`]);
+/* nexus=off → como era antes da v49: as três rotas cobram do Nexus na mesma
+   virada, e ele podia ir de 3 a 0 (ou a −2) sem ninguém jogar no meio */
+if (opc.nexus === "off")
+  trocas.push([/if\(nexusNoInicio\[lado\]>=2&&J\.nexus\[lado\]<=1\) return;/, ""]);
 
 const g = carrega(trocas);
 g.simMode = true;
