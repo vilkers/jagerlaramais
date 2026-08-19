@@ -308,6 +308,25 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   .passo{grid-template-columns:28px minmax(0,1fr); }
   .passo .dur{display:none}
 }
+
+/* ══ v45 · condições, recursos e a passiva na carta do herói ══ */
+.ideia-h{padding:0 17px 2px;font-size:12px;line-height:1.55;color:var(--ink-2);font-style:italic}
+.habs .hab.passiva{background:var(--brass-glow);border-radius:7px}
+.habs .hab.passiva .req{color:var(--brass)}
+.cond-linha{display:flex;gap:13px;align-items:flex-start;padding:12px 2px;
+  border-bottom:1px solid var(--line)}
+.cond-linha:last-child{border-bottom:0}
+.cond-ic{font-size:22px;line-height:1.1;min-width:28px;text-align:center}
+.cond-n{font-family:var(--display);font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cond-linha.mal .cond-n{color:var(--carmim-2,#e08a7a)}
+.cond-tag{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);border:1px solid var(--line);border-radius:20px;padding:2px 7px}
+.cond-tag.ctrl{color:var(--brass);border-color:var(--brass-dim)}
+.cond-d{font-size:13px;line-height:1.55;color:var(--ink-2);margin-top:4px}
+.cond-q{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:5px}
+#lista-contra{margin:6px 0 0;padding-left:20px}
+#lista-contra li{font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-bottom:7px}
 </style>
 
 <div class="wrap">
@@ -315,7 +334,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v0.4 · protótipo</span>
+    <span class="ver">v0.5 · protótipo</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -324,9 +343,10 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
     <a href="#dados"><span class="n">04</span>Dados · laboratório</a>
     <a href="#mapa"><span class="n">05</span>Mapa</a>
     <a href="#herois"><span class="n">06</span>Heróis</a>
-    <a href="#itens"><span class="n">07</span>Itens</a>
-    <a href="#monstros"><span class="n">08</span>Monstros</a>
-    <a href="#gloss"><span class="n">09</span>Glossário</a>
+    <a href="#condicoes"><span class="n">07</span>Condições</a>
+    <a href="#itens"><span class="n">08</span>Itens</a>
+    <a href="#monstros"><span class="n">09</span>Monstros</a>
+    <a href="#gloss"><span class="n">10</span>Glossário</a>
   </nav>
   <a href="../jogo/index.html" style="display:block;text-align:center;padding:13px;border-radius:9px;
      background:var(--brass);color:var(--ground);font-family:var(--display);font-size:16px;
@@ -461,25 +481,59 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 <section id="herois">
   <p class="eyebrow">06 — Draft</p>
   <h2>Heróis</h2>
-  <p class="lede">Dez no protótipo — dois por rota, o mínimo para o draft existir. A meta pede vinte. Nomes e história são autorais; a referência de kit é interna e explícita.</p>
+  <p class="lede">Vinte — quatro por rota, cada um com uma <b>ideia principal</b> própria e uma
+    <b>passiva</b> que a explica. A partir da v45 a diferença entre dois heróis não é a quantidade de
+    dano: é a <b>pergunta</b> que enfrentá-los obriga a responder. Nomes e história são autorais; a
+    referência de kit é interna e explícita.</p>
+  <p class="lede">Desde a v48 cada um também tem <b>movimento máximo</b> — o teto de casas que ele
+    atravessa por turno, por mais movimento que sobre no bolso do time: <b>3</b> nos pesados
+    (Taxista, Grumo, Caramêlo, Torvald), <b>4</b> nos normais e <b>5</b> nos ágeis (Pombo, Valti,
+    Pyk, Zhet, Catarino). Ninguém tem 6, porque 6 é o vão inteiro entre as duas torres exteriores
+    de uma rota. Salto, recuo grátis, puxão e troca de lugar <b>não contam</b> — cada um já tem
+    limite e preço próprios.</p>
   <div class="filtros" id="filtros"></div>
   <div class="grade" id="grade-herois"></div>
 </section>
 
+<section id="condicoes">
+  <p class="eyebrow">07 — Estado</p>
+  <h2>Condições</h2>
+  <p class="lede">Doze condições, e nenhuma a mais. Cada uma é lida em <b>um lugar só</b> do motor e
+    aparece em <b>três</b>: um ícone ao lado do totem, uma linha na ficha do herói e um aviso no
+    instante em que chega. <b>O prazo é contado em turnos de quem carrega</b>, nunca em rodadas — é o
+    que garante que o primeiro e o segundo jogador recebam exatamente o mesmo número de cobranças.</p>
+  <p class="lede"><b>O dano é cobrado no início</b> do turno de quem carrega; <b>a duração cai no
+    fim</b>. Cobrar e gastar no mesmo instante faria uma condição de um turno nascer e morrer antes de
+    o jogador tentar jogar.</p>
+  <div id="tab-cond"></div>
+
+  <h3 style="margin-top:34px">Recursos de personagem</h3>
+  <p class="lede">Contador que pertence a <b>um</b> herói e não vira status universal. Aparece na peça
+    e na ficha pela mesma máquina das condições — mas ninguém mais o usa, e é isso que o mantém sendo
+    assinatura.</p>
+  <div id="tab-rec"></div>
+
+  <h3 style="margin-top:34px">Contrajogo</h3>
+  <p class="lede">Toda mecânica forte tem resposta. Nenhuma condição deve produzir a sensação de
+    "não havia nada que eu pudesse fazer".</p>
+  <ul id="lista-contra"></ul>
+</section>
+
 <section id="itens">
-  <p class="eyebrow">07 — Loja</p>
+  <p class="eyebrow">08 — Loja</p>
   <h2>Itens</h2>
   <p class="lede">Camada única, sem árvore de componentes — jogo leve não aguenta. Três slots por herói. Os itens de resposta não são opcionais: sem eles todo mundo compra a mesma build e o meta morre no terceiro jogo.</p>
+  <p class="lede"><b>Três faixas de investimento</b> (v48): <b>simples 12</b>, <b>intermediário 18</b>, <b>forte 24</b>. Os preços quase triplicaram porque a build inteira ficava pronta na rodada 8 de uma partida de 34 — agora o primeiro item chega por volta da <b>rodada 7</b>, o segundo na <b>14</b> e os três slots só fecham na <b>20</b>. Comprar voltou a ser escolha: o item barato agora ou o item que decide a partida depois.</p>
   <div class="tblwrap">
     <table>
-      <thead><tr><th>Item</th><th>Ouro</th><th>Efeito</th><th>Tipo</th></tr></thead>
+      <thead><tr><th>Item</th><th>Ouro</th><th>Efeito</th><th>Faixa</th></tr></thead>
       <tbody id="titens"></tbody>
     </table>
   </div>
 </section>
 
 <section id="monstros">
-  <p class="eyebrow">08 — Neutros</p>
+  <p class="eyebrow">09 — Neutros</p>
   <h2>Monstros e objetivos</h2>
   <p class="lede">Os épicos não são buff — são relógio. Eles colocam na mesa a hora em que alguém vai ter que brigar. Sem isso, dois jogadores cautelosos jogam para sempre.</p>
   <div class="tblwrap">
@@ -491,7 +545,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 </section>
 
 <section id="gloss">
-  <p class="eyebrow">09 — Léxico</p>
+  <p class="eyebrow">10 — Léxico</p>
   <h2>Glossário</h2>
   <p class="lede">Termo definido não muda de nome. Sinônimo inventado no meio da partida é o começo de uma discussão de regra.</p>
   <dl class="gloss" id="lista-gloss"></dl>
@@ -544,23 +598,49 @@ const FICHAS = Object.entries(HEROIS).map(([id,h])=>({
   st:{vida:h.vida, poder:h.poder, arm:h.arm, alc:h.alc},
   agil:!!h.agil,
   h:h.habs.map(hb=>[`Força ${hb.f}+`, hb.n, textoHab(hb), hb.f>=5]),
+  /* v45 — passiva e ideia principal. O guia é o livro de regras: se o kit tem
+     uma passiva, ela é regra, e regra que não está no guia não existe. */
+  pv:h.pas || null,
+  ideia:h.ideia || "",
   pas:h.patamar ? TEXTO_PATAMAR : null
 }));
 
-const ITENS = [
-  ["Lâmina do Eclipse",6,"+2 de poder físico","dano"],
-  ["Cetro Cinéreo",6,"+2 de poder mágico; dano em área leva +1","dano"],
-  ["Coração de Basalto",5,"+3 de vida","defesa"],
-  ["Égide do Juramento",5,"+2 de armadura","defesa"],
-  ["Manto de Cinzas",5,"+2 contra dano mágico","defesa"],
-  ["Passos do Vento",4,"+1 casa de passo","mobilidade"],
-  ["Ampulheta Rachada",6,"Re-rolar 1 dado por rodada","dado"],
-  ["Garra do Faminto",7,"Cura 2 sempre que causar dano","sustento"],
-  ["Coroa do Comando",5,"Aliados adjacentes levam +1 de dano nas ordens","suporte"],
-  ["Selo da Ruína",5,"Quem você atinge não cura por 1 rodada","resposta"],
-  ["Cota do Espinho",6,"Devolve 2 de dano a quem atacar de perto","resposta"],
-  ["Véu Prismático",7,"Bloqueia a próxima Ultimate que atingir este herói","resposta"]
-];
+/* ═══ v45 · O GLOSSÁRIO DAS CONDIÇÕES ═══
+   Gerado do registro em data/catalogo.js. Não se escreve condição aqui: o guia,
+   o jogo e a carta leem a MESMA tabela, senão a mesma condição passa a ter três
+   explicações e o glossário deixa de ser lei. */
+const GLOSSARIO_COND = Object.entries(CONDS).map(([id,d])=>({
+  id, ico:d.ico, n:d.n, d:d.d,
+  tipo: d.pilha ? "acúmulos" : "duração em turnos",
+  ctrl: !!d.ctrl, mal: !!d.mal, limpavel: !!d.limpavel,
+  max: d.max || null,
+  /* quem aplica: derivado do catálogo, então nunca desatualiza */
+  quem: Object.entries(HEROIS).filter(([,h])=>
+    h.habs.some(hb=>{ const e=hb.ef;
+      return [...(e.cond||[]),...(e.condEu||[]),...(e.condVizinhos||[]),...(e.condRaio||[]),
+              ...(e.condAliadosPerto||[]),...(e.condSeNaZona||[])].some(c=>c.t===id)
+          || (e.zona&&e.zona.cond&&e.zona.cond.t===id)
+          || (e.baneEu&&id==="banido"); })
+    || (h.pas && ({pontoDeOnibus:"lentidao",chinelada:"sangramento",miasma:"veneno",
+                   vooSilencioso:"invisivel",marcaDoCatarino:"catarino",
+                   videncia:"revelado"})[h.pas.id]===id)
+  ).map(([,h])=>h.n)
+}));
+const RECURSOS_GUIA = Object.entries(RECURSOS).map(([id,d])=>({
+  id, ico:d.ico, n:d.n, d:d.d, max:d.max,
+  quem: (HEROIS[d.dono]||{}).n || "—"
+}));
+
+/* A LOJA VEM DO CATÁLOGO (v48). Esta lista era escrita à mão aqui, com preços
+   e efeitos de outra versão — o terceiro catálogo divergente que o CLAUDE.md
+   proíbe. Agora `ITENS_BASE` e `ITENS_NOVOS` moram os dois em
+   data/catalogo.js, e o guia lê de lá como já lia heróis e condições.
+   A faixa de preço é derivada, não escrita: ela é o próprio `o`. */
+const FAIXA_ITEM = o => o >= 24 ? "forte" : o >= 18 ? "intermediário" : "simples";
+const ITENS = [...(typeof ITENS_BASE!=="undefined"?ITENS_BASE:[]),
+               ...(typeof ITENS_NOVOS!=="undefined"?ITENS_NOVOS:[])]
+  .sort((a,b)=>a.o-b.o||a.n.localeCompare(b.n))
+  .map(i=>[i.n, i.o, i.d, FAIXA_ITEM(i.o)]);
 
 const MONSTROS = [
   ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
@@ -597,15 +677,40 @@ const GLOSS = [
   ["Ward","Ficha de visão do Suporte. Revela a carta da Selva inimiga antes dela virar."],
   ["Patamar","Degrau de poder do Atirador, comprado com ouro acumulado. Três no total."],
   ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
-  ["Crítico","Efeito extra na carta, ativado por um 6 natural no dado alocado."],
+  ["Crítico","1,5× o dano, e sempre CONDICIONAL — nunca sorte. Cada herói que crita tem a própria condição, e ela é visível antes do golpe: alvo isolado (Pombo), alvo travado por Preso/Atordoado/Lento (Cael), 3 Cargas (Parabólica), o quarto tiro (Corvo), ou sempre, no Ato Final. Até a v44 o 6 natural escrevia CRÍTICO no log e não fazia nada."],
   ["Super-creep","Creep reforçado, gerado por inibidor caído. Desenhado, sem regra no motor."],
   ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão da rodada 5 à 12, Barão da 12 em diante — e o Barão toma o lugar mesmo com o Dragão vivo."],
   ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
-  ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (golpe de herói em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
-  ["Rotação do Caçador","No início da rodada os dois jogadores escolhem, escondido um do outro, para onde o próprio Caçador vai. No seu turno ele anda até 3 casas de graça naquela direção — nunca teleporta, e só ganha o bônus se chegar. Destinos: acampamento próprio (+3 de ouro), neutro (+1 de Poder), inimigo (+4 de ouro) ou o poço (+1 por golpe no poço)."],
-  ["Sangramento / Envenenamento","Efeito com prazo. Cobra no início do turno de quem está marcado, uma vez por rodada, e ignora armadura e escudo — é o golpe que já chegou, cobrando depois. Reaplicar renova o prazo; nunca empilha. Morrer limpa. Mora no slot de controle ou na Ultimate, nunca na básica."],
-  ["Zona","Efeito posto no chão: quem começa o turno dentro fica envenenado. Dura os 2 próximos turnos do adversário — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar o dobro da do segundo."],
+  ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (o golpe de herói em torre vale o dobro; no Nexus causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
+  ["Rotação do Caçador","No início de CADA rodada — inclusive a primeira, e antes de qualquer um jogar — os dois escolhem, escondido um do outro, a REGIÃO do próprio Caçador: Topo, Meio, Baixo, Selva ou CONTINUAR ONDE ESTÁ. Nas quatro primeiras ele é reposicionado na hora, sempre dentro da selva, na parte dela colada à região, nunca dentro da rota; a quinta não é uma região — ele fica exatamente onde parou e não ganha bônus nenhum. Dez segundos para decidir; sem escolha vai para a Selva. O turno só começa depois de os dois responderem."],
+  ["Bônus de região","O que cada região paga ao Caçador que vai para lá, na HORA da escolha e valendo até o início do próximo turno dele: Topo +2 de Armadura, Meio +2 de Poder, Baixo +6 de ouro, Selva cura 4 e +1 no Dado Mestre da rodada. Não é prêmio por chegar — é o que aquela parte do mapa pede. Nada disso aparece no log: dizer o bônus seria dizer a região."],
+  ["Alcance de habilidade","O alcance é da HABILIDADE, e não só do herói. Habilidade sem alcance próprio segue o do herói; alcance 1 é corpo a corpo de verdade, e item de alcance não a transforma em tiro; alcance próprio maior soma com item normalmente. É o que permite um herói de perto ter uma habilidade de longe, e vice-versa."],
+  ["Vender item","Devolve 60% do preço de compra, arredondado para baixo, mínimo 1 — na mesma janela da compra: na própria base ou morto. A perda existe para que trocar de build custe alguma coisa; sem ela os três slots deixariam de ser escolha."],
+  ["Condição","Estado com prazo pendurado num herói. Doze no jogo, num registro só (ver a seção Condições). O dano é cobrado no INÍCIO do turno de quem carrega; a duração cai no FIM. O prazo é contado em turnos do portador, nunca em rodadas — é o que dá ao primeiro e ao segundo jogador o mesmo número de cobranças. Morrer limpa todas."],
+  ["Acúmulo","A unidade do Sangramento e das marcas: escreve-se ×2 e reaplicar SOMA, até o teto do registro. Diferente de duração, que se escreve em turnos e reaplicar RENOVA pelo maior."],
+  ["Sangramento","Ferimento que fecha. Acúmulos: no início do seu turno sofre 1 de dano por acúmulo, e no fim perde 1 acúmulo. Teto 5. Ignora armadura e escudo — é o golpe que já chegou, cobrando depois. Decai sozinho, e isso é o contrajogo."],
+  ["Veneno","Doença que corre. Duração: no início do seu turno sofre 2 de dano, sempre os mesmos 2, e no fim a duração cai 1. Teto 4 turnos. Ignora armadura e escudo. A diferença dele para o Sangramento é a curva: veneno é constante, sangramento decai."],
+  ["Lentidão","Anda 2 casas a menos — nunca menos de 1 — e perde o passo grátis de Ágil. Continua agindo normalmente: NÃO é Prende. O custo em movimento continua sendo do herói, não do time."],
+  ["Atordoamento","Não age e não anda neste turno. O controle mais forte do jogo, e por isso raro: só o Taxista e o Valti aplicam, e o do Valti exige que o alvo esteja dentro de uma armadilha dele. Ao passar, deixa Tenacidade — não existe cadeia de atordoamento."],
+  ["Banimento","Fora do tabuleiro: não é alvo, não sofre dano de fonte nenhuma, não ocupa hexágono e não acende visão. Dura UM turno e volta no início do próprio turno, na MESMA casa (ou na livre mais próxima). O retorno é previsível de propósito — é o que separa jogada de fuga grátis."],
+  ["Invisibilidade","O adversário não vê a peça, mesmo em campo aberto. Atacar entrega a posição. WARD REVELA — é a fonte de visão privilegiada, e a resposta nomeada. Revelado vence em qualquer lugar."],
+  ["Marcado","Acúmulos. O próximo dano recebido leva um bônus igual ao total marcado, e a marca sai. Sobrevive ao golpe que a aplica: quem marca cobra no golpe SEGUINTE."],
+  ["Vulnerável","Armadura −2 enquanto durar."],
+  ["Silenciado","Só pode usar a habilidade básica. A segunda e a Ultimate ficam trancadas."],
+  ["Tenacidade","Anula a próxima Lentidão, Atordoamento, Silêncio ou Prisão que chegar, e SE GASTA INTEIRA ao anular — não é imunidade, é uma carga. Sair de um atordoamento a concede automaticamente."],
+  ["Revelado","Visível para o adversário em qualquer lugar: no mato, atrás do ônibus e sob Invisibilidade."],
+  ["Limpeza","Tirar condição ruim de alguém. Sai o que impede jogar antes do que só dói. Mora no Digerir do Grumo (nele mesmo, todas), no Empresta o Fone do Emerson e na Varrida do Gari Mago (nos aliados colados). É metade do contrajogo do jogo."],
+  ["Recurso de personagem","Contador que pertence a UM herói e não vira status universal: Carga, Sucata, Tristeza, Cartucho, Fôlego, Almas. Aparece na peça e na ficha pela mesma máquina das condições, mas ninguém mais o usa."],
+  ["Passiva","Regra de fundo do herói. Não gasta dado e não se escolhe: dispara num evento (início do turno, acerto, dano recebido, morte por perto) ou responde a uma pergunta do motor (Poder, crítico, redução de dano, visão). Uma frase, sempre."],
+  ["Zona","Condição posta no CHÃO: quem começa o turno dentro a recebe. Dura os 2 próximos turnos do adversário — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar o dobro da do segundo. Desde a v45 ela pode pendurar qualquer condição, e não só veneno: as cascas do Valti e a Armadilha do Cael deixam Lentidão."],
   ["Cura de base","Herói ferido na própria base recupera 3 por rodada. Com inimigo a 2 casas ou menos, trata uma vez e para até o cerco sair de perto."],
+  ["Presença","Quantos heróis seus contam numa rota. É ela que decide para que lado a onda anda no fim da rodada: mais heróis, a onda avança; empate, ela fica parada. Você conta se PASSOU DA SUA TORRE EXTERIOR (é o que impede herói parado em casa de empurrar onda) OU se está ENCOSTADO NA FRENTE DE ONDA — ou seja, se você foi defender. Até a v46 só a primeira valia, e o defensor em cima da própria torre contava zero: na mesma casa, o atacante contava e ele não."],
+  ["Frente de Onda","O ponto da rota onde os creeps estão — a peça de creep deste jogo. Ela anda no fim da rodada para o lado de quem tem mais presença, e a torre que estiver embaixo dela leva 7 por rodada (um terço de torre). Também acende 2 de visão. E desde a v48 ela é o que PROTEGE quem mergulha: herói colado numa torre inimiga sem a Frente de Onda dentro da mesma zona leva um tiro da torre no fim do turno."],
+  ["Torre","Vida 20 e armadura 5. A onda tira 7 por degrau; o golpe de herói é CALCULADO — dado × escala do slot + Poder + Carregado, menos a armadura da estrutura —, então investir passou a valer contra estrutura. Ultimate perfurante ignora a armadura da torre. Sangramento, veneno, atordoamento, execução e crítico não existem contra concreto. Ela revida 4 em quem encosta e bate, e atira 5 no fim do turno em quem ficou colado sem creep — um alvo por torre, e nunca mata: deixa em 1."],
+  ["Mergulho","Terminar o turno colado numa torre inimiga. Com a sua Frente de Onda na zona da torre, sai de graça: o creep está pagando o pedágio. Sem ela, a torre atira em UM herói — quem bateu nela primeiro, depois o mais ferido. Não gasta dado, ação nem carta de ninguém: é reação da estrutura."],
+  ["Movimento máximo","O teto de HEXÁGONOS que um herói atravessa por turno andando, e ele é do personagem: 3 nos pesados (Taxista, Grumo, Caramêlo, Torvald), 4 nos normais, 5 nos ágeis (Pombo, Valti, Pyk, Zhet, Catarino). O Dado Mestre continua sendo do time, mas não dá mais para gastá-lo todo numa peça só. Lampejo, Retorno, Puff de Emergência, Passo de Sombra, a carta Recuo e qualquer puxão ou troca NÃO contam — cada um já tem limite e preço próprios. Item de movimento sobe o teto em 1, e o teto absoluto é 6."],
+  ["Defender","Levar heróis para a rota que está caindo. ATENÇÃO: empatar a presença NÃO salva a torre — a onda para de andar, mas continua cobrando um degrau de onda por rodada de quem está embaixo dela. Para salvar é preciso ter MAIS gente que o atacante, porque só assim a onda recua e sai de cima. Um corpo a mais já vira a conta, e ir com o time todo é como se perde o resto do mapa. O rótulo da rota mostra em três cores: verde (tenho mais), âmbar (empate, a torre ainda cai) e carmim (eles têm mais)."],
+  ["Ondas engrossam","O relógio da partida. A cada 16 rodadas a onda passa a tirar um degrau a mais da torre (7 por degrau), até 3 — da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. Vale igual para os dois lados, então não favorece quem está na frente; existe para que uma partida em que os dois defendem bem ainda termine."],
   ["Retomada","Freio de bola de neve. Torre sua caída conta 2, hexágono de onda inimiga do seu lado conta 1; passou a conta do adversário em 2, você rola um dado de ação a mais, em 4 também ganha +1 no Dado Mestre."]
 ];
 
@@ -833,16 +938,54 @@ function cartaHTML(h){
       <div><div class="k">Arm</div><div class="v">${h.st.arm}</div></div>
       <div><div class="k">Alcance</div><div class="v">${h.st.alc}</div></div>
     </div>
+    ${h.ideia?`<div class="ideia-h">${h.ideia}</div>`:""}
     <div class="habs">
+      ${h.pv?`<div class="hab passiva"><span class="req">passiva</span>
+        <div><span class="hn">✦ ${h.pv.n}</span><span class="hd">${h.pv.d}</span></div></div>`:""}
       ${h.h.map(([req,nome,txt,ult])=>`<div class="hab${ult?" ult":""}">
         <span class="req">${req}</span>
         <div><span class="hn">${nome}</span><span class="hd">${txt}</span></div></div>`).join("")}
-      ${h.pas?`<div class="hab"><span class="req">passiva</span><div><span class="hn">Escalada</span><span class="hd">${h.pas}</span></div></div>`:""}
+      ${h.pas?`<div class="hab"><span class="req">ouro</span><div><span class="hn">Escalada</span><span class="hd">${h.pas}</span></div></div>`:""}
     </div>
     <div class="ref">ref. de kit: ${h.ref}</div>
   </article>`;
 }
 q("#grade-herois").innerHTML = FICHAS.map(cartaHTML).join("");
+
+/* ═══ v45 · as tabelas de condição e de recurso ═══
+   Desenhadas a partir do registro, e a coluna "quem aplica" é DERIVADA do
+   catálogo: quando alguém trocar de kit, o guia acompanha sem ninguém editar. */
+q("#tab-cond").innerHTML = GLOSSARIO_COND.map(c=>`
+  <div class="cond-linha${c.mal?" mal":""}">
+    <div class="cond-ic">${c.ico}</div>
+    <div>
+      <div class="cond-n">${c.n}
+        <span class="cond-tag">${c.tipo}${c.max?` · máx ${c.max}`:""}</span>
+        ${c.ctrl?'<span class="cond-tag ctrl">controle · Tenacidade anula</span>':""}
+        ${c.limpavel?'<span class="cond-tag">limpável</span>':""}</div>
+      <div class="cond-d">${c.d}</div>
+      ${c.quem.length?`<div class="cond-q">aplica: ${c.quem.join(" · ")}</div>`:""}
+    </div>
+  </div>`).join("");
+
+q("#tab-rec").innerHTML = RECURSOS_GUIA.map(r=>`
+  <div class="cond-linha">
+    <div class="cond-ic">${r.ico}</div>
+    <div><div class="cond-n">${r.n}<span class="cond-tag">máx ${r.max}</span></div>
+      <div class="cond-d">${r.d}</div>
+      <div class="cond-q">só de: ${r.quem}</div></div>
+  </div>`).join("");
+
+q("#lista-contra").innerHTML = [
+  ["Invisibilidade","<b>Ward</b> revela, atacar entrega a posição, e <b>Revelado</b> vence em qualquer lugar. A Vidente, o Sinal Aberto, o Ato Final e a carta Contra-emboscada revelam."],
+  ["Atordoamento","<b>Tenacidade</b> anula — e sair de um atordoamento já deixa Tenacidade. Atordoar duas vezes seguidas é impossível por regra."],
+  ["Sangramento","O acúmulo decai sozinho, um por turno. Aguentar é resposta."],
+  ["Veneno","Prazo curto, e limpeza tira. Recuar é resposta."],
+  ["Banimento","Dura <b>um</b> turno, e o retorno é na <b>mesma casa</b>. Você sabe onde ele reaparece."],
+  ["Cópia","Nunca copia Ultimate, nunca copia cópia, e os autos do Juiz ficam <b>visíveis na ficha dele</b>. Dá para escolher com o que acertá-lo."],
+  ["Crítico","Sempre condicional, nunca sorte. A condição está na peça ou no contador."],
+  ["Limpeza","Digerir, Empresta o Fone e Varrida Purificadora tiram condição ruim — é metade do contrajogo, e mora no suporte e no tanque de selva."]
+].map(([k,v])=>`<li><b>${k}</b> → ${v}</li>`).join("");
 
 const filtros=[["todos","Todos"],...Object.entries(ROTAS).map(([k,v])=>[k,v.nome])];
 q("#filtros").innerHTML = filtros.map(([k,n],i)=>`<button data-f="${k}" class="${i===0?'on':''}">${n}</button>`).join("");
@@ -880,7 +1023,9 @@ function rolar(){
   const seis=dados.filter(d=>d===6).length;
   const alto=Math.max(...dados);
   let msg=`Maior dado <b>${alto}</b>`;
-  if(seis) msg+=` · ${seis===1?"um 6":seis+" seis"}, <b>Crítico</b> disponível`;
+  /* v45: o 6 natural NÃO crita. O crítico é condicional, e a condição é do herói
+     — dizer "Crítico disponível" aqui ensinava uma regra que não existe. */
+  if(alto>=6) msg+=" · abre <b>qualquer</b> ultimate, inclusive as de Força 6";
   else if(alto>=5) msg+=" · dá para uma <b>ultimate</b> de Força 5";
   else msg+=" · nenhuma ultimate abre — <b>gaste uma placa</b> ou farme";
   msg+=".";

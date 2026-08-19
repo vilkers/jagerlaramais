@@ -115,7 +115,7 @@ const PONTE = `
   reveladoPorAtaque:h=>reveladoPorAtaque(h),
   sobTorreAmiga:h=>sobTorreAmiga(h), get ARM_TORRE(){return ARM_TORRE},
   plantaSentinela:h=>plantaSentinela(h), usaGasto:(id,h,t)=>usaGasto(id,h,t),
-  iaPlantaWards:t=>iaPlantaWards(t),
+  iaPlantaWards:t=>iaPlantaWards(t), iaRecuaDeTorre:t=>iaRecuaDeTorre(t),
   estadoDaPeca:h=>estadoDaPeca(h),
   escalaDe:slot=>escalaDe(slot), get ESCALA_CTRL(){return ESCALA_CTRL},
   get ESCALA_ULT(){return ESCALA_ULT},
@@ -138,12 +138,50 @@ const PONTE = `
   get CORREDOR(){return CORREDOR}, get LANE(){return LANE},
   get NIVEIS_IA(){return NIVEIS_IA},
   get nivelIA(){return nivelIA}, set nivelIA(v){nivelIA=v},
+  get iaRodando(){return iaRodando}, set iaRodando(v){iaRodando=v},
+  podeArrastar:h=>podeArrastar(h), dadoPara:hb=>dadoPara(hb),
+  rotaDaPos:h=>rotaDaPos(h), contaRota:nome=>contaRota(nome),
+  get REVIDE_TORRE(){return REVIDE_TORRE}, get TIRO_TORRE(){return TIRO_TORRE},
+  get OURO_ABATE(){return OURO_ABATE}, get OURO_CAMP(){return OURO_CAMP},
+  get OURO_CAMP_NEUTRO(){return OURO_CAMP_NEUTRO}, get PATAMAR_PASSO(){return PATAMAR_PASSO},
+  get ARM_ESTRUTURA(){return ARM_ESTRUTURA}, get ZONA_TORRE(){return ZONA_TORRE},
+  get ARIETE_MULT(){return ARIETE_MULT},
+  get ONDA_GOLPE(){return ONDA_GOLPE}, degrauDaOnda:()=>degrauDaOnda(),
+  danoDaOnda:()=>danoDaOnda(),
+  golpeEmEstrutura:(h,hb,slot,F)=>golpeEmEstrutura(h,hb,slot,F),
+  podeAtingirEstrutura:hb=>podeAtingirEstrutura(hb), multEstrutura:hb=>multEstrutura(hb),
+  creepApoia:tr=>creepApoia(tr), naZonaDaTorre:(h,tr)=>naZonaDaTorre(h,tr),
+  torreQueAmeaca:h=>torreQueAmeaca(h), torresAtiram:t=>torresAtiram(t),
+  posDaFrente:r=>posDaFrente(r), posDaTorre:tr=>posDaTorre(tr),
   iaMelhorJogada:(t,m)=>iaMelhorJogada(t,m), iaJogadas:t=>iaJogadas(t),
   iaDestino:(h,t)=>iaDestino(h,t), iaCompra:t=>iaCompra(t),
   iaPlanejaAlcance:t=>iaPlanejaAlcance(t), iaJogaCartas:t=>iaJogaCartas(t),
   encerraTurno:()=>encerraTurno(), moveAte:(c,r)=>moveAte(c,r),
   limpaModo:()=>limpaModo(), calcula:()=>calcula(),
   poeDot:(a,q,t,d,r)=>poeDot(a,q,t,d,r), cobraDots:t=>cobraDots(t),
+  /* ---- o sistema central de condições (v45) ---- */
+  get CONDS(){return CONDS}, get COND_NUM(){return COND_NUM},
+  get RECURSOS(){return RECURSOS}, get PASSIVAS(){return PASSIVAS},
+  aplicaCond:(a,t,o)=>aplicaCond(a,t,o), removeCond:(a,t,m)=>removeCond(a,t,m),
+  gastaCond:(a,t)=>gastaCond(a,t), limpaCond:(a,n)=>limpaCond(a,n),
+  temCond:(a,t)=>temCond(a,t), condDe:(a,t)=>condDe(a,t), stacksDe:(a,t)=>stacksDe(a,t),
+  condsMalignas:a=>condsMalignas(a), ehControle:t=>ehControle(t),
+  processaCondsInicio:t=>processaCondsInicio(t), processaCondsFim:t=>processaCondsFim(t),
+  noJogo:h=>noJogo(h), voltaDoBanimento:h=>voltaDoBanimento(h),
+  dispara:(ev,h,...a)=>dispara(ev,h,...a), passivaDe:h=>passivaDe(h),
+  ganhaRecurso:(h,t,n)=>ganhaRecurso(h,t,n), recursoDe:(h,t)=>recursoDe(h,t),
+  zeraRecurso:(h,t)=>zeraRecurso(h,t),
+  ehCritico:(h,hb,a)=>ehCritico(h,hb,a), poderPassivo:h=>poderPassivo(h),
+  reducaoDeAliados:a=>reducaoDeAliados(a), veMatoDeLonge:h=>veMatoDeLonge(h),
+  travaDeAcao:(h,i)=>travaDeAcao(h,i), tetoAndar:h=>tetoAndar(h),
+  movMaxDe:h=>movMaxDe(h), casasRestantes:h=>casasRestantes(h),
+  expiraDoTime:t=>expiraDoTime(t), lampejaAte:(c,r)=>lampejaAte(c,r),
+  get MOV_MAX_PADRAO(){return MOV_MAX_PADRAO}, get MOV_MAX_TETO(){return MOV_MAX_TETO},
+  prende:(a,q)=>prende(a,q), revelaAoRedor:(h,r)=>revelaAoRedor(h,r),
+  enxergaPorWard:(t,c,r)=>enxergaPorWard(t,c,r),
+  condsDaPeca:h=>condsDaPeca(h), get LENTIDAO_CASAS(){return LENTIDAO_CASAS},
+  mata:(a,q)=>mata(a,q), aplicaDano:(...a)=>aplicaDano(...a),
+  usaHab:a=>usaHab(a), confirmaHab:a=>confirmaHab(a), iniciaHab:i=>iniciaHab(i),
   poeZona:(t,p,z)=>poeZona(t,p,z), zonasCobram:t=>zonasCobram(t),
   curaDeBase:()=>curaDeBase(),
   get DOTS(){return DOTS}, get ZONA_TURNOS(){return ZONA_TURNOS},
@@ -156,6 +194,11 @@ const PONTE = `
   iaInimigosVisiveis:t=>iaInimigosVisiveis(t),
   desempilha:()=>desempilha(),
   precoGasto:(g,h)=>precoGasto(g,h), gastosDisponiveis:h=>gastosDisponiveis(h),
+  vendeItem:(h,id,t)=>vendeItem(h,id,t), precoVenda:id=>precoVenda(id),
+  get VENDE_FRACAO(){return VENDE_FRACAO}, abreLoja:()=>abreLoja(),
+  get ITEM(){return ITEM}, mesaTravada:()=>mesaTravada(),
+  get BONUS_REGIAO(){return BONUS_REGIAO}, pagaBonusRegiao:(t,r)=>pagaBonusRegiao(t,r),
+  aplicaBuff:(h,c,v)=>aplicaBuff(h,c,v), alvosNoHex:(c,r)=>alvosNoHex(c,r),
   get ROTAS(){return ROTAS},         get BASE(){return BASE},
   get POCO(){return POCO},           get EPICO(){return EPICO},
   get DADIVAS(){return DADIVAS},     get BARAO_RODADAS(){return BARAO_RODADAS},
@@ -166,7 +209,19 @@ const PONTE = `
   noTab:(...a)=>noTab(...a), em:(...a)=>em(...a), k:(...a)=>k(...a),
   todos:()=>todos(), vivos:t=>vivos(t), naBase:h=>naBase(h),
   torreExposta:(...a)=>torreExposta(...a), capacidade:h=>capacidade(h),
-  poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h)
+  poderTotal:h=>poderTotal(h), armTotal:h=>armTotal(h), alcTotal:h=>alcTotal(h),
+  ehAgil:h=>ehAgil(h), fichaHTML:(h,m)=>fichaHTML(h,m),
+  alcDeHab:(h,hb)=>alcDeHab(h,hb), alcanceUtil:h=>alcanceUtil(h),
+  get ALCANCE_MAX(){return ALCANCE_MAX}, escolheHeroi:h=>escolheHeroi(h),
+  get REGIAO(){return REGIAO}, atacaTorre:t=>atacaTorre(t),
+  perguntaRotacao:(f,i,d)=>perguntaRotacao(f,i,d),
+  /* ---- o draft (v48) ---- */
+  get dr(){return dr}, set dr(v){dr=v},
+  iniciaDraft:d=>iniciaDraft(d), draftLegais:()=>draftLegais(),
+  iaEscolheDraft:t=>iaEscolheDraft(t), draftAplica:id=>draftAplica(id),
+  draftTurnoAtual:()=>draftTurnoAtual(), draftNota:(id,t)=>draftNota(id,t),
+  draftForca:id=>draftForca(id), draftAmeaca:id=>draftAmeaca(id), draftSinergia:(id,tm)=>draftSinergia(id,tm),
+  get ORDEM_DRAFT(){return ORDEM_DRAFT}
 };`;
 
 function carrega(trocas = []) {
@@ -195,6 +250,31 @@ function carrega(trocas = []) {
      Quem quiser medir a IA de verdade usa o navegador (ver o teste de fumaça):
      lá o setTimeout existe e ela termina o turno. */
   ctx.iaExecutaTurno = nada;
+
+  /* A ROTAÇÃO DO CAÇADOR É UMA TELA, e desde a v46 ela BLOQUEIA de verdade: o
+     turno só começa quando os dois lados respondem. Isso é o conserto de um
+     defeito real (o turno começava por baixo da tela de escolha) e é também o
+     motivo de este stub existir.
+
+     Sem ele, `perguntaRotacao` chama `abre`, que aqui só guarda o callback e
+     nunca clica em nada — a partida fica parada em `J.fase==="rotacao"` para
+     sempre. Medido na hora em que a v46 entrou: a bateria de 3000 partidas
+     reportou "3000 estouraram o teto", ou seja, ZERO partidas concluídas.
+
+     O harness responde como a IA responderia, para os dois lados. É a mesma
+     escolha que `caraOuCoroa` faz logo abaixo, e pela mesma razão: sem ninguém
+     para clicar, o motor precisa de alguém que decida — e decidir como a IA
+     mantém a medição simétrica, que é o que a bateria exige. */
+  const ponteRot = ctx.__ponte;
+  /* guardada antes de ser trocada: os testes do RELÓGIO da rotação precisam da
+     função de verdade, e é só ela que eles querem. `g.rotacaoDeVerdade()` põe a
+     original de volta para aquele teste. */
+  ctx.perguntaRotacaoReal = ctx.perguntaRotacao;
+  ctx.rotacaoDeVerdade = () => { ctx.perguntaRotacao = ctx.perguntaRotacaoReal; };
+  ctx.perguntaRotacao = (fila, i, depois) => {
+    (fila || []).forEach(t => ponteRot.escolheRotacao(t, ponteRot.iaEscolheRotacao(t)));
+    if (typeof depois === "function") depois();
+  };
 
   /* `abre` guarda o callback em vez de disparar: a tela de fim de partida chama
      partida() de novo, e auto-executar isso iniciaria uma partida infinita. */

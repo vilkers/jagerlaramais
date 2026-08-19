@@ -1,321 +1,309 @@
-# HANDOFF — sessão de 13–14/08/2026 (v23 → v37)
+# HANDOFF — sessão de 17–18/08/2026 (v45 → v47)
 
-> **Para continuar em outra janela do Claude:** cole este arquivo, ou peça para
-> ele ler `docs/HANDOFF.md` no repositório. Depois dele, leia `docs/ESTADO.md`
-> (retrato do presente) e `docs/DECISOES-PENDENTES.md` (medido e não decidido).
+> **Para continuar em outra janela do Claude:** cole este arquivo, ou peça para ele
+> ler `docs/HANDOFF.md` no repositório. Depois dele, leia `docs/ESTADO.md` (retrato
+> do presente) e `docs/DECISOES-PENDENTES.md` (medido e não decidido).
 
-**Repositório:** `vilkers/jagerlaramais` · branch **`claude/moba-board-game-dgvlkk`**
-**Último commit:** `34cc99e` (v37) · **123 testes passando** · árvore limpa
+**Repositório:** `vilkers/jagerlaramais` · branch **`claude/jagerlaramais-hero-redesign-4b8qo2`**
+**Último commit:** `54e2890` (v47) · **231 testes passando** · árvore limpa
 
 ---
 
 ## 0. LEIA ISTO PRIMEIRO — o estado que surpreende
 
-**A branch está 21 commits à frente da `main`, e a `main` NUNCA foi atualizada.**
-O site publicado (`vilkers.github.io/jagerlaramais`) serve a partir da `main`,
-que ainda está no commit `2bac860` — a **v23**. Ou seja: **tudo o que está
-descrito aqui é invisível no link publicado.**
+**A `main` está na v15, de 11/08. Esta branch está 52 commits à frente dela.**
 
-O Vilker já clicou no link e reportou "não tá a foto dos personagens nem os
-nomes". Não era bug: era a `main` desatualizada. **Ele ainda não autorizou o
-merge nem o PR** — não faça nenhum dos dois sem pedir.
+O handoff anterior dizia que a `main` estava na v23. Estava errado — `git log -1 main`
+diz **v15**. A PR #3 (que trouxe v16→v39) foi mergeada, mas **não na `main`**.
 
-Enquanto isso, o jeito de ele jogar é:
-- **`teste/JOGAR.html`** — arquivo único, ~3,4 MB, tudo embutido, abre offline;
-- **um zip do site estático** para arrastar em `app.netlify.com/drop` (ele está
-  usando isso: `e17c5b.netlify.app`).
+Consequência prática: **nada do que está descrito aqui existe em qualquer link
+publicado.** Não faça merge nem PR sem o Vilker pedir. O jeito de ele jogar é:
 
----
+- **zip do site estático** arrastado em `app.netlify.com/drop` — é o que ele usa;
+- `teste/JOGAR.html` — arquivo único de ~3,6 MB, tudo embutido, abre offline.
 
-## 1. O que esta sessão fez, versão por versão
+O zip se monta assim:
 
-| | O quê |
-|---|---|
-| **v24** | Dragão de 4 → **3 de vida** (cabe em Ultimate + básica) |
-| **v25** | Loja destravada · escudo visível · **sangramento/veneno** · **zonas** · **cura de base** · Reforço 6+2 → 10+4 |
-| **v26** | **Barão apanha como herói** (16 vida, 3 armadura) · teto de escudo 12 · Égide 7 → 4 |
-| **v27** | **Janela de escolha de alvo** · Ultimates travadas voltam a escalar |
-| **v28** | **Rotação do Caçador** |
-| **v29** | **Três níveis de IA** + crash com time inteiro morto |
-| **v30–31** | **Dez heróis novos**, rotas e nomes corrigidos |
-| **v32–36** | Retratos dos dez (5 iterações — ver §6) |
-| **v37** | Ficha da habilidade nunca mais mostra fórmula |
+```
+mkdir -p /tmp/site && cp -r index.html .nojekyll jogo guia cartas data arte teste /tmp/site/
+cd /tmp/site && zip -qr ~/jagerlaramais.zip . -x '.*'
+```
 
-Cada uma tem entrada em `docs/patch-notes.md` com o porquê e a medição.
+`index.html` tem que ficar **na raiz do zip**, sem pasta por fora.
 
 ---
 
-## 2. As regras do projeto que NÃO se negocia
+## 1. O QUE ESTA SESSÃO FEZ
 
-Estas vêm do `CLAUDE.md` e do histórico. Quebrar qualquer uma custou versão
-inteira antes.
+Três versões, todas a partir de relato do Vilker.
 
-1. **`data/catalogo.js` é a fonte de verdade.** `jogo/`, `guia/` e `cartas/`
-   leem de lá. **Nunca escreva carta direto no HTML** — já criou três catálogos
-   divergentes, e o terceiro foi morto nesta sessão (§5).
-2. **Bug relatado vira TESTE antes de virar correção.** Se o teste não falha
-   antes do conserto, ele não está testando o bug.
+### v45 — a individualidade dos heróis
+
+Ele disse: *"os heróis ainda parecem parecidos demais durante o gameplay"*. Dezoito
+das vinte básicas tinham como regra inteira "causa dano".
+
+- **registro central de 12 condições** (`CONDS`, em `data/catalogo.js`), contra as 2
+  que existiam. Uma entrada nova ganha de graça ícone na peça, linha na ficha, aviso
+  de aplicação, aviso de fim, tooltip, imunidade por Tenacidade e limpeza na morte;
+- **registro de 20 passivas** (`PASSIVAS`, em `jogo/jogo.js`) com barramento de
+  eventos, e **6 recursos de personagem**;
+- **crítico virou 1,5× e sempre CONDICIONAL** — antes o 6 natural escrevia "CRÍTICO"
+  no log e não fazia nada;
+- **a tabela dos 20 kits está em `docs/KITS.md`**, feita para revisão herói a herói.
+
+### v46 — seis relatos de playtest
+
+Dois deles (rotação no início da rodada, trava da mesa) **constavam como resolvidos
+no handoff anterior e não estavam no repositório.** Lição: handoff descreve
+intenção, `grep` descreve o que existe.
+
+1. rotação do Caçador antes dos turnos + **bônus por região**;
+2. **`mesaTravada()`** — porta única do gesto humano;
+3. o dado extra passou a **caber na barra** (era largura, não regra);
+4. **vender item** por 60%;
+5. a torre debaixo da própria peça virou alvo;
+6. **alcance por habilidade** (`hb.alc`).
+
+### v47 — o defensor passa a contar
+
+Ele disse: *"tá muito fácil ganhar o jogo só empurrando torre"*. **A causa não era
+número: o defensor não contava.**
+
+`rotaDaPos` só dava presença a quem tinha **passado** da própria Torre Exterior.
+Quem defende tem `idx === exterior`, e o teste pedia estritamente maior:
+
+```
+defensor em cima da própria torre exterior  → rota: null
+atacante do outro time, na MESMA CASA       → rota: topo
+```
+
+Nenhuma posição do mapa fazia o defensor somar. **Defender era impossível, não
+difícil.** A correção é uma frase: *quem está encostado na Frente de Onda conta*.
+
+Depois, o relato de fecho: *"essa mudança tem que ocorrer para que quando for
+jogador × jogador também faça sentido"* — e ele estava certo, ver §3.
+
+---
+
+## 2. AS REGRAS DO PROJETO QUE NÃO SE NEGOCIAM
+
+Vêm do `CLAUDE.md` e do histórico. Quebrar qualquer uma custou versão inteira antes.
+
+1. **`data/catalogo.js` é a fonte de verdade** do conteúdo. `jogo/`, `guia/` e
+   `cartas/` leem de lá. Nunca escreva carta direto no HTML.
+2. **Bug relatado vira TESTE antes de virar correção.** Se o teste não falha antes
+   do conserto, ele não está testando o bug.
 3. **Toda mudança de número vira patch note** em `docs/patch-notes.md`
    (append-only: entrada nova no topo, antiga nunca reescrita).
 4. **Uma mudança de cada vez quando for medir** — senão o número não tem endereço.
-5. **`poderTotal`/`armTotal`/`ehAgil` são `const`.** Reatribuir mata o script
-   inteiro sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
-6. **`visual-lab/` não é o guia** — é a trilha de criação do Vilker com o
-   ChatGPT, tem stack própria e **não deve ser apagada** pela regra do "vanilla".
-7. **Nomear personagem e definir rota é trilha de CRIAÇÃO, não sua.** Nesta
-   sessão eu inventei 4 nomes e deduzi 4 rotas — **errei 3 nomes e 4 rotas**.
-   Pergunte em vez de deduzir.
+   *Quebrei esta na v47 e paguei; ver §5.*
+5. **`poderTotal`/`armTotal`/`ehAgil` são `const`.** Reatribuir mata o script inteiro
+   sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
+6. **`visual-lab/` não é o guia** — é a trilha de criação do Vilker com o ChatGPT,
+   tem stack própria e **não deve ser apagada** pela regra do "vanilla".
+7. **Nomear personagem e definir rota é trilha de CRIAÇÃO, não sua. Pergunte.**
+8. **O guia e o jogo são vanilla** — sem framework, sem npm, sem CDN.
+9. **Nada de identificador de modelo** em commit, PR, comentário de código ou
+   qualquer artefato do repositório.
 
 ---
 
-## 3. As armadilhas de MEDIÇÃO — leia antes de rodar qualquer bateria
+## 3. O QUE APRENDI SOBRE MEDIÇÃO — LEIA ANTES DE MEDIR QUALQUER COISA
 
-Esta é a parte mais cara da sessão. Três achados que mudam como se mede.
+### 3.1 Este jogo é HOTSEAT. Medir com a IA esconde o problema.
 
-### 3.1 `times=espelho` é obrigatório para mudança que toca herói
+O erro mais caro da sessão. A v47 foi validada com o agente quase-aleatório e com a
+IA, e nos dois a duração mal se moveu. Aí o Vilker perguntou de jogador × jogador:
 
-`sim/bateria.js` sempre rodou **um confronto fixo**: vharn/nyx/solenne/vesper/mirrha
-contra kaross/grumo/zhet/cael/torvald. Dez dos vinte heróis, repartidos
-fixamente entre os lados.
-
-Mudança **estrutural** (mapa, torre, onda, ouro, respawn) cai igual nos dois e a
-medição vale. Mudança que toca **herói, habilidade ou item** cai só de um lado —
-e aí "quem começa" mede o CONFRONTO, não a ordem.
-
-Na v25 isso me custou uma conclusão inteira: duas das sete habilidades novas
-estavam no time 1 e nenhuma no time 0. A bateria acusou 53,5% com z=6,60 e eu
-**quase registrei uma regressão que não existia**.
-
-```
-node sim/bateria.js 4500 times=espelho      # os dois lados com os MESMOS heróis
-```
-
-### 3.2 "Quem começa" tem dois números
-
-| Arranjo | quem começa |
-|---|---|
-| confronto fixo (toda a série histórica) | ~51,2% |
-| **espelhado** | **~52,9%** |
-
-Os dois estão certos e medem coisas diferentes. **Não corrigi nada por causa
-disso** — mudar a compensação de ordem com base numa métrica que acabou de trocar
-de definição repetiria o erro que `DECISOES-PENDENTES` existe para evitar.
-Item 11 daquele arquivo.
-
-### 3.3 A medição do poço é QUANTIZADA
-
-O agente da bateria só compromete dado com o poço quando consegue **fechar no
-mesmo turno**. Isso quantiza o resultado em degraus inteiros de heróis
-necessários:
-
-| Heróis necessários | Barão morto |
-|---|---|
-| 4 | 55–58% |
-| 5 | 44–46% |
-
-Passar de 4 para 5 derruba 10 pontos de uma vez. **Leitura de vida do poço acima
-de ~5 golpes típicos mede o agente desistindo, não o objetivo.** Foi o que
-produziu um "penhasco" entre vida 30 e 36 que não existe no jogo.
-
-### 3.4 O de sempre
-
-- `quem começa` precisa de **n ≥ 2000 por execução**, rodado 2–3 vezes.
-- A bateria **é cega para agência**: mede estrutura (mapa, torre, onda, ritmo) e
-  **não** mede escolha (épico, Retomada, Prioridade, itens, cartas).
-- **`sim/niveis.js` é o único que dirige a IA de verdade.** Os outros usam o
-  agente quase-aleatório, que NÃO é a IA do jogo.
-
----
-
-## 4. Mecânicas novas desta sessão — como funcionam
-
-### Efeito com prazo (sangramento / veneno)
-Cobra **no início do turno da vítima**, 1×/rodada, e **ignora armadura e escudo**
-— é o golpe que já chegou, cobrando depois. Reaplicar **renova**, nunca empilha.
-Morrer limpa. **Mora no slot de controle ou na Ultimate, nunca na básica** (com
-efeito de graça em todo golpe, a habilidade do meio deixava de pagar o próprio
-dado — há teste).
-
-### Zona (controle de área)
-Efeito posto no **chão**: quem **começa o turno dentro** é envenenado. **O prazo
-é contado em TURNOS DO ADVERSÁRIO (2), nunca em rodadas** — em rodadas, a zona
-de quem joga primeiro vigiaria o dobro da do segundo. É o mesmo erro que a v20
-corrigiu nas ondas. Há teste travando a simetria.
-
-### Cura de base
-**3 por rodada** na própria base. Com inimigo a **2 ou menos**, trata **uma vez**
-e para até o cerco sair de perto.
-
-### Rotação do Caçador
-No início da rodada os dois escolhem **às cegas** o destino do próprio Caçador;
-no turno dele, migra. Bônus **só se chegar**: acampamento próprio +3 ouro ·
-neutro +1 Poder · inimigo +4 ouro · poço +1 por golpe no poço.
-
-**NÃO HÁ TELEPORTE, e isso é o ponto.** A v18 já teve uma rotação em que o
-Caçador *saía do tabuleiro*, e a v19 desfez. Aqui ele **anda**, até 3 casas de
-graça, no mapa, interceptável. Dois testes existem só para a versão da v18 não
-voltar.
-
-### Os dois moradores do poço contam coisas diferentes
-- **Dragão**: conta **GOLPES** (básica 1, Ultimate 2, o dado não entra). Vida 3.
-- **Barão**: conta **DANO**, pela regra dos heróis. **16 de vida, 3 de armadura.**
-
-**O que faz o Barão exigir grupo é a ARMADURA, não a vida.** Com armadura 3 e
-Poder 3, básica de dado 2 tira 2 e Ultimate de dado 6 tira 8 — quatro vezes mais.
-16 fica abaixo da vida de todos os 20 heróis: o objetivo não é o saco de pancada
-mais gordo da mesa.
-
-### Três níveis de IA
-**Dificuldade mexe na qualidade da decisão, NUNCA nos números.** Nenhum nível
-ganha dano, vida, ouro ou visão a mais. Medido em `sim/niveis.js`:
-Mestre 55,8% × Veterano · Veterano 72,7% × Aprendiz.
-
----
-
-## 5. O elenco — 10 substituídos, `id` internos mantidos
-
-Os `id` **não** mudaram, e isso é decisão: 206 referências em 6 arquivos,
-incluindo os 123 testes e o confronto fixo da bateria. Mantendo a chave, os
-testes seguem verdes e **toda a medição anterior continua comparável**.
-
-| Rota | Personagem | `id` (chassi herdado) |
+| | v46 | v47 sem relógio |
 |---|---|---|
-| topo | O Taxista | `vharn` |
-| topo | Dona Chinela | `kaross` |
-| selva | Pombo Ciborgue | `nyx` |
-| selva | Valti | `kurr` |
-| meio | Parabólica Diabólica | `solenne` |
-| meio | Gari Mago | `nira` |
-| adc | Zé Griteco | `vesper` |
-| adc | Catarino | `nessa` |
-| sup | Emerson Emo | `mirrha` |
-| sup | Caramêlo 2.0 | `gorm` |
+| PvP, dois defensores competentes | 25,4 | **49,3 rodadas** |
+| IA de verdade (mediana) | 24 | 25 |
 
-Ficaram: Ilva e Xhera (topo), Grumo e Pyk (selva), Zhet e Arden (meio), Cael e
-Corvo (adc), Torvald e Vidra (sup). **2 por rota substituídos, 4 por rota
-mantidos.**
+**A IA compromete; dois humanos cautelosos não.** Nasceu daí o
+`node sim/defesa.js 800 estilo=pvp`, que roda a mesma política defensiva dos dois
+lados. **Use sempre que mexer em torre, onda, presença ou ritmo.**
 
-**Nenhum número de balanceamento mudou** — cada personagem herdou vida, Poder,
-Armadura, alcance e o formato das três habilidades do substituído. Só mudaram
-nome, epíteto e o nome de cada habilidade.
+### 3.2 Defesa forte demais protege quem está na frente
 
-A arte entra por `id`: `arte/herois/web/<id>.jpg`, **293×440**.
+Contra-intuitivo e medido: *empate segura a torre* e *reparo de torre* foram
+escritas, medidas e **descartadas** — as duas alongam a partida **e pioram** a bola
+de neve. Quem lidera banca o corpo a mais e continua sitiando; quem está atrás
+precisa de ataque.
+
+**Medir sempre os dois eixos juntos: bola de neve E duração.**
+
+### 3.3 O rótulo do script não é a conclusão
+
+A bateria imprime "VANTAGEM REAL" quando `z` passa do limiar. `z` cresce com a raiz
+de `n`, então **a mesma porcentagem troca de rótulo só por causa da amostra**:
+
+```
+n=2000 → 52,1% (z=1,88)  — dentro do ruído
+n=3000 → 52,1% (z=2,34)  ← VANTAGEM REAL
+```
+
+A pergunta de desenho é *"mudou em relação à versão anterior?"*, não *"dá para
+distinguir de 50%?"*.
+
+### 3.4 250 partidas não bastam
+
+Anunciei "77,6% → 63,6%" com n=250. A 1500 virou "72,8% → 65,5%". Direção certa,
+precisão não. **Use n ≥ 800 para bola de neve, n ≥ 1500 para "quem começa".**
+
+### 3.5 Não dá para instrumentar o motor por fora
+
+O motor roda dentro de um `vm` próprio. **Trocar uma função na PONTE não muda quem
+as funções internas chamam** — `g.fimDaRodada = wrapper` não pega, e
+`g.aplicaCond = wrapper` também não. Os contadores dão **zero em tudo**, que é o
+tipo de medição que mente com convicção. Aconteceu duas vezes (v45 e v47).
+
+**O que funciona:** olhar o estado do tabuleiro de fora, no instante certo. Ver
+`sim/condicoes.js` e `sim/defesa.js`, que fazem isso e explicam por quê.
+
+### 3.6 A presença é congelada por turno
+
+`J.presenca[t]` é escrita no fim do turno **daquele time**. Fotografar antes de um
+turno e comparar depois mede errado para um dos lados. Isso me fez acusar "9,7% de
+dano com empate" numa build onde empate não podia causar dano nenhum.
+
+### 3.7 O de sempre
+
+- `times=espelho` é **obrigatório** para mudança que toca herói, habilidade ou item;
+- as chaves dos níveis de IA são `facil`/`normal`/`dificil`, não os nomes de
+  exibição. `nivelIA="mestre"` cai silenciosamente no `normal`;
+- **`sim/niveis.js` e `sim/condicoes.js` dirigem a IA de verdade.** Os outros usam o
+  agente quase-aleatório, que NÃO é a IA do jogo;
+- o harness **responde sozinho** à rotação do Caçador (senão a partida trava em
+  `J.fase==="rotacao"`). Quem testa o **relógio** da rotação chama
+  `g.rotacaoDeVerdade()`.
 
 ---
 
-## 6. ENQUADRAMENTO DE RETRATO — a lição que custou 5 versões
+## 4. COMANDOS
 
-O padrão do jogo é **meio corpo, cabeça no terço superior, tronco preenchendo o
-resto, com ar em volta**. A cabeça ocupa ~20% da altura. Olhe `grumo.jpg`,
-`zhet.jpg`, `cael.jpg`, `pyk.jpg` antes de recortar qualquer coisa.
+```
+node sim/testes.js                        # 231 testes de regressão
+node sim/defesa.js 800 estilo=pvp         # HOTSEAT: defender é viável? a partida fecha?
+node sim/defesa.js 800                    # o mesmo, com o agente quase-aleatório
+node sim/defesa.js 800 defensor=off       # como era antes da v47
+node sim/condicoes.js 200                 # as 12 condições aparecem na mesa?
+node sim/bateria.js 3000 times=espelho    # estrutura + ordem  (~570s)
+node sim/niveis.js 300                    # os 3 níveis, com a IA DE VERDADE
+node sim/habs.js                          # cada habilidade contra a básica do próprio herói
+node sim/epicos.js 2500                   # Dragão e Barão
+node sim/ouro.js 600                      # economia
+node sim/simetria.js                      # o tabuleiro é espelho de si mesmo?
+node teste/empacota.js                    # regera teste/JOGAR.html
+```
 
-O card do draft mostra **uma faixa do topo** da imagem. Retrato fechado no rosto
-vira testa e olhos no card — o personagem some justamente onde precisa ser
-reconhecido.
+**Variantes da bateria:** `times=espelho` · `defensor=off` · `engrossa=N` ·
+`ondamax=N` · `bonusrot=off` · `alchab=off` · `torre=N` · `curabase=N` · `dot=off` ·
+`zonas=off` · `mapa=N` · `acao=N` · `mov=EXPR` · `epico=off` · `retomada=off` ·
+`revide=off` · `ondas=off` · `dragao=N` · `barao=N` · `vdragao=N` · `heranca=N`
 
-O vai e volta, registrado para não repetir: v32 saiu de corpo inteiro → o
-playtest pediu "o rosto é obrigatório" → v33 e v35 fecharam cada vez mais no
-rosto → só com o **print da tela** ficou claro que o alvo era o padrão do JOGO.
-**Se eu tivesse aberto um retrato original na primeira vez, teria acertado de
-cara.** Quando existe padrão no projeto, medir o padrão vem antes de interpretar
-o pedido.
-
-**Print da tela é a informação mais útil que o Vilker manda. Peça.**
+**Chromium está instalado** e Playwright abre o jogo de verdade:
+`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. **Use.** Vários defeitos desta
+sessão só apareceram no clique real — o dado extra que não cabia na barra, o rótulo
+que pintava empate de verde, a peça da IA que o humano conseguia mover.
 
 ---
 
-## 7. Comandos
+## 5. ERROS QUE EU COMETI NESTA SESSÃO
 
-```
-node sim/testes.js              # 123 testes de regressão
-node sim/bateria.js 4500 times=espelho   # estrutura + ordem (espelho é obrigatório
-                                         # se a mudança tocar herói)
-node sim/epicos.js 2500         # Dragão e Barão
-node sim/habs.js                # cada habilidade contra a básica do próprio herói
-node sim/ouro.js 600            # economia: renda contra preço
-node sim/niveis.js 600          # os 3 níveis da IA, com a IA DE VERDADE
-node sim/simetria.js            # o tabuleiro é espelho de si mesmo?
-node teste/empacota.js          # regera teste/JOGAR.html
-```
-
-**Variantes úteis:** `times=espelho` · `curabase=N` · `dot=off` · `zonas=off` ·
-`baraodano=N` · `baraoarm=N` · `baraogolpe=on` · `mato=off` · `muralha=off` ·
-`respawn=fixo` · `armtorre=` · `revide=off`
-
-**Para gerar o zip do Netlify:**
-```
-mkdir site && cp -r index.html .nojekyll jogo guia cartas data arte teste site/
-zip -qr site.zip site
-```
+1. **Medi um jogo de hotseat sem simular hotseat.** O maior. Foi o Vilker quem teve
+   de apontar que faltava o teste. `estilo=pvp` devia ter nascido antes.
+2. **Empilhei três regras de defesa e medi as três juntas.** Mediana de 24 para 41
+   rodadas sem saber qual cobrava. Tive de voltar e criar as chaves de isolamento.
+3. **Instrumentei o motor por fora, duas vezes, e as duas deram zero.** Ver §3.5.
+4. **Pintei o empate de verde** no rótulo da rota. O jogador leria "dá para segurar"
+   numa situação em que a torre continua caindo — informação errada na tela é pior
+   que informação nenhuma.
+5. **Confiei num número de 250 partidas.**
+6. **Dei `tu:1` a condição posta em si mesmo.** O prazo cai no fim do turno de quem
+   carrega, então `tu:1` no próprio turno nasce e morre antes de o adversário jogar.
+   Para si mesmo ou aliado o valor certo é **`tu:2`**.
+7. **Deixei a Tenacidade decrementar em vez de sair inteira.** Com `tu:2` ela
+   anulava dois controles — na prática, imunidade.
+8. **Paguei o bônus de região na virada da rodada**, e `expiraDoTime` o apagava
+   antes de o dono jogar. Armadura e Poder eram letra morta; só ouro e cura chegavam
+   à mesa. Foi a bateria que denunciou.
+9. **Pus a troca de lugar da Zhet depois do dano**, e a passiva dela desfazia a
+   troca. As duas metades do kit brigavam.
 
 ---
 
-## 8. Onde as coisas moram
-
-```
-jogo/jogo.js        motor de regras + interface (~4.400 linhas)
-jogo/estilo.css     TODA a aparência — mexer aqui não quebra regra
-data/catalogo.js    heróis, itens, deck, classes, textoHab()
-arte/herois/web/    retratos 293×440, nomeados pelo id do chassi
-sim/motor.js        harness (DOM falso) · a PONTE expõe o que os testes usam
-sim/agente.js       o jogador artificial quase-aleatório (NÃO é a IA do jogo)
-docs/ESTADO.md      retrato do presente — leia primeiro
-docs/REGRAS.md      regras completas, extraídas do motor
-docs/patch-notes.md histórico, append-only
-docs/DECISOES-PENDENTES.md   medido e não decidido
-```
-
----
-
-## 9. Erros que EU cometi nesta sessão (registrados de propósito)
-
-1. **Li ruído como sinal, e depois sinal como ruído.** Braços de n=3000
-   inverteram de lado entre execuções. Só o A/B com braço de controle resolveu.
-2. **Confundi desequilíbrio de confronto com regressão de ordem** (§3.1).
-3. **Os níveis de IA nasceram invertidos** — dei piso 8 ao Mestre supondo "mais
-   ativo = melhor", e ele perdia do Veterano. O comentário do próprio código já
-   explicava que o piso existe para a IA guardar o dado.
-4. **Inventei 4 nomes e deduzi 4 rotas** de personagens. Errei 3 e 4.
-5. **Filtrei uploads por extensão minúscula** e cinco arquivos `.PNG` sumiram da
-   busca — reportei "não chegaram" com convicção, e estavam lá.
-6. **Persegui o pedido literal em vez de medir o padrão** nos retratos (§6).
-7. **Deixei de escrever patch notes da v27 e v28** — um `assert` do meu script
-   falhou e eu não conferi a saída.
-
----
-
-## 10. O que está aberto
+## 6. O QUE ESTÁ ABERTO
 
 **Decisão do Vilker, do Vinicius e do Matheus:**
 
-- **O merge para a `main`.** 21 commits esperando. Nada disso está publicado.
-- **A renda de ouro** — medida: herói acumula **61**, build de 3 itens mais caro
-  custa **25**. Paga o build 2,4×. `sim/ouro.js` tem `farma=`, `agiu=`, `matar=`.
-  Recomendo testar `farma=2` primeiro, **sempre com `times=espelho`**.
-- **"Quem começa" no espelho é ~52,9%**, não os ~51% históricos (§3.2).
+- **O merge para a `main`.** 52 commits esperando. Nada publicado.
+- **Revisar `docs/KITS.md` herói por herói.** A v45 foi implementada sem a aprovação
+  kit a kit que o pedido original previa — a tabela existe justamente para isso, e
+  cada kit é **uma linha de `data/catalogo.js`**, sem tocar no motor.
+- **A duração em hotseat.** Pior caso (dois defensores sempre defendendo) está em
+  **40,1 rodadas**; a IA joga em 25. Se na mesa parecer arrastado, a alavanca medida
+  é `ONDA_ENGROSSA` (hoje **16**) — mas passo menor **vaza vantagem de ordem**
+  (54,4% para quem começa com passo 10, contra 51,6% sem relógio). O câmbio é ~5
+  rodadas por ~1,5 ponto de desequilíbrio.
+- **A Lentidão está em oito heróis.** Foi de propósito (ela é cola de kit), mas se
+  parecer que todo mundo está sempre lento, o corte natural é tirar do Grumo e do
+  Caramêlo, que já têm empurrão.
+- **O Banimento aparece em ~14% das partidas.** Se parecer raro demais para valer a
+  regra, a alavanca é o custo da Ultimate da Zhet (F5), não a duração.
+- **A renda de ouro** — herói acumula 61, build de 3 itens mais caro custa 25.
 - **Cartas de reação** — 3 cartas declaram `quando:"reacao"` e o motor nunca lê o
-  campo. Três opções em `DECISOES-PENDENTES`, item 4.
-- **O Barão subiu para 59,1%** de fechamento depois da Rotação do Caçador (o
-  destino "poço" soma +1 por golpe). Continua na faixa saudável, mas é drift
-  numa direção só. **Se cair fácil demais no playtest, mexa no +1 do destino
-  "poço", não na vida dele**, que acabou de ser calibrada.
+  campo. Item 4 de `DECISOES-PENDENTES`.
+- **"Quem começa"** continua em ~52–53%. Item 11 de `DECISOES-PENDENTES`.
 
 **Ainda não existe:** Arauto (tem arte, não tem regra) · highlight estilo LoL no
 tutorial · comeback · multiplayer em rede (o jogo é hotseat).
 
-**Texto do jogo que continua mentindo:** o painel *Como jogar* diz que "uma Ward
-acende os dois matos de uma vez", o que a regra da v22 desfez. Conserto de dois
-minutos, nunca priorizado.
+---
+
+## 7. ONDE AS COISAS MORAM
+
+```
+jogo/jogo.js        motor de regras + interface (~6.280 linhas)
+jogo/estilo.css     TODA a aparência — mexer aqui não quebra regra
+data/catalogo.js    heróis, itens, deck, classes, CONDS, RECURSOS, textoHab()
+arte/herois/web/    retratos 293×440, nomeados pelo id do chassi
+sim/motor.js        harness (DOM falso) · a PONTE expõe o que os testes usam
+sim/agente.js       o jogador artificial quase-aleatório (NÃO é a IA do jogo)
+sim/testes.js       231 testes de regressão
+sim/defesa.js       defender é viável? · tem o modo estilo=pvp
+sim/condicoes.js    as condições aparecem na mesa?
+docs/ESTADO.md      retrato do presente — leia primeiro
+docs/KITS.md        a tabela dos 20 kits, para revisão herói a herói
+docs/REGRAS.md      regras completas, extraídas do motor
+docs/patch-notes.md histórico, append-only
+docs/DECISOES-PENDENTES.md   medido e não decidido
+docs/DIRECAO-DE-ARTE.md      canon da OUTRA trilha — não é sua, mas não apague
+```
+
+**Pontos do motor que vale conhecer antes de mexer:**
+
+| onde | o que é |
+|---|---|
+| `rotaDaPos` | quem exerce presença numa rota. **Foi aqui que a v47 consertou a defesa** |
+| `fimDaRodada` | onda, cerco, renda, respawn, placas — a virada inteira |
+| `mesaTravada()` | porta única do gesto humano. **A IA não passa por ela** |
+| `aplicaCond` / `processaCondsInicio` / `processaCondsFim` | o ciclo das condições |
+| `PASSIVAS` + `dispara()` | o barramento de eventos das passivas |
+| `alcDeHab(h,hb)` | alcance da habilidade, não do herói |
+| `contaRota(nome)` | a contagem que o rótulo da rota mostra. Obedece à névoa |
 
 ---
 
-## 11. Como o Vilker trabalha (e o que funciona)
+## 8. COMO O VILKER TRABALHA
 
 - Ele manda **print da tela do celular** quando algo está errado. É a informação
   mais valiosa que chega — peça quando o relato for vago.
-- Ele testa no **Netlify Drop**, não no GitHub Pages.
+- Ele testa no **Netlify Drop**, não no GitHub Pages. Entregue o **zip**.
 - Ele fala em português, direto e curto. Responda igual.
-- Quando ele diz "tá quebrado", **reproduza antes de consertar**. Uma vez a
-  causa era a `main` desatualizada; outra, o arquivo local no celular. Chromium
-  está instalado neste ambiente (`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`)
-  e Playwright abre o jogo para conferir erros de console de verdade.
+- Quando ele diz "tá quebrado", **reproduza antes de consertar**. Nesta sessão os
+  três bugs relatados se reproduziram — e um deles (a Marca) revelou um defeito
+  mais velho que a versão.
+- **Ele pensa no jogo de mesa real.** O relato "isso tem que fazer sentido em
+  jogador × jogador" reprovou uma versão inteira que estava verde em todos os
+  outros números. Quando ele questionar uma premissa, é porque falta um teste.

@@ -128,6 +128,16 @@ button:disabled{cursor:not-allowed}
   text-anchor:middle;pointer-events:none}
 #mapa .peca .est.mal rect{stroke:var(--dano)} #mapa .peca .est.mal text{fill:var(--dano)}
 #mapa .peca .est.bom rect{stroke:var(--brass)} #mapa .peca .est.bom text{fill:var(--brass)}
+/* ── v45 · a fileira de indicadores acima do totem (§17 a §20) ──
+   Vive ACIMA do retrato porque o rodapé da peça já é da barra de vida e da
+   etiqueta grande. `paint-order` desenha o contorno por baixo do glifo: sem
+   isso o emoji some em cima do hexágono claro. */
+#mapa .peca .cond-ico{pointer-events:none}
+#mapa .peca .cond-ico .ci{font-size:5.4px;text-anchor:middle;
+  paint-order:stroke;stroke:rgba(6,10,8,.92);stroke-width:1.3px;stroke-linejoin:round}
+#mapa .peca .cond-ico .ci.mais{font-family:var(--mono);font-size:3.6px;fill:var(--ink-2)}
+#mapa .peca .cond-ico .ciq{font-family:var(--mono);font-size:3.2px;font-weight:700;
+  fill:#fff;text-anchor:start;paint-order:stroke;stroke:rgba(6,10,8,.95);stroke-width:1.1px}
 
 /* WARD no mapa: o olho, o prazo, e o ANEL do que ela acende.
    O anel é a parte que faltava — sem ele a ward era um pontinho sem consequência
@@ -258,6 +268,19 @@ button:disabled{cursor:not-allowed}
   100%{opacity:0;transform:translate(-50%,-260%) scale(.92)}}
 .flut.dano{color:var(--dano)} .flut.cura{color:var(--cura)}
 .flut.esc{color:var(--brass);font-size:19px} .flut.morte{font-size:38px}
+/* ── v45 · o aviso de condição (§23 e §24) ──
+   Menor que o número de dano de propósito: o dano é o assunto, a condição é a
+   consequência. O de FIM é menor ainda e mais apagado — "veneno acabou" não
+   merece o mesmo tamanho de "ATORDOADO!". */
+.flut.selo-mal,.flut.selo-bom,.flut.selo-fim{
+  font-family:var(--carto);font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  font-size:12px;white-space:nowrap}
+.flut.selo-mal{color:var(--carmim-2)}
+.flut.selo-bom{color:var(--cura)}
+.flut.selo-fim{color:var(--ink-2);font-size:10px;opacity:.9}
+/* CRÍTICO tem tamanho próprio: é o único aviso que muda o número do golpe */
+.flut.crit{color:var(--brass);font-size:22px;font-family:var(--display);
+  letter-spacing:.04em;text-shadow:0 0 14px rgba(198,160,74,.65),0 2px 8px rgba(0,0,0,.9)}
 
 #toast{position:absolute;left:50%;top:14%;transform:translateX(-50%);z-index:9;
   display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:92%}
@@ -391,6 +414,18 @@ button:disabled{cursor:not-allowed}
 #dadosAcao{display:flex;gap:7px;flex:1;min-width:0;overflow-x:auto;
   scrollbar-width:none;-ms-overflow-style:none;padding:2px 0}
 #dadosAcao::-webkit-scrollbar{display:none}
+/* ── v46 · o dado extra tem que CABER ──
+   Relato: *"estou ganhando um dado de ação extra mas não estou conseguindo
+   usar"*. Não era regra: era largura. A barra tem ~243px num celular de 360, e
+   quatro ou cinco dados de 44px não cabem. A caixa rolava na horizontal, mas com
+   `scrollbar:display:none` não havia nada na tela dizendo que rolava — o 4º e o
+   5º dado ficavam fora do vidro, e o jogador nunca soube que estavam lá.
+
+   Agora os dados ENCOLHEM para caber: `flex:1 1 0` reparte a largura,
+   `max-width` impede que três dados fiquem gigantes, e `min-width` é o piso de
+   toque — abaixo de 34px o dedo erra, e aí sim a caixa volta a rolar. Com
+   Retomada 2 + Prioridade são 6 dados, que a 34px ainda cabem em 243. */
+#dadosAcao .dado{flex:1 1 0;max-width:var(--toque);min-width:34px}
 .dado{width:var(--toque);height:var(--toque);flex:none;border-radius:12px;border:1.5px solid var(--line);
   background:var(--ground-3);display:grid;place-items:center;
   font-family:var(--display);font-size:22px;color:var(--ink);position:relative;
@@ -401,7 +436,7 @@ button:disabled{cursor:not-allowed}
 .dado.usado{opacity:.24}
 .dado.seis::after{content:"";position:absolute;inset:-1.5px;border-radius:12px;
   border:1.5px solid var(--brass);opacity:.55}
-.dado.extra::before{content:"+";position:absolute;top:-6px;right:-3px;font-size:12px;
+.dado.extra::before{content:"+";position:absolute;top:-6px;right:-1px;font-size:12px;
   color:var(--brass);font-family:var(--mono)}
 @keyframes rolando{0%{transform:rotate(-14deg) scale(1.14)}100%{transform:none}}
 .dado.rola{animation:rolando .3s ease-out}
@@ -482,6 +517,11 @@ button:disabled{cursor:not-allowed}
 .selo-est{font-family:var(--carto);font-size:8px;letter-spacing:.08em;text-transform:uppercase;
   padding:2px 6px;border-radius:20px;border:1px solid var(--brass-dim);color:var(--brass)}
 .selo-est.mal{border-color:var(--carmim);color:var(--carmim-2)}
+/* seção CONDIÇÕES da ficha: clicável, porque no celular não existe hover (§21) */
+.fic .cnds{flex-wrap:wrap;gap:4px}
+.selo-est.cnd{font-size:9px;letter-spacing:.05em;text-transform:none;cursor:pointer;
+  background:rgba(255,255,255,.03)}
+.selo-est.cnd:active{background:rgba(198,160,74,.16)}
 
 /* loja */
 .abas{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:11px;border-bottom:1px solid var(--line)}
@@ -763,3 +803,56 @@ button:disabled{cursor:not-allowed}
 .dr-chip.t0{border-color:rgba(76,155,214,.5)} .dr-chip.t1{border-color:rgba(212,91,78,.5)}
 
 .camp{pointer-events:none}.camp-bg{fill:#243B32;stroke:#9CC7A8;stroke-width:1.2}.camp-core{fill:#D5B25D}.camp.neutro .camp-bg{fill:#4B3B22;stroke:#E0B85E}.camp-txt,.camp-cd{font:700 6px Arial;fill:#E8F0EB;text-anchor:middle;paint-order:stroke;stroke:#0E1614;stroke-width:2px}.camp-cd{fill:#D9B86C}
+
+/* ══ v45 · a carta do herói ganhou PASSIVA, IDEIA e CONDIÇÕES ══
+   A passiva não é a quarta habilidade: ela não gasta dado e não se escolhe. Por
+   isso vem antes das três, com marca própria e sem o ícone de habilidade. */
+.carta-g .ideia{font-size:12px;line-height:1.5;color:var(--ink-2);
+  padding:10px 15px 0;font-style:italic}
+.carta-g .hb2.pas{border-left:2px solid var(--brass);background:rgba(198,160,74,.06)}
+.carta-g .hb2.pas .f{color:var(--brass);font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.cond-lista{padding:2px 15px 14px}
+.cond-lista .ct{font-family:var(--carto);font-size:8.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
+.cond-lista .cl{font-size:11px;line-height:1.5;color:var(--ink-2);margin-bottom:5px}
+.cond-lista .cl b{color:var(--brass)} .cond-lista .cl.mal b{color:var(--carmim-2)}
+
+/* ══ v46 · o bônus de região no botão da rotação ══
+   O botão `.grande` é dourado cheio, então texto em `--brass` some dentro dele.
+   A linha do bônus é a informação nova desta tela e precisa ser a mais legível:
+   tinta escura, peso alto e um filete que a separa da descrição da região. */
+.rotB{display:inline-block;margin-top:5px;padding-top:5px;font-size:12.5px;font-weight:700;
+  color:rgba(20,14,4,.86);border-top:1px solid rgba(20,14,4,.22)}
+
+/* ══ v46 · a mochila na loja ══
+   Cor diferente da prateleira de compra de propósito: comprar e vender na mesma
+   tela, com o mesmo botão, é o caminho curto para vender sem querer. */
+.itC.vender{border-color:var(--carmim-dim,rgba(160,70,60,.5))}
+.itC.vender .iO{color:var(--carmim-2,#e08a7a)}
+.itC.vender .iO small{opacity:.6;font-size:.85em}
+.itC.vender:active{background:rgba(160,70,60,.12)}
+
+/* ══ v47 · a presença da rota, na tela ══
+   A regra que decide quem empurra quem sempre existiu no motor e nunca apareceu:
+   defender era adivinhar. Agora o rótulo da rota conta os corpos — verde quando
+   dá para segurar, carmim quando o adversário tem gente a mais. Só entra na
+   conta o inimigo que este lado ENXERGA, senão o rótulo entregaria de graça a
+   posição do Caçador escondido. */
+#mapa .rotulo.seg rect{stroke:var(--vivo);stroke-width:.7}
+#mapa .rotulo.seg text{fill:var(--vivo)}
+/* ÂMBAR é o empate, e ele merece cor própria: a onda não anda, mas a torre que
+   está embaixo dela continua apanhando. Verde aqui seria mentira. */
+#mapa .rotulo.empate rect{stroke:var(--brass);stroke-width:.7}
+#mapa .rotulo.empate text{fill:var(--brass)}
+#mapa .rotulo.perig rect{stroke:var(--dano);stroke-width:.7}
+#mapa .rotulo.perig text{fill:var(--dano)}
+
+/* ── v48: a torre passou a ter vida de verdade (12), e vida se lê em barra ── */
+#mapa .tbar{stroke:none}
+#mapa .tbar.bg{fill:var(--ink-3);fill-opacity:.35}
+#mapa .tbar.t0{fill:var(--azul)}
+#mapa .tbar.t1{fill:var(--carmim)}
+#estruturas .tw .hp{display:inline-block;width:34px;height:5px;border-radius:3px;
+  background:rgba(0,0,0,.28);overflow:hidden;vertical-align:middle}
+#estruturas .tw .hp i{display:block;height:100%;background:currentColor}
+#estruturas .tw .hpn{font-family:var(--mono);font-size:10px;margin-left:5px;opacity:.85}

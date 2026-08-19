@@ -68,6 +68,11 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 .nota{margin:0 30px 30px;border-left:2px solid var(--brass);padding:12px 0 12px 18px;color:var(--ink-2);
   font-family:var(--body);font-size:15px;line-height:1.6;max-width:66ch}
 .nota b{color:var(--brass)}
+
+/* v45 — a passiva na carta e a ideia principal do herói */
+.carta .hab.passiva{background:rgba(198,160,74,.07);border-left:2px solid var(--cor)}
+.carta .hab.passiva .f{font-size:7px;letter-spacing:.12em;text-transform:uppercase;line-height:1.6}
+.carta .ideia{padding:0 15px 10px;font-size:10.5px;line-height:1.5;opacity:.72;font-style:italic}
 </style>
 
 <div class="topo">
@@ -95,6 +100,11 @@ const CARTAS = Object.entries(HEROIS).map(([id,h])=>({
   id, n:h.n, e:h.ep, pos:h.pos, cls:(h.cls||"").toLowerCase(), ref:h.ref,
   st:[h.vida,h.poder,h.arm,h.alc], agil:h.agil,
   h:h.habs.map(hb=>[`${hb.f}+`, hb.n, textoHab(hb), hb.f>=5?1:0]),
+  /* v45 — a passiva é parte do kit e precisa estar na carta impressa. Vem ANTES
+     das três habilidades porque não gasta dado: não é a quarta opção, é a regra
+     de fundo do personagem. */
+  pv:h.pas || null,
+  ideia:h.ideia || "",
   pas:h.patamar ? TEXTO_PATAMAR : null
 }));
 
@@ -110,10 +120,13 @@ document.getElementById("grade").innerHTML=CARTAS.map(c=>{
       <div class="nome-box"><div class="nome">${c.n}</div><div class="epi">${c.e}</div></div>
       <div class="stats">${c.st.map((v,i)=>`<div><div class="k">${st[i]}</div><div class="v">${v}</div></div>`).join("")}</div>
     </div>
-    <div class="habs">${c.h.map(([f,n,d,u])=>`<div class="hab${u?" ult":""}">
+    <div class="habs">${c.pv?`<div class="hab passiva">
+      <span class="f">passiva</span><div><span class="hn">✦ ${c.pv.n}</span>
+      <span class="hd">${c.pv.d}</span></div></div>`:""}${c.h.map(([f,n,d,u])=>`<div class="hab${u?" ult":""}">
       <span class="f">Força<br>${f}</span><div><span class="hn">${n}</span><span class="hd">${d}</span></div></div>`).join("")}</div>
+    ${c.ideia?`<div class="ideia">${c.ideia}</div>`:""}
     ${c.pas?`<div class="pass">${c.pas}</div>`:""}
-    <div class="rodape"><span>ref. de kit: ${c.ref}</span><span>v0.4</span></div>
+    <div class="rodape"><span>ref. de kit: ${c.ref}</span><span>v0.5</span></div>
   </article>`;
 }).join("");
 
