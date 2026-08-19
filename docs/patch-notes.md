@@ -9,6 +9,40 @@ Como escrever uma entrada:
 ## vX.Y — título curto · AAAA-MM-DD
 ### O que mudou
 ### Por quê
+---
+
+### 8. O manual, o guia e as regras contam a mesma história
+
+Mudança de regra que não chega ao texto vira defeito de mesa. Os três lugares em
+que o jogo se explica foram atualizados **e conferidos no navegador de verdade**:
+
+**O manual do jogo** (o `?` no topo) ganhou três seções novas — *O creep é quem
+paga o pedágio*, *Movimento máximo* e *A loja tem três faixas* — e teve corrigido
+o que já estava errado antes desta versão:
+
+| No manual dizia | Está certo |
+|---|---|
+| "Dado 6 natural → Crítico" | o crítico é **condicional** desde a v45; o 6 não crita |
+| "Quem matou +4 de ouro" | **8** |
+| "Torre tem 3 de vida, golpe de herói tira 1" | **20 de vida, 5 de Armadura, golpe calculado** |
+| "a torre revida 2" | **4** (já era 4 antes desta versão) |
+| "Retorno recupera 3" | **5** (idem) |
+| "a cada 10 de ouro, +2 de Poder" | **20** |
+| "reaplicar renova o prazo, não empilha" | **acúmulo soma; duração renova** — são duas unidades |
+| rótulo da rota em duas cores | **três**: verde, âmbar e carmim |
+| a rotação com quatro opções | **cinco** |
+
+**`docs/REGRAS.md`** ganhou a seção de Movimento máximo, a fórmula do golpe em
+estrutura, a regra do creep e a tabela de como a IA drafta; e teve os números de
+ouro, revide, Reforço e Retorno corrigidos.
+
+**O guia web** parou de manter a terceira lista de itens escrita à mão (ver
+commit da loja) e ganhou Torre, Mergulho e Movimento máximo no glossário. O
+simulador de dados dele também dizia "Crítico disponível" no 6 — ensinava uma
+regra que não existe.
+
+---
+
 ### O que isso quebra
 ```
 
@@ -226,6 +260,14 @@ falar em **faixa**, não em número solto) e o **Digerir** do Grumo (3 → **8**
 
 A sobra de 24 ainda paga **dois Reforços** (10+14) — exatamente onde a curva foi
 calibrada na v25. Ouro não virou inútil.
+
+**O patamar do Atirador foi junto: 10 → 20 de ouro por degrau.** Não é ajuste de
+atirador, é consequência do preço. O patamar lê o ouro **na mão**, e com item de
+4 a 9 o herói gastava antes de acumular — cruzar 10 era raro e cruzar 30,
+raríssimo. Com item de 12 a 24 ele precisa **guardar**, então o saldo passaria a
+viver acima de 10 quase sempre e os três degraus chegariam de graça: +6 de Poder
+por um comportamento que o preço novo obriga. Com 20, os três custam **60 de
+ouro acumulado**, a ordem de grandeza do build completo (54).
 
 ---
 

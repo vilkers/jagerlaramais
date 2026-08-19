@@ -485,6 +485,12 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
     <b>passiva</b> que a explica. A partir da v45 a diferença entre dois heróis não é a quantidade de
     dano: é a <b>pergunta</b> que enfrentá-los obriga a responder. Nomes e história são autorais; a
     referência de kit é interna e explícita.</p>
+  <p class="lede">Desde a v48 cada um também tem <b>movimento máximo</b> — o teto de casas que ele
+    atravessa por turno, por mais movimento que sobre no bolso do time: <b>3</b> nos pesados
+    (Taxista, Grumo, Caramêlo, Torvald), <b>4</b> nos normais e <b>5</b> nos ágeis (Pombo, Valti,
+    Pyk, Zhet, Catarino). Ninguém tem 6, porque 6 é o vão inteiro entre as duas torres exteriores
+    de uma rota. Salto, recuo grátis, puxão e troca de lugar <b>não contam</b> — cada um já tem
+    limite e preço próprios.</p>
   <div class="filtros" id="filtros"></div>
   <div class="grade" id="grade-herois"></div>
 </section>
@@ -1017,7 +1023,9 @@ function rolar(){
   const seis=dados.filter(d=>d===6).length;
   const alto=Math.max(...dados);
   let msg=`Maior dado <b>${alto}</b>`;
-  if(seis) msg+=` · ${seis===1?"um 6":seis+" seis"}, <b>Crítico</b> disponível`;
+  /* v45: o 6 natural NÃO crita. O crítico é condicional, e a condição é do herói
+     — dizer "Crítico disponível" aqui ensinava uma regra que não existe. */
+  if(alto>=6) msg+=" · abre <b>qualquer</b> ultimate, inclusive as de Força 6";
   else if(alto>=5) msg+=" · dá para uma <b>ultimate</b> de Força 5";
   else msg+=" · nenhuma ultimate abre — <b>gaste uma placa</b> ou farme";
   msg+=".";

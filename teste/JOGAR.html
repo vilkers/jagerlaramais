@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 7e9945f 2026-08-18
+     commit d144e7b 2026-08-18
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -1360,7 +1360,7 @@ function textoHab(hb){
   return p.join(" · ") || "—";
 }
 const TEXTO_PATAMAR =
-  "<b>Patamares</b> — a cada <b>10 de ouro</b> acumulado, <b>+2 de Poder</b> para sempre. Até 3 vezes.";
+  "<b>Patamares</b> — a cada <b>20 de ouro</b> na mão, <b>+2 de Poder</b> para sempre. Até 3 vezes.";
 
 /* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
 const CLASSES = [
@@ -1627,6 +1627,7 @@ const OURO_ABATE=8;          /* era 4 */
 const OURO_CAMP=6;           /* acampamento do próprio lado, era 3 */
 const OURO_CAMP_NEUTRO=8;    /* o do meio, era 4 */
 const OURO_REGIAO=6;         /* bônus da região Baixo na rotação, era 3 */
+const PATAMAR_PASSO=20;      /* degrau do Atirador que escala por ouro, era 10 */
 const ALCANCE_MAX=4;
 const alcTotal=h=>Math.min(ALCANCE_MAX,h.alc+bonus(h,"alc")+(h.alcTurno||0));
 
@@ -1841,9 +1842,11 @@ const TORRES_DEF=Object.entries(ROTAS).flatMap(([nome,l])=>{
   const n=l.length, d=[1,Math.max(2,Math.round(n*.28))];
   return [...d.map(i=>({rota:nome,i,t:0})), ...d.map(i=>({rota:nome,i:n-1-i,t:1}))];
 });
-/* Torre passou de 2 para 3 de vida em v0.5.1, quando o herói virou fonte de dano nela.
-   Só a onda: 3 rodadas de cerco. Onda + um herói por rodada: metade disso.
-   O 3 saiu de simulação: com 2 a partida fechava em 10 rodadas, com 4 passava de 18. */
+/* HISTÓRIA, para o número não parecer arbitrário: a torre foi de 2 para 3 de
+   vida na v0.5.1, quando o herói virou fonte de dano nela — com 2 a partida
+   fechava em 10 rodadas, com 4 passava de 18. Esses três valeram até a v48, e a
+   escala nova preserva exatamente o que aquele 3 protegia: 3 rodadas de cerco
+   só com a onda. */
 /* ---------- A TORRE PASSA A TER VIDA DE VERDADE (v48) ----------
    RELATO: *"está muito fácil derrubar torres"*. Até aqui a torre tinha 3 de
    vida e todo golpe de herói tirava exatamente 1 — três golpes, viesse de quem
@@ -4007,7 +4010,15 @@ function fimDaRodada(){
   todos().forEach(h=>{                            // renda: quem não agiu, farma
     if(h.morto)return;
     h.ouro += h.agiu?1:3;
-    if(h.patamar){ const p=Math.min(3,Math.floor(h.ouro/10)); if(p>h.pat){h.extraPoder+=2*(p-h.pat);h.pat=p;
+    /* PATAMAR — o degrau subiu de 10 para 20 na v48, e é consequência direta do
+       preço novo, não ajuste de atirador. Ele lê o ouro NA MÃO, e com item de
+       4 a 9 o herói gastava antes de acumular: cruzar 10 era raro e cruzar 30,
+       raríssimo. Com item de 12 a 24 ele precisa GUARDAR, então o saldo passa a
+       viver acima de 10 quase sempre — os três patamares chegariam de graça, e
+       o atirador ganharia +6 de Poder por um comportamento que o preço novo
+       obriga. Com 20, os três degraus custam 60 de ouro acumulado, que é a
+       ordem de grandeza do build completo (54). */
+    if(h.patamar){ const p=Math.min(3,Math.floor(h.ouro/PATAMAR_PASSO)); if(p>h.pat){h.extraPoder+=2*(p-h.pat);h.pat=p;
       reg("b",`${h.n} sobe ao patamar ${p} (+2 de Poder)`);} }
   });
   [0,1].forEach(t=>{                              // o feitiço do time volta a carregar
@@ -6557,31 +6568,41 @@ function abreManual(){
     <section class="destaque"><h4>Feitiços de invocador</h4>
       <p>O time tem <b>uma carga</b>, não um feitiço por herói. Ela não gasta dado nem movimento, serve a <b>qualquer</b> um dos cinco, e volta <b>3 rodadas</b> depois de usada.</p>
       <table><tr><td><b>Lampejo</b></td><td>salta até 2 casas e escapa de <i>preso</i></td></tr>
-      <tr><td><b>Retorno</b></td><td>volta à base e recupera 3</td></tr></table>
+      <tr><td><b>Retorno</b></td><td>volta à base e recupera 5</td></tr></table>
       <p style="margin-top:7px">Como a carga é uma só, a pergunta nunca é <i>posso?</i> — é <b>quem merece</b>. E vale contar a do adversário: feitiço gasto é informação.</p>
       <p>O Retorno é <b>interrompido por inimigo colado</b>. Quem foi pego não escapa de graça.</p></section>
     <section class="destaque"><h4>3 · Quem não age, enriquece</h4>
-      <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p></section>
+      <p>Herói que recebe dado ganha <b>1 de ouro</b>. Quem fica de fora <b>farma 3</b>. Como só três dos cinco recebem ação, dois sempre estão enriquecendo. <b>Agir custa dinheiro.</b></p>
+      <p>Mas a gota por rodada não é o que compra item: quem <b>abate</b> leva <b>8</b>, o <b>acampamento</b> paga <b>6</b> (o neutro do meio paga <b>8</b>, e roubar o do adversário rende <b>+2</b>). Sentar e esperar rende; jogar rende mais.</p></section>
+    <section class="destaque"><h4>A loja tem três faixas</h4>
+      <p>Item não é troco. São três degraus de investimento, e o preço é a decisão:</p>
+      <table><tr><td><b>Simples · 12</b></td><td>um atributo, efeito pequeno</td></tr>
+      <tr><td><b>Intermediário · 18</b></td><td>dois atributos, ou um efeito de verdade</td></tr>
+      <tr><td><b>Forte · 24</b></td><td>o item que define a sua build</td></tr></table>
+      <p style="margin-top:7px">Com a renda de uma partida, o <b>primeiro item</b> chega por volta da <b>rodada 7</b>, o segundo na <b>14</b>, e os três slots só fecham perto da <b>20</b>. A pergunta que a loja faz o tempo todo é a mesma: <b>compro o barato agora ou guardo para o que decide?</b></p>
+      <p><b>Vender</b> devolve 60% do preço, na base ou morto. E com os três slots cheios o ouro continua tendo destino: <b>Reforço</b> (+1 de Poder), <b>Requisição</b> (uma carta), <b>Leva de Ferro</b> (a sua onda avança 1) e <b>Sentinela</b> (ward na mochila).</p></section>
     <section class="destaque"><h4>Escudo dura um turno adversário</h4><p>Escudo, buff e <b>intocável</b> valem <b>até o início do seu próximo turno</b> — ou seja, exatamente uma vez de o adversário poder bater neles. Antes o escudo não expirava nunca e empilhava até o herói virar intocável de fato; e "até o fim da rodada" dava menos janela a quem jogava em segundo. Agora os dois lados têm a mesma.</p></section><section><h4>Combate</h4>
       <p>Sem rolagem extra — o dado já foi rolado.</p>
       <table><tr><td>Dano</td><td>Força + Poder − Armadura</td></tr>
-      <tr><td>Dado 6 natural</td><td>Crítico</td></tr>
-      <tr><td>Morte</td><td>volta em 2 rodadas</td></tr>
-      <tr><td>Quem matou</td><td>+4 de ouro</td></tr></table></section>
+      <tr><td>Crítico</td><td>1,5× — e sempre <b>condicional</b>, nunca sorte</td></tr>
+      <tr><td>Morte</td><td>volta em 2 rodadas (3 a partir da 8, 4 a partir da 16)</td></tr>
+      <tr><td>Quem matou</td><td>+8 de ouro</td></tr></table>
+      <p style="margin-top:7px"><b>Crítico não é o 6 natural.</b> Cada herói que crita tem a própria condição, e ela é visível <b>antes</b> do golpe: alvo isolado (Pombo), alvo travado por Preso, Atordoado ou Lento (Cael), 3 Cargas (Parabólica), o quarto tiro (Corvo), das sombras (Rasante Final) ou sempre (Ato Final). Dá para negar todas elas.</p></section>
     <section><h4>As cinco posições</h4>
       <p><b>Topo</b> — sozinho lá em cima. Dominar a rota dá <b>Placas</b>: 1 ajusta um dado em ±1, 2 re-rolam. É a sua única fonte de controle sobre a sorte.</p>
       <p><b>Farm</b> — o Caçador. Ele vive no <b>mato</b>, e é lá que ele desaparece: enquanto o adversário não tiver ninguém (nem ward) dentro do mato, ele não está na tela do outro. Sair do mato para a rota é aparecer.</p>
       <p><b>Meio</b> — a rota mais curta. Dominar dá <b>Prioridade</b>: gaste para rolar <b>um dado de ação a mais</b>, quando quiser.</p>
-      <p><b>Atirador</b> — frágil e caro, mas escala: a cada 10 de ouro ganha +2 de Poder. Perto do Suporte, ganha escudo e dano.</p>
+      <p><b>Atirador</b> — frágil e caro, mas escala: a cada <b>20 de ouro na mão</b> ganha +2 de Poder, até três vezes. Perto do Suporte, ganha escudo e dano.</p>
       <p><b>Suporte</b> — escuda, doa o próprio dado, e planta a <b>Ward</b>: o olho que enxerga um pedaço de mapa onde o time não tem ninguém.</p></section>
     <section class="destaque"><h4>Visão · o mato esconde</h4>
       <p>Você só enxerga o que as <b>suas peças</b> enxergam: heróis, torres vivas, a sua onda, a base e as wards. O resto do tabuleiro fica <b>escuro</b> — e herói que está no escuro <b>não aparece</b>.</p>
       <p>E o <b>mato bloqueia</b>: dentro do mato só se enxerga <b>de dentro do mato</b>. Estar colado nele pela rota não adianta, e ward plantada na rota também não vê lá dentro. Quem quer saber o que tem no mato entra ou <b>planta a ward dentro</b>.</p>
       <p>Duas saídas para quem está no escuro: atacar de lá vale <b>+2 de Força</b> (emboscada) — mas <b>quem ataca fica visível</b> até sair da casa de onde bateu. Bater entrega a posição.</p>
       <p>Ouro sobrando com os três itens comprados? A <b>Sentinela</b>, na loja, é uma ward na mochila: compre na base, plante onde quiser, sem gastar dado.</p></section>
-    <section class="destaque"><h4>Sangramento, veneno e zonas</h4>
-      <p>Algumas habilidades de <b>controle</b> (dado 3+) e algumas Ultimates deixam um <b>efeito com prazo</b>. Ele cobra <b>no início do turno de quem está marcado</b>, uma vez por rodada, e <b>ignora armadura e escudo</b> — é o golpe que já chegou, cobrando depois. É a resposta que faltava contra tanque com escudo grande.</p>
-      <p>Reaplicar <b>renova o prazo</b>, não empilha um segundo. Morrer limpa tudo.</p>
+    <section class="destaque"><h4>Condições · sangramento, veneno e zonas</h4>
+      <p>São <b>doze</b> no jogo, e todas seguem a mesma máquina: o <b>dano cobra no início do turno de quem carrega</b>, e a <b>duração cai no fim</b>. O prazo é contado em <b>turnos do portador</b>, nunca em rodadas — é o que dá ao primeiro e ao segundo jogador o mesmo número de cobranças. Sangramento e Veneno <b>ignoram armadura e escudo</b>: são a resposta contra tanque com escudo grande.</p>
+      <p>Duas unidades diferentes, e a peça mostra qual: <b>acúmulo</b> (escrito ×2 — reaplicar <b>soma</b>, até o teto) é do Sangramento e das marcas; <b>duração</b> (escrita em turnos — reaplicar <b>renova pelo maior</b>) é do resto. Morrer limpa tudo.</p>
+      <p><b>Limpar é metade do contrajogo:</b> o Digerir do Grumo tira todas dele mesmo, o Empresta o Fone do Emerson tira uma do aliado, e a Varrida do Gari tira uma de cada aliado colado. E a <b>Tenacidade</b> anula a próxima Lentidão, Atordoamento, Silêncio ou Prisão que chegar.</p>
       <p>A <b>zona</b> é o mesmo efeito posto no <b>chão</b>: quem <b>começa o turno dentro</b> dela fica envenenado. Ela dura os <b>2 próximos turnos do adversário</b> — contado em turnos, e não em rodadas, para a zona de quem joga primeiro não vigiar mais tempo que a de quem joga em segundo. No mapa, a sua aparece em <b>verde tracejado</b> e a do adversário em <b>vermelho pulsante</b>.</p></section>
     <section class="destaque"><h4>A base trata — mas não com o inimigo em cima</h4>
       <p>Herói ferido na <b>própria base</b> recupera <b>3 de vida por rodada</b>. Voltar custa movimento, que é o recurso mais disputado da mesa — é esse o preço.</p>
@@ -6592,26 +6613,45 @@ function abreManual(){
       <p>No fim da rodada, cada rota compara <b>quantos heróis</b> cada time tem nela. Mais que o rival: a onda anda 1 casa para o lado dele. Empate: ela não anda — <b>mas continua batendo na torre que estiver embaixo</b>.</p>
       <p><b>Você conta na rota se:</b> passou da <b>sua Torre Exterior</b> (empurrar) <b>ou</b> está <b>encostado na Frente de Onda</b> (defender). Herói parado na própria base não conta — isso é acampar, não defender.</p>
       <p><b>Para SALVAR a torre não basta empatar: é preciso ter mais gente que o atacante</b>, porque só assim a onda recua e sai de cima dela. Um corpo a mais já vira a conta — e ir com o time todo é como se perde o resto do mapa.</p>
-      <p>O <b>rótulo de cada rota</b>, no tabuleiro, mostra a contagem: <b>verde</b> quando dá para segurar, <b>carmim</b> quando eles têm gente a mais. Ele só conta o inimigo que <b>você enxerga</b> — o que está escondido no mato não aparece.</p></section>
+      <p>O <b>rótulo de cada rota</b>, no tabuleiro, mostra a contagem em <b>três cores</b>: <b>verde</b> = tenho mais (a onda recua e a torre para de apanhar) · <b>âmbar</b> = empate (a onda não anda, <b>mas a torre continua caindo</b>) · <b>carmim</b> = eles têm mais. Ele só conta o inimigo que <b>você enxerga</b> — o que está escondido no mato não aparece.</p></section>
     <section><h4>Torres, ondas e Nexus</h4>
       <p>Cada rota tem uma <b>Frente de Onda</b> (o círculo tracejado). Ela desliza para o lado de quem tem mais heróis vivos naquela rota, e bate na torre onde encosta.</p>
-      <p>Torre tem <b>3 de vida</b>. A onda tira 1 por rodada, e o golpe de herói tira <b>1</b> — qualquer habilidade ofensiva, inclusive a Ultimate. Torre não é poço: quem quer derrubar mais rápido junta heróis, não gasta a Ultimate.</p>
-      <p><b>As ondas engrossam.</b> A cada <b>16 rodadas</b> elas passam a tirar <b>1 a mais</b> da torre, até 3. Da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. É o relógio da partida: numa disputa em que os dois defendem bem, é ele que garante que alguém fecha.</p>
-      <p><b>Você também derruba torre.</b> Se a sua onda já está encostada nela, ela vira alvo de habilidade: mira vermelha, um toque, <b>1 de dano</b>. Mas a torre <b>revida 2</b> a cada golpe — e é esse pedágio, não uma trava de rodada, que decide quantas vezes vale bater. Empurrar a rota com o time é o dobro da velocidade de esperar a onda.</p>
+      <p><b>Torre tem 20 de vida e 5 de Armadura</b>, e a barra dela fica embaixo da peça. A onda tira <b>7</b> por rodada — um terço de torre.</p>
+      <p><b>O seu golpe na torre é calculado</b>, e não mais um ponto fixo: <b>dado × escala da habilidade + Poder, menos a Armadura da estrutura</b>. Ou seja: dado bom e item de Poder <b>derrubam torre mais rápido</b>, e cutucada com dado 1 arranha. As <b>Ultimates perfurantes</b> (Julgamento, Ato Final, Sentença) <b>ignoram a Armadura da torre</b>, como ignoram a de qualquer tanque — são as melhores do jogo contra estrutura.</p>
+      <p><b>O que não funciona contra concreto:</b> Sangramento, Veneno, Atordoamento, Silêncio, Marca, execução, drenar e Crítico. Torre não sangra e não se assusta.</p>
+      <p><b>As ondas engrossam.</b> A cada <b>16 rodadas</b> elas passam a tirar <b>um degrau a mais</b>, até 3. Da rodada 33 em diante, uma rodada de cerco derruba uma torre cheia. É o relógio da partida: numa disputa em que os dois defendem bem, é ele que garante que alguém fecha.</p>
+      <p>A torre <b>revida 4</b> a cada golpe que leva. É esse pedágio, e não uma trava de rodada, que decide quantas vezes vale bater.</p>
       <p>Torres caídas abrem a rota. Rota aberta, a onda bate no <b>Nexus</b>. Zerou, acabou.</p></section>
+    <section class="destaque"><h4>O creep é quem paga o pedágio</h4>
+      <p>Regra nova, e ela é curta:</p>
+      <table><tr><td><b>Creep na zona</b></td><td>você pressiona a torre à vontade</td></tr>
+      <tr><td><b>Sem creep</b></td><td>a torre atira em você no fim do turno</td></tr></table>
+      <p style="margin-top:7px">Se você <b>terminar o turno colado</b> (1 hexágono) numa torre inimiga viva e a <b>sua Frente de Onda não estiver dentro da mesma zona</b>, a torre dispara: <b>5 de dano</b>. Ela escolhe <b>um alvo só</b> — quem bateu nela neste turno, e depois o mais ferido.</p>
+      <p>O disparo <b>não gasta dado, ação nem carta de ninguém</b>: é reação da estrutura. E ele <b>não mata</b> — deixa você em 1 de vida, à mão de qualquer inimigo. A torre não rouba o abate, ela <b>arma</b> o abate.</p>
+      <p>É o que transforma empurrar torre em decisão: <b>dá para bater agora, ou os meus creeps não chegam a tempo?</b></p></section>
+    <section class="destaque"><h4>Movimento máximo · cada herói tem o seu</h4>
+      <p>O Dado Mestre continua sendo o bolso do time — mas <b>nenhum herói atravessa mais que o próprio teto de casas por turno</b>, por mais movimento que sobre.</p>
+      <table><tr><td><b>3 casas</b></td><td>Taxista, Grumo, Caramêlo, Torvald</td></tr>
+      <tr><td><b>4 casas</b></td><td>os onze do meio</td></tr>
+      <tr><td><b>5 casas</b></td><td>Pombo, Valti, Pyk, Zhet, Catarino</td></tr></table>
+      <p style="margin-top:7px">O número aparece na <b>carta do herói</b> (Mov. máx.) e no botão <b>Mover</b>. Antes, um herói com o bolso cheio atravessava metade do mapa numa jogada só — e posicionamento, rota e emboscada deixavam de importar.</p>
+      <p><b>Não contam para o teto:</b> Lampejo, Retorno, Puff de Emergência, o recuo do Passo de Sombra, a carta Recuo e qualquer puxão, empurrão ou troca de lugar. Cada um já tem limite e preço próprios — quem é móvel continua sendo móvel.</p>
+      <p><b>Item de movimento sobe o teto</b>, e não devolve movimento: Passos do Vento, Botas Rúnicas e as duas Ampulhetas dão <b>+1 casa</b> cada, até o limite de 6.</p></section>
     <section><h4>O Poço — Dragão e Barão</h4>
       <p>Há <b>um poço</b> no meio do mapa, em terreno de ninguém, e ele <b>muda de morador</b>. Vazio, mostra a rodada em que o próximo desce — esse é o relógio da partida.</p>
       <p>Na <b>rodada 5</b> desce o <b>Dragão</b>: <b>3 de vida</b>, revida 2. Cai em <b>dois dados</b> — uma Ultimate e uma básica — se dois heróis comprarem a briga no mesmo turno. Levar dá a <b>Herança do Dragão</b>: <b>+1 de Poder em todo o time, para sempre</b>, e <b>acumula</b> a cada Dragão. Ele volta 3 rodadas depois de cair.</p>
-      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (seu golpe em estrutura causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
+      <p>Na <b>rodada 12</b> o <b>Barão</b> toma o poço — <b>mesmo com o Dragão vivo</b>. Ele é diferente do Dragão: tem <b>16 de vida e 3 de Armadura</b> e <b>apanha pela regra dos heróis</b> — <b>Força + Poder − Armadura</b>, com respingo valendo metade. No Barão o <b>dado importa muito</b>: com 3 de Armadura, uma básica de dado 2 tira <b>2</b> e uma Ultimate de dado 6 tira <b>8</b>. É por isso que ele <b>pede um grupo</b> — não por ter barra comprida, mas porque cutucar com dado ruim quase não anda. Conte com <b>4 dos 5 heróis</b> para fechar num turno. E as três Ultimates de <b>dano garantido</b> (Julgamento, Ato Final, Sentença) <b>ignoram a armadura dele</b>, como ignoram a de qualquer tanque. Ele revida 4: encostar custa o dobro. Quem leva <b>escolhe uma de três dádivas</b> por <b>2 rodadas</b>: <b>Ondas de Ferro</b> (as três ondas avançam sozinhas), <b>Égide</b> (4 de escudo no time por turno) ou <b>Aríete</b> (o seu golpe de herói em <b>torre vale o dobro</b>; no Nexus causa 2). Nenhuma dá Poder — o Barão é pressão de mapa, não força bruta. É o botão de ponto-sem-volta.</p>
       <p><b>No Dragão</b> a conta é de <b>golpes</b>, e não de dano: básica ofensiva tira <b>1</b> e Ultimate tira <b>2</b>, com qualquer dado. Ele desce na rodada 5, quando ninguém tem item e a conta de dano ainda é rasa — contar golpes é o que o mantém legível ali. O poço é <b>sem dono</b>: Quem dá o <b>último golpe</b> leva o prêmio inteiro. É por isso que ninguém deixa o poço sozinho.</p></section>
     <section class="destaque"><h4>Rotação do Caçador</h4>
       <p>No <b>início de cada rodada</b> os dois jogadores escolhem, <b>escondido um do outro</b>, para que <b>região</b> o próprio Caçador vai. Ele é reposicionado <b>na hora</b>, e isso <b>não gasta o Dado Mestre</b> nem a ação dele.</p>
       <p><b>Ele reaparece sempre dentro da selva</b> — na parte dela colada à região escolhida —, <b>nunca dentro da rota</b>. Se aquela casa estiver ocupada, ele pousa na casa de selva válida mais próxima.</p>
-      <table><tr><td>▲ <b>Topo</b></td><td>a selva colada à rota de cima</td></tr>
-      <tr><td>◆ <b>Meio</b></td><td>a selva colada à rota do meio</td></tr>
-      <tr><td>▼ <b>Baixo</b></td><td>a selva colada à rota de baixo</td></tr>
-      <tr><td>❦ <b>Selva</b></td><td>o centro da sua selva, de frente para o poço</td></tr></table>
-      <p style="margin-top:7px">Você tem <b>10 segundos</b> para decidir. Sem escolha, ele vai sozinho para a <b>Selva</b> — a partida nunca fica parada esperando.</p>
+      <table><tr><td>▲ <b>Topo</b></td><td>a selva colada à rota de cima · +2 de Armadura</td></tr>
+      <tr><td>◆ <b>Meio</b></td><td>a selva colada à rota do meio · +2 de Poder</td></tr>
+      <tr><td>▼ <b>Baixo</b></td><td>a selva colada à rota de baixo · +6 de ouro</td></tr>
+      <tr><td>❦ <b>Selva</b></td><td>o centro da sua selva · cura 4 e +1 no Dado Mestre</td></tr>
+      <tr><td>⊙ <b>Continuar onde está</b></td><td>ele <b>não sai do lugar</b> · nenhum bônus</td></tr></table>
+      <p style="margin-top:7px"><b>Continuar onde está não é uma região.</b> Não é a Selva, não é voltar para a Selva e não é ir para o centro: é <b>não mexer no Caçador</b>. Serve para quando a casa em que ele parou já vale mais que qualquer reposicionamento — em cima do acampamento, colado no poço, ou de tocaia esperando alguém passar. O preço é abrir mão do bônus da região.</p>
+      <p>Você tem <b>10 segundos</b> para decidir. Sem escolha, ele vai sozinho para a <b>Selva</b> — a partida nunca fica parada esperando.</p>
       <p>O adversário <b>não recebe aviso nenhum</b> de qual botão você apertou. Para saber onde o seu Caçador caiu, ele precisa ter <b>visão daquele mato</b> — de olho ou de <b>ward</b>. A informação está presa à <b>posição</b>, não à escolha.</p></section>
     <section><h4>O Caçador e o mato</h4>
 <p><b>Rota, rio e base todo mundo vê.</b> O <b>mato</b> é diferente: você só enxerga o mato onde tiver <b>alguém seu dentro</b>. O mapa tem dois — o <b>mato de cima</b> e o <b>mato de baixo</b> — e eles se enxergam separadamente. As casas escuras no tabuleiro são o mato onde você está cego.</p>
@@ -6626,7 +6666,7 @@ function abreManual(){
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
       <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: Força mínima, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
-      <p>O dado é escolhido sozinho: o menor que dá conta. Quer gastar um específico? Toque nele antes.</p>
+      <p>O dado é escolhido sozinho: o menor que dá conta — <b>com uma exceção</b>. Se o Suporte tiver <b>doado um dado</b> para este herói, é o doado que sai primeiro: ele só serve a essa peça e morre no fim do turno, então guardá-lo é jogá-lo fora. Quer gastar um específico? Toque nele antes.</p>
       <p>O <b>✕</b> cancela sempre. Toque num herói inimigo para ver a carta dele.</p></section>
   </div>`);
 }
@@ -6648,7 +6688,7 @@ const PASSOS=[
    ok:null},
   {t:"Duas rotas mexem nos seus dados:<br><br><b>Topo</b> dá <b>Placas</b> — ajusta um dado em ±1 ou re-rola.<br><b>Meio</b> dá <b>Prioridade</b> — um dado de ação a mais.<br><br>Ganhar essas rotas é o que faz sua ultimate sair na hora certa.",
    ok:null},
-  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo a <b>região</b> dele — <b>Topo, Meio, Baixo ou Selva</b> — e ele reaparece na hora, sempre <b>dentro do mato</b> daquela região.<br><br>O outro não vê a sua escolha: só descobre onde ele está se tiver <b>visão daquele mato</b>. É o blefe do gank. Use.",
+  {t:"Por último: o <b>Caçador</b> da selva. No começo de cada rodada vocês dois escolhem em segredo a <b>região</b> dele — <b>Topo, Meio, Baixo, Selva</b> ou <b>Continuar onde está</b> — e ele reaparece na hora, sempre <b>dentro do mato</b> daquela região. A quinta opção não reposiciona: ele fica exatamente onde parou.<br><br>O outro não vê a sua escolha: só descobre onde ele está se tiver <b>visão daquele mato</b>. É o blefe do gank. Use.",
    ok:null},
   {t:"É isso. Encerre o turno e jogue.<br><br>O <b>?</b> lá em cima abre o manual completo a qualquer momento.",
    ok:null, fim:true}

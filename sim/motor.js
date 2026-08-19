@@ -143,7 +143,7 @@ const PONTE = `
   rotaDaPos:h=>rotaDaPos(h), contaRota:nome=>contaRota(nome),
   get REVIDE_TORRE(){return REVIDE_TORRE}, get TIRO_TORRE(){return TIRO_TORRE},
   get OURO_ABATE(){return OURO_ABATE}, get OURO_CAMP(){return OURO_CAMP},
-  get OURO_CAMP_NEUTRO(){return OURO_CAMP_NEUTRO},
+  get OURO_CAMP_NEUTRO(){return OURO_CAMP_NEUTRO}, get PATAMAR_PASSO(){return PATAMAR_PASSO},
   get ARM_ESTRUTURA(){return ARM_ESTRUTURA}, get ZONA_TORRE(){return ZONA_TORRE},
   get ARIETE_MULT(){return ARIETE_MULT},
   get ONDA_GOLPE(){return ONDA_GOLPE}, degrauDaOnda:()=>degrauDaOnda(),

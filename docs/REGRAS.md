@@ -77,6 +77,39 @@ e só nela.
 Um d6 por turno. O resultado é o **total de casas que os cinco heróis andam
 juntos**. Tirou 4? São quatro casas: quatro com um herói, ou uma com quatro.
 
+### Movimento máximo — o teto de cada herói
+
+O bolso é do time, mas **nenhum herói atravessa mais do que o próprio teto de
+casas por turno**, por mais movimento que sobre na mesa.
+
+| Perfil | Teto | Quem |
+|---|---|---|
+| Pesado | **3** | Taxista, Grumo, Caramêlo, Torvald — Armadura 3+ e alcance 1 |
+| Normal | **4** | os onze do meio |
+| Ágil | **5** | Pombo, Valti, Pyk, Zhet, Catarino — os cinco com `agil` |
+
+**Ninguém tem 6**, e é escolha: 6 é o vão inteiro entre as duas torres
+exteriores de uma rota.
+
+**O teto é em CASAS, não em pontos de movimento.** Um herói com 20 no bolso do
+time anda no máximo o teto dele; o custo do caminho continua saindo do bolso
+comum. E o teto entra **depois** do piso de 1 da Lentidão — senão a Lentidão
+devolveria movimento a quem já tinha andado tudo.
+
+**Não contam para o teto:** Lampejo, Retorno, Puff de Emergência, o recuo do
+Passo de Sombra, a carta Recuo e qualquer puxão, empurrão ou troca de lugar.
+Nenhum é caminhada, todos já têm limite e custo próprios — é o que preserva a
+identidade de quem é móvel.
+
+**Item de movimento sobe o TETO**, e não devolve movimento: Passos do Vento,
+Botas Rúnicas, Ampulheta Rachada e Ampulheta Dourada dão **+1 casa** cada, com
+teto absoluto de **6**.
+
+> **Por quê.** Medido em `sim/movimento.js`: o Dado Mestre somado a todos os
+> dados de ação convertidos dá um bolso de **mediana 15 e máximo 21**, e de base
+> a base são **15 casas**. Sem teto, um herói atravessava o mapa inteiro numa
+> jogada — e posicionamento, rota, Caçador e emboscada deixavam de importar.
+
 ### Dados de ação — a Força das habilidades
 
 Três d6 por turno. Cada habilidade exige uma **Força mínima**, e o valor do dado
@@ -93,7 +126,7 @@ somando seu valor ao Dado Mestre.
 | Retomada | +1 ou +2, automático, para quem está atrás |
 | Prioridade | +1, gastando uma carga ganha no Meio |
 | Adiantar | +1, pela carta |
-| Suporte | doa o próprio dado a um aliado, que volta a poder agir |
+| Suporte | doa o próprio dado a um aliado, que volta a poder agir. O dado doado tem **dono** e **sai antes dos outros**: só serve àquela peça e morre no fim do turno |
 
 ---
 
@@ -147,7 +180,7 @@ eram número fixo e não cresciam com nada.
 (defensor em cima do Nexus, herói em cima da própria torre). O toque abre uma
 **janela perguntando em quem bater**. Com um alvo só, resolve direto.
 
-**Morte:** quem matou leva **4 de ouro**. O morto volta na base, com a vida
+**Morte:** quem matou leva **8 de ouro**. O morto volta na base, com a vida
 cheia, e pode comprar na loja enquanto espera. **O tempo cresce com a partida:**
 
 | Rodada | Volta em |
@@ -182,12 +215,25 @@ hora** — não gasta o Dado Mestre nem a ação dele.
 **Ele reaparece sempre dentro da selva**, na parte dela colada à região
 escolhida, e **nunca dentro da rota**.
 
-| Escolha | Onde ele reaparece |
-|---|---|
-| **Topo** | a casa de selva colada à rota de cima, do próprio lado |
-| **Meio** | a casa de selva colada à rota do meio, do próprio lado |
-| **Baixo** | a casa de selva colada à rota de baixo, do próprio lado |
-| **Selva** | o centro da própria selva |
+| Escolha | Onde ele reaparece | Bônus, no turno dele |
+|---|---|---|
+| **Topo** | a casa de selva colada à rota de cima, do próprio lado | +2 de Armadura |
+| **Meio** | a casa de selva colada à rota do meio, do próprio lado | +2 de Poder |
+| **Baixo** | a casa de selva colada à rota de baixo, do próprio lado | +6 de ouro |
+| **Selva** | o centro da própria selva | cura 4 e +1 no Dado Mestre |
+| **Continuar onde está** | **em lugar nenhum — ele não sai da casa em que parou** | nenhum |
+
+**A quinta opção não é uma região.** Ela não é a Selva, não é voltar para a
+Selva, não é ir para o centro e não é reescolher a região atual: é **não mexer
+no Caçador**. Vale quando a casa em que ele parou já vale mais do que qualquer
+reposicionamento — em cima do acampamento, colado no poço, ou de tocaia. O preço
+é abrir mão do bônus da região.
+
+**A IA também escolhe entre as cinco.** Ela mede ficar com a mesma régua das
+regiões, só que a partir de onde o Caçador está: inimigo exposto ao alcance,
+aliado por perto para fechar o gank, poço colado, acampamento maduro. Gank já
+**encostado** vale mais que gank que ainda pede deslocamento. Sem nada em volta,
+ficar vale zero e qualquer região ganha.
 
 As quatro casas são **derivadas da planta do mapa**, não escritas à mão, e as do
 time 1 são o **espelho** das do time 0 — `gira` leva a rota de cima na de baixo,
@@ -198,7 +244,8 @@ da mesma região. Nunca em rota, nunca em base, nunca em cima de outra peça,
 nunca fora do tabuleiro.
 
 **10 segundos para decidir.** Sem escolha, vai sozinho para a **Selva** — a
-partida nunca fica parada esperando.
+regra do timeout **não mudou** com a entrada da quinta opção, e a partida nunca
+fica parada esperando.
 
 **A escolha é secreta.** O adversário não recebe aviso nenhum de qual região foi
 escolhida, e nada vai para o log. Para saber onde o Caçador caiu ele precisa ter
@@ -314,10 +361,58 @@ de Suporte, da carta Sinalizador, ou da **Sentinela** comprada na loja (§12).
 
 ## 9 · Torres e Nexus
 
-| Estrutura | Vida | Como cai |
-|---|---|---|
-| **Torre** | 3 | A onda tira 1 por rodada. O golpe de herói tira **1** — qualquer habilidade ofensiva |
-| **Nexus** | 3 | Igual, mas só depois que uma rota inteira do lado dele cai — e o **último ponto é de herói** |
+| Estrutura | Vida | Armadura | Como cai |
+|---|---|---|---|
+| **Torre** | **20** | **5** | A onda tira **7** por rodada (um terço de torre). O golpe de herói é **calculado** — ver abaixo |
+| **Nexus** | 3 | — | O golpe de herói tira 1, e só depois que uma rota inteira do lado dele cai — o **último ponto é de herói** |
+
+### O golpe de herói em estrutura
+
+```
+dano = round(dado × dano da habilidade × escala do slot) + Poder + Carregado
+       − Armadura da estrutura        (mínimo 1)
+```
+
+**Perfurante ignora a Armadura da estrutura**, como ignora a de um herói e a do
+Barão — é o que dá às três Ultimates de dano garantido um papel contra
+construção, sem nenhuma exceção escrita por nome de herói.
+
+**O que NÃO existe contra concreto:** crítico, emboscada, drenar, execução e
+qualquer condição — Sangramento, Veneno, Atordoamento, Silêncio, Marca. A
+classificação mora num lugar só (`podeAtingirEstrutura` e `multEstrutura`), e um
+herói novo entra declarando `estrutura` na habilidade.
+
+> **Por que 20, e por que a onda tira 7.** A escala foi escolhida para **não
+> mudar o relógio da onda**: continuam sendo 3 rodadas de cerco para derrubar
+> uma torre cheia, 2 com a onda grossa e 1 no terceiro degrau — a cadência
+> medida e escolhida na v47. O que mudou é o golpe de HERÓI, que era 1 fixo
+> para todo mundo: o tanque com dado 1 e o atirador com Ultimate e três itens
+> derrubavam torre na mesma velocidade, e investir não valia nada contra
+> estrutura.
+
+### A torre atira em quem mergulha sozinho
+
+```
+CREEP PRESENTE  → o herói pressiona à vontade
+SEM CREEP       → a torre pune o herói
+```
+
+No **fim do turno** de quem se expôs — antes de a presença ser congelada, para
+que quem cair já conte como morto na conta da rota:
+
+| | |
+|---|---|
+| **Perto** | **1 hexágono**. A mesma régua do +1 de Armadura de quem defende junto da própria torre: a zona de proteção e a de ameaça são a mesma casa |
+| **Creep aliado** | a **Frente de Onda daquela rota, dentro da zona da torre** — não em qualquer lugar da rota |
+| **Alvo** | **um por torre**: quem bateu nela neste turno, depois o mais ferido, distância desempata |
+| **Dano** | **5**, e **não mata** — deixa em 1 |
+| **Custo** | nenhum: não gasta dado, ação, carta nem recurso de ninguém |
+| **Torre caída** | não atira |
+
+> **Por que não mata.** `mata()` precisa de um autor para creditar o ouro, e
+> morte sem autor é buraco de motor. Na prática a torre não rouba o abate, ela
+> **arma** o abate: quem mergulhou sozinho termina o turno em 1 de vida, à mão
+> de qualquer inimigo.
 
 **A última muralha.** Com o Nexus em **1**, a onda só passa se **não houver herói
 inimigo defendendo** — a 1 hexágono do Nexus. Base abandonada cai sozinha; base
@@ -327,7 +422,7 @@ defendida exige matar quem está lá.
 > **97,3% terminavam com a onda dando o golpe final.** Quem derrubava a rota
 > depois só assistia — três rodadas de contagem regressiva em que nenhuma escolha
 > mudava nada. A regra devolve a última luta ao fim de partida, e dá função ao
-> **Aríete** do Barão (golpe de herói em estrutura vale 2).
+> **Aríete** do Barão (o golpe de herói em torre vale o dobro).
 >
 > Ela é condicional de propósito. Um piso duro (a onda para em 1, sempre) foi
 > testado e morreu na medição: sem ninguém obrigado a ir fechar, **1200 partidas
@@ -336,7 +431,7 @@ defendida exige matar quem está lá.
 **Torre exposta:** numa rota, só a **torre mais avançada ainda de pé** aceita
 golpe. Enquanto ela vive, a de trás está protegida.
 
-**Revide:** a torre devolve **2 de dano** a cada golpe, e o revide nunca mata.
+**Revide:** a torre devolve **4 de dano** a cada golpe, e o revide nunca mata.
 **Não há limite de golpes por rodada** — o teto é dado na mesa e herói que ainda
 não agiu. O que mede quanto você quer a torre é o pedágio, não uma trava.
 
@@ -349,7 +444,7 @@ Cada rota tem uma **Frente de Onda**. No fim de cada rodada, para cada rota:
 - O time com **mais heróis presentes** empurra a frente 1 casa a seu favor
 - Empate não move nada
 - A onda **não passa por uma torre viva**
-- Se a frente encosta numa torre, a torre perde 1 de vida
+- Se a frente encosta numa torre, a torre perde **7 de vida** (um degrau de onda)
 
 **O que conta como presença:** estar **a até 1 hexágono** da rota *e* ter
 **passado da sua própria torre exterior**. Antes dela é desenvolvimento; depois
@@ -454,7 +549,7 @@ um prazo de validade.
 
 - **Ondas de Ferro** — as suas três ondas avançam sozinhas, mesmo sem herói nas rotas
 - **Égide do Barão** — todos os seus heróis ganham 4 de escudo no início de cada turno seu
-- **Aríete** — os seus golpes de herói em torre e Nexus causam 2 em vez de 1
+- **Aríete** — o seu golpe de herói em **torre vale o dobro**; no Nexus causa 2 em vez de 1
 
 > **Dinâmica — por que nenhuma dádiva dá Poder.** O Barão deixou de ser "seu time
 > bate mais forte" e virou **pressão de mapa**. É o que o torna útil para quem
@@ -470,17 +565,41 @@ um prazo de validade.
 |---|---|
 | Fim de rodada, herói que **não** agiu | 3 |
 | Fim de rodada, herói que agiu | 1 |
-| Matar um herói | 4 |
-| Acampamento | 3 a 5 |
+| **Matar um herói** | **8** |
+| **Acampamento próprio** | **6** |
+| **Acampamento neutro** (o do meio) | **8** |
+| **Invadir o acampamento do adversário** | **+2** sobre o valor dele |
+| Região **Baixo**, na rotação do Caçador | 6 |
+| Torre, Nexus, Dragão e Barão | **nada** — os objetivos pagam em mapa, não em ouro |
 
-**22 itens.** Cada herói carrega **3** — ou 4, com a carta Relicário. Só compra
-quem está **na própria base ou morto**.
+**22 itens, em três faixas de investimento.** Cada herói carrega **3** — ou 4,
+com a carta Relicário. Só compra quem está **na própria base ou morto**.
+
+| Faixa | Preço | O que é |
+|---|---|---|
+| **Simples** | **12** | um atributo, efeito pequeno |
+| **Intermediário** | **18** | dois atributos, ou um efeito de verdade |
+| **Forte** | **24** | o item que define a build |
+
+**Vender** devolve **60%** do preço (arredondado para baixo, mínimo 1), na mesma
+janela da compra.
+
+> **Dinâmica — o preço é o relógio da progressão.** Medido em `sim/ouro.js`: com
+> o catálogo antigo (4 a 9 de ouro) o herói mediano cruzava o preço do **primeiro
+> item na rodada 4**, do **segundo na 6** e fechava **os três slots na rodada 8**
+> — de uma partida que dura ~34. O build inteiro acontecia no primeiro quarto do
+> jogo, e o resto da partida era ouro sem destino.
+>
+> Com as três faixas: **1º item na rodada 7, 2º na 14, três slots na 20**. E as
+> recompensas de EVENTO subiram junto (abate, acampamento, invasão) enquanto a
+> gota por rodada ficou parada — sem isso, subir o preço cobraria **paciência**
+> em vez de jogo.
 
 ### Gastar o ouro que sobra
 
 | Gasto | Preço | O que faz |
 |---|---|---|
-| **Reforço** | 6, **+2 por compra** | +1 de Poder permanente neste herói |
+| **Reforço** | 10, **+4 por compra** | +1 de Poder permanente neste herói |
 | **Requisição** | 5 | Compra 1 carta do baralho |
 | **Leva de Ferro** | 4, **+1 a cada 3 rodadas** (teto 12) | A sua onda de uma rota avança 1 casa |
 | **Sentinela** | 4, **+2 por compra** | 1 ward na mochila (máximo 2) |
@@ -515,7 +634,7 @@ O time inteiro divide **uma carga**, gasta em Lampejo *ou* em Retorno, e ela lev
 **3 rodadas** para voltar.
 
 - **Lampejo** — salta até 2 casas, ignorando movimento e prisão
-- **Retorno** — volta à base e recupera 3 de vida. Interrompido se houver inimigo colado
+- **Retorno** — volta à base e recupera 5 de vida. Interrompido se houver inimigo colado
 
 > **Dinâmica.** Com um feitiço por herói, a pergunta é "posso?" e a resposta é
 > sempre sim. Com uma carga por time, vira **"quem merece?"** — e o adversário
@@ -546,6 +665,27 @@ counterpick dela.
 As escolhas acontecem **rota por rota**, alternando quem escolhe primeiro: Topo,
 Selva, Meio, Atirador, Suporte. Quem escolhe primeiro no Topo escolhe por último
 na Selva.
+
+### Como a IA drafta
+
+Nota ponderada, e **sorteio dentro do grupo dos melhores** — nunca o maior score
+absoluto, e nunca sorteio puro:
+
+| Parcela | O que ela lê |
+|---|---|
+| **Chassi** | vida, Poder, Armadura, alcance, ágil e movimento máximo |
+| **Ameaça do kit** | lida das habilidades: atordoamento, silêncio, invisibilidade, execução, revive, perfurante, prende, zona, cura grande, área |
+| **Composição** | a terceira peça da mesma classe pesa; time sem linha de frente valoriza quem segura; time sem alcance valoriza quem atira |
+| **Matchup** | **devolve 0 hoje** — a rede de anti-picks está em `docs/MATCHUPS.md`, esperando aprovação do grupo |
+
+O tamanho do grupo é personalidade de nível: o **Aprendiz** sorteia liso entre
+quatro, o **Veterano** e o **Mestre** entre três, e o Mestre pende forte para os
+dois primeiros. **No ban o grupo é três maior**, porque o pool é o catálogo
+inteiro em vez dos quatro de uma rota.
+
+> Medido em `sim/draft.js`, 200 drafts com a IA dos dois lados: **20/20 heróis**
+> apareceram em algum time, **199 composições distintas**, e o herói mais
+> escolhido ficou em **39%** dos slots da rota dele.
 
 ---
 

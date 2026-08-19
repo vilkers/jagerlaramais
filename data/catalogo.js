@@ -423,7 +423,7 @@ function textoHab(hb){
   return p.join(" · ") || "—";
 }
 const TEXTO_PATAMAR =
-  "<b>Patamares</b> — a cada <b>10 de ouro</b> acumulado, <b>+2 de Poder</b> para sempre. Até 3 vezes.";
+  "<b>Patamares</b> — a cada <b>20 de ouro</b> na mão, <b>+2 de Poder</b> para sempre. Até 3 vezes.";
 
 /* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
 const CLASSES = [
