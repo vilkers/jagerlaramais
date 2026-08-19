@@ -334,7 +334,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v0.5 · protótipo</span>
+    <span class="ver">v48 · jogável</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -365,8 +365,8 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <p class="lede">Cada jogador drafta cinco heróis — um por rota — e comanda o time inteiro. Mapa completo: três rotas, selva, rio, objetivos épicos. Duas pessoas na mesa.</p>
   <dl class="pitch">
     <div><dt>Jogadores</dt><dd>1v1<small>cada um comanda 5 heróis</small></dd></div>
-    <div><dt>Duração</dt><dd>45<small>minutos, ~10 rodadas</small></dd></div>
-    <div><dt>Por rodada</dt><dd>3d6<small>três ordens, cinco heróis</small></dd></div>
+    <div><dt>Duração</dt><dd>34<small>rodadas — mediana medida em simulação</small></dd></div>
+    <div><dt>Por rodada</dt><dd>1+3<small>um Dado Mestre e três de ação, para cinco heróis</small></dd></div>
     <div><dt>Vitória</dt><dd>Nexus<small>empurrar rota é o caminho</small></dd></div>
   </dl>
   <div class="nota">
@@ -380,15 +380,18 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <p class="lede">Não são cinco personagens com números diferentes. São cinco subsistemas com fantasias, mecânicas e custos de atenção distintos — que conversam entre si.</p>
   <div class="rotas" id="lista-rotas"></div>
   <div class="nota">
-    <b>O grafo fecha:</b> a Ward do Suporte revela a carta da Selva. A presença do Suporte alimenta o Atirador. O Meio reforça qualquer rota. O Topo aparece do nada. Nenhuma rota é ilha — exceto o Topo, que é ilha de propósito, e essa é a piada.
+    <b>O grafo fecha:</b> a Ward do Suporte é a única visão que enxerga dentro do mato — e é lá que o Caçador vive. A presença do Suporte alimenta o Atirador. O Meio reforça qualquer rota. O Topo aparece do nada. Nenhuma rota é ilha — exceto o Topo, que é ilha de propósito, e essa é a piada.
   </div>
 </section>
 
 <section id="turno">
   <p class="eyebrow">03 — Loop</p>
   <h2>A rodada</h2>
-  <p class="lede">Seis passos. Cerca de quatro minutos com dois jogadores. Dez rodadas fecham a partida.</p>
+  <p class="lede">Uma rodada é <b>um turno de cada</b>, com uma decisão secreta antes e a virada do mapa depois. A iniciativa <b>não alterna</b>: quem começa a partida começa todas as rodadas — a ordem é sempre <b>A → C</b>, e nunca dois turnos seguidos do mesmo jogador.</p>
   <div class="turno" id="lista-turno"></div>
+  <div class="nota">
+    <b>O que a fase de fim de rodada resolve, nesta ordem:</b> as ondas andam para o lado de quem tem mais presença · a torre embaixo da onda apanha · renda de ouro · placas do Topo e prioridade do Meio · respawn · o poço troca de morador · a rotação do Caçador da rodada seguinte.
+  </div>
 </section>
 
 <section id="dados">
@@ -426,11 +429,13 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
     <table>
       <thead><tr><th>Fonte</th><th>Efeito</th></tr></thead>
       <tbody>
-        <tr><td>Sentinela Azul <span style="color:var(--ink-3)">· selva</span></td><td>Re-rolar 1 dado por rodada, durante 3 rodadas</td></tr>
-        <tr><td>Fera Escarlate <span style="color:var(--ink-3)">· selva</span></td><td>+1 de dano em toda alocação, durante 3 rodadas</td></tr>
-        <tr><td>Ampulheta Rachada <span style="color:var(--ink-3)">· item</span></td><td>Re-rolar 1 dado por rodada</td></tr>
-        <tr><td>Itens de assinatura</td><td>Alargam a janela de uma habilidade — <code>4–6</code> vira <code>2–6</code></td></tr>
-        <tr><td>Nível 5</td><td>Ganha o quarto dado</td></tr>
+        <tr><td>Placa <span style="color:var(--ink-3)">· dominar o Topo</span></td><td>1 ajusta um dado em ±1 · 2 re-rolam um dado</td></tr>
+        <tr><td>Prioridade <span style="color:var(--ink-3)">· dominar o Meio</span></td><td>Rola <b>um dado de ação a mais</b>, na hora que você quiser</td></tr>
+        <tr><td>Retomada <span style="color:var(--ink-3)">· estar atrás</span></td><td>+1 ou +2 dados de ação, automático, para quem está perdendo</td></tr>
+        <tr><td>Segunda Chance · Mão Firme <span style="color:var(--ink-3)">· cartas</span></td><td>Re-rolar um dado · ajustar um dado em ±1</td></tr>
+        <tr><td>Improviso <span style="color:var(--ink-3)">· carta</span></td><td>Descarta um dado de ação e devolve o <b>dobro do valor</b> em movimento</td></tr>
+        <tr><td>Dado doado <span style="color:var(--ink-3)">· Suporte</span></td><td>O Emerson e a Vidra doam o próprio dado a um aliado, que volta a poder agir</td></tr>
+        <tr><td>Todo dado tem saída</td><td>Dado que não serve a ninguém <b>vira movimento</b></td></tr>
       </tbody>
     </table>
   </div>
@@ -444,8 +449,10 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <figure class="mapa-arte">
     <img src="../arte/mapa/mapa.jpg" alt="Mapa ilustrado do Jagerlaramais">
     <figcaption>O mapa como ele é na ficção: as duas bases nas pontas da diagonal, três estradas
-      ligando-as, selva fechada entre elas, rio cortando o meio. O covil do Dragão fica no quadrante
-      de cima; a cova do Barão, no de baixo. O tabuleiro hexagonal abaixo é a versão jogável disso.</figcaption>
+      ligando-as, selva fechada entre elas, rio cortando o meio. O <b>poço</b> fica no meio, em terreno
+      de ninguém — é um só, e ele <b>troca de morador</b>: o Dragão até a rodada 12, o Barão a partir
+      dela. O tabuleiro hexagonal abaixo é um <b>esquema</b> da planta; o tabuleiro jogável tem
+      <b>11 por 11</b> e é desenhado pelo próprio motor.</figcaption>
   </figure>
 
   <div class="mapa-shell">
@@ -465,6 +472,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
       </div>
       <div class="bloco">
         <h4>Comprimento das rotas</h4>
+        <p class="dica" style="margin:0 0 8px">No tabuleiro jogável, de 11 por 11. O esquema ao lado é menor, só para mostrar a planta.</p>
         <ul id="lenrotas"></ul>
       </div>
       <div class="bloco">
@@ -572,20 +580,20 @@ const DESC_ROTAS = {
     "<b>Placa é moeda de dado.</b> Uma ajusta um dado em <b>±1</b> — vira o 5 em 6 e destrava uma ultimate. Duas <b>re-rolam</b> um dado. É a única fonte de controle sobre a sorte que você mesmo constrói: <em>ganhar de lado no topo é o que faz o seu meio ter a ultimate na hora certa</em>."
   ],
   selva:[
-    "O único herói cuja ação é programada em segredo. Você põe a carta virada em uma de quatro zonas — cima, meio, baixo ou selva — e ela vira no fim do turno do oponente.",
-    "Selva rende ouro e buff. Rota vira <b>gank</b>. E o blefe é real: virar carta no topo e o oponente jogar defensivo lá enquanto era só farm já ganhou a rota de baixo de graça."
+    "O único herói que é <b>reposicionado em segredo</b>. No início de cada rodada os dois escolhem, escondido um do outro, para que <b>região</b> o próprio Caçador vai — Topo, Meio, Baixo, Selva ou <b>Continuar onde está</b> — e ele reaparece na hora, sempre dentro do mato daquela região, nunca dentro da rota.",
+    "O blefe é real, e o preço dele é informação: o adversário <b>não recebe aviso nenhum</b> da sua escolha. Para saber onde o seu Caçador caiu, ele precisa ter <b>visão daquele mato</b> — de olho ou de ward. Cada região paga um bônus momentâneo; <b>Continuar onde está</b> não paga nada, e o que ela entrega é a casa em que ele já estava."
   ],
   meio:[
     "A rota mais curta. Quem empurra a onda primeiro fica livre — no jargão do jogo, <b>prioridade de mid</b>, e é o que decide quem leva cada objetivo do mapa.",
     "Dominar a rota dá <b>Prioridade</b>, e gastar 1 Prioridade <b>rola um dado de ação a mais</b>, na hora que você quiser dentro do turno. Dá para segurar até ver que os três vieram ruins — e aí puxar mais um. Ele não é o mais forte: é o que <em>te dá mais opções</em>."
   ],
   atirador:[
-    "O único que escala de verdade: acumula ouro e sobe <b>patamares de poder</b>. No terceiro, é a maior fonte de dano do time. Frágil — pego sozinho, morre.",
+    "O único que escala de verdade: a cada <b>20 de ouro na mão</b> sobe um <b>patamar</b> — +2 de Poder para sempre, até três. No terceiro, é a maior fonte de dano do time. Frágil — pego sozinho, morre.",
     "Enquanto o Suporte estiver vivo e na mesma rota, ganha escudo e dano. Isso instala o relógio da partida: um time joga para fechar antes de ele ficar online, o outro para segurar até lá."
   ],
   suporte:[
-    "Recupera do cemitério — reduz o timer de respawn de um aliado ou traz de volta uma Carta de Ação da pilha de descarte.",
-    "Coloca <b>Wards</b>: ward ativa revela a carta da Selva inimiga antes da hora. Gera pouco ouro próprio e não liga. Seu poder é medido inteiramente pelo que os outros conseguem fazer."
+    "Faz o outro jogar melhor. Escuda, cura, <b>limpa condição</b> — e <b>doa o próprio dado</b> a um aliado, que volta a poder agir. O Emerson ainda traz um aliado morto <b>uma rodada antes</b>.",
+    "Coloca <b>Wards</b>: a única visão que enxerga <b>dentro do mato</b> e sob Invisibilidade — e o mato é onde o Caçador vive. Gera pouco ouro próprio e quase nenhum dano. Seu poder é medido inteiramente pelo que os outros conseguem fazer."
   ]
 };
 
@@ -642,11 +650,13 @@ const ITENS = [...(typeof ITENS_BASE!=="undefined"?ITENS_BASE:[]),
   .sort((a,b)=>a.o-b.o||a.n.localeCompare(b.n))
   .map(i=>[i.n, i.o, i.d, FAIXA_ITEM(i.o)]);
 
+/* Os acampamentos pagam OURO, e só. Os quatro monstros com buff que moravam
+   nesta lista eram desenho aprovado que nunca virou regra — e ficaram aqui
+   prometendo re-rolagem e dano a quem lia o manual. */
 const MONSTROS = [
-  ["Sentinela Azul","acampamento · renasce a cada 3 rodadas","Buff: re-rolar 1 dado por rodada, durante 3 rodadas"],
-  ["Fera Escarlate","acampamento · renasce a cada 3 rodadas","Buff: +1 de dano em toda alocação, durante 3 rodadas"],
-  ["Ninhada de Pedra","acampamento · renasce a cada 2 rodadas","3 de ouro"],
-  ["Ancião de Musgo","acampamento · renasce a cada 2 rodadas","Cura 3 e limpa efeitos"],
+  ["Acampamento Azul","acampamento do lado azul · renasce a cada 3 rodadas","6 de ouro para quem estiver em cima dele no fim da rodada"],
+  ["Acampamento Carmim","acampamento do lado carmim · renasce a cada 3 rodadas","6 de ouro — e 8 para quem invade o do adversário e segura a rodada inteira"],
+  ["Acampamento Neutro","no meio, sorteado entre duas posições · renasce a cada 3 rodadas","8 de ouro"],
   ["Dragão","épico · desce na rodada 5 e perde o poço na 12 · 3 de vida, conta GOLPES (básica 1, Ultimate 2 — o dado não entra), revida 2 · volta 3 rodadas depois de cair",
    "Herança do Dragão: +1 de Poder em todo o time, para sempre, e acumula. Cai em Ultimate + básica"],
   ["Barão","épico · toma o poço na rodada 12, mesmo com o Dragão vivo · 16 de vida e 3 de Armadura, apanha pela regra dos heróis (Força + Poder − Armadura) — a armadura é o que o faz exigir um grupo · revida 4 · volta em 4",
@@ -654,31 +664,34 @@ const MONSTROS = [
   ["Arauto","épico · desenhado, ainda sem regra no jogo",
    "Empurra uma rota inteira até a próxima torre"]
 ];
-/* Os quatro acampamentos acima e o Arauto ainda não existem no motor — estão aqui como
-   desenho aprovado, não como regra jogável. Dragão e Barão existem desde a v0.5.5 e
-   dividem UM poço, que troca de morador na rodada 8. Ver docs/ESTADO.md. */
+/* Os três acampamentos e os dois épicos acima EXISTEM no motor. O Arauto não —
+   ele tem arte e não tem regra, e está aqui como desenho aprovado. Dragão e
+   Barão dividem UM poço, que troca de morador na rodada 12. Ver docs/ESTADO.md. */
 
+/* As fases DE VERDADE, lidas do motor. A lista antiga aqui era o desenho da
+   v0.2 — Comando Oculto, Ordens, Revelação — e nada disso existe desde a v19:
+   o Caçador deixou de ter carta virada e virou escolha de região, e o combate
+   deixou de ser resolvido rota por rota. */
 const TURNO = [
-  ["Manutenção","Ondas de creeps avançam em todas as rotas. Ouro passivo entra. Timers de respawn e objetivos descem 1.","~30s",0],
-  ["Comando Oculto","Os dois jogadores põem a carta da Selva virada para baixo, ao mesmo tempo, em uma das quatro zonas.","~20s",1],
-  ["Ordens","Role 3d6. Cada dado é uma Ordem alocada num herói que aceite aquele valor. Quem não recebe Ordem farma com renda reduzida.","o grosso",1],
-  ["Revelação","As cartas de Selva viram. Emboscadas resolvem antes do combate da rota.","~10s",0],
-  ["Combate","Resolve rota por rota, de cima para baixo. Dano = dado + bônus + poder − armadura. Sem rolagem extra.","~60s",0],
-  ["Loja","Heróis mortos ou na base compram itens com o ouro acumulado.","~20s",0]
+  ["Rotação do Caçador","Antes de qualquer um jogar, os dois escolhem em segredo a região do próprio Caçador — Topo, Meio, Baixo, Selva ou Continuar onde está. Ele é reposicionado na hora, sempre dentro do mato. 10 segundos.","início da rodada",1],
+  ["Turno de quem começa","Expiram escudo, buff e prisão. As condições cobram. Rola 1 Dado Mestre (movimento do time) e 3 dados de ação (1 por herói). Anda, age, compra na base, joga carta — e encerra.","o grosso",1],
+  ["Fecho do turno","As condições perdem duração. A torre atira em quem ficou colado nela sem creep. A presença de cada rota é congelada — os dois declaram posição sem ver a resposta do outro.","automático",0],
+  ["Turno do outro","O mesmo, do outro lado. Uma rodada é um turno de cada, e a iniciativa não alterna.","o grosso",1],
+  ["Virada da rodada","As ondas andam para o lado de quem tem mais presença e cercam a torre embaixo delas. Entra a renda. Placas, prioridade, respawn e a troca de morador do poço.","automático",0]
 ];
 
 const GLOSS = [
-  ["Ordem","Um dado alocado num herói. Você tem três por rodada e cinco heróis."],
+  ["Dado de ação","Um dado alocado num herói: o valor dele vira a Força da habilidade. Três por rodada, cinco heróis — e cada herói gasta no máximo um por turno. Quem fica de fora farma 3 de ouro."],
   ["Placa","Ficha que o Topo ganha ao dominar a rota. 1 ajusta um dado em ±1; 2 re-rolam um dado."],
   ["Prioridade","Ficha que o Meio ganha ao dominar a rota. Gasta 1 para rolar um dado de ação a mais."],
   ["Dado Mestre","O dado de movimento. Seu valor é o total de casas que os cinco heróis andam juntos na rodada."],
   ["Força","O valor do dado de ação alocado num herói. Toda habilidade exige uma Força mínima."],
-  ["Gank","Quando a carta da Selva revela numa rota em vez da selva. Entra no combate com bônus de emboscada."],
-  ["Ward","Ficha de visão do Suporte. Revela a carta da Selva inimiga antes dela virar."],
-  ["Patamar","Degrau de poder do Atirador, comprado com ouro acumulado. Três no total."],
-  ["Cemitério","Pilha de descarte. Só o Suporte tira coisas de lá."],
+  ["Gank","O Caçador cair numa rota que não é a dele. Ele não avisa: a escolha da região é secreta, e o adversário só descobre se tiver visão daquele mato. Atacar sem ter sido visto vale +2 de Força — é a Emboscada."],
+  ["Ward","Peça de visão. Acende 3 de raio por 3 rodadas e é a ÚNICA fonte que enxerga dentro do mato e sob Invisibilidade. Ward plantada na rota não vê mato nenhum: ela precisa estar lá dentro. Vem do Torvald, da Vidra e da Sentinela comprada na loja."],
+  ["Patamar","Degrau de poder do Atirador: a cada 20 de ouro NA MÃO, +2 de Poder para sempre, até três vezes. Ele lê o ouro que você está segurando — guardar para um item forte também faz o patamar subir."],
+  ["Cemitério","Pilha de descarte do Deck de Comando. Quando o baralho acaba, o cemitério é embaralhado e vira baralho de novo."],
   ["Crítico","1,5× o dano, e sempre CONDICIONAL — nunca sorte. Cada herói que crita tem a própria condição, e ela é visível antes do golpe: alvo isolado (Pombo), alvo travado por Preso/Atordoado/Lento (Cael), 3 Cargas (Parabólica), o quarto tiro (Corvo), ou sempre, no Ato Final. Até a v44 o 6 natural escrevia CRÍTICO no log e não fazia nada."],
-  ["Super-creep","Creep reforçado, gerado por inibidor caído. Desenhado, sem regra no motor."],
+  ["Onda grossa","A cada 16 rodadas a onda passa a tirar um degrau a mais da torre, até 3. É o relógio que garante que uma partida em que os dois defendem bem ainda termina."],
   ["Poço","A casa neutra do meio do mapa onde o épico desce. Um só, e ele troca de morador: Dragão da rodada 5 à 12, Barão da 12 em diante — e o Barão toma o lugar mesmo com o Dragão vivo."],
   ["Herança do Dragão","+1 de Poder em todo o time, permanente e acumulativo, por Dragão levado."],
   ["Dádiva do Barão","Quem leva o Barão escolhe uma de três, por 2 rodadas: Ondas de Ferro (as três ondas avançam sozinhas), Égide (4 de escudo no time por turno) ou Aríete (o golpe de herói em torre vale o dobro; no Nexus causa 2). Nenhuma dá Poder — o Barão é pressão de mapa."],
@@ -721,8 +734,12 @@ const LANE_TOPO=[[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0]];
 let LANE_MEIO=[]; // traçada por geometria mais abaixo — a reta entre as duas bases
 const LANE_BOT =[[2,6],[3,6],[4,6],[5,6],[6,6],[6,5],[6,4],[6,3],[6,2]];
 const RIO=[[1,1],[2,2],[2,3],[3,4],[3,5],[4,6]];
-const CAMPOS=[[1,2],[2,4],[4,2],[5,4]];
-const OBJETIVOS=[[1,1,"BARÃO"],[3,5,"DRAGÃO"]];
+/* Esquema, não o tabuleiro: o jogável é 11x11 e é derivado pelo motor. O que
+   estes dois arrays precisam acertar é a CONTAGEM — três acampamentos, e UM
+   poço que troca de morador. Antes havia quatro campos e dois covis, o que
+   ensinava um mapa que não existe. */
+const CAMPOS=[[1,2],[5,4],[3,3]];
+const OBJETIVOS=[[2,3,"POÇO"]];
 
 const chave=(c,r)=>c+","+r;
 
@@ -920,7 +937,11 @@ q("#tmonstros").innerHTML = MONSTROS.map(([n,s,rec])=>
 
 q("#lista-gloss").innerHTML = GLOSS.map(([t,d])=>`<div><dt>${t}</dt><dd>${d}</dd></div>`).join("");
 
-q("#lenrotas").innerHTML = [["Meio",LANE_MEIO.length],["Baixo",LANE_BOT.length],["Topo",LANE_TOPO.length]]
+/* Os COMPRIMENTOS são os do tabuleiro jogável (11x11), e não os do esquema
+   acima — o esquema é 7x7 e mostrava "Topo, 10 casas" quando a rota tem 17.
+   Comprimento de rota é regra: é ele que faz o Meio chegar primeiro em tudo. */
+const COMPRIMENTO_ROTAS = [["Meio",12],["Baixo",17],["Topo",17]];
+q("#lenrotas").innerHTML = COMPRIMENTO_ROTAS
   .map(([n,l])=>`<li><span style="font-family:var(--mono);color:var(--brass);min-width:20px">${l}</span>${n} — ${l} casas</li>`).join("");
 
 function cartaHTML(h){
