@@ -36,10 +36,32 @@ o que já estava errado antes desta versão:
 estrutura, a regra do creep e a tabela de como a IA drafta; e teve os números de
 ouro, revide, Reforço e Retorno corrigidos.
 
-**O guia web** parou de manter a terceira lista de itens escrita à mão (ver
-commit da loja) e ganhou Torre, Mergulho e Movimento máximo no glossário. O
-simulador de dados dele também dizia "Crítico disponível" no 6 — ensinava uma
-regra que não existe.
+**O guia web** — o "manual" da página inicial — foi o pior dos três, e por um
+motivo específico: **ele carregava uma camada inteira do desenho da v0.2**, de
+antes de o jogo existir como está. Ninguém tinha voltado lá. Foi tudo conferido
+contra o motor e reescrito:
+
+| O manual ensinava | Existe? |
+|---|---|
+| A rodada tem **seis fases**: Manutenção, Comando Oculto, **Ordens**, Revelação, Combate, Loja | **não** — hoje é rotação → turno → turno → virada |
+| "Dez rodadas fecham a partida", "45 minutos" | **não** — a mediana medida é **34 rodadas** |
+| O Caçador **põe uma carta virada** numa de quatro zonas | **não** desde a v19 — virou escolha de região |
+| A **Ward revela a carta da Selva** inimiga | **não** — ward acende o mato, que é onde ele vive |
+| O Suporte **recupera do cemitério** e reduz respawn de aliado | **não** |
+| **Sentinela Azul** e **Fera Escarlate** dão buff de re-rolagem e de dano | **não** — acampamento paga ouro, e só |
+| **Nível 5** dá o quarto dado; itens de assinatura alargam a janela | **não** — não há níveis |
+| "Super-creep, gerado por inibidor caído" | **não** — não há inibidor |
+| O mapa tem **quatro acampamentos** e **dois covis** (Dragão e Barão separados) | **não** — três acampamentos e **um** poço que troca de morador |
+| Comprimento das rotas: Topo **10**, Baixo 9, Meio 7 | **não** — **17, 17 e 12** (o esquema desenhado é 7×7; o tabuleiro é 11×11) |
+| "a cada 10 de ouro, +2 de Poder" | agora **20** |
+| A loja, escrita à mão, com preços e efeitos de outra versão | agora **lida do catálogo** |
+
+O simulador de dados dele também dizia "Crítico disponível" quando saía um 6 —
+ensinava uma regra que não existe desde a v45.
+
+Ganhou, junto: a rodada de verdade, as válvulas contra a má sorte que **existem**
+(placa, prioridade, retomada, cartas, dado doado, dado que vira movimento), e
+Torre, Mergulho e Movimento máximo no glossário.
 
 ---
 
