@@ -55,10 +55,14 @@ const imagensEmbutidas = Object.entries(indices)
   .join("\n");
 
 let html = ler("jogo/index.html");
-html = html.replace(/<link rel="stylesheet" href="estilo\.css">/,
+/* `?v=NN` no fim de cada asset (v48) é carimbo de cache do navegador — e ele
+   quebrou este empacotador, que casava a URL exata. Os padrões abaixo aceitam
+   a query opcional; sem isso o JOGAR.html sai com referência externa e não
+   abre offline, que é a única coisa que ele existe para fazer. */
+html = html.replace(/<link rel="stylesheet" href="estilo\.css(\?[^"]*)?">/,
   `<style>\n${ler("jogo/estilo.css")}\n</style>`);
 html = html.replace(
-  /<script src="\.\.\/arte\/imagens\.js"><\/script>\s*<script src="\.\.\/data\/catalogo\.js"><\/script>\s*<script src="jogo\.js"><\/script>/,
+  /<script src="\.\.\/arte\/imagens\.js(\?[^"]*)?"><\/script>\s*<script src="\.\.\/data\/catalogo\.js(\?[^"]*)?"><\/script>\s*<script src="jogo\.js(\?[^"]*)?"><\/script>/,
   [imagensEmbutidas, ler("data/catalogo.js"), ler("jogo/jogo.js")]
     .map(s => `<script>\n${s}\n</script>`).join("\n"));
 
