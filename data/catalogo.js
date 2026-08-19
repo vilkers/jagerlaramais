@@ -425,6 +425,22 @@ function textoHab(hb){
 const TEXTO_PATAMAR =
   "<b>Patamares</b> — a cada <b>20 de ouro</b> na mão, <b>+2 de Poder</b> para sempre. Até 3 vezes.";
 
+/* ═══════════ AS ROTAS: NOME E COR ═══════════
+   Quarta lista divergente encontrada na v48, e a última: a cor de cada rota
+   morava em `jogo/jogo.js` (POS), no guia (--rota-*) e em `cartas/` — e a de
+   `cartas/` era outra (#7E9E6F contra #6E8F6A no Topo, #4F8F86 contra #4F7F7A
+   na Selva, e assim por diante). Perto o bastante para ninguém apontar, longe o
+   bastante para a mesma rota ter duas cores em duas telas do mesmo site.
+
+   Aqui, uma vez só. Motor, guia e cartas leem daqui. */
+const POS_ROTA = {
+  topo: {n:"Topo",     cor:"#6E8F6A"},
+  selva:{n:"Selva",    cor:"#4F7F7A"},
+  meio: {n:"Meio",     cor:"#5D7EA8"},
+  adc:  {n:"Atirador", cor:"#8A7CAE"},
+  sup:  {n:"Suporte",  cor:"#A87F92"}
+};
+
 /* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
 const CLASSES = [
   ["Tanque",    "Força 1+ no essencial",        "Consistente. Qualquer dado faz o trabalho — só a ultimate pede 5 ou 6."],
@@ -558,4 +574,4 @@ const BANS=1;   /* por jogador */
 
 if(typeof module!=="undefined")
   module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,condTxt,TEXTO_PATAMAR,
-                CONDS,COND_NUM,RECURSOS,ITENS_BASE,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
+                CONDS,COND_NUM,RECURSOS,POS_ROTA,ITENS_BASE,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};

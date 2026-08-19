@@ -1,11 +1,16 @@
 <title>JAGERLARAMAIS — as cartas</title>
 <style>
+/* Os MESMOS tokens de jogo/estilo.css. Até a v48 esta página tinha a quarta
+   paleta do projeto — latão #C99A46 contra #D4A24C do jogo, e cinco cores de
+   rota só dela (#7E9E6F no Topo contra #6E8F6A, e assim por diante). Perto o
+   bastante para ninguém apontar, longe o bastante para a mesma rota ter duas
+   cores em duas telas do mesmo site.
+   As cores de rota agora vêm de `POS_ROTA`, em data/catalogo.js. */
 :root{
-  --ground:#0E1614; --ground-2:#141F1C; --ground-3:#1B2926;
-  --line:#2A3B37; --line-soft:#213230;
-  --ink:#E9F1ED; --ink-2:#9FB3AD; --ink-3:#6C817C;
-  --brass:#C99A46; --brass-dim:#8A6A2F; --brass-glow:rgba(201,154,70,.14);
-  --topo:#7E9E6F; --selva:#4F8F86; --meio:#6486B4; --adc:#9585BC; --sup:#B4899C;
+  --ground:#0B120F; --ground-2:#111A16; --ground-3:#18251F;
+  --line:#26362E; --line-soft:#1E2C25;
+  --ink:#E8F0EA; --ink-2:#9DB1A6; --ink-3:#66796E;
+  --brass:#D4A24C; --brass-dim:#8A6A2F; --brass-glow:rgba(212,162,76,.16);
   --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
   --carto:"Copperplate","Optima","Palatino Linotype",Georgia,serif;
   --body:"Iowan Old Style","Palatino",Georgia,serif;
@@ -35,13 +40,28 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
   display:flex;flex-direction:column;position:relative;box-shadow:0 3px 20px rgba(0,0,0,.4);
 }
 .carta::before{content:"";position:absolute;inset:0;border-radius:9px;border:1px solid var(--cor);opacity:.4;pointer-events:none;z-index:3}
-.art{position:relative;aspect-ratio:2/3;overflow:hidden;background:#0a100e}
+.art{position:relative;aspect-ratio:2/3;overflow:hidden;background:var(--ground)}
 .art img{width:100%;height:100%;object-fit:cover;display:block}
-.art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,22,20,.72) 0%,rgba(14,22,20,0) 26%,rgba(14,22,20,0) 46%,rgba(14,22,20,.96) 88%)}
+/* VINHETA DE BORDA. Os 20 retratos têm fundos diferentes — uns claros de dia,
+   outros escuros — e num cartão escuro o retrato claro virava um retângulo
+   branco colado, com aresta dura na borda. A vinheta escurece só as beiradas,
+   então a arte entra no cartão em vez de ficar em cima dele. Não toca no meio,
+   onde está o personagem. */
+.art::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  box-shadow:inset 0 0 34px 10px rgba(11,18,15,.55)}
+/* As duas sombras ficam ABAIXO do nome e da faixa (z-index 2). Pus o gradiente
+   em 2 primeiro e ele cobriu o nome: com z-index igual, quem vem depois no DOM
+   ganha — e `::after` é o último filho. Na arte escura ninguém via; na arte
+   clara da Dona Chinela o nome sumiu. */
+/* A sombra sobre a arte tem de ser a MESMA cor do fundo do cartão, senão o
+   retrato claro (a arte nova é de dia) fica com uma borda esverdeada por cima
+   de um cartão que já não é daquela cor. rgba(14,22,20) era o --ground velho. */
+.art::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,
+  rgba(11,18,15,.72) 0%,rgba(11,18,15,0) 26%,rgba(11,18,15,0) 46%,rgba(11,18,15,.96) 88%)}
 .cab{position:absolute;top:0;left:0;right:0;padding:13px 15px 0;z-index:2}
 .faixa{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .rota-tag{font-family:var(--carto);font-size:8.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--cor);
-  border:1px solid var(--cor);padding:3px 8px;border-radius:2px;background:rgba(10,16,14,.6)}
+  border:1px solid var(--cor);padding:3px 8px;border-radius:2px;background:rgba(11,18,15,.6)}
 .classe{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);text-transform:lowercase}
 .nome-box{position:absolute;left:15px;right:15px;bottom:85px;z-index:2}
 .nome{font-family:var(--display);font-size:31px;text-transform:uppercase;line-height:.94;letter-spacing:-.005em;
@@ -70,13 +90,13 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 .nota b{color:var(--brass)}
 
 /* v45 — a passiva na carta e a ideia principal do herói */
-.carta .hab.passiva{background:rgba(198,160,74,.07);border-left:2px solid var(--cor)}
+.carta .hab.passiva{background:rgba(212,162,76,.07);border-left:2px solid var(--cor)}
 .carta .hab.passiva .f{font-size:7px;letter-spacing:.12em;text-transform:uppercase;line-height:1.6}
 .carta .ideia{padding:0 15px 10px;font-size:10.5px;line-height:1.5;opacity:.72;font-style:italic}
 </style>
 
 <div class="topo">
-  <span class="et">Jagerlaramais · baralho de heróis v0.4</span>
+  <span class="et">Jagerlaramais · baralho de heróis v48</span>
   <h1>As vinte cartas</h1>
   <p>Quatro por rota, quatro arquétipos diferentes — o suficiente para o draft ter escolha sem virar catálogo. A <b>Força</b> ao lado de cada habilidade é o valor mínimo do dado de ação para usá-la. Ultimates pedem 5 ou 6, e dado alto é raro: é isso que as torna decisivas.</p>
 </div>
@@ -91,8 +111,11 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 <script src="../data/catalogo.js"></script>
 <script src="../arte/imagens.js"></script>
 <script>
-const POS={topo:{n:"Topo",c:"var(--topo)"},selva:{n:"Selva",c:"var(--selva)"},
-  meio:{n:"Meio",c:"var(--meio)"},adc:{n:"Atirador",c:"var(--adc)"},sup:{n:"Suporte",c:"var(--sup)"}};
+/* nome e cor de cada rota vêm do catálogo (POS_ROTA) — esta página mantinha as
+   próprias, e eram outras */
+const POS = Object.fromEntries(Object.entries(
+  typeof POS_ROTA!=="undefined" ? POS_ROTA : {}
+).map(([id,d])=>[id,{n:d.n,c:d.cor}]));
 
 /* Os 20 heróis vêm de data/catalogo.js. Até a v0.3 esta página tinha a própria
    lista, com textos que já divergiam do motor. */

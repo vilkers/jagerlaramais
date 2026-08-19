@@ -4,7 +4,9 @@
    Aparência não mora aqui — mora em estilo.css. */
 
 /* ---------- CATÁLOGO ---------- */
-const POS={
+/* nome e cor de cada rota — no catálogo desde a v48, para o guia e as cartas
+   não manterem cada um a sua versão (e `cartas/` mantinha, com outras cores) */
+const POS = typeof POS_ROTA!=="undefined" ? POS_ROTA : {
   topo:{n:"Topo",cor:"#6E8F6A"}, selva:{n:"Selva",cor:"#4F7F7A"},
   meio:{n:"Meio",cor:"#5D7EA8"}, adc:{n:"Atirador",cor:"#8A7CAE"}, sup:{n:"Suporte",cor:"#A87F92"}
 };
