@@ -910,7 +910,10 @@ const REGIOES=[
   {id:"meio",  n:"Meio",  ico:"◆", d:"A selva colada na rota do meio.",
    b:"+2 de Poder no seu turno"},
   {id:"baixo", n:"Baixo", ico:"▼", d:"A selva colada na rota de baixo.",
-   b:"+3 de ouro, na hora"},
+   /* o texto vem da constante: quando OURO_REGIAO mudou de 3 para 6 na v48,
+      esta linha ficou dizendo "+3" na tela da rotação — número escrito à mão
+      não acompanha número de regra */
+   b:`+${OURO_REGIAO} de ouro, na hora`},
   {id:"selva", n:"Selva", ico:"❦", d:"O centro da sua selva, de frente para o poço.",
    b:"cura 4 e +1 no Dado Mestre"},
   /* A QUINTA OPÇÃO. Ela não é uma região: é a recusa de escolher uma.
@@ -5347,13 +5350,31 @@ function feiticoBt(h,qual){
     : colado ? "inimigo colado — interrompido"
     : naBase(h) ? "já está na própria base"
     : `volta à base e recupera ${RETORNO_CURA} · gasta o feitiço do time`;
-  return `<button class="opc${modo==="lampejo"&&lampejo?" on":""}${pode?" pode":" naoPode"}"
-      id="cmd${lampejo?"Lampejo":"Retorno"}" ${pode?"":"disabled"}>
+  return `<button class="fei${modo==="lampejo"&&lampejo?" on":""}${pode?" pode":" naoPode"}"
+      id="cmd${lampejo?"Lampejo":"Retorno"}" ${pode?"":"disabled"} title="${linha}">
     <span class="ico">${svgIco(lampejo?ICO.raio:ICO.casa)}</span>
-    <span class="txt"><span class="t1">${lampejo?"Lampejo":"Retorno"}</span>
-      <span class="t2">${linha}</span></span>
-    <span class="mark${pode?"":" trava"}">${cd?cd:"◇"}</span>
+    <span class="n">${lampejo?"Lampejo":"Retorno"}</span>
   </button>`;
+}
+/* ---------- O FEITIÇO SAI DA LISTA DE AÇÕES (v49) ----------
+   Relato: *"acho que poderia mudar o flash e o retorno de lugar, não ficar ali
+   no menu de mover/atacar; tentar deixar em algum cantinho separado"*.
+
+   Ele estava certo, e o motivo é de leitura: aquela lista responde à pergunta
+   *"o que este herói faz com o dado?"* — mover e as três habilidades. O feitiço
+   não é do herói e não gasta dado: é **uma carga do TIME**, que serve a qualquer
+   um dos cinco. Misturar os dois fazia o jogador procurar Lampejo entre as
+   habilidades, e contar o feitiço como se fosse uma quarta ação da peça.
+
+   Agora ele mora numa faixa própria embaixo, com a carga escrita uma vez só —
+   porque a carga é uma só. */
+function feiticosBloco(h){
+  const tm=J.times[h.t], cd=tm.feitico?0:tm.feiticoCd;
+  const estado = cd ? `gasto · volta em ${cd} ${cd>1?"rodadas":"rodada"}` : "1 carga pronta";
+  return `<div class="feiticos${cd?" vazio":""}">
+    <div class="fei-cab"><span>Feitiço do time</span><b>${cd?"◌":"◇"} ${estado}</b></div>
+    <div class="fei-par">${feiticoBt(h,"lampejo")}${feiticoBt(h,"retorno")}</div>
+  </div>`;
 }
 
 /* painel de comando — a peça central da correção de jogabilidade */
@@ -5383,8 +5404,6 @@ function feiticoBt(h,qual){
                      +` · máx. ${movMaxDe(h)} por turno`:"sem movimento restante"}</span></span>
         <span class="mark">${J.mov.rest}</span>
       </button>
-      ${feiticoBt(h,"lampejo")}
-      ${feiticoBt(h,"retorno")}
       ${h.habs.map((hb,i)=>{
         const di=dadoPara(hb,h), pode=di!==null&&!h.agiu;
         const emMira=modo==="mirar"&&habAtual===i;
@@ -5394,7 +5413,8 @@ function feiticoBt(h,qual){
             <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
           <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:"F"+hb.f}</span>
         </button>`;
-      }).join("")}`;
+      }).join("")}
+      ${feiticosBloco(h)}`;
     G("cmdX").onclick=cancela;
     G("cmdCarta").onclick=()=>abreCarta(h);
     G("cmdMover").onclick=()=>{ if(!mesaTravada()) iniciaMover(); };
