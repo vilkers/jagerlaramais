@@ -1,0 +1,182 @@
+<meta charset="utf-8"><title>JAGERLARAMAIS — proposta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* ═══ AS FONTES MORAM NO REPOSITÓRIO ═══
+   Licença aberta (SIL OFL), 53 KB no total, servidas do próprio projeto.
+   Não é CDN: continua abrindo com duplo clique, continua funcionando offline. */
+@font-face{font-family:Placa;   src:url(../fontes/AlfaSlabOne.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Estencil;src:url(../fontes/Staatliches.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Corpo;   src:url(../fontes/Bitter.woff2)      format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:Corpo;   src:url(../fontes/BitterBold.woff2)  format('woff2');font-weight:700;font-display:swap}
+
+:root{
+  --parede:#B08E5F;      /* reboco velho, ocre e quente — parede de sol */
+  --parede-2:#8E7043;
+  --tinta:#211B12;       /* tinta preta desbotada */
+  --tinta-2:#4A3D2B;
+  --latao:#8A6420;
+  --azul:#2E5C7E;
+  --carmim:#8F3E36;
+  --limao:#C6F53F;
+  --creme:#EDE4D0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  font-family:Corpo,Georgia,serif; color:var(--tinta);
+  background:var(--parede);
+  position:relative; overflow-x:hidden;
+}
+
+/* ═══ O FUNDO É CONSTRUÍDO, NÃO É FOTO ═══
+   Grão, manchas, escorrido de ferrugem e uma pichação desbotada — tudo em SVG e
+   gradiente. Pesa ~2 KB, escala em qualquer tela, e não precisa de gerador de
+   imagem. Quando a arte do universo existir, ela entra POR CIMA disto, não no
+   lugar: isto é a base que garante que a página nunca fica sem chão. */
+
+/* 1 · a parede: ocre de sol, mais clara em cima, suja embaixo */
+body:before{content:"";position:fixed;inset:0;z-index:0;
+  background:
+    linear-gradient(178deg,#C9A672 0%,#B08E5F 38%,#8E7043 78%,#6E5432 100%)}
+
+/* 2 · manchas de umidade e sol — o que tira a cara de "cor chapada" */
+.manchas{position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:
+    radial-gradient(52% 38% at 14% 4%,  #FFE9C055, transparent 72%),
+    radial-gradient(40% 30% at 86% 16%, #5B431F55, transparent 74%),
+    radial-gradient(66% 42% at 46% 104%,#3C2A11aa, transparent 72%),
+    radial-gradient(26% 20% at 76% 62%, #6B4E2455, transparent 76%),
+    radial-gradient(18% 46% at 3% 52%,  #4A340F44, transparent 78%)}
+
+/* 3 · escorrido de ferrugem descendo da borda de cima */
+.ferrugem{position:fixed;left:0;right:0;top:0;height:46vh;z-index:1;pointer-events:none;opacity:.5;
+  background:repeating-linear-gradient(90deg,
+    transparent 0 37px, #7A3E18 37px 39px, transparent 39px 96px,
+    #6B3413 96px 97px, transparent 97px 173px, #82471C 173px 176px, transparent 176px 264px);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#0009 22%,transparent 76%);
+          mask-image:linear-gradient(180deg,#000 0%,#0009 22%,transparent 76%)}
+
+/* 4 · A PICHAÇÃO. É o elemento mais barato de identidade que existe: uma frase
+       do universo, desbotada, atrás de tudo. Nas referências do Vilker é
+       exatamente isto que dá lugar — "DEUS É GAMBIARRA", "FÉ EM SUCATA". */
+.pichacao{position:fixed;z-index:1;pointer-events:none;
+  font-family:Placa,serif;color:#4A2F12;opacity:.13;
+  font-size:clamp(58px,13vw,150px);line-height:.86;letter-spacing:-.02em;
+  right:-2vw;bottom:9vh;transform:rotate(-4deg);text-align:right;white-space:nowrap}
+
+/* 5 · grão de reboco por cima de tudo */
+.grao{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.55;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='300' height='300' filter='url(%23g)' opacity='.5'/></svg>");
+  mix-blend-mode:multiply}
+
+/* 6 · chapa ondulada rente ao rodapé — a cerca do ferro-velho */
+.chapa{position:fixed;left:0;right:0;bottom:0;height:86px;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(90deg,#7E6B4C,#7E6B4C 8px,#655537 8px,#655537 17px);
+  box-shadow:inset 0 14px 26px #00000066, 0 -2px 0 #00000030;
+  clip-path:polygon(0 34%,4% 25%,9% 32%,14% 23%,20% 31%,26% 22%,33% 30%,40% 21%,47% 29%,55% 21%,62% 29%,70% 22%,78% 30%,86% 23%,93% 31%,100% 24%,100% 100%,0 100%)}
+
+main{position:relative;z-index:3;max-width:760px;padding:34px 22px 120px;margin:0 auto}
+
+/* ═══ A PLACA ═══ chapa pregada na parede, torta de propósito */
+.placa{position:relative;display:inline-block;padding:16px 26px 20px;
+  background:linear-gradient(178deg,#EDE2C6,#D9C9A4);
+  border:3px solid #3A2E1D; border-radius:2px;
+  transform:rotate(-1.6deg);
+  box-shadow:6px 10px 0 #00000030, inset 0 0 0 6px #ffffff22}
+.placa:before,.placa:after{content:"";position:absolute;width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(#6b5a3f,#2c2418);top:9px}
+.placa:before{left:9px}.placa:after{right:9px}
+.et{font-family:Estencil,Impact,sans-serif;font-size:14px;letter-spacing:.22em;
+  color:#6B5636;display:block;margin-bottom:2px}
+h1{font-family:Placa,Georgia,serif;font-weight:400;margin:0;line-height:.82;
+  font-size:clamp(52px,15vw,104px);color:var(--tinta);letter-spacing:-.01em;
+  text-shadow:2px 3px 0 #00000018}
+h1 i{font-style:normal;color:var(--carmim)}
+
+.lede{font-size:17.5px;line-height:1.55;margin:26px 0 0;max-width:44ch}
+.lede b{font-weight:700}
+
+/* ═══ O AVISO ═══ fita crepe com escrito à mão */
+.fita{position:relative;margin:26px 0 30px;padding:15px 18px;max-width:46ch;
+  background:#E6DCC0; color:#3A2E1D; font-size:14.5px; line-height:1.5;
+  transform:rotate(.5deg); box-shadow:3px 5px 0 #00000020;
+  border-left:5px solid var(--latao)}
+.fita:before{content:"";position:absolute;top:-11px;left:26px;width:78px;height:22px;
+  background:#D8CBA6cc;transform:rotate(-4deg);box-shadow:0 1px 3px #0003}
+
+/* ═══ OS BOTÕES SÃO PLACAS ═══ nada de retângulo arredondado */
+.trilho{display:grid;gap:15px}
+a.bt{position:relative;display:block;text-decoration:none;color:var(--tinta);
+  background:linear-gradient(177deg,#E7DBBC,#D2C09B);
+  border:3px solid #3A2E1D;padding:15px 18px 16px;
+  box-shadow:5px 7px 0 #00000028;
+  transition:transform .12s ease, box-shadow .12s ease}
+a.bt:nth-child(odd){transform:rotate(-.5deg)}
+a.bt:nth-child(even){transform:rotate(.45deg)}
+a.bt:hover{transform:translate(-2px,-2px);box-shadow:8px 11px 0 #00000030}
+a.bt .n{font-family:Placa,serif;font-size:25px;line-height:1}
+a.bt .d{font-size:13.5px;color:#5C4B31;margin-top:6px;line-height:1.4}
+a.bt .num{position:absolute;right:13px;top:11px;font-family:Estencil,sans-serif;
+  font-size:12px;letter-spacing:.16em;color:#8A7551}
+
+a.bt.forte{background:linear-gradient(177deg,#C99A2E,#A87C22);border-color:#2E2410}
+a.bt.forte .n{color:#241B08}
+a.bt.forte .d{color:#4A3712}
+a.bt.forte .num{color:#6B5316}
+
+/* o Visual Lab é o único elemento fora do universo — e é de propósito:
+   ele é a porta para OUTRA coisa, e tem de parecer outra coisa */
+a.bt.lab{background:linear-gradient(125deg,#1E1840,#141A18 60%,#232C0C);border-color:#0C0A18;
+  color:#EFEAFF}
+a.bt.lab .n{color:#F2ECFF}a.bt.lab .d{color:#B9B1D6}
+a.bt.lab .num{color:var(--limao)}
+a.bt.lab:after{content:"NOVO";position:absolute;right:12px;bottom:12px;background:var(--limao);
+  color:#141414;font-family:Estencil,sans-serif;font-size:11px;letter-spacing:.14em;padding:3px 8px}
+
+footer{margin-top:34px;padding-bottom:34px;font-family:Estencil,sans-serif;font-size:13px;letter-spacing:.16em;
+  color:#5F4E33}
+footer a{color:#5F4E33}
+footer b{color:var(--carmim)}
+
+/* ═══ ETIQUETA DE ESTÊNCIL ═══ o detalhe que faz parecer lugar, não interface */
+.carimbo{position:absolute;right:-4px;top:120px;transform:rotate(90deg);transform-origin:right top;
+  font-family:Estencil,sans-serif;font-size:12px;letter-spacing:.4em;color:#00000030;
+  white-space:nowrap;pointer-events:none}
+@media(max-width:520px){.carimbo{display:none}}
+</style>
+
+<div class="manchas"></div><div class="ferrugem"></div>
+<div class="pichacao">DEUS É<br>GAMBIARRA</div>
+<div class="grao"></div><div class="chapa"></div>
+
+<main>
+  <div class="carimbo">SETOR 11 · GRADE 116 · NÃO ULTRAPASSE</div>
+
+  <div class="placa">
+    <span class="et">UM MOBA DE MESA PARA DOIS</span>
+    <h1>JAGER<br><i>LARAMAIS</i></h1>
+  </div>
+
+  <p class="lede">Cada um comanda <b>cinco heróis</b> — um por rota. Um dado move o
+  time inteiro. Três dados de ação para cinco heróis: quem fica sem ordem, farma.</p>
+
+  <div class="fita">Os dois jogam no <b>mesmo aparelho</b>, passando a vez — como jogo
+  de tabuleiro. Abrir em dois celulares dá duas partidas separadas.</div>
+
+  <div class="trilho">
+    <a class="bt forte" href="../../jogo/"><span class="num">01</span>
+      <div class="n">Jogar</div>
+      <div class="d">Comece pelo tutorial — 9 passos, ensina jogando</div></a>
+    <a class="bt" href="../../guia/"><span class="num">02</span>
+      <div class="n">O manual</div>
+      <div class="d">Regras, rotas, heróis, itens, mapa e glossário</div></a>
+    <a class="bt" href="../../cartas/"><span class="num">03</span>
+      <div class="n">As cartas</div>
+      <div class="d">Os 20 heróis, quatro por rota</div></a>
+    <a class="bt lab" href="../../visual-lab/"><span class="num">04</span>
+      <div class="n">Visual Guide</div>
+      <div class="d">Novo universo, personagens, cartas e direção visual em construção</div></a>
+  </div>
+
+  <footer>VILKER · VINICIUS · MATHEUS · <b>v54</b> — <a href="#">CÓDIGO NO GITHUB</a></footer>
+</main>
