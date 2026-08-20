@@ -1,0 +1,424 @@
+<meta charset="utf-8"><title>JAGERLARAMAIS — tabuleiro</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+@font-face{font-family:Placa;   src:url(../fontes/AlfaSlabOne.woff2) format('woff2')}
+@font-face{font-family:Estencil;src:url(../fontes/Staatliches.woff2) format('woff2')}
+:root{--ground:#EDEBE2;--ink:#1B2320;--ink-3:#7A857F;--brass:#8A6420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);font-family:Estencil,sans-serif;color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;padding:16px 8px 34px}
+h1{font-family:Placa,serif;font-weight:400;font-size:21px;margin:0 0 2px}
+.sub{font-size:12.5px;letter-spacing:.15em;color:var(--ink-3);margin-bottom:12px;text-align:center}
+#palco{width:100%;max-width:980px}svg{display:block;width:100%;height:auto}
+</style>
+<h1>O tabuleiro</h1>
+<div class="sub">2D DE CIMA · PALETA CREME · MESMAS 116 CASAS</div>
+<div id="palco"></div>
+<script>
+const D = {"viewBox":"17.7 -0.5 375.3 354.5","cels":[{"c":0,"r":0,"tipo":"campo","rota":null,"pts":"42.5,26.0 58.9,35.5 58.9,54.5 42.5,64.0 26.0,54.5 26.0,35.5"},{"c":1,"r":0,"tipo":"rota","rota":"topo","pts":"75.4,26.0 91.8,35.5 91.8,54.5 75.4,64.0 58.9,54.5 58.9,35.5"},{"c":2,"r":0,"tipo":"rota","rota":"topo","pts":"108.3,26.0 124.7,35.5 124.7,54.5 108.3,64.0 91.8,54.5 91.8,35.5"},{"c":3,"r":0,"tipo":"rota","rota":"topo","pts":"141.2,26.0 157.6,35.5 157.6,54.5 141.2,64.0 124.7,54.5 124.7,35.5"},{"c":4,"r":0,"tipo":"rota","rota":"topo","pts":"174.1,26.0 190.5,35.5 190.5,54.5 174.1,64.0 157.6,54.5 157.6,35.5"},{"c":5,"r":0,"tipo":"rota","rota":"topo","pts":"207.0,26.0 223.5,35.5 223.5,54.5 207.0,64.0 190.5,54.5 190.5,35.5"},{"c":6,"r":0,"tipo":"rota","rota":"topo","pts":"239.9,26.0 256.4,35.5 256.4,54.5 239.9,64.0 223.5,54.5 223.5,35.5"},{"c":7,"r":0,"tipo":"rota","rota":"topo","pts":"272.8,26.0 289.3,35.5 289.3,54.5 272.8,64.0 256.4,54.5 256.4,35.5"},{"c":8,"r":0,"tipo":"rota","rota":"topo","pts":"305.7,26.0 322.2,35.5 322.2,54.5 305.7,64.0 289.3,54.5 289.3,35.5"},{"c":9,"r":0,"tipo":"base1","rota":null,"pts":"338.6,26.0 355.1,35.5 355.1,54.5 338.6,64.0 322.2,54.5 322.2,35.5"},{"c":10,"r":0,"tipo":"base1","rota":null,"pts":"371.5,26.0 388.0,35.5 388.0,54.5 371.5,64.0 355.1,54.5 355.1,35.5"},{"c":0,"r":1,"tipo":"rota","rota":"topo","pts":"58.9,54.5 75.4,64.0 75.4,83.0 58.9,92.5 42.5,83.0 42.5,64.0"},{"c":1,"r":1,"tipo":"campo","rota":null,"pts":"91.8,54.5 108.3,64.0 108.3,83.0 91.8,92.5 75.4,83.0 75.4,64.0"},{"c":2,"r":1,"tipo":"campo","rota":null,"pts":"124.7,54.5 141.2,64.0 141.2,83.0 124.7,92.5 108.3,83.0 108.3,64.0"},{"c":3,"r":1,"tipo":"campo","rota":null,"pts":"157.6,54.5 174.1,64.0 174.1,83.0 157.6,92.5 141.2,83.0 141.2,64.0"},{"c":4,"r":1,"tipo":"campo","rota":null,"pts":"190.5,54.5 207.0,64.0 207.0,83.0 190.5,92.5 174.1,83.0 174.1,64.0"},{"c":5,"r":1,"tipo":"campo","rota":null,"pts":"223.5,54.5 239.9,64.0 239.9,83.0 223.5,92.5 207.0,83.0 207.0,64.0"},{"c":6,"r":1,"tipo":"campo","rota":null,"pts":"256.4,54.5 272.8,64.0 272.8,83.0 256.4,92.5 239.9,83.0 239.9,64.0"},{"c":7,"r":1,"tipo":"rota","rota":"meio","pts":"289.3,54.5 305.7,64.0 305.7,83.0 289.3,92.5 272.8,83.0 272.8,64.0"},{"c":8,"r":1,"tipo":"rota","rota":"meio","pts":"322.2,54.5 338.6,64.0 338.6,83.0 322.2,92.5 305.7,83.0 305.7,64.0"},{"c":9,"r":1,"tipo":"rota","rota":"baixo","pts":"355.1,54.5 371.5,64.0 371.5,83.0 355.1,92.5 338.6,83.0 338.6,64.0"},{"c":0,"r":2,"tipo":"rota","rota":"topo","pts":"42.5,83.0 58.9,92.5 58.9,111.5 42.5,121.0 26.0,111.5 26.0,92.5"},{"c":1,"r":2,"tipo":"campo","rota":null,"pts":"75.4,83.0 91.8,92.5 91.8,111.5 75.4,121.0 58.9,111.5 58.9,92.5"},{"c":2,"r":2,"tipo":"mato","rota":null,"pts":"108.3,83.0 124.7,92.5 124.7,111.5 108.3,121.0 91.8,111.5 91.8,92.5"},{"c":3,"r":2,"tipo":"mato","rota":null,"pts":"141.2,83.0 157.6,92.5 157.6,111.5 141.2,121.0 124.7,111.5 124.7,92.5"},{"c":4,"r":2,"tipo":"bloqueado","rota":null,"pts":"174.1,83.0 190.5,92.5 190.5,111.5 174.1,121.0 157.6,111.5 157.6,92.5"},{"c":5,"r":2,"tipo":"campo","rota":null,"pts":"207.0,83.0 223.5,92.5 223.5,111.5 207.0,121.0 190.5,111.5 190.5,92.5"},{"c":6,"r":2,"tipo":"campo","rota":null,"pts":"239.9,83.0 256.4,92.5 256.4,111.5 239.9,121.0 223.5,111.5 223.5,92.5"},{"c":7,"r":2,"tipo":"rota","rota":"meio","pts":"272.8,83.0 289.3,92.5 289.3,111.5 272.8,121.0 256.4,111.5 256.4,92.5"},{"c":8,"r":2,"tipo":"campo","rota":null,"pts":"305.7,83.0 322.2,92.5 322.2,111.5 305.7,121.0 289.3,111.5 289.3,92.5"},{"c":9,"r":2,"tipo":"campo","rota":null,"pts":"338.6,83.0 355.1,92.5 355.1,111.5 338.6,121.0 322.2,111.5 322.2,92.5"},{"c":10,"r":2,"tipo":"rota","rota":"baixo","pts":"371.5,83.0 388.0,92.5 388.0,111.5 371.5,121.0 355.1,111.5 355.1,92.5"},{"c":0,"r":3,"tipo":"rota","rota":"topo","pts":"58.9,111.5 75.4,121.0 75.4,140.0 58.9,149.5 42.5,140.0 42.5,121.0"},{"c":1,"r":3,"tipo":"campo","rota":null,"pts":"91.8,111.5 108.3,121.0 108.3,140.0 91.8,149.5 75.4,140.0 75.4,121.0"},{"c":2,"r":3,"tipo":"mato","rota":null,"pts":"124.7,111.5 141.2,121.0 141.2,140.0 124.7,149.5 108.3,140.0 108.3,121.0"},{"c":3,"r":3,"tipo":"mato","rota":null,"pts":"157.6,111.5 174.1,121.0 174.1,140.0 157.6,149.5 141.2,140.0 141.2,121.0"},{"c":4,"r":3,"tipo":"mato","rota":null,"pts":"190.5,111.5 207.0,121.0 207.0,140.0 190.5,149.5 174.1,140.0 174.1,121.0"},{"c":5,"r":3,"tipo":"campo","rota":null,"pts":"223.5,111.5 239.9,121.0 239.9,140.0 223.5,149.5 207.0,140.0 207.0,121.0"},{"c":6,"r":3,"tipo":"rota","rota":"meio","pts":"256.4,111.5 272.8,121.0 272.8,140.0 256.4,149.5 239.9,140.0 239.9,121.0"},{"c":7,"r":3,"tipo":"mato","rota":null,"pts":"289.3,111.5 305.7,121.0 305.7,140.0 289.3,149.5 272.8,140.0 272.8,121.0"},{"c":8,"r":3,"tipo":"mato","rota":null,"pts":"322.2,111.5 338.6,121.0 338.6,140.0 322.2,149.5 305.7,140.0 305.7,121.0"},{"c":9,"r":3,"tipo":"rota","rota":"baixo","pts":"355.1,111.5 371.5,121.0 371.5,140.0 355.1,149.5 338.6,140.0 338.6,121.0"},{"c":0,"r":4,"tipo":"rota","rota":"topo","pts":"42.5,140.0 58.9,149.5 58.9,168.5 42.5,178.0 26.0,168.5 26.0,149.5"},{"c":1,"r":4,"tipo":"campo","rota":null,"pts":"75.4,140.0 91.8,149.5 91.8,168.5 75.4,178.0 58.9,168.5 58.9,149.5"},{"c":2,"r":4,"tipo":"bloqueado","rota":null,"pts":"108.3,140.0 124.7,149.5 124.7,168.5 108.3,178.0 91.8,168.5 91.8,149.5"},{"c":3,"r":4,"tipo":"mato","rota":null,"pts":"141.2,140.0 157.6,149.5 157.6,168.5 141.2,178.0 124.7,168.5 124.7,149.5"},{"c":4,"r":4,"tipo":"mato","rota":null,"pts":"174.1,140.0 190.5,149.5 190.5,168.5 174.1,178.0 157.6,168.5 157.6,149.5"},{"c":5,"r":4,"tipo":"campo","rota":null,"pts":"207.0,140.0 223.5,149.5 223.5,168.5 207.0,178.0 190.5,168.5 190.5,149.5"},{"c":6,"r":4,"tipo":"rota","rota":"meio","pts":"239.9,140.0 256.4,149.5 256.4,168.5 239.9,178.0 223.5,168.5 223.5,149.5"},{"c":7,"r":4,"tipo":"mato","rota":null,"pts":"272.8,140.0 289.3,149.5 289.3,168.5 272.8,178.0 256.4,168.5 256.4,149.5"},{"c":8,"r":4,"tipo":"bloqueado","rota":null,"pts":"305.7,140.0 322.2,149.5 322.2,168.5 305.7,178.0 289.3,168.5 289.3,149.5"},{"c":9,"r":4,"tipo":"campo","rota":null,"pts":"338.6,140.0 355.1,149.5 355.1,168.5 338.6,178.0 322.2,168.5 322.2,149.5"},{"c":10,"r":4,"tipo":"rota","rota":"baixo","pts":"371.5,140.0 388.0,149.5 388.0,168.5 371.5,178.0 355.1,168.5 355.1,149.5"},{"c":0,"r":5,"tipo":"rota","rota":"topo","pts":"58.9,168.5 75.4,178.0 75.4,197.0 58.9,206.5 42.5,197.0 42.5,178.0"},{"c":1,"r":5,"tipo":"campo","rota":null,"pts":"91.8,168.5 108.3,178.0 108.3,197.0 91.8,206.5 75.4,197.0 75.4,178.0"},{"c":2,"r":5,"tipo":"mato","rota":null,"pts":"124.7,168.5 141.2,178.0 141.2,197.0 124.7,206.5 108.3,197.0 108.3,178.0"},{"c":3,"r":5,"tipo":"campo","rota":null,"pts":"157.6,168.5 174.1,178.0 174.1,197.0 157.6,206.5 141.2,197.0 141.2,178.0"},{"c":4,"r":5,"tipo":"rota","rota":"meio","pts":"190.5,168.5 207.0,178.0 207.0,197.0 190.5,206.5 174.1,197.0 174.1,178.0"},{"c":5,"r":5,"tipo":"rota","rota":"meio","pts":"223.5,168.5 239.9,178.0 239.9,197.0 223.5,206.5 207.0,197.0 207.0,178.0"},{"c":6,"r":5,"tipo":"campo","rota":null,"pts":"256.4,168.5 272.8,178.0 272.8,197.0 256.4,206.5 239.9,197.0 239.9,178.0"},{"c":7,"r":5,"tipo":"mato","rota":null,"pts":"289.3,168.5 305.7,178.0 305.7,197.0 289.3,206.5 272.8,197.0 272.8,178.0"},{"c":8,"r":5,"tipo":"campo","rota":null,"pts":"322.2,168.5 338.6,178.0 338.6,197.0 322.2,206.5 305.7,197.0 305.7,178.0"},{"c":9,"r":5,"tipo":"rota","rota":"baixo","pts":"355.1,168.5 371.5,178.0 371.5,197.0 355.1,206.5 338.6,197.0 338.6,178.0"},{"c":0,"r":6,"tipo":"rota","rota":"topo","pts":"42.5,197.0 58.9,206.5 58.9,225.5 42.5,235.0 26.0,225.5 26.0,206.5"},{"c":1,"r":6,"tipo":"campo","rota":null,"pts":"75.4,197.0 91.8,206.5 91.8,225.5 75.4,235.0 58.9,225.5 58.9,206.5"},{"c":2,"r":6,"tipo":"bloqueado","rota":null,"pts":"108.3,197.0 124.7,206.5 124.7,225.5 108.3,235.0 91.8,225.5 91.8,206.5"},{"c":3,"r":6,"tipo":"mato","rota":null,"pts":"141.2,197.0 157.6,206.5 157.6,225.5 141.2,235.0 124.7,225.5 124.7,206.5"},{"c":4,"r":6,"tipo":"rota","rota":"meio","pts":"174.1,197.0 190.5,206.5 190.5,225.5 174.1,235.0 157.6,225.5 157.6,206.5"},{"c":5,"r":6,"tipo":"campo","rota":null,"pts":"207.0,197.0 223.5,206.5 223.5,225.5 207.0,235.0 190.5,225.5 190.5,206.5"},{"c":6,"r":6,"tipo":"mato","rota":null,"pts":"239.9,197.0 256.4,206.5 256.4,225.5 239.9,235.0 223.5,225.5 223.5,206.5"},{"c":7,"r":6,"tipo":"mato","rota":null,"pts":"272.8,197.0 289.3,206.5 289.3,225.5 272.8,235.0 256.4,225.5 256.4,206.5"},{"c":8,"r":6,"tipo":"bloqueado","rota":null,"pts":"305.7,197.0 322.2,206.5 322.2,225.5 305.7,235.0 289.3,225.5 289.3,206.5"},{"c":9,"r":6,"tipo":"campo","rota":null,"pts":"338.6,197.0 355.1,206.5 355.1,225.5 338.6,235.0 322.2,225.5 322.2,206.5"},{"c":10,"r":6,"tipo":"rota","rota":"baixo","pts":"371.5,197.0 388.0,206.5 388.0,225.5 371.5,235.0 355.1,225.5 355.1,206.5"},{"c":0,"r":7,"tipo":"rota","rota":"topo","pts":"58.9,225.5 75.4,235.0 75.4,254.0 58.9,263.5 42.5,254.0 42.5,235.0"},{"c":1,"r":7,"tipo":"mato","rota":null,"pts":"91.8,225.5 108.3,235.0 108.3,254.0 91.8,263.5 75.4,254.0 75.4,235.0"},{"c":2,"r":7,"tipo":"mato","rota":null,"pts":"124.7,225.5 141.2,235.0 141.2,254.0 124.7,263.5 108.3,254.0 108.3,235.0"},{"c":3,"r":7,"tipo":"rota","rota":"meio","pts":"157.6,225.5 174.1,235.0 174.1,254.0 157.6,263.5 141.2,254.0 141.2,235.0"},{"c":4,"r":7,"tipo":"campo","rota":null,"pts":"190.5,225.5 207.0,235.0 207.0,254.0 190.5,263.5 174.1,254.0 174.1,235.0"},{"c":5,"r":7,"tipo":"mato","rota":null,"pts":"223.5,225.5 239.9,235.0 239.9,254.0 223.5,263.5 207.0,254.0 207.0,235.0"},{"c":6,"r":7,"tipo":"mato","rota":null,"pts":"256.4,225.5 272.8,235.0 272.8,254.0 256.4,263.5 239.9,254.0 239.9,235.0"},{"c":7,"r":7,"tipo":"mato","rota":null,"pts":"289.3,225.5 305.7,235.0 305.7,254.0 289.3,263.5 272.8,254.0 272.8,235.0"},{"c":8,"r":7,"tipo":"campo","rota":null,"pts":"322.2,225.5 338.6,235.0 338.6,254.0 322.2,263.5 305.7,254.0 305.7,235.0"},{"c":9,"r":7,"tipo":"rota","rota":"baixo","pts":"355.1,225.5 371.5,235.0 371.5,254.0 355.1,263.5 338.6,254.0 338.6,235.0"},{"c":0,"r":8,"tipo":"rota","rota":"topo","pts":"42.5,254.0 58.9,263.5 58.9,282.5 42.5,292.0 26.0,282.5 26.0,263.5"},{"c":1,"r":8,"tipo":"campo","rota":null,"pts":"75.4,254.0 91.8,263.5 91.8,282.5 75.4,292.0 58.9,282.5 58.9,263.5"},{"c":2,"r":8,"tipo":"campo","rota":null,"pts":"108.3,254.0 124.7,263.5 124.7,282.5 108.3,292.0 91.8,282.5 91.8,263.5"},{"c":3,"r":8,"tipo":"rota","rota":"meio","pts":"141.2,254.0 157.6,263.5 157.6,282.5 141.2,292.0 124.7,282.5 124.7,263.5"},{"c":4,"r":8,"tipo":"campo","rota":null,"pts":"174.1,254.0 190.5,263.5 190.5,282.5 174.1,292.0 157.6,282.5 157.6,263.5"},{"c":5,"r":8,"tipo":"campo","rota":null,"pts":"207.0,254.0 223.5,263.5 223.5,282.5 207.0,292.0 190.5,282.5 190.5,263.5"},{"c":6,"r":8,"tipo":"bloqueado","rota":null,"pts":"239.9,254.0 256.4,263.5 256.4,282.5 239.9,292.0 223.5,282.5 223.5,263.5"},{"c":7,"r":8,"tipo":"mato","rota":null,"pts":"272.8,254.0 289.3,263.5 289.3,282.5 272.8,292.0 256.4,282.5 256.4,263.5"},{"c":8,"r":8,"tipo":"poco","rota":null,"pts":"305.7,254.0 322.2,263.5 322.2,282.5 305.7,292.0 289.3,282.5 289.3,263.5"},{"c":9,"r":8,"tipo":"campo","rota":null,"pts":"338.6,254.0 355.1,263.5 355.1,282.5 338.6,292.0 322.2,282.5 322.2,263.5"},{"c":10,"r":8,"tipo":"rota","rota":"baixo","pts":"371.5,254.0 388.0,263.5 388.0,282.5 371.5,292.0 355.1,282.5 355.1,263.5"},{"c":0,"r":9,"tipo":"rota","rota":"topo","pts":"58.9,282.5 75.4,292.0 75.4,311.0 58.9,320.5 42.5,311.0 42.5,292.0"},{"c":1,"r":9,"tipo":"rota","rota":"meio","pts":"91.8,282.5 108.3,292.0 108.3,311.0 91.8,320.5 75.4,311.0 75.4,292.0"},{"c":2,"r":9,"tipo":"rota","rota":"meio","pts":"124.7,282.5 141.2,292.0 141.2,311.0 124.7,320.5 108.3,311.0 108.3,292.0"},{"c":3,"r":9,"tipo":"campo","rota":null,"pts":"157.6,282.5 174.1,292.0 174.1,311.0 157.6,320.5 141.2,311.0 141.2,292.0"},{"c":4,"r":9,"tipo":"campo","rota":null,"pts":"190.5,282.5 207.0,292.0 207.0,311.0 190.5,320.5 174.1,311.0 174.1,292.0"},{"c":5,"r":9,"tipo":"campo","rota":null,"pts":"223.5,282.5 239.9,292.0 239.9,311.0 223.5,320.5 207.0,311.0 207.0,292.0"},{"c":6,"r":9,"tipo":"campo","rota":null,"pts":"256.4,282.5 272.8,292.0 272.8,311.0 256.4,320.5 239.9,311.0 239.9,292.0"},{"c":7,"r":9,"tipo":"campo","rota":null,"pts":"289.3,282.5 305.7,292.0 305.7,311.0 289.3,320.5 272.8,311.0 272.8,292.0"},{"c":8,"r":9,"tipo":"campo","rota":null,"pts":"322.2,282.5 338.6,292.0 338.6,311.0 322.2,320.5 305.7,311.0 305.7,292.0"},{"c":9,"r":9,"tipo":"rota","rota":"baixo","pts":"355.1,282.5 371.5,292.0 371.5,311.0 355.1,320.5 338.6,311.0 338.6,292.0"},{"c":0,"r":10,"tipo":"base0","rota":null,"pts":"42.5,311.0 58.9,320.5 58.9,339.5 42.5,349.0 26.0,339.5 26.0,320.5"},{"c":1,"r":10,"tipo":"base0","rota":null,"pts":"75.4,311.0 91.8,320.5 91.8,339.5 75.4,349.0 58.9,339.5 58.9,320.5"},{"c":2,"r":10,"tipo":"rota","rota":"baixo","pts":"108.3,311.0 124.7,320.5 124.7,339.5 108.3,349.0 91.8,339.5 91.8,320.5"},{"c":3,"r":10,"tipo":"rota","rota":"baixo","pts":"141.2,311.0 157.6,320.5 157.6,339.5 141.2,349.0 124.7,339.5 124.7,320.5"},{"c":4,"r":10,"tipo":"rota","rota":"baixo","pts":"174.1,311.0 190.5,320.5 190.5,339.5 174.1,349.0 157.6,339.5 157.6,320.5"},{"c":5,"r":10,"tipo":"rota","rota":"baixo","pts":"207.0,311.0 223.5,320.5 223.5,339.5 207.0,349.0 190.5,339.5 190.5,320.5"},{"c":6,"r":10,"tipo":"rota","rota":"baixo","pts":"239.9,311.0 256.4,320.5 256.4,339.5 239.9,349.0 223.5,339.5 223.5,320.5"},{"c":7,"r":10,"tipo":"rota","rota":"baixo","pts":"272.8,311.0 289.3,320.5 289.3,339.5 272.8,349.0 256.4,339.5 256.4,320.5"},{"c":8,"r":10,"tipo":"rota","rota":"baixo","pts":"305.7,311.0 322.2,320.5 322.2,339.5 305.7,349.0 289.3,339.5 289.3,320.5"},{"c":9,"r":10,"tipo":"rota","rota":"baixo","pts":"338.6,311.0 355.1,320.5 355.1,339.5 338.6,349.0 322.2,339.5 322.2,320.5"},{"c":10,"r":10,"tipo":"campo","rota":null,"pts":"371.5,311.0 388.0,320.5 388.0,339.5 371.5,349.0 355.1,339.5 355.1,320.5"}],"centro":{"0,0":[42.46666666666667,45],"1,0":[75.36666666666666,45],"2,0":[108.26666666666665,45],"3,0":[141.16666666666666,45],"4,0":[174.0666666666667,45],"5,0":[207,45],"6,0":[239.9333333333333,45],"7,0":[272.8333333333333,45],"8,0":[305.7333333333333,45],"9,0":[338.6333333333334,45],"10,0":[371.5333333333333,45],"0,1":[58.93333333333334,73.5],"1,1":[91.83333333333333,73.5],"2,1":[124.7333333333333,73.5],"3,1":[157.63333333333333,73.5],"4,1":[190.53333333333333,73.5],"5,1":[223.46666666666667,73.5],"6,1":[256.36666666666673,73.5],"7,1":[289.26666666666665,73.5],"8,1":[322.1666666666667,73.5],"9,1":[355.0666666666666,73.5],"0,2":[42.46666666666667,102],"1,2":[75.36666666666666,102],"2,2":[108.26666666666665,102],"3,2":[141.16666666666666,102],"4,2":[174.0666666666667,102],"5,2":[207,102],"6,2":[239.9333333333333,102],"7,2":[272.8333333333333,102],"8,2":[305.7333333333333,102],"9,2":[338.6333333333334,102],"10,2":[371.5333333333333,102],"0,3":[58.93333333333334,130.5],"1,3":[91.83333333333333,130.5],"2,3":[124.7333333333333,130.5],"3,3":[157.63333333333333,130.5],"4,3":[190.53333333333333,130.5],"5,3":[223.46666666666667,130.5],"6,3":[256.36666666666673,130.5],"7,3":[289.26666666666665,130.5],"8,3":[322.1666666666667,130.5],"9,3":[355.0666666666666,130.5],"0,4":[42.46666666666667,159],"1,4":[75.36666666666666,159],"2,4":[108.26666666666665,159],"3,4":[141.16666666666666,159],"4,4":[174.0666666666667,159],"5,4":[207,159],"6,4":[239.9333333333333,159],"7,4":[272.8333333333333,159],"8,4":[305.7333333333333,159],"9,4":[338.6333333333334,159],"10,4":[371.5333333333333,159],"0,5":[58.93333333333334,187.5],"1,5":[91.83333333333333,187.5],"2,5":[124.7333333333333,187.5],"3,5":[157.63333333333333,187.5],"4,5":[190.53333333333333,187.5],"5,5":[223.46666666666667,187.5],"6,5":[256.36666666666673,187.5],"7,5":[289.26666666666665,187.5],"8,5":[322.1666666666667,187.5],"9,5":[355.0666666666666,187.5],"0,6":[42.46666666666667,216],"1,6":[75.36666666666666,216],"2,6":[108.26666666666665,216],"3,6":[141.16666666666666,216],"4,6":[174.0666666666667,216],"5,6":[207,216],"6,6":[239.9333333333333,216],"7,6":[272.8333333333333,216],"8,6":[305.7333333333333,216],"9,6":[338.6333333333334,216],"10,6":[371.5333333333333,216],"0,7":[58.93333333333334,244.5],"1,7":[91.83333333333333,244.5],"2,7":[124.7333333333333,244.5],"3,7":[157.63333333333333,244.5],"4,7":[190.53333333333333,244.5],"5,7":[223.46666666666667,244.5],"6,7":[256.36666666666673,244.5],"7,7":[289.26666666666665,244.5],"8,7":[322.1666666666667,244.5],"9,7":[355.0666666666666,244.5],"0,8":[42.46666666666667,273],"1,8":[75.36666666666666,273],"2,8":[108.26666666666665,273],"3,8":[141.16666666666666,273],"4,8":[174.0666666666667,273],"5,8":[207,273],"6,8":[239.9333333333333,273],"7,8":[272.8333333333333,273],"8,8":[305.7333333333333,273],"9,8":[338.6333333333334,273],"10,8":[371.5333333333333,273],"0,9":[58.93333333333334,301.5],"1,9":[91.83333333333333,301.5],"2,9":[124.7333333333333,301.5],"3,9":[157.63333333333333,301.5],"4,9":[190.53333333333333,301.5],"5,9":[223.46666666666667,301.5],"6,9":[256.36666666666673,301.5],"7,9":[289.26666666666665,301.5],"8,9":[322.1666666666667,301.5],"9,9":[355.0666666666666,301.5],"0,10":[42.46666666666667,330],"1,10":[75.36666666666666,330],"2,10":[108.26666666666665,330],"3,10":[141.16666666666666,330],"4,10":[174.0666666666667,330],"5,10":[207,330],"6,10":[239.9333333333333,330],"7,10":[272.8333333333333,330],"8,10":[305.7333333333333,330],"9,10":[338.6333333333334,330],"10,10":[371.5333333333333,330]},"rotas":{"topo":[[0,9],[0,8],[0,7],[0,6],[0,5],[0,4],[0,3],[0,2],[0,1],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[7,0],[8,0]],"meio":[[1,9],[2,9],[3,8],[3,7],[4,6],[4,5],[5,5],[6,4],[6,3],[7,2],[7,1],[8,1]],"baixo":[[2,10],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10],[9,10],[9,9],[10,8],[9,7],[10,6],[9,5],[10,4],[9,3],[10,2],[9,1]]},"torres":[{"pos":[0,8],"t":0,"rota":"topo","i":1},{"pos":[0,4],"t":0,"rota":"topo","i":5},{"pos":[7,0],"t":1,"rota":"topo","i":15},{"pos":[3,0],"t":1,"rota":"topo","i":11},{"pos":[2,9],"t":0,"rota":"meio","i":1},{"pos":[3,7],"t":0,"rota":"meio","i":3},{"pos":[7,1],"t":1,"rota":"meio","i":10},{"pos":[6,3],"t":1,"rota":"meio","i":8},{"pos":[3,10],"t":0,"rota":"baixo","i":1},{"pos":[7,10],"t":0,"rota":"baixo","i":5},{"pos":[10,2],"t":1,"rota":"baixo","i":15},{"pos":[10,6],"t":1,"rota":"baixo","i":11}],"camps":[{"pos":[3,4],"neutro":false},{"pos":[7,6],"neutro":false},{"pos":[3,3],"neutro":true}],"bases":[[[0,10],[1,10]],[[10,0],[9,0]]],"poco":[8,8]};
+
+/* ═══════════ 2D DE CIMA, E POR QUE ISSO É MELHOR AQUI ═══════════
+   O isométrico ficava bonito e cobrava caro: o toque na tela deixava de cair na
+   casa que o motor conhece, e no celular o tabuleiro encolhia inteiro. De cima,
+   a casa está EXATAMENTE onde o motor pensa que ela está — o toque volta a
+   funcionar de graça, e o que sobra de trabalho é só arte.
+
+   A densidade toda é DETERMINÍSTICA, semeada por (c,r): o mesmo tabuleiro
+   desenha igual sempre. Casa que o jogador decorou não pode mudar de cara. */
+
+
+const P = {                                  /* a paleta, em família creme */
+  campo:"#D3C7AE", campo2:"#C9BCA0",
+  mato:"#9CB47A",  mato2:"#8AA368",
+  sucata:"#A89275", sucata2:"#8F7B60",
+  rota:"#DCD2B8",  rotaBorda:"#B9AB8A",  poco:"#8C9A7E",
+  agua:"#8FB2BC",  aguaFundo:"#6F97A3", aguaClara:"#B7CED3", areia:"#D8CDAE",
+  base0:"#A9BACB", base1:"#CBAAA8",
+  traco:"#6B6152", borda:"#8A7A61", bordaEsc:"#6E6047",
+  tinta:"#3A3226", azul:"#3B6C90", carmim:"#8F3E36", latao:"#C4A24E",
+  /* A COR DA CASA BRASILEIRA — o pedido era esse e o tabuleiro estava inteiro
+     marrom. Saturado o bastante para ler como "casa pintada", rebaixado o
+     bastante para não brigar com o creme. */
+  parede:["#7FA6B8","#86A87E","#CE9098","#D8B564","#BE7657","#9D8CAA","#E3D9C4","#C88C52","#8FA9A2"],
+  paredeBorda:["#8E9BA0","#8A9483","#A98A85","#B49E6C","#A67F62","#8F8593","#9E9683"],
+  telha:["#A9604A","#B06B4E","#98594A","#A65C3F"],
+  zinco:["#9BA1A0","#8D9391","#A7ACAA"],
+};
+function rnd(c,r,k){ let x=(c*374761393+r*668265263+k*1442695040)|0;
+  x=(x^(x>>13))*1274126177|0; return ((x^(x>>16))>>>0)/4294967296; }
+const ptsDe = s => s.trim().split(/\s+/).map(p=>p.split(",").map(Number));
+const cen = (c,r) => D.centro[c+","+r];
+const n1 = v => (Math.round(v*10)/10);
+
+let fundo="", chao="", agua="", coisas="", marcas="";
+
+/* ═══ O RIO ═══
+   Ele ignora a malha de propósito — é o que faz o desenho parecer terreno e
+   não planilha. Entra pela esquerda, corta as TRÊS rotas uma vez cada (que é
+   exatamente o que um rio de MOBA faz) e sai pela direita. As três pontes não
+   são posicionadas na mão: saem do cruzamento calculado entre o traçado do
+   rio e o traçado da rota, então continuam certas se a malha mudar. */
+const RIO = (()=>{                 /* meandro: rio reto é canal, não rio */
+  const A=[-26,64], B=[430,368], N=52, fora=[];
+  const vx=B[0]-A[0], vy=B[1]-A[1], Lr=Math.hypot(vx,vy);
+  const px=-vy/Lr, py=vx/Lr;
+  for(let i=0;i<=N;i++){ const t=i/N;
+    const w = Math.sin(t*Math.PI*2.7)*15 + Math.sin(t*Math.PI*6.9+1.1)*5.5;
+    fora.push([A[0]+vx*t+px*w, A[1]+vy*t+py*w]);
+  }
+  return fora;
+})();
+const dRio = RIO.map((p,i)=>(i?"L":"M")+p[0]+" "+p[1]).join(" ");
+function pertoDoRio(x,y){
+  let m=1e9;
+  for(let i=1;i<RIO.length;i++){
+    const [ax,ay]=RIO[i-1], [bx,by]=RIO[i];
+    const vx=bx-ax, vy=by-ay, L2=vx*vx+vy*vy;
+    let t=((x-ax)*vx+(y-ay)*vy)/L2; t=Math.max(0,Math.min(1,t));
+    m=Math.min(m, Math.hypot(x-(ax+t*vx), y-(ay+t*vy)));
+  }
+  return m;
+}
+function cruza(a,b,c,d){            /* segmento a→b (rota) contra c→d (rio) */
+  const rx=b[0]-a[0], ry=b[1]-a[1], sx=d[0]-c[0], sy=d[1]-c[1];
+  const den=rx*sy-ry*sx; if(!den) return null;
+  const t=((c[0]-a[0])*sy-(c[1]-a[1])*sx)/den;
+  const u=((c[0]-a[0])*ry-(c[1]-a[1])*rx)/den;
+  if(t<0||t>1||u<0||u>1) return null;
+  return [a[0]+t*rx, a[1]+t*ry, Math.atan2(ry,rx)];
+}
+
+/* ─── 1 · O CHÃO DE CADA CASA ─── */
+for (const cel of D.cels){
+  const ps = ptsDe(cel.pts), pl = ps.map(p=>p.join(",")).join(" ");
+  const a = rnd(cel.c,cel.r,1);
+  const [cx,cy] = cen(cel.c,cel.r);
+  const molh = pertoDoRio(cx,cy);
+  let f = P.campo;
+  if (cel.tipo==="mato")           f = a>.5 ? P.mato : P.mato2;
+  else if (cel.tipo==="bloqueado") f = a>.5 ? P.sucata : P.sucata2;
+  else if (cel.tipo==="rota")      f = P.rota;
+  else if (cel.tipo==="poco")      f = P.poco;
+  else if (cel.tipo==="base0")     f = P.base0;
+  else if (cel.tipo==="base1")     f = P.base1;
+  else f = a>.55 ? P.campo : P.campo2;
+  if (molh<12 && cel.tipo!=="rota" && cel.tipo!=="base0" && cel.tipo!=="base1") f = P.areia;
+  chao += `<polygon points="${pl}" fill="${f}" stroke="${P.traco}" stroke-width=".55"/>`;
+  /* textura: manchinhas de terra, para a casa não ser chapada */
+  for(let i=0;i<3;i++){
+    const t=rnd(cel.c,cel.r,10+i);
+    if(t<.45) continue;
+    chao += `<ellipse cx="${n1(cx+(rnd(cel.c,cel.r,20+i)-.5)*17)}" cy="${n1(cy+(rnd(cel.c,cel.r,30+i)-.5)*17)}"
+      rx="${n1(2+t*3)}" ry="${n1(1.4+t*2)}" fill="#00000012"/>`;
+  }
+}
+
+/* ─── 2 · A ÁGUA ─── */
+agua += `<path d="${dRio}" fill="none" stroke="${P.areia}" stroke-width="25" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`;
+agua += `<path d="${dRio}" fill="none" stroke="${P.aguaFundo}" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>`;
+agua += `<path d="${dRio}" fill="none" stroke="${P.agua}" stroke-width="14.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+agua += `<path d="${dRio}" fill="none" stroke="${P.aguaClara}" stroke-width="4.5" opacity=".45" stroke-linecap="round" stroke-linejoin="round"/>`;
+/* reflexo e correnteza */
+agua += `<path d="${dRio}" fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity=".38"
+  stroke-dasharray="6 15" stroke-linecap="round" transform="translate(0,-2.6)"/>`;
+agua += `<path d="${dRio}" fill="none" stroke="#FFFFFF" stroke-width="1.2" opacity=".22"
+  stroke-dasharray="3 20" stroke-linecap="round" transform="translate(0,3.2)"/>`;
+/* pedras e juncos na margem */
+for(let i=1;i<RIO.length;i++){
+  const [ax,ay]=RIO[i-1], [bx,by]=RIO[i];
+  const mx=(ax+bx)/2, my=(ay+by)/2;
+  const an=Math.atan2(by-ay,bx-ax)+Math.PI/2;
+  for(const s of [1,-1]){
+    const q=rnd(i,s+2,31);
+    const px=mx+Math.cos(an)*s*(9+q*3.5), py=my+Math.sin(an)*s*(9+q*3.5);
+    if(q>.55) agua += `<ellipse cx="${n1(px)}" cy="${n1(py)}" rx="${n1(2+q*2)}" ry="${n1(1.6+q*1.5)}"
+      fill="#A79madeup"/>`.replace("#A79madeup", q>.78?"#9A8F76":"#B0A488");
+    else for(let j=0;j<4;j++) agua += `<line x1="${n1(px+j*1.6-2.4)}" y1="${n1(py+2)}"
+      x2="${n1(px+j*1.6-3.4+q*2)}" y2="${n1(py-4-q*2)}" stroke="#6E8B50" stroke-width=".8" stroke-linecap="round"/>`;
+  }
+}
+
+/* ─── 3 · AS ROTAS COMO CAMINHO CONTÍNUO ───
+   Desenhar casa a casa dava colcha de retalhos. Traçado por cima das casas, a
+   estrada vira o que ela é no jogo: o caminho de uma torre à outra. */
+const pontes=[];
+for (const [nome,lista] of Object.entries(D.rotas)){
+  const pts = lista.map(q=>cen(q[0],q[1]));
+  const d = pts.map((p,i)=>(i?"L":"M")+p[0]+" "+p[1]).join(" ");
+  chao += `<path d="${d}" fill="none" stroke="${P.rotaBorda}" stroke-width="19" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
+  chao += `<path d="${d}" fill="none" stroke="${P.rota}" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>`;
+  chao += `<path d="${d}" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="5 8" opacity=".38" stroke-linecap="round"/>`;
+  for(let i=1;i<pts.length;i++) for(let j=1;j<RIO.length;j++){
+    const x = cruza(pts[i-1],pts[i],RIO[j-1],RIO[j]);
+    /* o meandro pode cruzar a mesma rota duas vezes a dois passos de
+       distância — ali é uma travessia só, não duas pontes coladas */
+    if(x && !pontes.some(q=>Math.hypot(q[0]-x[0],q[1]-x[1])<26)) pontes.push(x);
+  }
+}
+
+/* ─── 4 · AS COISAS, VISTAS DE CIMA ─── */
+const copa = (x,y,e,t)=>{ let o=""; const v=["#7E9B5E","#8FAA6C","#6E8B50","#9BB47A"];
+  o+=`<ellipse cx="${n1(x+1.6*e)}" cy="${n1(y+1.8*e)}" rx="${n1(6.4*e)}" ry="${n1(5.6*e)}" fill="#00000014"/>`;
+  for(let i=0;i<5;i++){ const an=i*1.257+t, rr=(2.6+rnd(x|0,y|0,40+i)*2.2)*e;
+    o+=`<circle cx="${n1(x+Math.cos(an)*3.4*e)}" cy="${n1(y+Math.sin(an)*3.1*e)}" r="${n1(rr)}"
+        fill="${v[i%4]}" stroke="#4F6A3C" stroke-width=".45"/>`; }
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(3.4*e)}" fill="#88A566" stroke="#4F6A3C" stroke-width=".45"/>`;
+  return o; };
+/* bananeira: roseta de folhas compridas. De cima é o que mais grita Brasil. */
+const bananeira = (x,y,e,t)=>{ let o=`<ellipse cx="${n1(x+1.4*e)}" cy="${n1(y+1.6*e)}" rx="${n1(6*e)}" ry="${n1(5*e)}" fill="#00000012"/>`;
+  for(let i=0;i<7;i++){ const an=i*.897+t;
+    o+=`<ellipse cx="${n1(x+Math.cos(an)*4.6*e)}" cy="${n1(y+Math.sin(an)*4.2*e)}"
+        rx="${n1(5.2*e)}" ry="${n1(1.8*e)}" transform="rotate(${n1(an*180/Math.PI)} ${n1(x+Math.cos(an)*4.6*e)} ${n1(y+Math.sin(an)*4.2*e)})"
+        fill="${i%2?"#7FA05F":"#8DAE6B"}" stroke="#4F6A3C" stroke-width=".4"/>`; }
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(1.6*e)}" fill="#6E8B50"/>`;
+  return o; };
+/* A CASA. De cima se vê o telhado — duas águas, com a cor da parede
+   aparecendo na beirada. É o que separa "casa pintada" de "retângulo". */
+const casa = (x,y,e,rot,k,cor)=>{
+  const w=11.5*e, h=9.5*e;
+  const par = cor || P.parede[k % P.parede.length];
+  /* metade tem laje/telha pintada da cor da casa: de cima, o telhado é quase
+     tudo que se vê, e telhado marrom não é "casa colorida". */
+  const pint = (k%7)<3;
+  const zin  = !pint && (k%3===0);
+  const tel  = pint ? par : (zin ? P.zinco[k%P.zinco.length] : P.telha[k%P.telha.length]);
+  let o = `<g transform="rotate(${n1(rot)} ${n1(x)} ${n1(y)})">`;
+  o += `<rect x="${n1(x-w/2+1.6*e)}" y="${n1(y-h/2+1.9*e)}" width="${n1(w+3*e)}" height="${n1(h+3*e)}" rx="1" fill="#00000018"/>`;
+  o += `<rect x="${n1(x-w/2-1.5*e)}" y="${n1(y-h/2-1.5*e)}" width="${n1(w+3*e)}" height="${n1(h+3*e)}" rx="${n1(.8*e)}"
+        fill="${par}" stroke="${P.tinta}" stroke-width=".6"/>`;
+  o += `<rect x="${n1(x-w/2)}" y="${n1(y-h/2)}" width="${n1(w)}" height="${n1(h)}" fill="${tel}"/>`;
+  o += `<rect x="${n1(x-w/2)}" y="${n1(y)}"     width="${n1(w)}" height="${n1(h/2)}" fill="#00000022"/>`;
+  for(let i=1;i<5;i++){ const px=x-w/2+i*w/5;
+    o += `<line x1="${n1(px)}" y1="${n1(y-h/2)}" x2="${n1(px)}" y2="${n1(y+h/2)}" stroke="${P.tinta}" stroke-width=".3" opacity=".33"/>`; }
+  o += `<rect x="${n1(x-w/2)}" y="${n1(y-h/2)}" width="${n1(w)}" height="${n1(h)}" fill="none" stroke="${P.tinta}" stroke-width=".5"/>`;
+  o += `<line x1="${n1(x-w/2)}" y1="${n1(y-.5)}" x2="${n1(x+w/2)}" y2="${n1(y-.5)}" stroke="#FFFFFF" stroke-width=".8" opacity=".30"/>`;
+  o += `<line x1="${n1(x-w/2)}" y1="${n1(y)}" x2="${n1(x+w/2)}" y2="${n1(y)}" stroke="${P.tinta}" stroke-width=".75"/>`;
+  if(k%2===0) o += `<rect x="${n1(x+w/2-4.2*e)}" y="${n1(y-h/2+1*e)}" width="${n1(3.2*e)}" height="${n1(3.2*e)}"
+        rx="${n1(.5*e)}" fill="#8FB6C4" stroke="${P.tinta}" stroke-width=".45"/>`;   /* caixa d'água */
+  if(k%5===0) o += `<path d="M${n1(x-w/2+2*e)},${n1(y+h/2)} l${n1(-3*e)},${n1(3.4*e)}" stroke="${P.tinta}" stroke-width=".6"/>
+        <path d="M${n1(x-w/2-2.6*e)},${n1(y+h/2+2.6*e)} a${n1(2.4*e)},${n1(2.4*e)} 0 0 1 ${n1(4*e)},${n1(1.6*e)}"
+         fill="none" stroke="${P.tinta}" stroke-width=".55"/>`;                        /* antena de prato */
+  o += `</g>`;
+  return o;
+};
+const carro = (x,y,e,cor,rot)=>`<g transform="rotate(${n1(rot)} ${n1(x)} ${n1(y)})">
+  <rect x="${n1(x-3*e+1)}" y="${n1(y-6*e+1)}" width="${n1(6*e)}" height="${n1(12*e)}" rx="${n1(1.6*e)}" fill="#00000018"/>
+  <rect x="${n1(x-3*e)}" y="${n1(y-6*e)}" width="${n1(6*e)}" height="${n1(12*e)}" rx="${n1(1.6*e)}" fill="${cor}"
+        stroke="${P.tinta}" stroke-width=".55"/>
+  <rect x="${n1(x-2.2*e)}" y="${n1(y-3.4*e)}" width="${n1(4.4*e)}" height="${n1(4*e)}" rx="${n1(.8*e)}" fill="#2A2A28" opacity=".5"/>
+  <rect x="${n1(x-2.2*e)}" y="${n1(y+3*e)}" width="${n1(4.4*e)}" height="${n1(2*e)}" rx="${n1(.5*e)}" fill="#2A2A28" opacity=".3"/>
+  </g>`;
+const sucata = (x,y,e,s)=>{ let o="";
+  for(let i=0;i<7;i++){ const q=rnd(x|0,y|0,50+i+s), w=(1.6+q*3)*e, h=(1.2+q*2.4)*e;
+    o+=`<rect x="${n1(x+(rnd(x|0,y|0,60+i)-.5)*13*e)}" y="${n1(y+(rnd(x|0,y|0,70+i)-.5)*13*e)}"
+        width="${n1(w)}" height="${n1(h)}" transform="rotate(${n1(q*90)} ${n1(x)} ${n1(y)})"
+        fill="${q>.5?"#8A7A60":"#736450"}" stroke="${P.tinta}" stroke-width=".35" opacity=".9"/>`; }
+  return o; };
+const pneu = (x,y,e)=>`<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(2.6*e)}" fill="none" stroke="#3A352E" stroke-width="${n1(1.5*e)}"/>`;
+/* varal: duas estacas e roupa colorida pendurada. Custa quatro linhas e é o
+   detalhe que mais faz o lugar parecer habitado. */
+const varal = (x,y,e,k)=>{ let o=`<line x1="${n1(x-6*e)}" y1="${n1(y)}" x2="${n1(x+6*e)}" y2="${n1(y+1*e)}"
+    stroke="${P.tinta}" stroke-width=".5"/>`;
+  for(let i=0;i<4;i++) o+=`<rect x="${n1(x-5*e+i*3.2*e)}" y="${n1(y-.4)}" width="${n1(2.2*e)}" height="${n1(3*e)}"
+    rx=".4" fill="${P.parede[(k+i)%P.parede.length]}" stroke="${P.tinta}" stroke-width=".3"/>`;
+  return o; };
+
+for (const cel of D.cels){
+  const [cx,cy] = cen(cel.c,cel.r);
+  const a=rnd(cel.c,cel.r,1), b=rnd(cel.c,cel.r,2), c3=rnd(cel.c,cel.r,3);
+  const k=(cel.c*7+cel.r*3);
+  const j=(kk,m)=>(rnd(cel.c,cel.r,kk)-.5)*(m||16);
+  const molh = pertoDoRio(cx,cy);
+  if (cel.tipo==="base0" || cel.tipo==="base1") continue;   /* a base é desenhada inteira lá embaixo */
+  if (molh < 10) continue;                                  /* margem limpa: casa não flutua em cima d'água */
+  if (cel.tipo==="mato"){
+    /* MATO É MATA FECHADA. Duas copas soltas pareciam jardim. */
+    coisas += copa(cx+j(4,13), cy+j(5,13), 1.35+a*.5, a*6);
+    coisas += (b>.6 ? bananeira(cx+j(6,19), cy+j(7,19), 1.15, b*6)
+                    : copa(cx+j(6,19), cy+j(7,19), 1.1+b*.45, b*6));
+    coisas += copa(cx+j(8,21), cy+j(9,21), .95+c3*.4, c3*6);
+    if (a>.4)  coisas += copa(cx+j(12,22), cy+j(13,22), .8, a*9);
+    if (b>.55) coisas += bananeira(cx+j(14,20), cy+j(15,20), .8, b*9);
+  } else if (cel.tipo==="bloqueado"){
+    coisas += sucata(cx,cy,1.35,0);
+    coisas += sucata(cx+j(20,12),cy+j(21,12),1.1,9);
+    if (a>.45) coisas += carro(cx+j(4,10), cy+j(5,10), 1.1, a>.72?"#B4543F":"#4E7FA8", a*180);
+    else       coisas += casa(cx+j(4,9), cy+j(5,9), .85, (a-.5)*40, k, "#9C8464");
+    coisas += pneu(cx+j(6,20), cy+j(7,20), 1.15);
+    if (b>.5) coisas += pneu(cx+j(16,19), cy+j(17,19), .95);
+  } else if (cel.tipo==="rota"){
+    if (a>.62) coisas += carro(cx+j(4,22), cy+j(5,22), .72, "#8C7A5E", a*180);
+    if (b>.68) coisas += pneu(cx+j(6,23), cy+j(7,23), .9);
+    if (c3>.78) coisas += sucata(cx+j(8,22), cy+j(9,22), .55, 5);
+  } else if (cel.tipo==="poco"){
+    coisas += sucata(cx,cy,1.2,4);
+    coisas += pneu(cx+j(6,18), cy+j(7,18), 1.2);
+  } else {
+    /* CAMPO É A CIDADE. Nenhuma casa fica limpa: sempre um objeto grande e
+       um pequeno, como na referência. */
+    if (a>.34)      coisas += casa(cx+j(4,11), cy+j(5,11), .82+b*.55, j(11,34), k);
+    else if (a>.24) coisas += sucata(cx,cy,1.0,3);
+    else if (a>.13) coisas += copa(cx+j(8,13), cy+j(9,13), 1.05, a*6);
+    else            coisas += carro(cx+j(4,13), cy+j(5,13), 1.0, c3>.5?"#7E8A6F":"#9A6B52", a*180);
+    if (b>.62)      coisas += casa(cx+j(16,20), cy+j(17,20), .58+c3*.22, j(18,40), k+4);
+    else if (b>.50) coisas += varal(cx+j(16,19), cy+j(17,19), 1.0, k);
+    else if (b>.44) coisas += bananeira(cx+j(16,21), cy+j(17,21), .85, b*7);
+    else if (b>.24) coisas += pneu(cx+j(16,22), cy+j(17,22), 1.0);
+    else            coisas += sucata(cx+j(16,18), cy+j(17,18), .6, 7);
+  }
+}
+
+/* ─── 5 · AS PONTES, ONDE A ROTA CRUZA O RIO ─── */
+for(const [px,py,ang] of pontes){
+  const g=`rotate(${n1(ang*180/Math.PI)} ${n1(px)} ${n1(py)})`;
+  coisas += `<g transform="${g}">
+    <rect x="${n1(px-13)}" y="${n1(py-9.5)}" width="26" height="19" fill="#BCA37A" stroke="${P.tinta}" stroke-width=".6"/>`;
+  for(let i=-2;i<=2;i++) coisas += `<line x1="${n1(px+i*4.4)}" y1="${n1(py-9.5)}" x2="${n1(px+i*4.4)}" y2="${n1(py+9.5)}"
+      stroke="${P.tinta}" stroke-width=".45" opacity=".5"/>`;
+  coisas += `<rect x="${n1(px-13)}" y="${n1(py-11.2)}" width="26" height="2.2" fill="#6E6047"/>
+    <rect x="${n1(px-13)}" y="${n1(py+9)}" width="26" height="2.2" fill="#6E6047"/>
+    <path d="M${n1(px-11)},${n1(py-10.4)} q5.5,-3.4 11,0 q5.5,3.4 10,-.8" fill="none" stroke="${P.tinta}" stroke-width=".6" opacity=".8"/>
+    </g>`;
+}
+
+/* ─── 6 · A BORDA: FERRO-VELHO EM VOLTA ─── */
+const vb = D.viewBox.split(" ").map(Number);
+const X0=vb[0], Y0=vb[1], L=vb[2], A=vb[3], M=34;
+fundo += `<rect x="${X0-M}" y="${Y0-M}" width="${L+M*2}" height="${A+M*2}" rx="8" fill="${P.borda}"/>`;
+fundo += `<rect x="${X0-M}" y="${Y0-M}" width="${L+M*2}" height="${A+M*2}" rx="8" fill="none"
+  stroke="${P.bordaEsc}" stroke-width="3"/>`;
+for(let i=0;i<64;i++){
+  const t=i/64, q=rnd(i,7,3);
+  const lados = [[X0-M+8+t*(L+M*2-16), Y0-M+9],[X0-M+8+t*(L+M*2-16), Y0+A+M-9],
+                 [X0-M+11, Y0-M+10+t*(A+M*2-20)],[X0+L+M-11, Y0-M+10+t*(A+M*2-20)]];
+  lados.forEach(([bx,by],n)=>{
+    /* variação e desalinho: fileira de ícone igual vira papel de parede, e o
+       que se quer é bagunça. A cor da favela da borda é a mesma família das
+       casas de dentro, só rebaixada — senão a moldura briga com o tabuleiro. */
+    const dx=(rnd(i,3+n,11)-.5)*9, dy=(rnd(i,4+n,12)-.5)*9, e2=.5+rnd(i,5+n,13)*.55;
+    if(q<.34) fundo += casa(bx+dx,by+dy,e2*1.15,(rnd(i,6+n,14)-.5)*70,i+n,P.paredeBorda[(i+n)%P.paredeBorda.length]);
+    else if(q<.58) fundo += sucata(bx+dx,by+dy,e2,i+n);
+    else if(q<.74) fundo += pneu(bx+dx,by+dy,e2*1.3);
+    else if(q<.86) fundo += carro(bx+dx,by+dy,e2*.8,"#7E7057",rnd(i,7+n,15)*180);
+    else fundo += `<path d="M${n1(bx-7)},${n1(by)} h14 M${n1(bx-5)},${n1(by)} v-5 M${n1(bx)},${n1(by)} v-6 M${n1(bx+5)},${n1(by)} v-5"
+                    stroke="${P.bordaEsc}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`;
+  });
+}
+/* as placas do mundo */
+const placas=[["FÉ EM SUCATA",X0+L*.42,Y0-M+15,-3,P.latao],
+              ["NÃO ENTRE",   X0+L*.86,Y0-M+15, 4,"#B4543F"],
+              ["DEUS É GAMBIARRA",X0-M+18,Y0+A*.62,-90,P.latao],
+              ["CUIDADO! KABUM!", X0+L+M-18,Y0+A*.55,90,"#B4543F"]];
+for(const [txt,px,py,rot,cor] of placas)
+  fundo += `<g transform="rotate(${rot} ${px} ${py})">
+    <rect x="${px-26}" y="${py-6}" width="52" height="13" rx="1.5" fill="${cor}" stroke="${P.tinta}" stroke-width=".7"/>
+    <text x="${px}" y="${py+3.4}" font-size="6.4" text-anchor="middle" font-family="Estencil,sans-serif"
+     fill="#241F17">${txt}</text></g>`;
+
+/* ─── 7 · O QUE O JOGADOR PRECISA LER ───
+   Antes a torre era um losango com "3" dentro e o nexo um círculo com "3"
+   dentro: dois selos de Catan. Agora são construções vistas de cima, e o
+   canhão da torre aponta para o lado do inimigo — a informação que o número
+   nunca deu. */
+function torreG(x,y,cor,ang){
+  let o=`<ellipse cx="${n1(x+1.6)}" cy="${n1(y+2)}" rx="12" ry="11" fill="#00000018"/>`;
+  o+=`<g transform="rotate(45 ${n1(x)} ${n1(y)})"><rect x="${n1(x-9)}" y="${n1(y-9)}" width="18" height="18" rx="1.6"
+      fill="#C2B594" stroke="${P.tinta}" stroke-width=".75"/></g>`;
+  for(let i=0;i<4;i++){ const an=i*Math.PI/2;
+    o+=`<circle cx="${n1(x+Math.cos(an)*8.8)}" cy="${n1(y+Math.sin(an)*8.8)}" r="3.1"
+        fill="#A8987A" stroke="${P.tinta}" stroke-width=".55"/>`; }
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="6.6" fill="${cor}" stroke="${P.tinta}" stroke-width=".9"/>`;
+  o+=`<path d="M${n1(x-4.6)},${n1(y-4.6)} a6.5,6.5 0 0 1 9.2,0" fill="none" stroke="#FFFFFF" stroke-width="1.1" opacity=".35"/>`;
+  o+=`<g transform="rotate(${n1(ang*180/Math.PI)} ${n1(x)} ${n1(y)})">
+      <rect x="${n1(x+2)}" y="${n1(y-1.6)}" width="11" height="3.2" rx="1.3" fill="${P.tinta}"/>
+      <rect x="${n1(x+11)}" y="${n1(y-2.7)}" width="2.8" height="5.4" rx=".9" fill="${P.tinta}"/></g>`;
+  /* bandeirinha do time, que é o que faz ler "torre de alguém" sem número */
+  o+=`<path d="M${n1(x-1)},${n1(y-9)} l0,-7 l6,2.6 l-6,2.6" fill="${cor}" stroke="${P.tinta}" stroke-width=".55"/>`;
+  return o;
+}
+function nexoG(x,y,cor){
+  let o=`<circle cx="${n1(x)}" cy="${n1(y)}" r="26" fill="${cor}" opacity=".09"/>`;
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="19" fill="${cor}" opacity=".10"/>`;
+  const oct=[]; for(let i=0;i<8;i++){ const a=i*Math.PI/4+Math.PI/8;
+    oct.push(n1(x+Math.cos(a)*16)+","+n1(y+Math.sin(a)*16)); }
+  o+=`<polygon points="${oct.join(" ")}" fill="#C7BA9B" stroke="${P.tinta}" stroke-width=".85"/>`;
+  for(let i=0;i<8;i++){ const a=i*Math.PI/4;
+    o+=`<line x1="${n1(x+Math.cos(a)*7)}" y1="${n1(y+Math.sin(a)*7)}" x2="${n1(x+Math.cos(a)*15)}" y2="${n1(y+Math.sin(a)*15)}"
+        stroke="${P.bordaEsc}" stroke-width="1.9" stroke-linecap="round"/>`; }
+  for(let i=0;i<6;i++){ const a=i*Math.PI/3+.4;
+    o+=`<circle cx="${n1(x+Math.cos(a)*12.6)}" cy="${n1(y+Math.sin(a)*12.6)}" r="2.7"
+        fill="#A89275" stroke="${P.tinta}" stroke-width=".5"/>`; }
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="8.8" fill="${cor}" stroke="${P.tinta}" stroke-width="1"/>`;
+  o+=`<path d="M${n1(x-6.2)},${n1(y-6.2)} a8.8,8.8 0 0 1 12.4,0" fill="none" stroke="#FFFFFF" stroke-width="1.4" opacity=".33"/>`;
+  /* o núcleo é uma lâmpada de gambiarra: filamento, não miolo de alvo */
+  o+=`<circle cx="${n1(x)}" cy="${n1(y-1.4)}" r="4.2" fill="#F0E3B4" stroke="${P.tinta}" stroke-width=".7"/>`;
+  o+=`<rect x="${n1(x-2)}" y="${n1(y+2.4)}" width="4" height="3.2" rx=".6" fill="${P.latao}" stroke="${P.tinta}" stroke-width=".55"/>`;
+  o+=`<path d="M${n1(x-2)},${n1(y+3.5)} h4 M${n1(x-2)},${n1(y+4.6)} h4" stroke="${P.tinta}" stroke-width=".35"/>`;
+  o+=`<path d="M${n1(x-1.6)},${n1(y-3.2)} q1.6,1.6 0,3.6" fill="none" stroke="${P.tinta}" stroke-width=".6" opacity=".5"/>`;
+  for(let i=0;i<4;i++){ const a=i*Math.PI/2+.78;
+    o+=`<line x1="${n1(x+Math.cos(a)*10)}" y1="${n1(y+Math.sin(a)*10)}" x2="${n1(x+Math.cos(a)*13.4)}" y2="${n1(y+Math.sin(a)*13.4)}"
+        stroke="${P.latao}" stroke-width="1.5" stroke-linecap="round" opacity=".95"/>`; }
+  /* a antena torta e o fio: a gambiarra que dá nome ao mundo */
+  o+=`<path d="M${n1(x-3)},${n1(y-14)} L${n1(x-10)},${n1(y-25)}" stroke="${P.tinta}" stroke-width="1.6" stroke-linecap="round"/>`;
+  o+=`<path d="M${n1(x-10)},${n1(y-25)} l-3.4,4.6 M${n1(x-10)},${n1(y-25)} l4.6,3
+       M${n1(x-10)},${n1(y-25)} l-.6,-4.4" stroke="${P.tinta}" stroke-width="1.15" fill="none" stroke-linecap="round"/>`;
+  o+=`<path d="M${n1(x-10)},${n1(y-25)} L${n1(x-15.5)},${n1(y-12.5)} M${n1(x-10)},${n1(y-25)} L${n1(x+1)},${n1(y-14.5)}"
+      stroke="${P.tinta}" stroke-width=".55" opacity=".6"/>`;
+  return o;
+}
+function tocaG(x,y,neutro){
+  let o="";
+  /* CURRAL: um anel fechado de chapa, com um portão. Antes eram sete peças
+     soltas e um tracejado por cima — lia como entulho, não como toca. */
+  o+=`<circle cx="${n1(x)}" cy="${n1(y)}" r="11" fill="#00000012"/>`;
+  const arco=`M${n1(x+11)},${n1(y)} a11,11 0 1 1 ${n1(-4.4)},${n1(-10.1)}`;
+  o+=`<path d="${arco}" fill="none" stroke="${P.tinta}" stroke-width="4.6" stroke-linecap="round"/>`;
+  o+=`<path d="${arco}" fill="none" stroke="#B29A72" stroke-width="3.2" stroke-linecap="round"/>`;
+  o+=`<path d="${arco}" fill="none" stroke="${P.tinta}" stroke-width=".6" stroke-dasharray="3.2 3.2"/>`;
+  /* o portão: a única abertura do curral, em latão, para o olho achar a entrada */
+  o+=`<path d="M${n1(x+6.6)},${n1(y-8.8)} l${n1(4.4)},${n1(8.8)}" stroke="${P.latao}" stroke-width="2.2" stroke-linecap="round"/>`;
+  if(neutro){
+    for(let i=0;i<6;i++){ const a=i*Math.PI/3;
+      o+=`<circle cx="${n1(x+Math.cos(a)*5.4)}" cy="${n1(y+Math.sin(a)*5.4)}" r="1.7" fill="#9A8F76" stroke="${P.tinta}" stroke-width=".4"/>`; }
+    o+=`<path d="M${n1(x)},${n1(y-7)} q4.6,4 2.2,7.4 q-2.2,3.2 -2.2,4 q0,-.8 -2.2,-4 q-2.4,-3.4 2.2,-7.4"
+        fill="${P.latao}" stroke="${P.tinta}" stroke-width=".6"/>`;
+    o+=`<path d="M${n1(x)},${n1(y-2.6)} q2,2 .9,3.6 q-.9,1.4 -.9,1.8 q0,-.4 -.9,-1.8 q-1.1,-1.6 .9,-3.6"
+        fill="#E8D9A6"/>`;
+    o+=`<text x="${n1(x)}" y="${n1(y+18)}" font-size="6" text-anchor="middle" font-family="Estencil,sans-serif"
+        fill="${P.tinta}">NEUTRO</text>`;
+  } else {
+    o+=`<path d="M${n1(x-5)},${n1(y+3.4)} l5,-7.6 l5,7.6 z" fill="#8A7A60" stroke="${P.tinta}" stroke-width=".6"/>`;
+    o+=`<path d="M${n1(x-2.4)},${n1(y+3.4)} l2.4,-3.6 l2.4,3.6 z" fill="${P.tinta}" opacity=".55"/>`;
+    o+=`<circle cx="${n1(x)}" cy="${n1(y-6.4)}" r="1.8" fill="${P.latao}" stroke="${P.tinta}" stroke-width=".45"/>`;
+  }
+  return o;
+}
+
+for (const t of D.torres){
+  const [x,y] = cen(t.pos[0],t.pos[1]);
+  const lista = D.rotas[t.rota];
+  const eu = lista.findIndex(q=>q[0]===t.pos[0]&&q[1]===t.pos[1]);
+  const alvo = lista[Math.min(lista.length-1, Math.max(0, eu + (t.t?-2:2)))];
+  const [ax,ay] = cen(alvo[0],alvo[1]);
+  marcas += torreG(x, y, t.t?P.carmim:P.azul, Math.atan2(ay-y, ax-x));
+}
+for (const k of D.camps){ const [x,y]=cen(k.pos[0],k.pos[1]); marcas += tocaG(x,y,k.neutro); }
+
+D.bases.forEach((bs,t)=>{
+  const cor = t?P.carmim:P.azul;
+  const [qx,qy]=cen(bs[1][0],bs[1][1]);
+  marcas += casa(qx,qy,1.25,t?8:-8,t?1:2,t?"#C09A98":"#8FA5BC");
+  marcas += sucata(qx+9,qy+10,.7,2);
+  const [x,y]=cen(bs[0][0],bs[0][1]);
+  marcas += nexoG(x,y,cor);
+});
+/* rótulo de cada rota */
+Object.entries(D.rotas).forEach(([nome,l])=>{ const meio=l[Math.floor(l.length/2)];
+  const [x,y]=cen(meio[0],meio[1]);
+  marcas += `<rect x="${x-24}" y="${y-8}" width="48" height="15" rx="3" fill="${P.tinta}" opacity=".88"/>
+    <text x="${x}" y="${y+2.6}" font-size="7.4" text-anchor="middle" letter-spacing="2"
+     font-family="Estencil,sans-serif" fill="#EDEBE2">${nome.toUpperCase()}</text>`; });
+
+document.querySelector("#palco").innerHTML =
+  `<svg viewBox="${X0-M} ${Y0-M} ${L+M*2} ${A+M*2}">${fundo}${chao}${agua}${coisas}${marcas}</svg>`;
+</script>
