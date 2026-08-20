@@ -140,6 +140,7 @@ const PONTE = `
   cenarioDa:(c,r)=>cenarioDa(c,r), centro:(c,r)=>centro(c,r), get R_HEX(){return R},
   get COLS(){return COLS}, get LINS(){return LINS}, noTab:(c,r)=>noTab(c,r),
   ladoDoRio:(c,r)=>ladoDoRio(c,r), ehRio:(c,r)=>ehRio(c,r),
+  ruido:(c,r,s)=>_cRnd(c,r,s),
   passosDe:de=>passosDe(de), passosAte:(a,b)=>passosAte(a,b),
   get BLOQUEIOS_ALVO(){return BLOQUEIOS_ALVO},
   get ROTACAO_SEGUNDOS(){return ROTACAO_SEGUNDOS},

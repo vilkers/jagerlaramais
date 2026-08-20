@@ -922,9 +922,23 @@ const _CEN_LATA  =["#7E5F42","#6E5238","#8A6B46"];
 const _CEN_CONT  =["#7A4038","#8A6A34","#4E6A44","#6E4A36","#46647E"];
 const _CEN_FOLHA =["#41603C","#4C6E46","#385434","#547A4C"];
 
-/* ruído determinístico por (casa, semente) — o mesmo de arte/proposta-site */
-function _cRnd(c,r,s){let x=(c*374761393+r*668265263+s*1442695040)|0;
-  x=(x^(x>>13))*1274126177|0;return((x^(x>>16))>>>0)/4294967296;}
+/* Ruído determinístico por (casa, semente).
+
+   A primeira versão tinha UMA rodada de mistura, e SEMENTE DEGENERADA: com
+   s=90 o valor não passava de 0,64 em nenhuma das 121 casas do tabuleiro.
+   Uma regra escrita como `if(_cRnd(c,r,90)>.64)` simplesmente NUNCA disparava,
+   sem erro, sem aviso — a rota inteira ficou sem cenário e parecia corte de
+   design. Ruído ruim não falha alto, falha calado.
+
+   Agora são duas rodadas de avalanche com `Math.imul` (murmur3 finalizer), e
+   sim/cenario.js confere a distribuição de 128 sementes. */
+function _cRnd(c,r,s){
+  let x=Math.imul(c,374761393)^Math.imul(r,668265263)^Math.imul(s,1442695040);
+  x=Math.imul(x^(x>>>15),2246822519);
+  x=Math.imul(x^(x>>>13),3266489917);
+  x^=x>>>16;
+  return (x>>>0)/4294967296;
+}
 
 const _CENARIO=new Map();
 function cenarioDa(c,r){
@@ -983,8 +997,7 @@ function cenarioDa(c,r){
     if(d>.5)  pedra(...anel(8,7,10),.95);
   }else if(ehBloqueado(c,r)){
     /* o obstáculo do jogo já ocupa o meio: aqui só o entorno */
-    sucata(...anel(10,8.5,10),.6,4);
-    if(a>.45) pneu(...anel(12,9,11),.9);
+    if(a>.5) sucata(...anel(10,8.5,10),.6,4);
   }else if(ehMato(c,r)){
     /* MATA FECHADA — são só 27 casas no tabuleiro, e é onde a vegetação
        pode ser generosa sem competir com peça nenhuma. */
@@ -994,24 +1007,34 @@ function cenarioDa(c,r){
     if(e5>.45) copa(...anel(10,6,8),.8,e5*6);
     if(f6>.7) palmeira(...anel(12,6,8),.75,f6*6);
   }else{
-    /* A ROTA. 79 das 116 casas do tabuleiro — é AQUI que o mundo aparece ou
-       não aparece. Duas peças na beira, e o lado do rio decide quais. */
-    if(favela){
-      /* uma casa GRANDE e uma peça pequena, em vez de duas miudezas: a
-         6px numa casa de 33 o telhado virava cisco, não casa. */
-      casa(...anel(4,3,6),1.05+a*.25,(_cRnd(c,r,14)-.5)*60,km);
-      if(b>.55)      casa(...anel(6,8,9.5),.6+d*.1,(_cRnd(c,r,15)-.5)*60,km+4);
-      else if(b>.30) varal(...anel(6,8,10),.95,km);
-      else           palmeira(...anel(6,8,9.5),.85,b*6);
-      if(e5>.7) pneu(...anel(10,9,11),.85);
-    }else{
-      if(a>.5) contentor(...anel(4,3,6),1.0+d*.2,(_cRnd(c,r,14)-.5)*60,km);
-      else     barraco(...anel(4,3,6),1.05+d*.2,(_cRnd(c,r,14)-.5)*60,km);
-      if(b>.5)       sucata(...anel(6,8,9.5),.62,6);
-      else if(b>.24) tambor(...anel(6,8,10),1.0,km);
-      else           copa(...anel(6,8,9.5),.85,b*6);
-      if(e5>.7) pneu(...anel(10,9,11),.85);
-    }
+    /* A ROTA. 79 das 116 casas do tabuleiro.
+
+       A primeira versão punha construção em 94% delas, e a queixa foi direta:
+       *"o mapa muito carregado de informação, de casas no cenário"*. Estava
+       certa. Casa em toda casa não constrói bairro — constrói ruído, e o ruído
+       disputa leitura com herói, torre, névoa e alvo de movimento, que é a
+       informação de que o jogador realmente precisa.
+
+       Cenário é FUNDO. O tabuleiro precisa de chão vazio como texto precisa de
+       margem: é o vazio que faz o cheio significar. Aqui a construção é
+       minoria declarada; a maioria das casas fica limpa. O orçamento (menos de
+       40% com construção, um terço vazio, no máximo 2 peças) está travado em
+       sim/cenario.js, para a próxima rodada de "ficou bom, põe mais" bater
+       numa parede em vez de voltar a encher tudo. */
+    const raro=_cRnd(c,r,90);
+    if(raro>.64){                     /* ~36%: aqui tem construção */
+      if(favela){
+        casa(...anel(4,3,6),1.05+a*.25,(_cRnd(c,r,14)-.5)*60,km);
+        if(b>.62) varal(...anel(6,8,10),.9,km);
+      }else{
+        if(a>.5) contentor(...anel(4,3,6),1.0+d*.2,(_cRnd(c,r,14)-.5)*60,km);
+        else     barraco(...anel(4,3,6),1.05+d*.2,(_cRnd(c,r,14)-.5)*60,km);
+        if(b>.62) sucata(...anel(6,8,9.5),.6,6);
+      }
+    }else if(raro>.52){               /* ~12%: só uma pincelada de verde */
+      if(favela) palmeira(...anel(6,7,9.5),.85,b*6);
+      else       copa(...anel(6,7,9.5),.85,b*6);
+    }                                 /* ~52%: chão limpo, de propósito */
   }
   _CENARIO.set(key,o);
   return o;

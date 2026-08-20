@@ -11,6 +11,55 @@ Como escrever uma entrada:
 ### Por quê
 ---
 
+## v55.1 — o cenário recua para o fundo · 2026-08-20
+
+### O que mudou
+
+Cenário na rota caiu de **94% das casas com construção para 30%**, e de 212
+peças para 142 no tabuleiro inteiro. Metade das casas de rota agora fica com
+chão limpo, de propósito.
+
+Três números viraram trava em `sim/cenario.js`: menos de 40% das casas de rota
+com construção, no mínimo um terço vazio, no máximo 2 peças por casa.
+
+### Por quê
+
+A queixa: *"achei essa última imagem com o mapa muito carregado de informação,
+de casas no cenário"*. Estava certa, e o comentário que eu mesmo tinha escrito
+no CSS já dizia: *enfeite que disputa leitura com peça é bug de UX*.
+
+Casa em toda casa não constrói bairro — constrói ruído. Cenário é FUNDO: o
+tabuleiro precisa de chão vazio como texto precisa de margem, é o vazio que faz
+o cheio significar. E o que disputava leitura não era enfeite qualquer, era
+herói, torre, névoa e alvo de movimento.
+
+### O defeito que apareceu ao consertar, e que era o mais grave de todos
+
+Ao afinar a densidade, a rota ficou com **zero** cenário — nem 30%, nem 5%.
+A causa não era o corte:
+
+**`_cRnd` tinha semente degenerada.** O misturador de ruído era de uma rodada
+só, e para a semente 90 não devolvia nada acima de 0,64 em nenhuma das 121
+casas do tabuleiro. A regra estava escrita `if(_cRnd(c,r,90) > .64)` — e
+simplesmente nunca disparava. Sem erro, sem aviso no console, sem teste
+vermelho. Parecia decisão de design.
+
+Ruído ruim não falha alto, falha calado. Agora são duas rodadas de avalanche
+com `Math.imul` (finalizador murmur3), e um teste varre **128 sementes**
+cobrando média entre 0,38 e 0,62 e cobertura das duas pontas em cada uma.
+
+Vale dizer o que isso significa: qualquer regra futura escrita com uma semente
+nova podia ter morrido calada do mesmo jeito. O teste é mais importante que a
+correção.
+
+### Correção ao registro da v55
+
+A entrada da v55 diz "1.254 formas no total". Passou a ser **878**. A entrada
+não foi reescrita — patch note é append-only, e número errado no histórico se
+corrige aqui, não apagando lá.
+
+---
+
 ## v55 — o mundo entra no tabuleiro · 2026-08-20
 
 ### O que mudou

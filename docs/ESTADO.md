@@ -119,7 +119,7 @@ node sim/torres.js 120    # a torre é objetivo ou esponja? mergulho sem creep a
 node sim/draft.js 200     # a IA repete o mesmo draft?
 node sim/faixas.js 400    # a faixa exata do dado, A/B contra a v48 na MESMA execução
 node sim/rede.js          # 19 testes do servidor de salas, contra o servidor de verdade
-node sim/cenario.js       # 9 testes do cenário do tabuleiro (hexágono, clique, névoa)
+node sim/cenario.js       # 13 testes do cenário (hexágono, clique, névoa, ruído, densidade)
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói
