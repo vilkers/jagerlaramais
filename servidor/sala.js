@@ -183,6 +183,16 @@ const ACOES = {
   ward(g, lado, d) { g.plantaSentinela(achaHeroi(g, lado, d.heroi)); },
   carta(g, lado, d) { g.selHeroi = d.heroi ? achaHeroi(g, lado, d.heroi) : null; g.jogaCarta(d.id); },
 
+  /* os dois feitiços do time. Carga é UMA e serve a qualquer herói, então a
+     trava de "é seu?" é a mesma dos outros: o herói tem de ser do seu lado. */
+  lampejo(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    g.limpaModo(); g.selHeroi = h; g.modo = "lampejo"; g.calcula();
+    ok(g.mover.some(p => p[0] === d.para[0] && p[1] === d.para[1]), "lampejo fora do alcance");
+    g.lampejaAte(d.para[0], d.para[1]);
+  },
+  retorno(g, lado, d) { g.selHeroi = achaHeroi(g, lado, d.heroi); g.usaRetorno(); },
+
   encerrar(g) { g.encerraTurno(); },
   rotacao(g, lado, d) { g.escolheRotacao(lado, d.regiao); },
 };

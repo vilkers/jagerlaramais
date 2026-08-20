@@ -111,6 +111,120 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v53 — o PvP joga · 2026-08-20
+
+A v52 entregou o servidor e disse que o cliente ficava para depois. Depois é
+agora: **dois aparelhos, uma sala, e cada um só enxerga o que os próprios heróis
+enxergam.**
+
+---
+
+### 1. O desenho com estado filtrado — a parte que eu tinha marcado como difícil
+
+Estava certo que era. E não foi resolvido por leitura: injetei um estado filtrado
+num Chromium de verdade e vi o que estourava. **Cinco pontos**, e todos desciam
+para poucas raízes:
+
+| Raiz | O que fazia | Regra nova |
+|---|---|---|
+| `em(c,r)` | procurava peça na casa lendo `pos[0]` | peça sem posição não ocupa casa |
+| `visivelPara` | terminava em `enxergaCasa(t,...h.pos)` | sem posição, invisível — e a guarda vem **antes** da checagem de lado |
+| `naBase` | `dist(c,r,...h.pos)` | sem posição não está em base nenhuma |
+| `rotaDaPos` | achava a rota mais próxima | sem posição não está em rota — que já era a regra do rótulo desde a v47 |
+| `seloVisao` | chave do cache da névoa | ignora quem não tem posição |
+
+São 109 lugares no motor que espalham `...h.pos`. Não precisou blindar 109:
+herói escondido só chega neles por `em()` ou `todos()`, e guardar a raiz resolveu.
+
+---
+
+### 2. O achado de desenho: o cliente NÃO pode calcular o próprio "ESCONDIDO"
+
+`escondido(h)` responde *"o inimigo está me vendo?"* — e para isso calcula o
+**campo de visão do adversário**: onde as peças dele estão, onde ele plantou
+ward.
+
+Em rede o cliente não tem isso, e **não deve ter** — é o ponto inteiro do estado
+filtrado. Então ele não pode saber se está escondido. Era o último estouro: o
+selo de visão do lado inimigo lendo posição nula.
+
+A resposta passou a **vir carimbada** do servidor, que tem o estado inteiro, em
+`despercebido`. Em hotseat o campo não existe e a conta continua local — mesma
+função, sem ramo morto.
+
+É o tipo de coisa que só aparece tentando. Nenhuma leitura do código teria
+apontado que "estou escondido?" é uma pergunta que depende do que eu não sei.
+
+---
+
+### 3. O modo `rede`, e a frase que o define
+
+> **O gesto não muda o estado. Ele vira intenção e sobe.**
+
+O estado volta inteiro pelo canal, já filtrado. O cliente **nunca roda a regra**
+— se rodasse, existiriam duas implementações e a pergunta "quem está certo?",
+que é exatamente o que o servidor autoritativo existe para não ter.
+
+As duas portas continuaram sendo uma linha cada, como estava previsto desde a
+v48: `ladoDaTela()` virou "eu sou sempre o meu lado" e `mesaTravada()` ganhou
+"fora do meu turno, nada".
+
+**14 ações roteadas**, não 4: mover, habilidade, estrutura, encerrar, rotação,
+loja, gasto de ouro, venda, ward, carta, converter dado, re-rolar, prioridade e
+os dois feitiços. Deixar loja e cartas de fora teria sido pior que não ter o
+modo — elas mudariam o estado local e sumiriam no empurrão seguinte.
+
+---
+
+### 4. A tela de sala
+
+Um cria e dita o código; o outro entra com código e senha. O endereço do servidor
+fica guardado no aparelho e **não tem padrão embutido de propósito**: o jogo é
+servido de um lugar estático e o servidor mora em outro, então cravar um endereço
+seria cravar a infraestrutura de alguém dentro do jogo de todo mundo.
+
+---
+
+### 5. Conferido com dois navegadores de verdade
+
+Duas abas, uma sala, contra o servidor:
+
+- cada lado recebeu **os próprios 5 heróis e ZERO posições inimigas**;
+- cada lado desenhou **5 peças** — só as suas;
+- o código funcionou digitado em **minúscula**, que é como ele vai chegar;
+- "encerrar" de um virou **"sua vez"** no outro;
+- e a prova que fecha o argumento: quando uma peça entrou no campo de visão do
+  outro, ela **apareceu** — de 0 para 1 inimigo visível, de 5 para 6 peças. **A
+  névoa é dinâmica, e quem a aplica é o servidor.**
+
+---
+
+### 6. Dois erros meus no caminho, os dois no harness
+
+**O teste de rede travava no 17º** e parecia bug de regra. Não era: o `fetch` do
+Node compartilha um pool por origem, um stream SSE segura a conexão, e com dois
+canais por sala o POST seguinte ficava sem socket. O canal de teste passou a usar
+`http.get`, que dá o socket na mão. **O produto nunca esteve errado** — o
+instrumento estava.
+
+Antes disso, um teste que **pendurava sem falhar**. O corredor ganhou cão de
+guarda: passou do prazo, vira falha com nome.
+
+---
+
+### 7. O que ainda não existe
+
+- **reconexão e abandono** — cair no meio da partida hoje é perder;
+- **draft em rede**: a sala começa com times sorteados;
+- sala em memória: reiniciar o servidor derruba as partidas;
+- **hospedagem** — roda em qualquer Node, mas para jogar fora da mesma rede
+  alguém precisa subir em algum lugar.
+
+**Testes: 302 → 307** (as guardas de posição nula, todas quebradas de propósito
+antes de entrar) · **rede: 19** · fumaça no Chromium sem erro · hotseat intacto.
+
+---
+
 ## v52 — o servidor de salas, e a névoa que vira regra · 2026-08-20
 
 > *"crie um modo pvp com salas onde eu coloco a senha da sala e jogo com o amigo

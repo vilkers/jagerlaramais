@@ -38,7 +38,9 @@ const ITEM=Object.fromEntries(ITENS.map(i=>[i.id,i]));
    já na largada, e com a checagem exata NENHUM dos cinco contava como estando na base
    — medido, a loja abria dizendo "Loja fechada" na rodada 1 de toda partida.
    Efeito colateral assumido: voltar para comprar ficou mais barato. */
-const naBase=h=>BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
+/* sem posição não está em base nenhuma: é a peça que o filtro de rede escondeu.
+   Vale para todo mundo que pergunta — loja, feitiço, carta e Retorno. */
+const naBase=h=>!!h.pos&&BASE[h.t].some(([c,r])=>dist(c,r,...h.pos)<=1);
 /* Quantos itens este herói carrega. Três é o padrão; o Relicário dá um quarto.
    Existia como `h.slots||3` copiado em quatro lugares — a loja, a checagem de
    compra, o item grátis e o texto do botão. Bastava um deles ficar para trás
@@ -1014,6 +1016,9 @@ function reposicionaCacador(t,regiao){
    informação que a névoa existe para cobrar. Quem escolheu já sabe — clicou. */
 function escolheRotacao(t,regiao){
   if(!REGIAO[regiao])return null;
+  /* a rotação é a única jogada que acontece FORA do turno — os dois escolhem ao
+     mesmo tempo, às cegas. Por isso ela sobe mesmo com a mesa travada. */
+  if(modoRede&&t===modoRede.lado&&sobeJogada("rotacao",{regiao}))return null;
   J.rotacao[t]=regiao;                 /* registro da rodada; ninguém desenha */
   const onde=reposicionaCacador(t,regiao);
   /* O BÔNUS FICA PENDENTE, e é pago no INÍCIO DO TURNO DO DONO — não aqui.
@@ -1769,7 +1774,7 @@ function seloVisao(t){
   /* o estado de BANIMENTO entra no selo: um herói que sai do tabuleiro apaga a
      visão dele, e sem este bit o cache continuaria acendendo o raio de uma peça
      que não está mais lá. É o mesmo erro de magnitude que a v21 pagou. */
-  for(let i=0;i<hs.length;i++) mix(hs[i].pos[0]*13+hs[i].pos[1]*7
+  for(let i=0;i<hs.length;i++) mix((hs[i].pos?hs[i].pos[0]*13+hs[i].pos[1]*7:0)
     +(hs[i].morto?1:0)+(temCond(hs[i],"banido")?2:0));
   for(let i=0;i<J.torres.length;i++) if(J.torres[i].t===t) mix(J.torres[i].vida);
   mix(J.frentes.topo*7+J.frentes.meio*13+J.frentes.baixo*17);
@@ -1887,6 +1892,13 @@ function estadoPara(t){
     h.preso=0; h.intoc=0; h.marca=0; h.recarga=0; h.dots=[];
   });
 
+  /* O "ESCONDIDO" DE CADA PEÇA MINHA vai calculado daqui, porque só aqui dá.
+     É a informação que o jogador precisa para decidir emboscada, e ela depende
+     de onde o inimigo está — que é justamente o que ele não vai receber. */
+  J.times[t].herois.forEach((real,i)=>{
+    fora.times[t].herois[i].despercebido = escondido(real) ? 1 : 0;
+  });
+
   /* a escolha do outro só aparece depois de resolvida — `rotacao` guarda o par */
   if(fora.rotacao) fora.rotacao[inim]=null;
   fora.times[inim].wards=[];
@@ -1900,6 +1912,11 @@ function estadoPara(t){
 }
 
 function visivelPara(h,t){
+  /* sem posição não há o que enxergar: é o herói que o filtro de rede escondeu
+     antes de mandar o estado. A guarda vem ANTES da checagem de time porque o
+     estado filtrado nunca esconde os meus — se um meu chegar sem posição, é
+     defeito, e devolver `false` é mais seguro que estourar no desenho. */
+  if(!h.pos)return false;
   if(h.t===t&&!temCond(h,"banido"))return true;
   if(h.morto)return true;
   if(temCond(h,"banido"))return false;
@@ -1914,13 +1931,29 @@ function visivelPara(h,t){
 }
 /* Escondido AGORA: fora do campo de visão inimigo. É a condição do bônus de
    emboscada — o gank virou consequência de posição, não de ficha declarada. */
-const escondido=h=>!h.morto&&!visivelPara(h,1-h.t);
+/* "O INIMIGO ESTÁ ME VENDO?" — e por que esta resposta tem de VIR PRONTA em rede.
+
+   Para responder, esta função calcula o campo de visão do ADVERSÁRIO: onde as
+   peças dele estão, onde ele plantou ward. Em hotseat o cliente tem tudo isso e
+   a conta sai na hora.
+
+   Em rede, não tem — e não deve ter, que é o ponto inteiro de `estadoPara`. O
+   cliente não sabe onde estão os heróis inimigos escondidos, então não pode
+   saber se ELE está escondido deles. Tentar calcular assim mesmo era o último
+   estouro do desenho com estado filtrado: `seloVisao` do lado inimigo lendo
+   `pos` nulo.
+
+   Então o servidor, que tem o estado inteiro, calcula e manda em `despercebido`.
+   Em hotseat o campo não existe e a conta continua sendo feita aqui — mesma
+   função, mesma resposta, sem ramo morto. */
+const escondido=h=>h.despercebido!==undefined ? !!h.despercebido
+                                              : (!h.morto&&!visivelPara(h,1-h.t));
 
 /* De quem é a tela. Em partida contra a IA quem olha é SEMPRE o humano: durante
    a vez dela o tabuleiro continua mostrando o que o time 0 enxerga. Antes ele
    desenhava pela perspectiva de `J.vez`, e no turno da IA o jogador via os
    heróis dela saindo do mato — a névoa vazava justamente para o lado errado. */
-const ladoDaTela=()=>aiMode?0:J.vez;
+const ladoDaTela=()=>modoRede?modoRede.lado:(aiMode?0:J.vez);
 
 /* ---------- WARDS ----------
    A Ward deixou de ser um sinalizador abstrato do time e virou uma PEÇA NO MAPA,
@@ -2129,6 +2162,47 @@ let J,dadoSel=null,ativo=null,habSel=null,selHeroi=null,alvos=[],alvosTorre=[],a
     alvoNexus=null,mover=[],lojaHeroi=null;
 let aiMode=false, simMode=false;
 
+/* ══════════ MODO REDE (v53) ══════════
+   `null` em hotseat e contra a IA — e é por isso que nada abaixo tem custo
+   quando ele está desligado.
+
+   A regra do modo é uma frase: **o gesto não muda o estado, ele vira intenção e
+   sobe.** O estado volta inteiro pelo canal, já filtrado pelo servidor. O
+   cliente nunca roda a regra: se rodasse, teríamos duas implementações e a
+   pergunta "quem está certo?" — que é exatamente o que o servidor autoritativo
+   existe para não ter. */
+let modoRede=null;         /* {base, sala, lado, segredo, canal} */
+
+/* manda a intenção. Devolve `true` quando engoliu o gesto — quem chama usa isso
+   para NÃO executar a jogada localmente. */
+function sobeJogada(acao,dados){
+  if(!modoRede) return false;
+  fetch(modoRede.base+"/jogada",{method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({sala:modoRede.sala,segredo:modoRede.segredo,acao,dados})})
+    .then(r=>r.json())
+    .then(r=>{ if(r&&r.erro) toast(r.erro,"morte"); })
+    .catch(()=>toast("sem conexão com a sala","morte"));
+  return true;
+}
+
+/* o estado chega inteiro e substitui o local. Sem merge, sem reconciliação: o
+   servidor é a verdade, e reconciliar seria a segunda implementação entrando
+   pela porta dos fundos. */
+function aplicaEstadoDaRede(est){
+  J=est;
+  limpaModo(); selHeroi=null;
+  pinta();
+  const e=G("vezRede");
+  if(e&&modoRede){
+    const minha=J.vez===modoRede.lado;
+    e.hidden=false;
+    e.className=minha?"minha":"";
+    e.textContent=J.fim!==null ? "partida encerrada"
+                : minha ? "sua vez" : `vez de ${NOMES[J.vez]}`;
+  }
+}
+
 /* ---------- OS TRÊS NÍVEIS DA IA ----------
    A regra que rege tudo aqui: DIFICULDADE MEXE NA QUALIDADE DA DECISÃO, NUNCA
    NOS NÚMEROS. A IA difícil não ganha dano, vida, ouro nem dado a mais, e não
@@ -2231,7 +2305,10 @@ const vivos=t=>J.times[t].herois.filter(h=>!h.morto);
 /* Banido NÃO ocupa hexágono — é a regra explícita do §9. `em` é o lugar único
    onde "tem alguém aqui?" é respondido, então passar por `noJogo` aqui resolve
    de uma vez movimento, empurrão, desempilhamento, mira e zona. */
-const em=(c,r)=>todos().find(h=>noJogo(h)&&h.pos[0]===c&&h.pos[1]===r);
+/* `h.pos` PODE SER NULO desde a v52. Em rede o cliente recebe `estadoPara(lado)`
+   e o herói inimigo que ele não enxerga chega sem posição — é o que impede a
+   névoa de ser decoração. Peça sem posição não ocupa casa nenhuma. */
+const em=(c,r)=>todos().find(h=>noJogo(h)&&h.pos&&h.pos[0]===c&&h.pos[1]===r);
 const reg=(cls,txt)=>{J.log.unshift({cls,txt});};
 
 /* ---------- FASE OCULTA ---------- */
@@ -2464,6 +2541,7 @@ function torresAtiram(t){
 
 function encerraTurno(){
   if(J.fim!==null)return;
+  if(sobeJogada("encerrar",{}))return;
   /* O PRAZO DAS CONDIÇÕES CAI AQUI, no fim do turno de quem as carrega. Cobrar e
      gastar no mesmo instante (início) fazia `atordoado por 1 turno` nascer e
      morrer antes de o jogador tentar agir — o atordoamento não atordoava nada. */
@@ -2487,6 +2565,10 @@ function encerraTurno(){
 }
 /* ---------- FIM DE RODADA ---------- */
 function rotaDaPos(h){
+  /* peça sem posição não está em rota nenhuma. Em rede é o inimigo escondido, e
+     não contar na presença é exatamente a regra do rótulo de rota desde a v47:
+     ele só conta o inimigo que ESTE lado enxerga. */
+  if(!h.pos) return null;
   let melhor=null, md=1e9, idx=-1;
   Object.entries(ROTAS).forEach(([nome,l])=>{
     l.forEach((p,i)=>{
@@ -2808,6 +2890,7 @@ function tetoAndar(h){
 }
 function moveAte(c,r){
   const h=selHeroi; if(!h)return;
+  if(sobeJogada("mover",{heroi:h.id,para:[c,r]}))return;
   if(temCond(h,"atordoado")||temCond(h,"banido"))return;
   /* ÁGIL — "a 1ª casa andada é grátis" era por MOVIMENTO, não por turno. Andando
      de 1 em 1 hexágono, todo passo custava zero: movimento infinito. Agora o
@@ -2865,6 +2948,7 @@ function iniciaLampejo(){
   vibra(8); pinta();
 }
 function lampejaAte(c,r){
+  if(sobeJogada("lampejo",{heroi:selHeroi&&selHeroi.id,para:[c,r]}))return;
   const h=selHeroi;
   if(!h||!temFeitico(h.t)||em(c,r)||!noTab(c,r))return;
   if(dist(...h.pos,c,r)>LAMPEJO_ALC)return;
@@ -2880,6 +2964,7 @@ function lampejaAte(c,r){
 }
 function usaRetorno(){
   const h=selHeroi;
+  if(h&&sobeJogada("retorno",{heroi:h.id}))return;
   if(!h||h.morto||h.t!==J.vez||J.fase!=="jogando")return;
   if(!temFeitico(h.t))
     return toast(`feitiço recarrega em ${J.times[h.t].feiticoCd}`,"morte");
@@ -3453,6 +3538,7 @@ function recuaAte(c,r){
    a IA sabe usá-la, e `pinta` avisa quando é a única saída que resta. */
 function converteDado(i){
   const idx = i==null?dadoSel:i;
+  if(sobeJogada("converterDado",{i:idx}))return true;
   if(idx===null||idx===undefined||!J.dados[idx]||J.dados[idx].usado)return false;
   const d=J.dados[idx]; d.usado=1; J.mov.rest+=d.v; J.mov.v+=d.v;
   reg(J.vez?"c":"a",`${NOMES[J.vez]} vira a ação ${d.v} em movimento (total ${J.mov.rest})`);
@@ -3478,6 +3564,7 @@ function usaPlaca(delta){
   pinta();
 }
 function rerola(){
+  if(sobeJogada("rerolar",{i:dadoSel}))return;
   const tm=J.times[J.vez];
   if(tm.placas<2||dadoSel===null||J.dados[dadoSel].usado)return;
   tm.placas-=2; J.dados[dadoSel].v=1+Math.floor(Math.random()*6);
@@ -3866,6 +3953,7 @@ function torreExposta(rota,t){
    cercava: esperava o creep chegar. Agora quem decide é a posição do herói, e a
    onda voltou a ser o que devia ser — pressão constante, não permissão. */
 function torresAoAlcance(h,hb,alc){
+  if(!h.pos) return [];        /* peça sem posição (estado filtrado) não alcança nada */
   if(!(hb.ef.dano||hb.ef.danoFixo)||hb.alvo!=="in") return [];
   return J.torres.filter(tr=>{
     if(tr.t===h.t||tr.vida<=0) return false;
@@ -3993,6 +4081,8 @@ function iniciaHab(i){
 }
 function confirmaHab(alvo){
   if(!selHeroi||habAtual===null)return;
+  if(modoRede) return void sobeJogada("habilidade",
+    {heroi:selHeroi.id, slot:habAtual, alvo:(alvo===selHeroi?"eu":alvo.id)});
   const hb=selHeroi.habs[habAtual];
   const di=dadoPara(hb);
   if(di===null)return;
@@ -4324,7 +4414,11 @@ let arr=null, cliqueBloqueado=false;
      · a janela de 350ms depois de um arrasto, que já existia como
        `cliqueBloqueado`. */
 const mesaTravada=()=>!J||J.fim!==null||J.fase!=="jogando"
-  ||cliqueBloqueado||(aiMode&&(iaRodando||J.vez===1));
+  ||cliqueBloqueado||(aiMode&&(iaRodando||J.vez===1))
+  /* em rede a trava é a mesma de sempre, com um motivo a mais: fora do meu
+     turno o tabuleiro não aceita gesto. O servidor recusaria de qualquer forma —
+     isto é para o jogador não tentar e achar que travou. */
+  ||(modoRede&&J.vez!==modoRede.lado);
 
 function paraSVG(ev){
   const ctm=svg.getScreenCTM(); if(!ctm) return null;
@@ -5053,6 +5147,7 @@ const SENTINELAS_MAX=2;
 /* Planta uma carga onde o herói está. Não gasta dado nem ação: o custo já foi
    pago em ouro, e cobrar de novo em tempo faria dela uma compra que ninguém usa. */
 function plantaSentinela(h){
+  if(sobeJogada("ward",{heroi:h.id}))return true;
   if(!h||h.morto||!(h.sentinelas>0))return false;
   h.sentinelas--;
   poeWard(h.t,h.pos);
@@ -5067,6 +5162,7 @@ const PRECO_LEVA=()=>Math.min(12, 4+Math.floor((J.rodada-1)/3));
 const precoGasto=(g,h)=> typeof g.o==="function" ? g.o(h) : g.o;
 function gastosDisponiveis(h){ return GASTOS.filter(g=>!g.pode||g.pode(h)); }
 function usaGasto(id,h,t){
+  if(sobeJogada("gasto",{heroi:h.id,id}))return true;
   const g=GASTOS.find(x=>x.id===id); if(!g)return false;
   const preco=precoGasto(g,h);
   if(h.ouro<preco||(g.pode&&!g.pode(h)))return false;
@@ -5140,6 +5236,7 @@ const precoVenda=id=>Math.max(1,Math.floor((ITEM[id]?ITEM[id].o:0)*VENDE_FRACAO)
    Devolve `true` se comprou. As três recusas (ouro curto, item repetido,
    mochila cheia) ficam aqui, e não em quem chama: elas são a regra, não a tela. */
 function compraItem(h,id,t){
+  if(sobeJogada("item",{heroi:h.id,id}))return true;
   const it=ITEM[id];
   if(!it) return false;
   const preco=Math.max(0,it.o-descontos[t]);
@@ -5152,6 +5249,7 @@ function compraItem(h,id,t){
 }
 
 function vendeItem(h,id,t){
+  if(sobeJogada("vender",{heroi:h.id,item:id}))return true;
   if(!h||!ITEM[id])return false;
   if(!(h.morto||naBase(h)))return false;          // mesma janela da compra
   const i=h.itens.indexOf(id);
@@ -6412,6 +6510,7 @@ function fichaHab(h,i){
 const ouroDoTime=t=>J.times[t].herois.reduce((a,h)=>a+h.ouro,0);
 const torresDerrubadas=t=>J.torres.filter(x=>x.t===1-t&&x.vida<=0).length;
 function usaPrioridade(){
+  if(sobeJogada("prioridade",{}))return;
   const tm=J.times[J.vez];
   if(!tm.prio||J.fase!=="jogando")return;
   confirma("Usar prioridade",
@@ -6609,6 +6708,7 @@ function podeJogar(id){
   return true;
 }
 function jogaCarta(id){
+  if(sobeJogada("carta",{id,heroi:selHeroi&&selHeroi.id}))return;
   const c=CARTA[id], ef=c.ef, t=J.vez, h=selHeroi;
   if(!podeJogar(id)) return toast("não dá para jogar agora","morte");
   let msg=c.n;
@@ -7002,16 +7102,105 @@ function escolheNivelIA(depois){
     nivelIA=b.dataset.n; fecha(); depois();
   });
 }
+/* ══════════ A SALA (v53) ══════════
+   Um cria e dita o código; o outro entra com código e senha. É o pedido, e a
+   forma dele foi escolhida pelo uso: código de seis caracteres sem 0/O/1/I/L
+   porque ele vai ser lido em voz alta ou mandado por mensagem.
+
+   O ENDEREÇO DO SERVIDOR fica guardado no aparelho. Ele não tem padrão embutido
+   de propósito: o jogo é servido de um lugar estático (Pages) e o servidor mora
+   em outro, então cravar um endereço aqui seria cravar a infraestrutura de
+   alguém dentro do jogo de todo mundo. */
+const SALA_CHAVE="jager.sala.servidor";
+const servidorSalvo=()=>{ try{ return localStorage.getItem(SALA_CHAVE)||""; }catch(_){ return ""; } };
+const guardaServidor=v=>{ try{ localStorage.setItem(SALA_CHAVE,v); }catch(_){} };
+
+function telaSala(){
+  abre(`<span class="et">Jogar com um amigo</span><h2>Sala</h2>
+    <p>Um cria a sala e passa o <b>código</b> e a <b>senha</b>. O outro entra.
+       Vocês jogam em aparelhos diferentes, e <b>cada um só enxerga o que os
+       próprios heróis enxergam</b>.</p>
+    <label class="cmp"><span>Endereço do servidor</span>
+      <input id="salaBase" placeholder="http://192.168.0.10:8787" value="${servidorSalvo()}"></label>
+    <label class="cmp"><span>Senha da sala</span>
+      <input id="salaSenha" placeholder="pelo menos 3 letras" autocomplete="off"></label>
+    <button class="grande" id="btCriar">Criar sala</button>
+    <label class="cmp"><span>Ou entre numa sala existente</span>
+      <input id="salaCod" placeholder="código de 6" autocomplete="off"
+             style="text-transform:uppercase"></label>
+    <button class="grande" id="btEntrar"
+      style="background:none;border:1px solid var(--line);color:var(--ink-2)">Entrar</button>
+    <div id="salaMsg" class="salamsg"></div>`);
+
+  const msg=t=>{ const e=G("salaMsg"); if(e) e.innerHTML=t; };
+  const base=()=>String(G("salaBase").value||"").trim().replace(/\/$/,"");
+
+  async function fala(rota,corpo){
+    const b=base();
+    if(!b) { msg("Falta o endereço do servidor."); return null; }
+    guardaServidor(b);
+    try{
+      const r=await fetch(b+rota,{method:"POST",
+        headers:{"content-type":"application/json"},body:JSON.stringify(corpo)});
+      const j=await r.json();
+      if(!r.ok){ msg(j.erro||"não deu"); return null; }
+      return j;
+    }catch(_){ msg("não consegui falar com o servidor. Ele está de pé?"); return null; }
+  }
+
+  G("btCriar").onclick=async()=>{
+    msg("criando…");
+    const r=await fala("/criar",{senha:G("salaSenha").value});
+    if(!r)return;
+    entraNaSala(base(),r,`Sala <b>${r.sala}</b> criada.<br>Passe o código e a senha para o seu amigo.`);
+  };
+  G("btEntrar").onclick=async()=>{
+    msg("entrando…");
+    const r=await fala("/entrar",
+      {sala:String(G("salaCod").value||"").toUpperCase(),senha:G("salaSenha").value});
+    if(!r)return;
+    entraNaSala(base(),r,"");
+  };
+}
+
+/* abre o canal e passa a viver do que o servidor manda */
+function entraNaSala(base,r,aviso){
+  modoRede={base,sala:r.sala,lado:r.lado,segredo:r.segredo,canal:null};
+  aiMode=false; simMode=false;
+  abre(`<span class="et">Sala ${r.sala}</span><h2>${r.lado===0?"Esperando":"Entrou"}</h2>
+    <p>${aviso||"Você é o <b>segundo</b> jogador."}</p>
+    <p id="salaEstado">ligando…</p>`);
+
+  const url=`${base}/eventos?sala=${encodeURIComponent(r.sala)}&lado=${r.lado}`
+          +`&segredo=${encodeURIComponent(r.segredo)}`;
+  const canal=new EventSource(url);
+  modoRede.canal=canal;
+  let entrou=false;
+  canal.onmessage=ev=>{
+    let p; try{ p=JSON.parse(ev.data); }catch(_){ return; }
+    if(!p.cheia){
+      const e=G("salaEstado");
+      if(e) e.innerHTML="esperando o segundo jogador entrar…";
+      return;
+    }
+    if(!entrou){ entrou=true; fecha(); }
+    aplicaEstadoDaRede(p.estado);
+  };
+  canal.onerror=()=>{ const e=G("salaEstado"); if(e) e.innerHTML="conexão caiu — recarregue a página"; };
+}
+
 function telaAbertura(){
   abre(`<span class="et">Um MOBA de mesa para dois</span><h2>JAGER<br>LARAMAIS</h2>
     <p>Cada um comanda <b>cinco heróis</b> — no mesmo aparelho.</p>
     <button class="grande" id="ok">Jogar o tutorial</button>
     <button class="grande" id="btDraft">Partida com draft</button>
     <button class="grande" id="btIA" style="background:#315B52">Jogar contra a IA · com Draft</button>
+    <button class="grande" id="btSala" style="background:#3B5B7A">Jogar com um amigo · sala</button>
     <button class="grande" id="btDireto"
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
+  G("btSala").onclick=telaSala;
   G("btIA").onclick=()=>escolheNivelIA(()=>{
     aiMode=true; simMode=false;
     iniciaDraft(times=>{ TIMES=times; partida(false); });

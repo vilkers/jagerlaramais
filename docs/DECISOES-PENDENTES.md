@@ -356,59 +356,42 @@ e **(a)** se o mapa já estiver pesado de ler no celular.
 
 ---
 
-## 13. PvP em rede, com salas — DECIDIDO (caminho A) · metade construída
+## 13. PvP em rede, com salas — FEITO (v53), com três buracos conhecidos
 
-**Pedido do Vilker (v48):** *"cria uma opção de PvP com criação de salas"*.
-**Confirmado na v52:** *"crie um modo pvp com salas onde eu coloco a senha da
-sala e jogo com o amigo que a criou"*.
+Pedido em v48, confirmado em v52, **jogável desde a v53**. Caminho A (servidor
+autoritativo), como recomendado aqui desde o começo.
 
-**Decisão: caminho A — servidor autoritativo.** Era a recomendação registrada
-aqui, e o motivo não mudou: é o único caminho em que a névoa continua sendo
-regra em vez de questão de honra.
+Como se joga está em `servidor/LEIA.md`. O que sobrou:
 
-### O que já está PRONTO e testado (v52)
+### a · Reconexão e abandono
 
-| | Onde | Prova |
-|---|---|---|
-| **o estado filtrado** — `estadoPara(t)` | `jogo/jogo.js` | 10 testes em `sim/testes.js`, todos quebrados de propósito antes de entrar |
-| **o servidor** — salas, senha, SSE, autoritativo | `servidor/sala.js` | 19 testes em `sim/rede.js`, contra o servidor de verdade |
-| **`compraItem` num lugar só** | `jogo/jogo.js` | a regra estava escrita duas vezes (clique humano e IA) |
+Cair no meio da partida hoje **é perder a partida**. O segredo do jogador vive na
+memória da aba: recarregar a página perde a sessão, e a sala fica com um lado
+mudo até expirar em 2h.
 
-Nada disso mexeu no hotseat — 302 testes e a fumaça no navegador continuam
-passando.
+O conserto tem forma conhecida — guardar `{sala, lado, segredo}` no
+`localStorage`, como o endereço do servidor já é guardado, e reabrir o canal ao
+carregar. O que precisa de decisão é o resto: **quanto tempo se espera** por quem
+caiu, e o que acontece com quem desistiu.
 
-### O que FALTA, e é o cliente inteiro
+### b · Draft em rede
 
-O servidor está de pé e ninguém consegue chegar nele pelo jogo. Falta:
+A sala começa com **times sorteados**. Draft a dois é uma fase de escolha
+alternada com bans, e o motor já tem a máquina (`iniciaDraft`, `ORDEM_DRAFT`) —
+falta rodá-la por cima do mesmo canal, com o servidor mandando de quem é a vez de
+escolher e escondendo o pick antes da hora.
 
-1. **a tela de sala** — criar com senha (mostra o código) e entrar com código +
-   senha;
-2. **o modo `rede`**, ao lado de `hotseat`, `aiMode` e `simMode`. As duas portas
-   já existem e continuam sendo uma linha cada: `ladoDaTela()` vira "eu sou
-   sempre o lado X" e `mesaTravada()` vira "não é o meu turno";
-3. **rotear o gesto** — hoje o clique chama `moveAte`/`confirmaHab`/etc. e muda
-   o `J` local. Em rede tem de virar POST de INTENÇÃO e esperar o estado voltar.
-   São 11 pontos de entrada, e o servidor já aceita os 14 tipos de ação
-   correspondentes;
-4. **o desenho com estado filtrado** — e é aqui que mora o trabalho de verdade,
-   não nos outros três. O renderizador assume hoje que todo herói tem posição.
-   Com o filtro, herói escondido chega com `pos:null` e `oculto:1`; `visivelPara`
-   e `enxergaCasa` estouram em `...h.pos`. **É a parte que precisa de navegador
-   para validar, não de teste em Node** — e foi por isso que a v52 parou aqui em
-   vez de entregar meio caminho que quebra o hotseat;
-5. **reconexão e abandono.** Partida de 40 rodadas com celular ruim precisa
-   disso. Hoje cair é perder;
-6. **onde hospedar.** O servidor roda em qualquer Node. Free tier resolve, mas
-   alguém tem de criar a conta e apertar o botão — e o modo online deixa de
-   abrir com duplo clique, que é a exceção que este item sempre carregou.
+Não é difícil, é uma segunda máquina de turnos em cima da que já existe.
 
-### O que mudou de ideia no caminho
+### c · Onde hospedar
 
-Estava escrito aqui que *"`J` é um objeto serializável — dá para mandar em JSON
-sem cerimônia"*. **Estava errado.** Há uma referência circular: `cond.dono`
-guarda o OBJETO do herói que aplicou a condição, que é como o motor credita o
-abate por sangramento. `JSON.stringify` estoura nela. Na rede o dono vira `id`, e
-existe teste para o próximo que guardar objeto onde cabia identificador.
+Roda em qualquer Node. Na mesma rede (o servidor na sua máquina, os dois
+celulares no mesmo wi-fi) funciona **hoje, sem hospedar nada** — que é como o
+grupo deve testar primeiro.
+
+Para jogar de casas diferentes alguém tem de subir num Deno Deploy / Fly / Render
+— free tier resolve, mas é conta de alguém, e é aí que o jogo passa a **depender
+de coisa ligada**. O hotseat continua abrindo com duplo clique, offline, sempre.
 
 ---
 

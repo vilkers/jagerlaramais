@@ -73,9 +73,32 @@ jogo de tabuleiro não usa.
 
 Tudo isso é `node sim/rede.js` — 19 testes contra o servidor de verdade.
 
+## Jogar (v53)
+
+1. suba o servidor numa máquina que os dois alcancem — a sua, na mesma rede,
+   já serve: `node servidor/sala.js`;
+2. os dois abrem o jogo e tocam em **Jogar com um amigo · sala**;
+3. no campo *endereço*, o IP da máquina do servidor (`http://192.168.0.10:8787`).
+   Ele fica guardado no aparelho, então só se digita uma vez;
+4. um escolhe a senha e toca **Criar sala** — aparece um código de 6;
+5. o outro digita código e senha e toca **Entrar**.
+
+A partida começa sozinha quando o segundo entra. O canto de baixo diz de quem é
+a vez, e fora do seu turno o tabuleiro não aceita gesto.
+
+### Conferido com dois navegadores de verdade
+
+Duas abas, uma sala, contra este servidor: cada lado recebeu **os próprios 5
+heróis e ZERO posições inimigas**, desenhou só as próprias peças, e o aviso de
+vez virou no outro lado no instante do "encerrar". Quando uma peça de um entrou
+no campo de visão do outro, ela **apareceu** — de 0 para 1 inimigo visível, 5
+para 6 peças desenhadas. A névoa é dinâmica e é o servidor que a aplica.
+
 ## O que ainda NÃO existe
 
-- **o cliente.** Este servidor está pronto e testado, mas o jogo ainda não tem a
-  tela de sala nem o modo `rede`. Ver `docs/DECISOES-PENDENTES.md`, item 13;
-- reconexão e abandono — cair no meio da partida hoje é perder a partida;
-- sala mora em memória: reiniciar o processo derruba as partidas em curso.
+- **reconexão e abandono** — cair no meio da partida hoje é perder a partida;
+- **draft em rede**: a sala começa com times sorteados. Draft a dois exige uma
+  fase de escolha alternada por cima do mesmo canal;
+- sala mora em memória: reiniciar o processo derruba as partidas em curso;
+- **hospedagem**: roda em qualquer Node, mas alguém precisa subir em algum lugar
+  para jogar fora da mesma rede.

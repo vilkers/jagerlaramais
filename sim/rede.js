@@ -27,7 +27,7 @@ async function teste(nome, fn, ms = 5000) {
       setTimeout(() => rej(new Error(`travou — passou de ${ms}ms sem terminar`)), ms))]);
     passou++; console.log(`  \x1b[32m✓\x1b[0m ${nome}`);
   } catch (e) { falhou++; falhas.push(nome); console.log(`  \x1b[31m✗\x1b[0m ${nome}\n      ${e.message}`); }
-  finally { abertos.splice(0).forEach(c => { try { c.abort(); } catch (_) {} }); }
+  finally { abertos.splice(0).forEach(r => { try { r.destroy(); } catch (_) {} }); }
 }
 const ok = (c, m) => { if (!c) throw new Error(m); };
 const eq = (a, b, m) => { if (a !== b) throw new Error(`${m} — esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
@@ -40,35 +40,47 @@ const post = async (rota, corpo) => {
 };
 
 /* abre o SSE e devolve uma função que espera o PRÓXIMO estado */
-/* TODO canal aberto entra aqui, e o corredor fecha tudo ao fim de cada teste.
-   Sem isso o SSE de um teste sobrevive ao teste: cada `mesa()` abre dois canais,
-   o `fetch` do Node tem limite de conexões por origem, e por volta do 17º teste
-   o POST seguinte não consegue socket e fica pendurado — que foi exatamente o
-   que aconteceu, e que parecia bug de regra. */
+/* O CANAL DE TESTE USA `http.get`, E NÃO `fetch`.
+
+   O `fetch` do Node compartilha um pool de conexões por origem, e um stream SSE
+   segura a conexão enquanto vive. Com dois canais por sala e uma sala por teste,
+   por volta do 17º o POST seguinte não conseguia socket e ficava pendurado — que
+   parecia bug de regra e não era. `abort()` também não devolvia o socket a tempo.
+
+   `http.get` dá o socket na mão: `destroy()` fecha na hora, e a suíte deixa de
+   depender do humor de um pool que ela não controla. */
+const http = require("http");
 const abertos = [];
+
 function ouve(sala, lado, seg) {
   const fila = [], esperando = [];
-  const ctrl = new AbortController();
-  abertos.push(ctrl);
-  const pronto = fetch(`${BASE}/eventos?sala=${sala}&lado=${lado}&segredo=${seg}`,
-                       { signal: ctrl.signal }).then(async r => {
-    const leitor = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
-    (async () => {
-      try {
-        for (;;) {
-          const { done, value } = await leitor.read(); if (done) break;
-          buf += dec.decode(value, { stream: true });
-          let i;
-          while ((i = buf.indexOf("\n\n")) >= 0) {
-            const linha = buf.slice(0, i); buf = buf.slice(i + 2);
-            const m = /^data: (.*)$/m.exec(linha); if (!m) continue;
-            const pacote = JSON.parse(m[1]);
-            if (esperando.length) esperando.shift()(pacote); else fila.push(pacote);
-          }
+  const u = new URL(`${BASE}/eventos`);
+  u.searchParams.set("sala", sala);
+  u.searchParams.set("lado", lado);
+  u.searchParams.set("segredo", seg);
+
+  let req = null;
+  const pronto = new Promise((res, rej) => {
+    req = http.get(u, r => {
+      if (r.statusCode !== 200) { rej(new Error("canal recusado: " + r.statusCode)); return; }
+      let buf = "";
+      r.setEncoding("utf8");
+      r.on("data", c => {
+        buf += c;
+        let i;
+        while ((i = buf.indexOf("\n\n")) >= 0) {
+          const linha = buf.slice(0, i); buf = buf.slice(i + 2);
+          const m = /^data: (.*)$/m.exec(linha); if (!m) continue;
+          let pacote; try { pacote = JSON.parse(m[1]); } catch (_) { continue; }
+          if (esperando.length) esperando.shift()(pacote); else fila.push(pacote);
         }
-      } catch (_) { /* abortado */ }
-    })();
+      });
+      res();
+    });
+    req.on("error", () => res());          /* fechado de propósito não é falha */
   });
+  abertos.push(req);
+
   const proximo = () => new Promise(res => fila.length ? res(fila.shift()) : esperando.push(res));
   return {
     pronto, proximo,
@@ -76,8 +88,7 @@ function ouve(sala, lado, seg) {
        na abertura de cada canal, então a fila começa com eventos velhos e um
        teste que lê "o próximo" pode estar lendo o passado */
     drena: () => { fila.length = 0; },
-    /* espera um estado que satisfaça `pred`, com prazo — sem isso um teste que
-       falha fica pendurado para sempre em vez de acusar */
+    /* espera um estado que satisfaça `pred`, com prazo */
     ateQue: async (pred, ms = 3000) => {
       const fim = Date.now() + ms;
       for (;;) {
@@ -89,7 +100,7 @@ function ouve(sala, lado, seg) {
         if (pred(p)) return p;
       }
     },
-    fecha: () => ctrl.abort(),
+    fecha: () => { try { req.destroy(); } catch (_) {} },
   };
 }
 
@@ -269,7 +280,7 @@ function ouve(sala, lado, seg) {
     eq(g.J.times[meuLado].herois[0].itens.includes("eclipse"), true, "o item não foi equipado");
     ok(g.J.times[meuLado].herois[0].ouro < 60, "comprou de graça");
     oa.fecha(); ob.fecha();
-  });
+  }, 15000);   /* prazo maior: este monta sala, motor e loja — é o mais pesado da suíte */
 
   await teste("NÃO DÁ PARA MIRAR EM QUEM VOCÊ NÃO ENXERGA", async () => {
     const { a, b, ea, oa, ob } = await mesa();

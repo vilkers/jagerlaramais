@@ -1613,6 +1613,84 @@ teste("varredura: a coordenada do escondido não aparece em NENHUM canto do esta
    tinha escrito em DECISOES-PENDENTES que "J é serializável, dá para mandar em
    JSON sem cerimônia". Estava errado, e só apareceu quando o filtro tentou
    clonar. Este teste é para o próximo que guardar um objeto onde cabia um id. */
+/* AS GUARDAS DE `pos` NULO.
+
+   O estado filtrado manda o herói escondido SEM posição — é isso que faz a névoa
+   ser regra em vez de desenho. Só que o motor inteiro foi escrito quando toda
+   peça tinha posição: são 109 lugares que espalham `...h.pos`.
+
+   Encontrar os que importavam não foi por leitura: foi injetando um estado
+   filtrado num navegador de verdade e vendo o que estourava. Deu cinco, e todos
+   desciam para poucas raízes. Estes testes são essas raízes — se alguém tirar
+   uma guarda, o cliente de rede volta a quebrar na primeira peça escondida. */
+function heroiSemPos(g) {
+  const h = g.J.times[1].herois[0];
+  h.pos = null;
+  return h;
+}
+
+teste("peça sem posição não ocupa casa nenhuma", () => {
+  const c = cena(); const g = c.g;
+  const h = heroiSemPos(g);
+  let estourou = null;
+  try { for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) g.em(col, r); }
+  catch (e) { estourou = e.message; }
+  eq(estourou, null, `em() estourou numa peça sem posição: ${estourou}`);
+  ok(!g.todos().filter(x => x === h).some(x => g.em(...(x.pos || [-1, -1]))),
+     "achou a peça sem posição em alguma casa");
+});
+
+teste("peça sem posição não é visível para ninguém, e não estoura", () => {
+  const c = cena(); const g = c.g;
+  const h = heroiSemPos(g);
+  eq(g.visivelPara(h, 0), false, "um herói sem posição apareceu como visível");
+  eq(g.visivelPara(h, 1), false,
+     "um herói sem posição apareceu como visível para o PRÓPRIO time — "
+     + "a guarda tem de vir antes da checagem de lado, senão o desenho estoura");
+});
+
+teste("as contas que varrem o tabuleiro aguentam peça sem posição", () => {
+  const c = cena(); const g = c.g;
+  heroiSemPos(g);
+  const contas = {
+    "campoDeVisao": () => g.campoDeVisao(0),
+    "seloVisao (cache da névoa)": () => g.enxergaCasa(1, 5, 5),
+    "naBase": () => g.todos().forEach(h => g.naBase(h)),
+    "rotaDaPos": () => g.todos().forEach(h => g.rotaDaPos(h)),
+    "escondido": () => g.todos().forEach(h => g.escondido(h)),
+  };
+  Object.entries(contas).forEach(([nome, fn]) => {
+    try { fn(); }
+    catch (e) { throw new Error(`${nome} estourou com peça sem posição: ${e.message}`); }
+  });
+});
+
+/* "O INIMIGO ESTÁ ME VENDO?" é a única pergunta que o cliente de rede NÃO pode
+   responder sozinho: ela depende de onde as peças dele estão, que é justamente o
+   que ele não recebe. Por isso a resposta vai carimbada no estado. */
+teste("o estado carimba, em cada peça minha, se o inimigo está me vendo", () => {
+  const { c, g, espiao } = cenaEspiao();
+  const fora = g.estadoPara(0);
+  fora.times[0].herois.forEach((h, i) => {
+    ok(h.despercebido === 0 || h.despercebido === 1,
+       `${h.n} veio sem o carimbo de "escondido" — o cliente de rede não tem como calcular isso`);
+    eq(!!h.despercebido, g.escondido(g.J.times[0].herois[i]),
+       `${h.n}: o carimbo discorda do que o motor diz`);
+  });
+});
+
+teste("com o carimbo presente, escondido() usa ELE e não recalcula", () => {
+  const c = cena(); const g = c.g;
+  const h = g.J.times[0].herois[0];
+  /* mentira deliberada: se `escondido` recalcular, ele ignora o carimbo */
+  h.despercebido = 1;
+  eq(g.escondido(h), true, "o carimbo do servidor foi ignorado");
+  h.despercebido = 0;
+  eq(g.escondido(h), false, "o carimbo do servidor foi ignorado");
+  delete h.despercebido;
+  eq(typeof g.escondido(h), "boolean", "sem carimbo, a conta local deixou de funcionar");
+});
+
 teste("o estado que sai para a rede é serializável — nenhuma referência circular", () => {
   const { g } = cenaEspiao();
   [0, 1].forEach(t => {
