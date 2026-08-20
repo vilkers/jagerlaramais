@@ -136,6 +136,10 @@ const PONTE = `
   get REGIOES(){return REGIOES}, get SELVA_PONTOS(){return SELVA_PONTOS},
   get BLOQUEADO(){return BLOQUEADO}, get OBSTACULO(){return OBSTACULO},
   ehBloqueado:(c,r)=>ehBloqueado(c,r),
+  /* cenário: geometria pura, para o teste conferir que nada escapa do hexágono */
+  cenarioDa:(c,r)=>cenarioDa(c,r), centro:(c,r)=>centro(c,r), get R_HEX(){return R},
+  get COLS(){return COLS}, get LINS(){return LINS}, noTab:(c,r)=>noTab(c,r),
+  ladoDoRio:(c,r)=>ladoDoRio(c,r), ehRio:(c,r)=>ehRio(c,r),
   passosDe:de=>passosDe(de), passosAte:(a,b)=>passosAte(a,b),
   get BLOQUEIOS_ALVO(){return BLOQUEIOS_ALVO},
   get ROTACAO_SEGUNDOS(){return ROTACAO_SEGUNDOS},

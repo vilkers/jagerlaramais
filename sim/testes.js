@@ -1821,13 +1821,20 @@ teste("nenhuma superfície que carrega texto tem fundo escuro cravado", () => {
 
 teste("o tabuleiro continua com as cores de dia — ele nunca dependeu do tema", () => {
   const p = paletaDe("jogo/estilo.css");
-  /* os valores da direção de arte, travados desde a v39 */
-  const DIA = { "--rota":"#C3B7A4", "--selva":"#7FA65C", "--rio":"#8FB0AE",
+  /* Os valores da direção de arte. Travados na v39; rota, selva e rio foram
+     movidos na v55 — de propósito, com referência de arte na mão, para areia
+     quente, vegetação fechada e água turquesa.
+
+     O QUE ESTA TRAVA IMPEDE NÃO MUDOU: que a cor do TABULEIRO ande de carona
+     numa mudança de CHROME. O tabuleiro é de dia e nunca dependeu do tema —
+     foi assim que a v51 quase levou a paleta junto ao virar creme. Mexer aqui
+     exige decisão de arte declarada, não efeito colateral. */
+  const DIA = { "--rota":"#C9B694", "--selva":"#6E9350", "--rio":"#63ABA6",
                 "--terra":"#CFC3AE", "--bloq":"#8A7452", "--traco":"#5A5142",
                 "--ceu":"#BBD3E0", "--limao":"#C6F53F" };
   Object.entries(DIA).forEach(([k, v]) =>
     eq(p[k], v, `${k} mudou — o tabuleiro é de dia por direção de arte (itens 8, 9 e 33), `
-       + "e virar o chrome creme não é motivo para mexer nele"));
+       + "e mudança de chrome não é motivo para mexer nele"));
 });
 
 teste("guia e jogo pintam o mesmo terreno com a mesma tinta", () => {

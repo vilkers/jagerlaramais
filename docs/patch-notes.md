@@ -11,6 +11,83 @@ Como escrever uma entrada:
 ### Por quê
 ---
 
+## v55 — o mundo entra no tabuleiro · 2026-08-20
+
+### O que mudou
+
+**Uma camada de cenário no mapa do jogo.** Entre o chão e as peças, cada casa
+ganhou o que existe nela: mata fechada no mato, junco e pedra na margem do rio,
+e — na beira das rotas — construção. De um lado do rio, casa pintada, varal e
+palmeira; do outro, barraco de chapa, contêiner, tambor e sucata. 1.254 formas
+no total, todas geradas por código.
+
+**A divisão dos dois mundos sai da distância às duas bases**, não de uma reta
+escrita na mão. É exata, simétrica por construção e acompanha sozinha se o
+tabuleiro mudar de tamanho.
+
+**Paleta do terreno**, no jogo e no guia juntos:
+
+| token | antes | agora | |
+|---|---|---|---|
+| `--rota` | `#C3B7A4` | `#C9B694` | areia quente no lugar do concreto lavado |
+| `--selva` | `#7FA65C` | `#6E9350` | vegetação mais fechada |
+| `--rio` | `#8FB0AE` | `#63ABA6` | água turquesa |
+
+`--terra`, `--bloq`, `--traco`, `--ceu` e `--limao` não mudaram. A névoa
+(`--cego`) também não: ela precisa continuar visivelmente mais escura que a
+selva, e escurecer as duas juntas apagaria a diferença.
+
+**Teste novo:** `node sim/cenario.js` — 9 testes do cenário.
+
+### Por quê
+
+O pedido foi identidade: *"o jogo tá muito padrão"*, com referência de arte na
+mão — favela colorida de um lado, ferro velho do outro, torre de rádio, nexo
+como base. O tabuleiro era terreno chapado com ícone de obstáculo, e a
+referência é um lugar.
+
+A referência não foi seguida até o fim, e isso é decisão, não preguiça: lá a
+rota é asfalto cinza, e **aqui rota é 79 das 116 casas**. Cinza nelas deixaria o
+tabuleiro inteiro cinza — o oposto do que esta paleta existe para fazer.
+
+### Três armadilhas que o cenário tinha de evitar, e como
+
+**O `getBBox`.** O `viewBox` do mapa é recalculado no fim de `desenhaMapa` a
+partir de `svg.getBBox()`. Peça que escape do próprio hexágono infla a caixa e
+**encolhe o mapa inteiro** — já aconteceu, com um anel de raio 3 em volta da
+ward. O limite é o *inraio* (R·√3/2 ≈ 16,4), não o raio: o hexágono é apontado,
+e uma peça a 19 na direção do lado já está fora.
+
+**O clique.** O alvo de movimento é o `<polygon>` da casa. O grupo inteiro do
+cenário é `pointer-events:none` — enfeite que come toque deixa o jogador sem
+entender por que o herói não anda.
+
+**A névoa.** Casa que o jogador não enxerga apaga o cenário junto. Cenário que
+ignora névoa é radar de graça.
+
+### Dois defeitos encontrados escrevendo isto
+
+**O raio declarado mentia sobre o desenho.** `cenarioDa` devolve geometria pura
+e `pecaCenario` desenha; o teste conferia o dado. Só que a sombra é desenhada
+deslocada em (+0,8 +1) e o raio declarado não a contava — teste verde sobre um
+desenho maior do que ele achava. Os raios agora são a conta real do que se
+pinta.
+
+**O sorteio de cor não sorteava.** O material da construção saía de
+`km = c*7+r*3`, e `km%7` é `(r*3)%7` — depende só da LINHA; `km%3` é `c%3` —
+depende só da COLUNA. Telhado de zinco aparecia em coluna inteira e o tabuleiro
+ficava cinza uniforme, com cara de padrão em vez de bairro. Agora é hash.
+
+### Um alarme falso, registrado para ninguém repetir
+
+Durante o trabalho o `viewBox` parecia crescer de `354.5` para `355.3` com o
+cenário ligado. Não era. `novo()` sorteia uma partida diferente a cada execução,
+e a comparação estava sendo feita entre duas partidas — peça de herói em casa
+diferente move a caixa. Removendo e recolocando o cenário **na mesma página**, o
+`getBBox` dá `349.8` nos dois casos. Comparação de medida só vale com o resto
+igual.
+
+
 ### 8. O manual, o guia e as regras contam a mesma história
 
 Mudança de regra que não chega ao texto vira defeito de mesa. Os três lugares em

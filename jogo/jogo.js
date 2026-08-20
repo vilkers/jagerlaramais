@@ -877,6 +877,146 @@ const BLOQUEADO=_BLOQ.set;
 const OBSTACULO=_BLOQ.tipos;                 /* casa → que coisa está ali */
 const ehBloqueado=(c,r)=>BLOQUEADO.has(k(c,r));
 
+/* ---------- O CENÁRIO ----------
+   O que se vê POR CIMA do terreno: o mato virando mata fechada, a favela
+   colorida de um lado do rio e o ferro velho do outro.
+
+   Três regras que não são estéticas, são de engenharia:
+
+   1. CABE DENTRO DO HEXÁGONO. O `viewBox` do mapa sai de `getBBox()`. Uma peça
+      que escape da própria casa infla a caixa e ENCOLHE O MAPA INTEIRO — já
+      aconteceu, com um anel de raio 3 em volta da ward. O limite é o inraio
+      (R·√3/2 ≈ 16,4), não o raio: o hexágono é apontado, e uma peça a 19 na
+      direção do lado já está fora. Aqui nada passa de ~14.
+
+   2. É FUNÇÃO PURA DE (c,r), memoizada. A mesma casa desenha igual sempre —
+      casa que o jogador decorou não pode mudar de cara entre dois turnos — e
+      `desenhaMapa` roda a cada repintura, então recalcular seria desperdício.
+
+   3. NÃO É O ASSUNTO DA TELA. No tabuleiro vazio dá vontade de encher; aqui
+      em cima andam herói, torre, ward, zona e alvo de movimento. O cenário
+      entra abaixo de tudo isso, menor e mais surdo do que a proposta em
+      arte/proposta-site — enfeite que disputa leitura com peça é bug de UX.
+
+   A DIVISÃO DOS DOIS MUNDOS sai da distância às duas bases, não de uma reta
+   escrita na mão: é exata, é simétrica por construção e acompanha sozinha se o
+   tabuleiro mudar de tamanho. */
+const ehRio=(c,r)=>RIO_S.has(k(c,r));
+/* +1 = margem da favela (lado do time 0) · -1 = margem do ferro velho */
+const ladoDoRio=(c,r)=>{
+  const d0=dist(c,r,...BASE[0][0]), d1=dist(c,r,...BASE[1][0]);
+  if(d0!==d1)return d0<d1?1:-1;
+  /* EMPATE. Desempatar com `<=` jogava as seis casas equidistantes todas para o
+     mesmo lado e o tabuleiro saía 56 contra 50 — num jogo que tem um teste só
+     para provar que os dois lados são iguais. A casa empatada e a espelhada
+     dela formam par: comparação canônica contra a própria imagem girada manda
+     uma para cada lado, antissimétrica por construção. */
+  const [gc,gr]=gira(c,r);
+  return (r<gr||(r===gr&&c<gc))?1:-1;
+};
+
+const _CEN_PAREDE=["#5E93A8","#6E9A6A","#B87C86","#C4A452","#B06A4E","#8A7A9E","#CFC4AC","#C08048"];
+const _CEN_TELHA =["#96513B","#8E4E36","#A25C42","#7E4A38"];
+const _CEN_ZINCO =["#8A908C","#7E847F","#949A94"];
+const _CEN_LATA  =["#7E5F42","#6E5238","#8A6B46"];
+const _CEN_CONT  =["#7A4038","#8A6A34","#4E6A44","#6E4A36","#46647E"];
+const _CEN_FOLHA =["#41603C","#4C6E46","#385434","#547A4C"];
+
+/* ruído determinístico por (casa, semente) — o mesmo de arte/proposta-site */
+function _cRnd(c,r,s){let x=(c*374761393+r*668265263+s*1442695040)|0;
+  x=(x^(x>>13))*1274126177|0;return((x^(x>>16))>>>0)/4294967296;}
+
+const _CENARIO=new Map();
+function cenarioDa(c,r){
+  const key=k(c,r);
+  if(_CENARIO.has(key))return _CENARIO.get(key);
+  const o=[];
+  const põe=p=>{o.push(p);return p;};
+  const [cx,cy]=centro(c,r);
+  /* ANEL: a peça nasce na BEIRA da casa, nunca no miolo. O herói é um disco de
+     raio 14 no centro — cenário no meio some debaixo dele e só suja o desenho.
+     Raio do anel 8,5–11 mais raio da peça (≤4,5) fica em 15,5, abaixo do
+     inraio 16,4: cabe dentro do hexágono, que é a regra 1 lá de cima. */
+  const anel=(s,rmin,rmax)=>{
+    const lo=rmin===undefined?4.5:rmin, hi=rmax===undefined?7:rmax;
+    const an=_cRnd(c,r,s)*6.2832, rr=lo+_cRnd(c,r,s+40)*(hi-lo);
+    return [cx+Math.cos(an)*rr, cy+Math.sin(an)*rr];
+  };
+  const a=_cRnd(c,r,1), b=_cRnd(c,r,2), d=_cRnd(c,r,3), e5=_cRnd(c,r,5), f6=_cRnd(c,r,6);
+  /* km é o sorteio de COR e MATERIAL da construção. Era `c*7+r*3`, e isso é
+     armadilha de aritmética: km%7 vira (r*3)%7 — depende só da LINHA — e km%3
+     vira c%3 — depende só da COLUNA. O resultado era telhado de zinco em coluna
+     inteira e o tabuleiro cinza uniforme, com cara de padrão em vez de bairro.
+     Um hash de verdade espalha as três decisões de forma independente. */
+  const km=Math.floor(_cRnd(c,r,33)*997);
+  const favela=ladoDoRio(c,r)>0;
+
+  /* O RAIO DECLARADO TEM DE COBRIR O QUE `pecaCenario` PINTA DE VERDADE,
+     sombra inclusive. A primeira versão declarava o raio do corpo e esquecia a
+     sombra deslocada em (+0,8 +1) — o teste passava, e mesmo assim o `viewBox`
+     do mapa crescia de 354,5 para 355,3 na tela. Teste que confere o dado só
+     vale se o dado não mentir sobre o desenho: estas contas são as mesmas de
+     `pecaCenario`, e mexer lá sem mexer aqui devolve o bug. */
+  const copa=(x,y,esc,sem)=>põe({tipo:"copa",x,y,e:esc,sem,raio:5.7*esc+1});
+  const palmeira=(x,y,esc,sem)=>põe({tipo:"palmeira",x,y,e:esc,sem,raio:5.4*esc+1});
+  const casa=(x,y,esc,rot,i)=>põe({tipo:"casa",x,y,e:esc,rot,
+    cor:_CEN_PAREDE[i%_CEN_PAREDE.length],
+    telha:(i%7)<4?_CEN_PAREDE[i%_CEN_PAREDE.length]
+         :((i%3===0)?_CEN_ZINCO[i%3]:_CEN_TELHA[i%4]),
+    caixa:i%2===0, raio:6.4*esc+1});
+  const barraco=(x,y,esc,rot,i)=>põe({tipo:"barraco",x,y,e:esc,rot,
+    cor:_CEN_LATA[i%3], telha:_CEN_ZINCO[i%3], raio:6.4*esc+1});
+  const sucata=(x,y,esc,sem)=>põe({tipo:"sucata",x,y,e:esc,sem,raio:6.8*esc});
+  const contentor=(x,y,esc,rot,i)=>põe({tipo:"contentor",x,y,e:esc,rot,
+    cor:_CEN_CONT[i%_CEN_CONT.length],raio:5.5*esc+1});
+  const tambor=(x,y,esc,i)=>põe({tipo:"tambor",x,y,e:esc,cor:_CEN_CONT[(i+1)%_CEN_CONT.length],raio:2.3*esc+1});
+  const pneu=(x,y,esc)=>põe({tipo:"pneu",x,y,e:esc,raio:2.6*esc});
+  const varal=(x,y,esc,i)=>põe({tipo:"varal",x,y,e:esc,
+    cores:[0,1,2].map(q=>_CEN_PAREDE[(i+q)%_CEN_PAREDE.length]),raio:4.3*esc});
+  const junco=(x,y,esc,sem)=>põe({tipo:"junco",x,y,e:esc,sem,raio:3.1*esc});
+  const pedra=(x,y,esc)=>põe({tipo:"pedra",x,y,e:esc,raio:2*esc+1});
+
+  if(BASE_S.has(key)||key===POCO_K){        /* base e poço já se desenham sozinhos */
+  }else if(ehRio(c,r)){
+    junco(...anel(4,6,10),.95,a*6);
+    if(b>.35) junco(...anel(6,6,10),.8,b*6);
+    if(d>.5)  pedra(...anel(8,7,10),.95);
+  }else if(ehBloqueado(c,r)){
+    /* o obstáculo do jogo já ocupa o meio: aqui só o entorno */
+    sucata(...anel(10,8.5,10),.6,4);
+    if(a>.45) pneu(...anel(12,9,11),.9);
+  }else if(ehMato(c,r)){
+    /* MATA FECHADA — são só 27 casas no tabuleiro, e é onde a vegetação
+       pode ser generosa sem competir com peça nenhuma. */
+    copa(...anel(4,1.5,5),1.25+a*.25,a*6);
+    copa(...anel(6,5,7.5),1.05+b*.2,b*6);
+    if(d>.4) palmeira(...anel(8,5,7.5),1.0,d*6);
+    if(e5>.45) copa(...anel(10,6,8),.8,e5*6);
+    if(f6>.7) palmeira(...anel(12,6,8),.75,f6*6);
+  }else{
+    /* A ROTA. 79 das 116 casas do tabuleiro — é AQUI que o mundo aparece ou
+       não aparece. Duas peças na beira, e o lado do rio decide quais. */
+    if(favela){
+      /* uma casa GRANDE e uma peça pequena, em vez de duas miudezas: a
+         6px numa casa de 33 o telhado virava cisco, não casa. */
+      casa(...anel(4,3,6),1.05+a*.25,(_cRnd(c,r,14)-.5)*60,km);
+      if(b>.55)      casa(...anel(6,8,9.5),.6+d*.1,(_cRnd(c,r,15)-.5)*60,km+4);
+      else if(b>.30) varal(...anel(6,8,10),.95,km);
+      else           palmeira(...anel(6,8,9.5),.85,b*6);
+      if(e5>.7) pneu(...anel(10,9,11),.85);
+    }else{
+      if(a>.5) contentor(...anel(4,3,6),1.0+d*.2,(_cRnd(c,r,14)-.5)*60,km);
+      else     barraco(...anel(4,3,6),1.05+d*.2,(_cRnd(c,r,14)-.5)*60,km);
+      if(b>.5)       sucata(...anel(6,8,9.5),.62,6);
+      else if(b>.24) tambor(...anel(6,8,10),1.0,km);
+      else           copa(...anel(6,8,9.5),.85,b*6);
+      if(e5>.7) pneu(...anel(10,9,11),.85);
+    }
+  }
+  _CENARIO.set(key,o);
+  return o;
+}
+
 /* ---------- DISTÂNCIA ANDANDO ----------
    `dist` continua sendo a distância em linha reta e continua valendo para
    ALCANCE DE HABILIDADE — o ônibus para o pé, não o tiro. Para andar, a régua
@@ -4637,9 +4777,92 @@ const alvoDeToque=(g,x,y,aoTocar,raio)=>{
   g.appendChild(c);
   return c;
 };
+/* ---------- O CENÁRIO, DESENHADO ----------
+   `cenarioDa` devolve geometria pura; aqui ela vira SVG. A separação não é
+   cerimônia: é o que deixa o teste conferir sem navegador que nenhuma peça
+   escapa do hexágono e infla o `getBBox()`.
+
+   O grupo inteiro é `pointer-events:none` no CSS — o alvo de movimento é o
+   <polygon> da casa, e enfeite que come toque deixa o jogador sem entender por
+   que não anda. Casa sem visão apaga o cenário junto: casa que não se vê não
+   entrega o que tem dentro. */
+function pintaCenario(gC){
+  const meu=ladoDaTela();
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    if(!noTab(c,r))continue;
+    const pecas=cenarioDa(c,r);
+    if(!pecas.length)continue;
+    const cego=k(c,r)!==POCO_K&&!enxergaCasa(meu,c,r);
+    const g=el("g",{class:"cen"+(cego?" cego":"")});
+    for(const p of pecas) pecaCenario(g,p);
+    gC.appendChild(g);
+  }
+}
+function pecaCenario(g,p){
+  const {x,y,e}=p, T=(a,b)=>el(a,b);
+  const sombra=(rx,ry)=>g.appendChild(T("ellipse",{cx:x+.8,cy:y+1,rx:rx,ry:ry,class:"cs"}));
+  if(p.tipo==="copa"||p.tipo==="palmeira"){
+    sombra(4.4*e,3.8*e);
+    if(p.tipo==="copa"){
+      for(let i=0;i<4;i++){const an=i*1.5708+p.sem;
+        g.appendChild(T("circle",{cx:(x+Math.cos(an)*2.6*e).toFixed(1),cy:(y+Math.sin(an)*2.4*e).toFixed(1),
+          r:(1.9+((i*37)%5)*.28).toFixed(1)*e,fill:_CEN_FOLHA[i%4],class:"cf"}));}
+      g.appendChild(T("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:(2.5*e).toFixed(1),fill:"#476A41",class:"cf"}));
+    }else{
+      for(let i=0;i<7;i++){const an=i*.898+p.sem, L=4.2*e;
+        g.appendChild(T("ellipse",{cx:(x+Math.cos(an)*L*.62).toFixed(1),cy:(y+Math.sin(an)*L*.62).toFixed(1),
+          rx:(L*.62).toFixed(1),ry:(1.15*e).toFixed(1),
+          transform:`rotate(${(an*57.3).toFixed(0)} ${(x+Math.cos(an)*L*.62).toFixed(1)} ${(y+Math.sin(an)*L*.62).toFixed(1)})`,
+          fill:i%2?"#436340":"#4E7048",class:"cf"}));}
+      g.appendChild(T("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:(1.1*e).toFixed(1),fill:"#37502F",class:"cf"}));
+    }
+  }else if(p.tipo==="casa"||p.tipo==="barraco"){
+    const w=8.6*e,h=7*e,gr=el("g",{transform:`rotate(${p.rot.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})`});
+    gr.appendChild(T("rect",{x:(x-w/2+.9).toFixed(1),y:(y-h/2+1).toFixed(1),width:(w+2*e).toFixed(1),height:(h+2*e).toFixed(1),class:"cs"}));
+    gr.appendChild(T("rect",{x:(x-w/2-e).toFixed(1),y:(y-h/2-e).toFixed(1),width:(w+2*e).toFixed(1),height:(h+2*e).toFixed(1),
+      fill:p.cor,class:"cb"}));
+    gr.appendChild(T("rect",{x:(x-w/2).toFixed(1),y:(y-h/2).toFixed(1),width:w.toFixed(1),height:h.toFixed(1),fill:p.telha,class:"cb"}));
+    gr.appendChild(T("rect",{x:(x-w/2).toFixed(1),y:y.toFixed(1),width:w.toFixed(1),height:(h/2).toFixed(1),class:"cd"}));
+    gr.appendChild(T("line",{x1:(x-w/2).toFixed(1),y1:y.toFixed(1),x2:(x+w/2).toFixed(1),y2:y.toFixed(1),class:"cl"}));
+    if(p.caixa) gr.appendChild(T("rect",{x:(x+w/2-3*e).toFixed(1),y:(y-h/2+.8*e).toFixed(1),
+      width:(2.2*e).toFixed(1),height:(2.2*e).toFixed(1),fill:"#5E93A8",class:"cb"}));
+    g.appendChild(gr);
+  }else if(p.tipo==="contentor"){
+    const w=9.4*e,h=5.2*e,gr=el("g",{transform:`rotate(${p.rot.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})`});
+    gr.appendChild(T("rect",{x:(x-w/2+.9).toFixed(1),y:(y-h/2+1).toFixed(1),width:w.toFixed(1),height:h.toFixed(1),class:"cs"}));
+    gr.appendChild(T("rect",{x:(x-w/2).toFixed(1),y:(y-h/2).toFixed(1),width:w.toFixed(1),height:h.toFixed(1),fill:p.cor,class:"cb"}));
+    for(let i=1;i<5;i++) gr.appendChild(T("line",{x1:(x-w/2+i*w/5).toFixed(1),y1:(y-h/2).toFixed(1),
+      x2:(x-w/2+i*w/5).toFixed(1),y2:(y+h/2).toFixed(1),class:"cl"}));
+    gr.appendChild(T("rect",{x:(x-w/2).toFixed(1),y:(y+h*.1).toFixed(1),width:w.toFixed(1),height:(h*.4).toFixed(1),class:"cd"}));
+    g.appendChild(gr);
+  }else if(p.tipo==="sucata"){
+    for(let i=0;i<5;i++){const q=_cRnd(Math.round(x),Math.round(y),50+i+p.sem);
+      g.appendChild(T("rect",{x:(x+(q-.5)*7*e).toFixed(1),y:(y+(_cRnd(Math.round(y),Math.round(x),60+i)-.5)*7*e).toFixed(1),
+        width:((1.2+q*2)*e).toFixed(1),height:((1+q*1.6)*e).toFixed(1),
+        transform:`rotate(${(q*90).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})`,
+        fill:q>.5?"#7A6244":"#645033",class:"cb"}));}
+  }else if(p.tipo==="tambor"){
+    sombra(2.2*e,2*e);
+    g.appendChild(T("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:(2.1*e).toFixed(1),fill:p.cor,class:"cb"}));
+    g.appendChild(T("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:(1.2*e).toFixed(1),fill:"none",class:"cl"}));
+  }else if(p.tipo==="pneu"){
+    g.appendChild(T("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:(1.9*e).toFixed(1),fill:"none",
+      stroke:"#2B2620","stroke-width":(1.2*e).toFixed(1)}));
+  }else if(p.tipo==="varal"){
+    g.appendChild(T("line",{x1:(x-4*e).toFixed(1),y1:y.toFixed(1),x2:(x+4*e).toFixed(1),y2:(y+.7*e).toFixed(1),class:"cl"}));
+    p.cores.forEach((cor,i)=>g.appendChild(T("rect",{x:(x-3.4*e+i*2.4*e).toFixed(1),y:y.toFixed(1),
+      width:(1.7*e).toFixed(1),height:(2.2*e).toFixed(1),fill:cor,class:"cb"})));
+  }else if(p.tipo==="junco"){
+    for(let i=0;i<4;i++) g.appendChild(T("line",{x1:(x+i*1.3*e-1.9*e).toFixed(1),y1:(y+1.5*e).toFixed(1),
+      x2:(x+i*1.3*e-2.5*e+p.sem*.4).toFixed(1),y2:(y-2.8*e).toFixed(1),class:"cj"}));
+  }else if(p.tipo==="pedra"){
+    g.appendChild(T("ellipse",{cx:x.toFixed(1),cy:y.toFixed(1),rx:(1.9*e).toFixed(1),ry:(1.4*e).toFixed(1),
+      fill:"#8A8069",class:"cb"}));
+  }
+}
 function desenhaMapa(){
   svg.textContent="";
-  const gH=el("g"),gE=el("g"),gM=el("g"),gP=el("g");
+  const gH=el("g"),gC=el("g",{class:"cenario"}),gE=el("g"),gM=el("g"),gP=el("g");
   const moverS=new Set(mover.map(p=>k(...p)));
 
   /* O QUE A WARD ACENDE, desenhado nas próprias casas.
@@ -4938,7 +5161,8 @@ function desenhaMapa(){
     g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();escolheHeroi(h);}};
     gP.appendChild(g);
   });
-  svg.append(gH,gE,gM,gP);
+  pintaCenario(gC);
+  svg.append(gH,gC,gE,gM,gP);
   const b=svg.getBBox();
   svg.setAttribute("viewBox",
     `${(b.x-5).toFixed(1)} ${(b.y-5).toFixed(1)} ${(b.width+10).toFixed(1)} ${(b.height+10).toFixed(1)}`);

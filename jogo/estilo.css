@@ -38,9 +38,16 @@
      tabuleiro do resto passou a ser o `--traco` do hexágono e o `--ceu` atrás
      dele. Se algum dia o tabuleiro parecer que derreteu na página, é aí que se
      mexe — no traço, nunca devolvendo o fundo escuro. */
-  --rota:#C3B7A4;        /* asfalto e calçada gastos, claros */
-  --selva:#7FA65C;       /* vegetação viva, que retomou a cidade */
-  --rio:#8FB0AE;         /* canal urbano de concreto com água parada */
+  /* v55: os três puxados para o tom da referência de arte — areia quente no
+     lugar do concreto lavado, vegetação mais fechada, água turquesa. Não foram
+     até o fim da referência de propósito: lá a rota é asfalto cinza, e aqui
+     ROTA É 79 DAS 116 CASAS. Cinza nelas deixaria o tabuleiro inteiro cinza,
+     que é o oposto do que esta paleta existe para fazer. A névoa (--cego)
+     ficou onde estava: ela precisa continuar visivelmente mais escura que a
+     selva, e escurecer as duas juntas apagaria a diferença. */
+  --rota:#C9B694;        /* areia quente da rua batida */
+  --selva:#6E9350;       /* vegetação fechada, que retomou a cidade */
+  --rio:#63ABA6;         /* água turquesa parada no canal */
   --estrada:#6E6355;     /* a costura da rua, escura sobre o concreto */
   --terra:#CFC3AE;       /* cimento bege — a base de tudo */
   --bloq:#8A7452;        /* chão da casa bloqueada — bem mais escuro que a rota,
@@ -233,6 +240,25 @@ button:disabled{cursor:not-allowed}
    nunca como filtro. */
 #mapa .hx.bloq{fill:var(--bloq);stroke:#2F2718;stroke-width:2.1}
 #mapa .hx.bloq.cego{fill:#453E33;stroke:#332D25}
+/* ---------- O CENÁRIO ----------
+   A camada de mundo entre o chão e as peças: casa, barraco, mato, sucata.
+
+   `pointer-events:none` NÃO É DETALHE. O alvo de movimento é o <polygon> da
+   casa; enfeite desenhado por cima que aceite ponteiro come o toque e o
+   jogador fica sem entender por que o herói não anda.
+
+   Contraste baixo de propósito: por cima disto andam herói, torre, ward e
+   zona. Enfeite que disputa leitura com peça é bug de UX, não capricho. */
+#mapa .cenario{pointer-events:none}
+#mapa .cen{opacity:.95}
+#mapa .cen.cego{opacity:.16}          /* casa sem visão não entrega o que tem dentro */
+#mapa .cen .cs{fill:#000;opacity:.15;stroke:none}
+#mapa .cen .cb{stroke:#2B2318;stroke-width:.5;stroke-linejoin:round}
+#mapa .cen .cf{stroke:#2A3D26;stroke-width:.4}
+#mapa .cen .cd{fill:#000;opacity:.15;stroke:none}
+#mapa .cen .cl{stroke:#2B2318;stroke-width:.45;fill:none;opacity:.65}
+#mapa .cen .cj{stroke:#41603C;stroke-width:.6;stroke-linecap:round}
+
 #mapa .obst{pointer-events:none}
 #mapa .obst .corpo{stroke:#2F2718;stroke-width:1.1;stroke-linejoin:round}
 #mapa .obst .vidro{fill:#9FD3E8;stroke:none;opacity:.9}
