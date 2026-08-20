@@ -1,0 +1,162 @@
+<meta charset="utf-8"><title>JAGERLARAMAIS — tabuleiro em relevo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+@font-face{font-family:Placa;   src:url(../fontes/AlfaSlabOne.woff2) format('woff2')}
+@font-face{font-family:Estencil;src:url(../fontes/Staatliches.woff2) format('woff2')}
+:root{--ground:#EDEBE2;--ink:#1B2320;--ink-3:#7A857F;--brass:#8A6420;--carmim:#8F3E36;--azul:#3B6C90}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);font-family:Estencil,sans-serif;color:var(--ink);
+  display:flex;flex-direction:column;align-items:center;padding:18px 10px 40px}
+h1{font-family:Placa,serif;font-weight:400;font-size:22px;margin:0 0 2px;letter-spacing:.01em}
+.sub{font-size:13px;letter-spacing:.16em;color:var(--ink-3);margin-bottom:14px}
+#palco{width:100%;max-width:1100px}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.leg{margin-top:16px;font-size:12.5px;letter-spacing:.12em;color:var(--ink-3);text-align:center;line-height:1.9}
+.leg b{color:var(--brass)}
+</style>
+<h1>Tabuleiro em relevo</h1>
+<div class="sub">MESMA GEOMETRIA · MESMAS 116 CASAS · SÓ A CAMADA DE DESENHO MUDA</div>
+<div id="palco"></div>
+<div class="leg">rodada <b id="rod"></b> — partida de verdade, jogada pela IA até a rodada 8<br>
+o motor não sabe que o desenho mudou: as coordenadas são as mesmas</div>
+
+<script>
+const D = {"viewBox":"17.7 -0.5 375.3 355.3","cels":[{"c":0,"r":0,"tipo":"campo","pts":"42.5,26.0 58.9,35.5 58.9,54.5 42.5,64.0 26.0,54.5 26.0,35.5"},{"c":1,"r":0,"tipo":"rota","pts":"75.4,26.0 91.8,35.5 91.8,54.5 75.4,64.0 58.9,54.5 58.9,35.5"},{"c":2,"r":0,"tipo":"rota","pts":"108.3,26.0 124.7,35.5 124.7,54.5 108.3,64.0 91.8,54.5 91.8,35.5"},{"c":3,"r":0,"tipo":"rota","pts":"141.2,26.0 157.6,35.5 157.6,54.5 141.2,64.0 124.7,54.5 124.7,35.5"},{"c":4,"r":0,"tipo":"rota","pts":"174.1,26.0 190.5,35.5 190.5,54.5 174.1,64.0 157.6,54.5 157.6,35.5"},{"c":5,"r":0,"tipo":"rota","pts":"207.0,26.0 223.5,35.5 223.5,54.5 207.0,64.0 190.5,54.5 190.5,35.5"},{"c":6,"r":0,"tipo":"rota","pts":"239.9,26.0 256.4,35.5 256.4,54.5 239.9,64.0 223.5,54.5 223.5,35.5"},{"c":7,"r":0,"tipo":"rota","pts":"272.8,26.0 289.3,35.5 289.3,54.5 272.8,64.0 256.4,54.5 256.4,35.5"},{"c":8,"r":0,"tipo":"rota","pts":"305.7,26.0 322.2,35.5 322.2,54.5 305.7,64.0 289.3,54.5 289.3,35.5"},{"c":9,"r":0,"tipo":"base1","pts":"338.6,26.0 355.1,35.5 355.1,54.5 338.6,64.0 322.2,54.5 322.2,35.5"},{"c":10,"r":0,"tipo":"base1","pts":"371.5,26.0 388.0,35.5 388.0,54.5 371.5,64.0 355.1,54.5 355.1,35.5"},{"c":0,"r":1,"tipo":"rota","pts":"58.9,54.5 75.4,64.0 75.4,83.0 58.9,92.5 42.5,83.0 42.5,64.0"},{"c":1,"r":1,"tipo":"campo","pts":"91.8,54.5 108.3,64.0 108.3,83.0 91.8,92.5 75.4,83.0 75.4,64.0"},{"c":2,"r":1,"tipo":"campo","pts":"124.7,54.5 141.2,64.0 141.2,83.0 124.7,92.5 108.3,83.0 108.3,64.0"},{"c":3,"r":1,"tipo":"campo","pts":"157.6,54.5 174.1,64.0 174.1,83.0 157.6,92.5 141.2,83.0 141.2,64.0"},{"c":4,"r":1,"tipo":"campo","pts":"190.5,54.5 207.0,64.0 207.0,83.0 190.5,92.5 174.1,83.0 174.1,64.0"},{"c":5,"r":1,"tipo":"campo","pts":"223.5,54.5 239.9,64.0 239.9,83.0 223.5,92.5 207.0,83.0 207.0,64.0"},{"c":6,"r":1,"tipo":"campo","pts":"256.4,54.5 272.8,64.0 272.8,83.0 256.4,92.5 239.9,83.0 239.9,64.0"},{"c":7,"r":1,"tipo":"rota","pts":"289.3,54.5 305.7,64.0 305.7,83.0 289.3,92.5 272.8,83.0 272.8,64.0"},{"c":8,"r":1,"tipo":"rota","pts":"322.2,54.5 338.6,64.0 338.6,83.0 322.2,92.5 305.7,83.0 305.7,64.0"},{"c":9,"r":1,"tipo":"rota","pts":"355.1,54.5 371.5,64.0 371.5,83.0 355.1,92.5 338.6,83.0 338.6,64.0"},{"c":0,"r":2,"tipo":"rota","pts":"42.5,83.0 58.9,92.5 58.9,111.5 42.5,121.0 26.0,111.5 26.0,92.5"},{"c":1,"r":2,"tipo":"campo","pts":"75.4,83.0 91.8,92.5 91.8,111.5 75.4,121.0 58.9,111.5 58.9,92.5"},{"c":2,"r":2,"tipo":"mato","pts":"108.3,83.0 124.7,92.5 124.7,111.5 108.3,121.0 91.8,111.5 91.8,92.5"},{"c":3,"r":2,"tipo":"mato","pts":"141.2,83.0 157.6,92.5 157.6,111.5 141.2,121.0 124.7,111.5 124.7,92.5"},{"c":4,"r":2,"tipo":"bloqueado","pts":"174.1,83.0 190.5,92.5 190.5,111.5 174.1,121.0 157.6,111.5 157.6,92.5"},{"c":5,"r":2,"tipo":"campo","pts":"207.0,83.0 223.5,92.5 223.5,111.5 207.0,121.0 190.5,111.5 190.5,92.5"},{"c":6,"r":2,"tipo":"campo","pts":"239.9,83.0 256.4,92.5 256.4,111.5 239.9,121.0 223.5,111.5 223.5,92.5"},{"c":7,"r":2,"tipo":"rota","pts":"272.8,83.0 289.3,92.5 289.3,111.5 272.8,121.0 256.4,111.5 256.4,92.5"},{"c":8,"r":2,"tipo":"campo","pts":"305.7,83.0 322.2,92.5 322.2,111.5 305.7,121.0 289.3,111.5 289.3,92.5"},{"c":9,"r":2,"tipo":"campo","pts":"338.6,83.0 355.1,92.5 355.1,111.5 338.6,121.0 322.2,111.5 322.2,92.5"},{"c":10,"r":2,"tipo":"rota","pts":"371.5,83.0 388.0,92.5 388.0,111.5 371.5,121.0 355.1,111.5 355.1,92.5"},{"c":0,"r":3,"tipo":"rota","pts":"58.9,111.5 75.4,121.0 75.4,140.0 58.9,149.5 42.5,140.0 42.5,121.0"},{"c":1,"r":3,"tipo":"campo","pts":"91.8,111.5 108.3,121.0 108.3,140.0 91.8,149.5 75.4,140.0 75.4,121.0"},{"c":2,"r":3,"tipo":"mato","pts":"124.7,111.5 141.2,121.0 141.2,140.0 124.7,149.5 108.3,140.0 108.3,121.0"},{"c":3,"r":3,"tipo":"mato","pts":"157.6,111.5 174.1,121.0 174.1,140.0 157.6,149.5 141.2,140.0 141.2,121.0"},{"c":4,"r":3,"tipo":"mato","pts":"190.5,111.5 207.0,121.0 207.0,140.0 190.5,149.5 174.1,140.0 174.1,121.0"},{"c":5,"r":3,"tipo":"campo","pts":"223.5,111.5 239.9,121.0 239.9,140.0 223.5,149.5 207.0,140.0 207.0,121.0"},{"c":6,"r":3,"tipo":"rota","pts":"256.4,111.5 272.8,121.0 272.8,140.0 256.4,149.5 239.9,140.0 239.9,121.0"},{"c":7,"r":3,"tipo":"mato","pts":"289.3,111.5 305.7,121.0 305.7,140.0 289.3,149.5 272.8,140.0 272.8,121.0"},{"c":8,"r":3,"tipo":"mato","pts":"322.2,111.5 338.6,121.0 338.6,140.0 322.2,149.5 305.7,140.0 305.7,121.0"},{"c":9,"r":3,"tipo":"rota","pts":"355.1,111.5 371.5,121.0 371.5,140.0 355.1,149.5 338.6,140.0 338.6,121.0"},{"c":0,"r":4,"tipo":"rota","pts":"42.5,140.0 58.9,149.5 58.9,168.5 42.5,178.0 26.0,168.5 26.0,149.5"},{"c":1,"r":4,"tipo":"campo","pts":"75.4,140.0 91.8,149.5 91.8,168.5 75.4,178.0 58.9,168.5 58.9,149.5"},{"c":2,"r":4,"tipo":"bloqueado","pts":"108.3,140.0 124.7,149.5 124.7,168.5 108.3,178.0 91.8,168.5 91.8,149.5"},{"c":3,"r":4,"tipo":"mato","pts":"141.2,140.0 157.6,149.5 157.6,168.5 141.2,178.0 124.7,168.5 124.7,149.5"},{"c":4,"r":4,"tipo":"mato","pts":"174.1,140.0 190.5,149.5 190.5,168.5 174.1,178.0 157.6,168.5 157.6,149.5"},{"c":5,"r":4,"tipo":"campo","pts":"207.0,140.0 223.5,149.5 223.5,168.5 207.0,178.0 190.5,168.5 190.5,149.5"},{"c":6,"r":4,"tipo":"rota","pts":"239.9,140.0 256.4,149.5 256.4,168.5 239.9,178.0 223.5,168.5 223.5,149.5"},{"c":7,"r":4,"tipo":"mato","pts":"272.8,140.0 289.3,149.5 289.3,168.5 272.8,178.0 256.4,168.5 256.4,149.5"},{"c":8,"r":4,"tipo":"bloqueado","pts":"305.7,140.0 322.2,149.5 322.2,168.5 305.7,178.0 289.3,168.5 289.3,149.5"},{"c":9,"r":4,"tipo":"campo","pts":"338.6,140.0 355.1,149.5 355.1,168.5 338.6,178.0 322.2,168.5 322.2,149.5"},{"c":10,"r":4,"tipo":"rota","pts":"371.5,140.0 388.0,149.5 388.0,168.5 371.5,178.0 355.1,168.5 355.1,149.5"},{"c":0,"r":5,"tipo":"rota","pts":"58.9,168.5 75.4,178.0 75.4,197.0 58.9,206.5 42.5,197.0 42.5,178.0"},{"c":1,"r":5,"tipo":"campo","pts":"91.8,168.5 108.3,178.0 108.3,197.0 91.8,206.5 75.4,197.0 75.4,178.0"},{"c":2,"r":5,"tipo":"mato","pts":"124.7,168.5 141.2,178.0 141.2,197.0 124.7,206.5 108.3,197.0 108.3,178.0"},{"c":3,"r":5,"tipo":"campo","pts":"157.6,168.5 174.1,178.0 174.1,197.0 157.6,206.5 141.2,197.0 141.2,178.0"},{"c":4,"r":5,"tipo":"rota","pts":"190.5,168.5 207.0,178.0 207.0,197.0 190.5,206.5 174.1,197.0 174.1,178.0"},{"c":5,"r":5,"tipo":"rota","pts":"223.5,168.5 239.9,178.0 239.9,197.0 223.5,206.5 207.0,197.0 207.0,178.0"},{"c":6,"r":5,"tipo":"campo","pts":"256.4,168.5 272.8,178.0 272.8,197.0 256.4,206.5 239.9,197.0 239.9,178.0"},{"c":7,"r":5,"tipo":"mato","pts":"289.3,168.5 305.7,178.0 305.7,197.0 289.3,206.5 272.8,197.0 272.8,178.0"},{"c":8,"r":5,"tipo":"campo","pts":"322.2,168.5 338.6,178.0 338.6,197.0 322.2,206.5 305.7,197.0 305.7,178.0"},{"c":9,"r":5,"tipo":"rota","pts":"355.1,168.5 371.5,178.0 371.5,197.0 355.1,206.5 338.6,197.0 338.6,178.0"},{"c":0,"r":6,"tipo":"rota","pts":"42.5,197.0 58.9,206.5 58.9,225.5 42.5,235.0 26.0,225.5 26.0,206.5"},{"c":1,"r":6,"tipo":"campo","pts":"75.4,197.0 91.8,206.5 91.8,225.5 75.4,235.0 58.9,225.5 58.9,206.5"},{"c":2,"r":6,"tipo":"bloqueado","pts":"108.3,197.0 124.7,206.5 124.7,225.5 108.3,235.0 91.8,225.5 91.8,206.5"},{"c":3,"r":6,"tipo":"mato","pts":"141.2,197.0 157.6,206.5 157.6,225.5 141.2,235.0 124.7,225.5 124.7,206.5"},{"c":4,"r":6,"tipo":"rota","pts":"174.1,197.0 190.5,206.5 190.5,225.5 174.1,235.0 157.6,225.5 157.6,206.5"},{"c":5,"r":6,"tipo":"campo","pts":"207.0,197.0 223.5,206.5 223.5,225.5 207.0,235.0 190.5,225.5 190.5,206.5"},{"c":6,"r":6,"tipo":"mato","pts":"239.9,197.0 256.4,206.5 256.4,225.5 239.9,235.0 223.5,225.5 223.5,206.5"},{"c":7,"r":6,"tipo":"mato","pts":"272.8,197.0 289.3,206.5 289.3,225.5 272.8,235.0 256.4,225.5 256.4,206.5"},{"c":8,"r":6,"tipo":"bloqueado","pts":"305.7,197.0 322.2,206.5 322.2,225.5 305.7,235.0 289.3,225.5 289.3,206.5"},{"c":9,"r":6,"tipo":"campo","pts":"338.6,197.0 355.1,206.5 355.1,225.5 338.6,235.0 322.2,225.5 322.2,206.5"},{"c":10,"r":6,"tipo":"rota","pts":"371.5,197.0 388.0,206.5 388.0,225.5 371.5,235.0 355.1,225.5 355.1,206.5"},{"c":0,"r":7,"tipo":"rota","pts":"58.9,225.5 75.4,235.0 75.4,254.0 58.9,263.5 42.5,254.0 42.5,235.0"},{"c":1,"r":7,"tipo":"mato","pts":"91.8,225.5 108.3,235.0 108.3,254.0 91.8,263.5 75.4,254.0 75.4,235.0"},{"c":2,"r":7,"tipo":"mato","pts":"124.7,225.5 141.2,235.0 141.2,254.0 124.7,263.5 108.3,254.0 108.3,235.0"},{"c":3,"r":7,"tipo":"rota","pts":"157.6,225.5 174.1,235.0 174.1,254.0 157.6,263.5 141.2,254.0 141.2,235.0"},{"c":4,"r":7,"tipo":"campo","pts":"190.5,225.5 207.0,235.0 207.0,254.0 190.5,263.5 174.1,254.0 174.1,235.0"},{"c":5,"r":7,"tipo":"mato","pts":"223.5,225.5 239.9,235.0 239.9,254.0 223.5,263.5 207.0,254.0 207.0,235.0"},{"c":6,"r":7,"tipo":"mato","pts":"256.4,225.5 272.8,235.0 272.8,254.0 256.4,263.5 239.9,254.0 239.9,235.0"},{"c":7,"r":7,"tipo":"mato","pts":"289.3,225.5 305.7,235.0 305.7,254.0 289.3,263.5 272.8,254.0 272.8,235.0"},{"c":8,"r":7,"tipo":"campo","pts":"322.2,225.5 338.6,235.0 338.6,254.0 322.2,263.5 305.7,254.0 305.7,235.0"},{"c":9,"r":7,"tipo":"rota","pts":"355.1,225.5 371.5,235.0 371.5,254.0 355.1,263.5 338.6,254.0 338.6,235.0"},{"c":0,"r":8,"tipo":"rota","pts":"42.5,254.0 58.9,263.5 58.9,282.5 42.5,292.0 26.0,282.5 26.0,263.5"},{"c":1,"r":8,"tipo":"campo","pts":"75.4,254.0 91.8,263.5 91.8,282.5 75.4,292.0 58.9,282.5 58.9,263.5"},{"c":2,"r":8,"tipo":"campo","pts":"108.3,254.0 124.7,263.5 124.7,282.5 108.3,292.0 91.8,282.5 91.8,263.5"},{"c":3,"r":8,"tipo":"rota","pts":"141.2,254.0 157.6,263.5 157.6,282.5 141.2,292.0 124.7,282.5 124.7,263.5"},{"c":4,"r":8,"tipo":"campo","pts":"174.1,254.0 190.5,263.5 190.5,282.5 174.1,292.0 157.6,282.5 157.6,263.5"},{"c":5,"r":8,"tipo":"campo","pts":"207.0,254.0 223.5,263.5 223.5,282.5 207.0,292.0 190.5,282.5 190.5,263.5"},{"c":6,"r":8,"tipo":"bloqueado","pts":"239.9,254.0 256.4,263.5 256.4,282.5 239.9,292.0 223.5,282.5 223.5,263.5"},{"c":7,"r":8,"tipo":"mato","pts":"272.8,254.0 289.3,263.5 289.3,282.5 272.8,292.0 256.4,282.5 256.4,263.5"},{"c":8,"r":8,"tipo":"poco","pts":"305.7,254.0 322.2,263.5 322.2,282.5 305.7,292.0 289.3,282.5 289.3,263.5"},{"c":9,"r":8,"tipo":"campo","pts":"338.6,254.0 355.1,263.5 355.1,282.5 338.6,292.0 322.2,282.5 322.2,263.5"},{"c":10,"r":8,"tipo":"rota","pts":"371.5,254.0 388.0,263.5 388.0,282.5 371.5,292.0 355.1,282.5 355.1,263.5"},{"c":0,"r":9,"tipo":"rota","pts":"58.9,282.5 75.4,292.0 75.4,311.0 58.9,320.5 42.5,311.0 42.5,292.0"},{"c":1,"r":9,"tipo":"rota","pts":"91.8,282.5 108.3,292.0 108.3,311.0 91.8,320.5 75.4,311.0 75.4,292.0"},{"c":2,"r":9,"tipo":"rota","pts":"124.7,282.5 141.2,292.0 141.2,311.0 124.7,320.5 108.3,311.0 108.3,292.0"},{"c":3,"r":9,"tipo":"campo","pts":"157.6,282.5 174.1,292.0 174.1,311.0 157.6,320.5 141.2,311.0 141.2,292.0"},{"c":4,"r":9,"tipo":"campo","pts":"190.5,282.5 207.0,292.0 207.0,311.0 190.5,320.5 174.1,311.0 174.1,292.0"},{"c":5,"r":9,"tipo":"campo","pts":"223.5,282.5 239.9,292.0 239.9,311.0 223.5,320.5 207.0,311.0 207.0,292.0"},{"c":6,"r":9,"tipo":"campo","pts":"256.4,282.5 272.8,292.0 272.8,311.0 256.4,320.5 239.9,311.0 239.9,292.0"},{"c":7,"r":9,"tipo":"campo","pts":"289.3,282.5 305.7,292.0 305.7,311.0 289.3,320.5 272.8,311.0 272.8,292.0"},{"c":8,"r":9,"tipo":"campo","pts":"322.2,282.5 338.6,292.0 338.6,311.0 322.2,320.5 305.7,311.0 305.7,292.0"},{"c":9,"r":9,"tipo":"rota","pts":"355.1,282.5 371.5,292.0 371.5,311.0 355.1,320.5 338.6,311.0 338.6,292.0"},{"c":0,"r":10,"tipo":"base0","pts":"42.5,311.0 58.9,320.5 58.9,339.5 42.5,349.0 26.0,339.5 26.0,320.5"},{"c":1,"r":10,"tipo":"base0","pts":"75.4,311.0 91.8,320.5 91.8,339.5 75.4,349.0 58.9,339.5 58.9,320.5"},{"c":2,"r":10,"tipo":"rota","pts":"108.3,311.0 124.7,320.5 124.7,339.5 108.3,349.0 91.8,339.5 91.8,320.5"},{"c":3,"r":10,"tipo":"rota","pts":"141.2,311.0 157.6,320.5 157.6,339.5 141.2,349.0 124.7,339.5 124.7,320.5"},{"c":4,"r":10,"tipo":"rota","pts":"174.1,311.0 190.5,320.5 190.5,339.5 174.1,349.0 157.6,339.5 157.6,320.5"},{"c":5,"r":10,"tipo":"rota","pts":"207.0,311.0 223.5,320.5 223.5,339.5 207.0,349.0 190.5,339.5 190.5,320.5"},{"c":6,"r":10,"tipo":"rota","pts":"239.9,311.0 256.4,320.5 256.4,339.5 239.9,349.0 223.5,339.5 223.5,320.5"},{"c":7,"r":10,"tipo":"rota","pts":"272.8,311.0 289.3,320.5 289.3,339.5 272.8,349.0 256.4,339.5 256.4,320.5"},{"c":8,"r":10,"tipo":"rota","pts":"305.7,311.0 322.2,320.5 322.2,339.5 305.7,349.0 289.3,339.5 289.3,320.5"},{"c":9,"r":10,"tipo":"rota","pts":"338.6,311.0 355.1,320.5 355.1,339.5 338.6,349.0 322.2,339.5 322.2,320.5"},{"c":10,"r":10,"tipo":"campo","pts":"371.5,311.0 388.0,320.5 388.0,339.5 371.5,349.0 355.1,339.5 355.1,320.5"}],"torres":[{"pos":[0,8],"t":0,"vida":20,"max":20},{"pos":[0,4],"t":0,"vida":20,"max":20},{"pos":[7,0],"t":1,"vida":20,"max":20},{"pos":[3,0],"t":1,"vida":13,"max":20},{"pos":[2,9],"t":0,"vida":20,"max":20},{"pos":[3,7],"t":0,"vida":20,"max":20},{"pos":[7,1],"t":1,"vida":20,"max":20},{"pos":[6,3],"t":1,"vida":20,"max":20},{"pos":[3,10],"t":0,"vida":20,"max":20},{"pos":[7,10],"t":0,"vida":20,"max":20},{"pos":[10,2],"t":1,"vida":20,"max":20},{"pos":[10,6],"t":1,"vida":20,"max":20}],"camps":[{"pos":[3,4],"dono":0},{"pos":[7,6],"dono":1},{"pos":[3,3],"dono":-1}],"pecas":[{"pos":[2,1],"t":0,"n":"O Taxista","id":"vharn","vida":7,"max":25},{"pos":[2,3],"t":0,"n":"Pombo Ciborgue","id":"nyx","vida":18,"max":18},{"pos":[0,10],"t":0,"n":"Parab\u00f3lica Diab\u00f3lica","id":"solenne","vida":18,"max":18},{"pos":[3,7],"t":0,"n":"Z\u00e9 Griteco","id":"vesper","vida":20,"max":20},{"pos":[3,10],"t":0,"n":"Emerson Emo","id":"mirrha","vida":20,"max":20},{"pos":[1,1],"t":1,"n":"Dona Chinela","id":"kaross","vida":15,"max":22},{"pos":[3,2],"t":1,"n":"Grumo","id":"grumo","vida":23,"max":23},{"pos":[6,2],"t":1,"n":"Zhet","id":"zhet","vida":18,"max":18},{"pos":[7,4],"t":1,"n":"Cael","id":"cael","vida":16,"max":18},{"pos":[10,2],"t":1,"n":"Torvald","id":"torvald","vida":22,"max":22}],"poco":[8,8],"rodada":8,"nexus":[3,3]};
+
+/* ═══ A PROJEÇÃO ═══
+   Isométrico de verdade seria matriz 3D e câmera. Para um tabuleiro que nunca
+   gira, basta ACHATAR o eixo Y e subtrair a altura: `Y = y*INCLINA - z*ALTURA`.
+   É a mesma conta de um diorama fotografado de cima, e cabe em uma linha.
+
+   O ganho de fazer assim em vez de WebGL: continua SVG, continua sem
+   dependência, continua clicável por hit-test do próprio navegador — e o
+   motor não muda nem uma linha, porque a coordenada do jogo continua (c,r). */
+const INCLINA = 0.56;      // o quanto o tabuleiro deita para trás
+const ALTURA  = 13;        // pixels por unidade de elevação
+const LAJE    = 9.5;       // espessura da laje — massa de maquete, não adesivo
+
+/* elevação por terreno — é ela que faz o tabuleiro virar maquete em vez de
+   mapa pintado. Rota afunda (asfalto gasto), mato sobe (vegetação), casa
+   bloqueada sobe muito (ônibus, caixa d'água), e o poço AFUNDA: ele é um poço. */
+const ELEV = { rota:-0.18, campo:0, mato:.62, bloqueado:1.25, base0:.95, base1:.95, poco:-.7 };
+const COR  = { rota:"#A89478", campo:"#CFC3AE", mato:"#7FA65C", bloqueado:"#8A7452",
+               base0:"#A9B6C4", base1:"#C4A9A9", poco:"#5F6D5C" };
+
+const escurece = (hex, f) => {
+  const n = parseInt(hex.slice(1),16);
+  const r = Math.round(((n>>16)&255)*f), g2 = Math.round(((n>>8)&255)*f), b = Math.round((n&255)*f);
+  return `rgb(${r},${g2},${b})`;
+};
+const pontos = s => s.trim().split(/\s+/).map(p => p.split(",").map(Number));
+const proj = (x,y,z) => [x, y*INCLINA - z*ALTURA];
+
+const vb = D.viewBox.split(" ").map(Number);
+const cx = vb[0]+vb[2]/2, cy = vb[1]+vb[3]/2;
+
+/* ordem de pintura: de trás para a frente. Sem isso a casa do fundo desenha por
+   cima da da frente e a maquete vira colagem. */
+const cels = D.cels.slice().sort((a,b)=>{
+  const ya = pontos(a.pts).reduce((s,p)=>s+p[1],0)/6;
+  const yb = pontos(b.pts).reduce((s,p)=>s+p[1],0)/6;
+  return ya-yb;
+});
+
+const achaCel = (c,r) => D.cels.find(x=>x.c===c&&x.r===r);
+const centroDe = cel => { const ps = pontos(cel.pts);
+  return [ps.reduce((s,p)=>s+p[0],0)/6, ps.reduce((s,p)=>s+p[1],0)/6]; };
+
+let out = "";
+for (const cel of cels) {
+  const z = ELEV[cel.tipo] ?? 0;
+  const base = COR[cel.tipo] || COR.campo;
+  const ps = pontos(cel.pts);
+  const topo = ps.map(p => proj(p[0],p[1],z));
+  const cy2 = topo.reduce((s,p)=>s+p[1],0)/6;
+
+  /* AS LATERAIS. Só as arestas da metade de baixo aparecem — as de cima ficam
+     escondidas atrás da própria laje. Testar pelo ponto médio é genérico: não
+     depende da ordem em que os cantos foram escritos. */
+  for (let i=0;i<6;i++){
+    const a = topo[i], b = topo[(i+1)%6];
+    if ((a[1]+b[1])/2 < cy2 - .3) continue;
+    const face = `${a[0]},${a[1]} ${b[0]},${b[1]} ${b[0]},${b[1]+LAJE} ${a[0]},${a[1]+LAJE}`;
+    /* duas tonalidades: a luz vem de cima e da esquerda */
+    const f = a[0] < b[0] ? .70 : .58;
+    out += `<polygon points="${face}" fill="${escurece(base,f)}" stroke="${escurece(base,.5)}" stroke-width=".35"/>`;
+  }
+  out += `<polygon points="${topo.map(p=>p.join(",")).join(" ")}" fill="${base}"
+           stroke="#5A5142" stroke-width=".55" stroke-linejoin="round"/>`;
+
+  /* FAIXA DE ASFALTO. Sem ela a rota vira só uma casa de outra cor; com ela o
+     olho segue o caminho de uma torre à outra, que é como se lê o tabuleiro. */
+  if (cel.tipo==="rota"){
+    const [ccx,ccy] = centroDe(cel); const [px,py] = proj(ccx,ccy,z);
+    out += `<ellipse cx="${px}" cy="${py}" rx="11" ry="5.4" fill="#8E7C62" opacity=".55"/>`;
+    out += `<path d="M${px-7},${py} h4 M${px-1},${py} h4 M${px+5},${py} h3"
+             stroke="#E8DCC0" stroke-width="1.1" opacity=".5" stroke-linecap="round"/>`;
+  }
+
+  /* o poço ganha o brilho do épico lá no fundo */
+  if (cel.tipo==="poco"){
+    const [ccx,ccy] = centroDe(cel); const [px,py] = proj(ccx,ccy,z);
+    out += `<ellipse cx="${px}" cy="${py}" rx="9" ry="5" fill="#7FA65C" opacity=".55"/>`;
+    out += `<ellipse cx="${px}" cy="${py}" rx="5" ry="2.8" fill="#C6F53F" opacity=".65"/>`;
+  }
+}
+
+/* ═══ O QUE FICA EM CIMA ═══ tudo com sombra no chão, senão flutua */
+const emCima = [];
+D.camps.forEach(k=>{ const cel=achaCel(...k.pos); if(cel) emCima.push({cel,tipo:"camp",d:k}); });
+D.torres.filter(t=>t.vida>0).forEach(t=>{ const cel=achaCel(...t.pos); if(cel) emCima.push({cel,tipo:"torre",d:t}); });
+D.pecas.forEach(p=>{ const cel=achaCel(...p.pos); if(cel) emCima.push({cel,tipo:"peca",d:p}); });
+emCima.sort((a,b)=>centroDe(a.cel)[1]-centroDe(b.cel)[1]);
+
+const AZUL="#3B6C90", CARMIM="#8F3E36";
+for (const it of emCima){
+  const z = ELEV[it.cel.tipo] ?? 0;
+  const [ccx,ccy] = centroDe(it.cel);
+  const [px,py] = proj(ccx,ccy,z);
+  out += `<ellipse cx="${px}" cy="${py+1.5}" rx="7" ry="3.4" fill="#000" opacity=".22"/>`;
+
+  if (it.tipo==="camp"){
+    out += `<ellipse cx="${px}" cy="${py-3}" rx="6" ry="3" fill="#D4A24C" stroke="#6B5316" stroke-width=".6"/>
+            <ellipse cx="${px}" cy="${py-4.6}" rx="6" ry="3" fill="#E8C878" stroke="#6B5316" stroke-width=".6"/>`;
+  }
+  if (it.tipo==="torre"){
+    const cor = it.d.t ? CARMIM : AZUL;
+    const h = 17, frac = it.d.vida/it.d.max;
+    /* base larga + corpo curto + ameia. A peça é redonda e fina; a torre é
+       quadrada e pesada — dá para separar as duas de relance, que era o
+       problema da primeira versão. */
+    out += `<ellipse cx="${px}" cy="${py}" rx="10" ry="4.8" fill="${escurece(cor,.5)}" stroke="#2A2A28" stroke-width=".5"/>
+            <path d="M${px-7.5},${py-2} L${px-5.5},${py-h} L${px+5.5},${py-h} L${px+7.5},${py-2} Z"
+             fill="${cor}" stroke="#2A2A28" stroke-width=".6"/>
+            <path d="M${px-5.5},${py-h} L${px-5.5},${py-h-4} L${px-2},${py-h-4} L${px-2},${py-h-1.5}
+                     L${px+2},${py-h-1.5} L${px+2},${py-h-4} L${px+5.5},${py-h-4} L${px+5.5},${py-h} Z"
+             fill="${escurece(cor,1.3)}" stroke="#2A2A28" stroke-width=".5"/>
+            <rect x="${px-7.5}" y="${py+3}" width="15" height="2.6" fill="#00000035" rx="1"/>
+            <rect x="${px-7.5}" y="${py+3}" width="${15*frac}" height="2.6" fill="${cor}" rx="1"/>`;
+  }
+  if (it.tipo==="peca"){
+    const cor = it.d.t ? CARMIM : AZUL;
+    const h = 13;
+    out += `<path d="M${px},${py} L${px},${py-h}" stroke="${escurece(cor,.55)}" stroke-width="2.4" stroke-linecap="round"/>
+            <circle cx="${px}" cy="${py-h-4}" r="5.6" fill="${cor}" stroke="#EDEBE2" stroke-width="1.5"/>
+            <circle cx="${px}" cy="${py-h-4}" r="5.6" fill="none" stroke="#2A2A28" stroke-width=".5"/>`;
+  }
+}
+
+/* o viewBox tem de crescer: a projeção achata em Y mas a elevação empurra para cima */
+const X0 = vb[0]-14, LARG = vb[2]+28;
+const Y0 = (vb[1])*INCLINA - ALTURA*1.6 - 22, ALT = vb[3]*INCLINA + ALTURA*2.4 + 52;
+document.querySelector("#palco").innerHTML =
+  `<svg viewBox="${X0} ${Y0} ${LARG} ${ALT}">
+     <defs><filter id="sombra" x="-20%" y="-20%" width="140%" height="140%">
+       <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#3A3226" flood-opacity=".28"/>
+     </filter></defs>
+     <ellipse cx="${vb[0]+vb[2]/2}" cy="${(vb[1]+vb[3])*INCLINA + 16}"
+              rx="${vb[2]*.54}" ry="${vb[3]*INCLINA*.30}" fill="#3A3226" opacity=".16"/>
+     <g filter="url(#sombra)">${out}</g>
+   </svg>`;
+document.querySelector("#rod").textContent = D.rodada;
+</script>
