@@ -111,6 +111,101 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v51 — creme, e só creme · 2026-08-20
+
+A v50 fez o site seguir o tema do aparelho. Durou uma versão. Vendo o creme
+pronto na tela, o pedido foi direto:
+
+> *"O que eu quero que mude agora é o tema para creme"*
+
+Não como variante — como **a** paleta. Os dois caminhos viraram um.
+
+---
+
+### 1. O que sai, e por que isso é ganho
+
+Saíram os blocos `@media (prefers-color-scheme)` dos quatro arquivos, os
+`:root[data-theme]` do guia, o botão **Tema** (que ficava perdido lá embaixo ao
+lado de *Repor peças*, como se fosse controle da demo do mapa) e o `theme-color`
+duplicado.
+
+Some junto uma classe inteira de defeito: **token sem par no tema oposto**. Ela
+não aparecia como "ficou feio", aparecia como **texto invisível** — foi
+exatamente o que a v50 pegou na tela de abertura, e o custo de manter dois
+caminhos era ter de provar, a cada mudança de cor, que os dois continuavam
+legíveis.
+
+---
+
+### 2. O que ficou escuro, e não devia (BUG de virada)
+
+Quatro superfícies **flutuam por cima do tabuleiro**: o aviso (`.tst`), a
+narração da IA, o botão *pular vez da IA* e a dica do tutorial. As quatro tinham
+`rgba(11,18,15,…)` cravado.
+
+Sobre chrome escuro isso passava despercebido — era escuro sobre escuro. Sobre
+creme viraram **a coisa mais escura da tela**: o aviso "DONA CHINELA CAIU"
+chegava como lápide no meio do tabuleiro. Agora as quatro leem `--flut-fundo`,
+que é papel opaco com borda, como o resto do produto. O véu do sheet, que era
+`rgba(0,0,0,.6)`, virou um cinza quente — preto puro sobre papel é o único
+elemento que nunca pertenceu a esta paleta.
+
+---
+
+### 3. O tabuleiro não mudou — e é o ponto
+
+`--rota`, `--selva`, `--rio`, `--terra`, `--bloq`, `--traco`, `--ceu` e
+`--limao` estão com **exatamente os mesmos valores** de antes. O tabuleiro sempre
+foi de dia (direção de arte, itens 8, 9 e 33); o chrome escuro é que era a
+exceção.
+
+**O que se perdeu, e está registrado para o playtest:** o chrome escuro comprava
+CONTRASTE. Um tabuleiro claro dentro de um app escuro virava o assunto da tela
+sozinho. Sobre creme esse empurrão não existe mais, e quem separa o tabuleiro do
+resto passou a ser o traço do hexágono (`--traco`) e o céu atrás dele (`--ceu`).
+Nas telas conferidas ele continua se lendo, mas isso é olho meu, não playtest. Se
+na mesa o tabuleiro parecer que derreteu na página, **a alavanca é o traço, nunca
+devolver o fundo escuro** — está escrito no CSS, ao lado dos tokens.
+
+---
+
+### 4. Os testes trocaram de pergunta
+
+Os quatro da v50 perguntavam *"todo token tem valor nos dois temas?"*. Não há dois
+temas. Entraram **seis** no lugar, e cada um foi quebrado de propósito antes de
+entrar:
+
+| Teste | Quebrei assim | Acusou |
+|---|---|---|
+| o site tem UMA paleta | devolvi um `@media` de tema | sim |
+| as quatro telas usam os mesmos valores | mudei `--line` no guia num dígito | sim |
+| a paleta é CREME (fundo claro, tinta escura) | escureci `--ground` nos quatro | sim |
+| nenhuma superfície com texto tem fundo escuro cravado | devolvi o preto do `#tela` | sim |
+| o tabuleiro continua de dia | fiz `--selva` virar creme | sim |
+| guia e jogo pintam o mesmo terreno | mudei `--terreno-selva` no guia | sim |
+
+O quinto é o que mais importa e o menos óbvio: ele existe contra a **correção
+bem-intencionada**. Alguém vai olhar o creme, achar que o tabuleiro "esqueceu" de
+acompanhar, e consertar — apagando a direção de arte sem saber.
+
+---
+
+### 5. Um erro meu no caminho
+
+Ao quebrar os testes de propósito, guardei backups em `/tmp` usando `basename`.
+`guia/index.html` e `index.html` **têm o mesmo basename**: o backup da home
+sobrescreveu o do guia, e o restore trocou o manual inteiro pela página inicial.
+Recuperado do backup certo, sem perda — mas a suíte só acusou porque o teste de
+terreno existe. Sem ele, o guia teria ido para o `main` como cópia da home.
+
+E a troca automática de valores deixou **comentário contradizendo o código**:
+`--ground:#EDEBE2; /* verde-petróleo profundo: feltro de mesa, selva noturna */`.
+Corrigido — comentário que discorda do código é pior que comentário nenhum.
+
+**Testes: 290 → 292.**
+
+---
+
 ## v50 — o site inteiro segue o aparelho · 2026-08-20
 
 Relato, depois de três idas e vindas sobre "o site não está mudando":

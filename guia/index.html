@@ -4,29 +4,34 @@
 <style>
 /* ============ TOKENS ============ */
 :root{
-  --ground:#0E1614;        /* verde-petróleo profundo: feltro de mesa, selva noturna */
-  --ground-2:#141F1C;
-  --ground-3:#1B2926;
-  --line:#2A3B37;
-  --line-soft:#213230;
-  --ink:#E4EDE9;
-  --ink-2:#9FB3AD;
-  --ink-3:#6C817C;
+  /* ── A PALETA, E ELA É UMA SÓ (v51) ──
+     Creme, sempre. Até a v50 o site trocava com o tema do aparelho e o jogo nem
+     isso — era escuro fixo. Estes valores são os MESMOS de jogo/estilo.css,
+     cartas/ e da home, e há teste que quebra se um dígito divergir: papel
+     envelhecido de manual de campo, não interface de aplicativo. */
+  --ground:#EDEBE2;        /* o papel */
+  --ground-2:#E4E2D7;
+  --ground-3:#DAD8CB;
+  --line:#BFBCAB;
+  --line-soft:#CFCCBD;
+  --ink:#1B2320;
+  --ink-2:#4E5B56;
+  --ink-3:#7A857F;
 
-  --brass:#D4A24C;         /* o mesmo latão de jogo/estilo.css */
-  --brass-dim:#8A6A2F;
-  --brass-glow:rgba(212,162,76,.16);
+  --brass:#8A6420;         /* o mesmo latão de jogo/estilo.css */
+  --brass-dim:#A98B4E;
+  --brass-glow:rgba(138,100,32,.10);
 
-  --azul:#4C9BD6;          /* semântica de time — os mesmos do jogo */
-  --carmim:#D45B4E;
+  --azul:#3B6C90;          /* semântica de time — os mesmos do jogo */
+  --carmim:#8F3E36;
 
-  /* ── O TABULEIRO É DE DIA, NOS DOIS TEMAS ──
+  /* ── O TABULEIRO É DE DIA, E SEMPRE FOI ──
      Direção de arte, itens 8 e 9: *"Não: filtro cinza, cenário escuro,
      pós-apocalipse militar. Sim: luz quente, céu azul, cores, vegetação"*.
      Estes valores são os MESMOS de jogo/estilo.css — o manual e o jogo têm de
      parecer o mesmo universo, e até a v48 o guia pintava a selva de #141E1A,
-     que é quase preto. O chrome da página continua seguindo o tema; o
-     tabuleiro, não: ele é o objeto iluminado em cima da mesa. */
+     que é quase preto. Desde a v51 a página inteira é creme e o tabuleiro
+     continua exatamente com estes valores — ele nunca dependeu do tema. */
   --terreno-rota:#C3B7A4;    /* asfalto e calçada gastos, claros */
   --terreno-selva:#7FA65C;   /* vegetação viva, que retomou a cidade */
   --terreno-rio:#8FB0AE;     /* canal urbano de concreto com água parada */
@@ -50,30 +55,6 @@
 
   --rail:264px;
 }
-@media (prefers-color-scheme: light){
-  :root{
-    --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
-    --line:#BFBCAB; --line-soft:#CFCCBD;
-    --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
-    --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
-    --azul:#3B6C90; --carmim:#8F3E36;
-  }
-}
-:root[data-theme="light"]{
-  --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
-  --line:#BFBCAB; --line-soft:#CFCCBD;
-  --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
-  --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
-  --azul:#3B6C90; --carmim:#8F3E36;
-}
-:root[data-theme="dark"]{
-  --ground:#0E1614; --ground-2:#141F1C; --ground-3:#1B2926;
-  --line:#2A3B37; --line-soft:#213230;
-  --ink:#E4EDE9; --ink-2:#9FB3AD; --ink-3:#6C817C;
-  --brass:#D4A24C; --brass-dim:#8A6A2F; --brass-glow:rgba(212,162,76,.16);
-  --azul:#4C9BD6; --carmim:#D45B4E;
-}
-
 *{box-sizing:border-box}
 body{
   margin:0; background:var(--ground); color:var(--ink);
@@ -349,7 +330,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v50 · jogável</span>
+    <span class="ver">v51 · jogável</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -502,7 +483,6 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
         <p class="dica"><b>Clique numa peça</b> para selecionar e depois <b>numa casa</b> para mover. As casas válidas ficam tracejadas. A demo obedece ao que a partida obedece: não entra em casa bloqueada, não empilha peça, e anda no máximo <b>4 casas</b> — o teto de verdade é do herói, e vai de <b>3</b> (pesado) a <b>5</b> (ágil).</p>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button id="reset">Repor peças</button>
-          <button id="tema">Tema</button>
         </div>
       </div>
     </div>
@@ -585,9 +565,9 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 </main>
 </div>
 
-<script src="../data/catalogo.js?v=50"></script>
-<script src="../data/mapa.js?v=50"></script>
-<script src="../arte/imagens.js?v=50"></script>
+<script src="../data/catalogo.js?v=51"></script>
+<script src="../data/mapa.js?v=51"></script>
+<script src="../arte/imagens.js?v=51"></script>
 <script>
 /* ==================== CONTEÚDO DO JOGO ==================== */
 const ROTAS = {
@@ -1068,11 +1048,5 @@ const obs=new IntersectionObserver(es=>{
 document.querySelectorAll("main section").forEach(s=>obs.observe(s));
 
 q("#reset").addEventListener("click",repor);
-q("#tema").addEventListener("click",()=>{
-  const atual=document.documentElement.getAttribute("data-theme")
-    || (matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
-  document.documentElement.setAttribute("data-theme", atual==="dark"?"light":"dark");
-});
-
 repor();
 </script>

@@ -1496,92 +1496,112 @@ teste("o tempo de respawn cresce com a partida", () => {
   ok(morre(30) >= morre(12), "o tempo de respawn não é monotônico");
 });
 
-/* ═══════════════ v50 — O SITE INTEIRO SEGUE O APARELHO ═══════════════
+/* ═══════════════ v51 — UMA PALETA SÓ, E ELA É CREME ═══════════════
 
-   Até a v49 o jogo e as cartas eram sempre escuros e só a home e o guia
-   trocavam com o telefone: metade do site mudava de cara e metade não, e quem
-   entrava pelo guia claro caía num jogo escuro. Agora os quatro seguem o
-   aparelho — e isso criou duas maneiras novas de quebrar tudo em silêncio, que
-   é o que estes testes guardam.
+   A v50 fez o site inteiro seguir o tema do aparelho. Durou uma versão: vendo o
+   creme pronto, o Vilker pediu **creme e ponto** — não como variante, como A
+   paleta. Então os dois caminhos viraram um.
 
-   PRIMEIRA: token de chrome sem par no claro. O sintoma não é "fica feio", é
-   TEXTO INVISÍVEL — foi o que aconteceu com a tela de abertura, que tinha fundo
-   preto fixo e título em tinta que passou a ser escura. A primeira tela do jogo
-   com o nome do jogo apagado.
+   Isso apaga uma classe inteira de defeito (token sem par no tema oposto, que se
+   manifestava como TEXTO INVISÍVEL) e cria outra, menor e mais chata: **volta
+   silenciosa**. `#0B120F` e `rgba(6,10,8,…)` estiveram cravados neste CSS por
+   cinquenta versões; é o valor que a mão digita sozinha. Um só que volte para um
+   fundo de tela cheia e o texto por cima some — foi exatamente o que aconteceu
+   com a tela de abertura na virada.
 
-   SEGUNDA: alguém "consertar" o tabuleiro. As cores de terreno NÃO invertem, de
-   propósito — direção de arte, itens 8, 9 e 33: o tabuleiro é o objeto iluminado
-   em cima da mesa, não o fundo da página. Um token de terreno aparecendo no
-   bloco claro é a correção bem-intencionada que apaga a decisão. */
+   Os testes daqui guardam três coisas:
+     · não sobrou fundo escuro cravado em superfície que carrega texto;
+     · o tabuleiro continua com os valores de dia — ele NUNCA dependeu do tema, e
+       quem "consertar" isso apaga a direção de arte;
+     · as quatro telas do site usam a MESMA paleta, valor por valor. */
 
-const CSS_JOGO = require("fs").readFileSync(
-  require("path").join(require("./motor.js").RAIZ, "jogo/estilo.css"), "utf8");
+const fsT = require("fs"), pathT = require("path");
+const RAIZ_T = require("./motor.js").RAIZ;
+const leT = arq => fsT.readFileSync(pathT.join(RAIZ_T, arq), "utf8");
+const CSS_JOGO = leT("jogo/estilo.css");
 
-/* o corpo do bloco @media (prefers-color-scheme:light) */
-function blocoClaro(css) {
-  const i = css.indexOf("@media (prefers-color-scheme:light)");
-  ok(i >= 0, "jogo/estilo.css perdeu o bloco do tema claro");
-  return css.slice(i, css.indexOf("\n}", css.indexOf(":root{", i)));
+/* os valores de chrome, lidos do :root de cada arquivo */
+function paletaDe(arq) {
+  const css = leT(arq);
+  const i = css.indexOf(":root{");
+  ok(i >= 0, `${arq} não tem :root`);
+  const corpo = css.slice(i, css.indexOf("\n}", i));
+  const val = {};
+  corpo.replace(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g, (_, k, v) => { val[k] = v.trim(); return ""; });
+  return val;
 }
 
-/* o que pinta o CHROME: tem de existir nos dois temas */
-const TOKENS_CHROME = ["--ground", "--ground-2", "--ground-3", "--line", "--line-soft",
-  "--ink", "--ink-2", "--ink-3", "--brass", "--brass-dim", "--brass-2", "--ink-brass",
-  "--azul", "--carmim", "--tela-fundo"];
+const TELAS = ["jogo/estilo.css", "guia/index.html", "cartas/index.html", "index.html"];
 
-/* o que pinta o TABULEIRO: NÃO pode existir no bloco claro */
-const TOKENS_TABULEIRO = ["--rota", "--selva", "--rio", "--terra", "--bloq",
-  "--traco", "--ceu", "--limao", "--cego", "--estrada"];
-
-teste("todo token de chrome do jogo tem valor nos dois temas", () => {
-  const claro = blocoClaro(CSS_JOGO);
-  const faltando = TOKENS_CHROME.filter(t =>
-    !new RegExp(t.replace(/-/g, "\\-") + "\\s*:").test(claro));
-  eq(faltando.length, 0,
-     `sem valor no tema claro: ${faltando.join(", ")} — no claro estes viram texto invisível`);
-});
-
-teste("o tabuleiro NÃO inverte com o tema — ele é de dia nos dois", () => {
-  const claro = blocoClaro(CSS_JOGO);
-  const invadiram = TOKENS_TABULEIRO.filter(t =>
-    new RegExp(t.replace(/-/g, "\\-") + "\\s*:").test(claro));
-  eq(invadiram.length, 0,
-     `token de terreno redefinido no tema claro: ${invadiram.join(", ")} — `
-     + "o tabuleiro é o objeto iluminado em cima da mesa, e isso não muda com o aparelho");
-});
-
-teste("nenhuma tela de fluxo tem fundo escuro cravado no CSS", () => {
-  /* #tela cobre a janela inteira (abertura, draft, cara-ou-coroa, vitória). Se o
-     fundo dela for literal, ele não acompanha a tinta — e foi exatamente assim
-     que o título da tela de abertura sumiu. */
-  const m = /#tela\{[^}]*\}/.exec(CSS_JOGO);
-  ok(m, "não achei a regra de #tela");
-  ok(/background:var\(--/.test(m[0]),
-     "#tela voltou a ter fundo de cor literal — no tema claro isso apaga o texto por cima");
-});
-
-teste("jogo, guia e cartas usam a MESMA paleta clara", () => {
-  const fs = require("fs"), path = require("path");
-  const raiz = require("./motor.js").RAIZ;
-  const claroDe = arq => {
-    const css = fs.readFileSync(path.join(raiz, arq), "utf8");
-    const i = css.indexOf("prefers-color-scheme:light") >= 0
-      ? css.indexOf("prefers-color-scheme:light") : css.indexOf("prefers-color-scheme: light");
-    ok(i >= 0, `${arq} não tem tema claro`);
-    const corpo = css.slice(i, css.indexOf("\n}", css.indexOf(":root{", i)));
-    const val = {};
-    corpo.replace(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g, (_, k, v) => { val[k] = v.trim(); return ""; });
-    return val;
-  };
-  const jogo = claroDe("jogo/estilo.css"), guia = claroDe("guia/index.html"),
-        cartas = claroDe("cartas/index.html");
-  /* só os tokens que os três declaram — cada tela tem os seus a mais */
-  ["--ground", "--ground-2", "--line", "--ink", "--ink-2", "--brass"].forEach(t => {
-    eq(guia[t], jogo[t], `${t}: guia e jogo divergiram no tema claro`);
-    eq(cartas[t], jogo[t], `${t}: cartas e jogo divergiram no tema claro`);
+teste("o site tem UMA paleta — nenhuma tela troca de tema", () => {
+  TELAS.forEach(arq => {
+    const css = leT(arq);
+    ok(!/prefers-color-scheme/.test(css),
+       `${arq} voltou a trocar de tema com o aparelho — a paleta é uma só desde a v51`);
+    ok(!/\[data-theme/.test(css),
+       `${arq} voltou a ter alternador de tema`);
   });
 });
 
+teste("as quatro telas usam exatamente os mesmos valores de chrome", () => {
+  const base = paletaDe("jogo/estilo.css");
+  TELAS.slice(1).forEach(arq => {
+    const p = paletaDe(arq);
+    Object.keys(p).filter(k => k in base && !k.startsWith("--display")
+                            && !k.startsWith("--carto") && !k.startsWith("--body")
+                            && !k.startsWith("--ui") && !k.startsWith("--mono"))
+      .forEach(k => eq(p[k], base[k], `${arq} divergiu do jogo em ${k}`));
+  });
+});
+
+teste("a paleta é CREME — o fundo é claro e a tinta é escura", () => {
+  const luz = hex => {                                   /* luminância aproximada */
+    const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+    ok(m, `esperava hex em ${hex}`);
+    const n = parseInt(m[1], 16);
+    return (((n >> 16) & 255) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) / 255;
+  };
+  const p = paletaDe("jogo/estilo.css");
+  ok(luz(p["--ground"]) > .8, `o fundo deixou de ser creme: ${p["--ground"]}`);
+  ok(luz(p["--ink"]) < .25, `a tinta deixou de ser escura: ${p["--ink"]}`);
+  ok(luz(p["--ink-brass"]) > .8,
+     "a tinta que vai em cima do latão precisa ser CLARA — o latão do creme é ouro escuro");
+});
+
+teste("nenhuma superfície que carrega texto tem fundo escuro cravado", () => {
+  /* o defeito da virada: #tela cobre a janela inteira (abertura, draft,
+     cara-ou-coroa, vitória) e tinha `rgba(6,10,8,.96)` literal. Com a tinta
+     escura por cima, a tela de abertura ficou com o nome do jogo invisível. */
+  const superficies = ["#tela", "#sheet", "#painel", "body"];
+  superficies.forEach(sel => {
+    const re = new RegExp(sel.replace("#", "#") + "\\{[^}]*\\}", "g");
+    (CSS_JOGO.match(re) || []).forEach(regra => {
+      const bg = /background:\s*([^;}]+)/.exec(regra);
+      if (!bg) return;
+      ok(!/#0[0-9A-Fa-f]{5}|rgba\(\s*[0-9]{1,2}\s*,\s*[0-9]{1,2}\s*,/.test(bg[1]),
+         `${sel} voltou a ter fundo escuro literal (${bg[1].trim()}) — `
+         + "a tinta é escura, então texto por cima disso some");
+    });
+  });
+});
+
+teste("o tabuleiro continua com as cores de dia — ele nunca dependeu do tema", () => {
+  const p = paletaDe("jogo/estilo.css");
+  /* os valores da direção de arte, travados desde a v39 */
+  const DIA = { "--rota":"#C3B7A4", "--selva":"#7FA65C", "--rio":"#8FB0AE",
+                "--terra":"#CFC3AE", "--bloq":"#8A7452", "--traco":"#5A5142",
+                "--ceu":"#BBD3E0", "--limao":"#C6F53F" };
+  Object.entries(DIA).forEach(([k, v]) =>
+    eq(p[k], v, `${k} mudou — o tabuleiro é de dia por direção de arte (itens 8, 9 e 33), `
+       + "e virar o chrome creme não é motivo para mexer nele"));
+});
+
+teste("guia e jogo pintam o mesmo terreno com a mesma tinta", () => {
+  const j = paletaDe("jogo/estilo.css"), g = paletaDe("guia/index.html");
+  [["--rota","--terreno-rota"], ["--selva","--terreno-selva"], ["--rio","--terreno-rio"],
+   ["--bloq","--terreno-bloq"], ["--traco","--terreno-traco"]].forEach(([a, b]) =>
+    eq(g[b], j[a], `o guia pinta ${b} diferente do ${a} do jogo — é o mesmo tabuleiro`));
+});
 
 /* ═══════════════ v49 — SUBIR DE FAIXA TEM QUE VALER A PENA ═══════════════
 

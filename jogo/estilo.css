@@ -3,28 +3,41 @@
    por pessoas diferentes sem conflito de merge. Mexer aqui NUNCA quebra regra. */
 
 :root{
-  --ground:#0B120F; --ground-2:#111A16; --ground-3:#18251F;
-  --line:#26362E; --line-soft:#1E2C25;
-  --ink:#E8F0EA; --ink-2:#9DB1A6; --ink-3:#66796E;
-  --brass:#D4A24C; --brass-dim:#8A6A2F; --brass-glow:rgba(212,162,76,.16);
+  --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
+  --line:#BFBCAB; --line-soft:#CFCCBD;
+  --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
+  --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
   /* o segundo tom do latão (fim do gradiente dos botões de ação) e a TINTA QUE
-     VAI EM CIMA DELE. Esta segunda era `#0B120F` escrito à mão em seis lugares,
-     e era uma bomba-relógio para o tema claro: no claro o latão escurece, e
-     texto quase-preto sobre ouro escuro fica ilegível. Sendo token, ele inverte
-     junto com o resto. */
-  --brass-2:#A87C33; --ink-brass:#0B120F;
+     VAI EM CIMA DELE. Esta segunda era `#0B120F` escrito à mão em seis lugares
+     — herança de quando o chrome era escuro e "tinta sobre latão" queria dizer
+     preto sobre ouro brilhante. Sobre o latão do creme, que é ouro ESCURO, a
+     mesma tinta some. Token, e não literal, porque o dia em que o latão mudar
+     de tom a tinta tem de acompanhar sozinha. */
+  --brass-2:#6E4E15; --ink-brass:#FFF6E4;
   /* o fundo das TELAS DE FLUXO (abertura, draft, cara-ou-coroa, vitória). Era
-     `rgba(6,10,8,.96)` fixo, e no tema claro isso era o pior defeito possível:
-     fundo preto com o título já em tinta ESCURA — a tela de abertura, a
-     primeira coisa que o jogador vê, ficava com "JAGERLARAMAIS" invisível. */
-  --tela-fundo:rgba(6,10,8,.96);
-  --azul:#4C9BD6; --carmim:#D45B4E;
-  --azul-2:#8CCBF2; --carmim-2:#F58F82;
+     `rgba(6,10,8,.96)` cravado, e foi o pior defeito da virada de paleta: fundo
+     preto com o título já em tinta escura — a tela de ABERTURA, a primeira coisa
+     que o jogador vê, ficava com "JAGERLARAMAIS" invisível contra o próprio
+     fundo. Fundo de tela cheia nunca mais é literal. */
+  --tela-fundo:rgba(237,235,226,.97);
+  /* o que FLUTUA por cima do tabuleiro — aviso, narração da IA, botão de pular,
+     dica do tutorial. Era `rgba(11,18,15,…)` cravado em quatro lugares, e sobre
+     chrome escuro isso passava despercebido. Sobre creme era a coisa mais escura
+     da tela: o aviso virava lápide. Papel opaco com borda, como o resto. */
+  --flut-fundo:rgba(247,245,238,.95);
+  --azul:#3B6C90; --carmim:#8F3E36;
+  --azul-2:#2A5273; --carmim-2:#7A3129;
   /* ── TABULEIRO: paleta de DIA, direção de arte itens 8, 9 e 33 ──
-     O chrome do app continua escuro de propósito: o tabuleiro é o objeto
-     iluminado em cima da mesa, e o contraste faz ele virar o assunto da tela.
      Base em cores naturais e quentes — cimento, terracota, tijolo, vegetação.
-     Nada de filtro cinza, nada de marrom em tudo. O mundo acabou, as cores não. */
+     Nada de filtro cinza, nada de marrom em tudo. O mundo acabou, as cores não.
+
+     Estes valores NÃO mudaram quando o chrome virou creme (v51), e é o ponto:
+     o tabuleiro sempre foi de dia, e o chrome escuro é que era a exceção. O que
+     ele comprava era CONTRASTE — o tabuleiro claro num app escuro virava o
+     assunto da tela sozinho. Sobre creme esse empurrão sumiu, e quem separa o
+     tabuleiro do resto passou a ser o `--traco` do hexágono e o `--ceu` atrás
+     dele. Se algum dia o tabuleiro parecer que derreteu na página, é aí que se
+     mexe — no traço, nunca devolvendo o fundo escuro. */
   --rota:#C3B7A4;        /* asfalto e calçada gastos, claros */
   --selva:#7FA65C;       /* vegetação viva, que retomou a cidade */
   --rio:#8FB0AE;         /* canal urbano de concreto com água parada */
@@ -36,7 +49,7 @@
   --traco:#5A5142;       /* contorno do hexágono — item 2: tem de dar para contar */
   --limao:#C6F53F;       /* energia do cataclisma — item 14, sempre pontual */
   --ceu:#BBD3E0;         /* o azul do céu, atrás do tabuleiro */
-  --vivo:#5FBF8A; --dano:#FF6A5A; --cura:#7BE0A8;
+  --vivo:#2E8558; --dano:#B23A2B; --cura:#2E8558;
   --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
   --carto:"Copperplate","Optima","Palatino Linotype",Georgia,serif;
   --ui:-apple-system,"Avenir Next","Helvetica Neue",system-ui,sans-serif;
@@ -53,38 +66,6 @@
   --cmd-max:266px;
 }
 @media (max-height:760px){ :root{ --toque:40px; --cmd-max:150px; } }
-
-/* ── O TEMA CLARO (v50) ──
-   O jogo nasceu só escuro e o guia seguia o aparelho: metade do site trocava de
-   cara com o telefone e metade não, e quem entrava pelo guia claro caía num jogo
-   escuro. Pedido do Vilker: **o site inteiro segue o aparelho.**
-
-   Só o CHROME inverte. O tabuleiro (--rota, --selva, --rio, --terra, --bloq,
-   --traco, --ceu, --limao) fica de fora de propósito e continua de dia nos dois
-   temas — é a direção de arte, itens 8, 9 e 33: o tabuleiro é o objeto iluminado
-   em cima da mesa, não o fundo da página. A névoa (--cego) também fica: ela
-   precisa dizer "escondido" sobre um tabuleiro pálido, e isso não muda com o
-   tema do aparelho.
-
-   Os valores de fundo, linha e tinta são OS MESMOS de guia/index.html. Não é
-   coincidência e não deve virar: as duas telas são o mesmo produto, e paleta
-   duplicada com valores parecidos-mas-não-iguais é o defeito que a v48 passou
-   uma versão inteira limpando na loja e no mapa. */
-@media (prefers-color-scheme:light){
-  :root{
-    --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
-    --line:#BFBCAB; --line-soft:#CFCCBD;
-    --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
-    --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
-    --brass-2:#6E4E15; --ink-brass:#FFF6E4;
-    --azul:#3B6C90; --carmim:#8F3E36;
-    --azul-2:#2A5273; --carmim-2:#7A3129;
-    /* semânticas de combate: no escuro elas brilham, no claro precisam de
-       profundidade para não sumirem contra o papel */
-    --vivo:#2E8558; --dano:#B23A2B; --cura:#2E8558;
-    --tela-fundo:rgba(237,235,226,.97);
-  }
-}
 @media (max-height:640px){ :root{ --cmd-max:96px; } }
 @media (max-width:360px){ .dado{width:38px;height:38px;font-size:19px} }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -329,7 +310,7 @@ button:disabled{cursor:not-allowed}
   display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:92%}
 .tst{font-family:var(--display);font-size:17px;text-transform:uppercase;letter-spacing:.03em;
   padding:9px 18px;border-radius:11px;border:1px solid var(--brass-dim);
-  background:rgba(11,18,15,.94);color:var(--brass);animation:tin .3s ease-out, tout .35s ease-in 1.9s forwards;
+  background:var(--flut-fundo);color:var(--brass);animation:tin .3s ease-out, tout .35s ease-in 1.9s forwards;
   text-align:center;backdrop-filter:blur(4px)}
 .tst.morte{border-color:var(--dano);color:var(--dano)}
 .tst.gank{border-color:var(--carmim);color:var(--carmim-2)}
@@ -346,7 +327,7 @@ button:disabled{cursor:not-allowed}
 #iaFala{position:absolute;right:7px;bottom:7px;z-index:8;display:flex;flex-direction:column;
   align-items:flex-end;gap:3px;pointer-events:none;max-width:60%}
 .iaL{font-family:var(--ui);font-size:11px;line-height:1.3;padding:3px 8px;border-radius:7px;
-  background:rgba(11,18,15,.82);border:1px solid var(--line-soft);color:var(--ink-3);
+  background:var(--flut-fundo);border:1px solid var(--line-soft);color:var(--ink-3);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
   animation:iaIn .2s ease-out, iaOut .4s ease-in 1.5s forwards}
 /* três cores, três pesos de notícia: cinza = andou, latão = usou habilidade,
@@ -363,7 +344,7 @@ button:disabled{cursor:not-allowed}
    os eventos. Vive no canto oposto da narração para os dois nunca se cobrirem. */
 #btPularIA{position:absolute;left:7px;bottom:7px;z-index:9;display:none;
   font-family:var(--ui);font-size:11px;padding:6px 11px;border-radius:8px;
-  border:1px solid var(--line);background:rgba(11,18,15,.9);color:var(--ink-2);
+  border:1px solid var(--line);background:var(--flut-fundo);color:var(--ink-2);
   backdrop-filter:blur(4px)}
 #btPularIA.on{display:block}
 #btPularIA:active{color:var(--ink);border-color:var(--brass-dim)}
@@ -525,7 +506,7 @@ button:disabled{cursor:not-allowed}
   transform:translateY(101%);transition:transform .28s cubic-bezier(.32,.72,0,1);
   max-height:82%;display:flex;flex-direction:column;padding-bottom:var(--safe)}
 #sheet.on{transform:none}
-#veu{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:19;opacity:0;pointer-events:none;
+#veu{position:absolute;inset:0;background:rgba(60,54,44,.45);z-index:19;opacity:0;pointer-events:none;
   transition:opacity .28s}
 #veu.on{opacity:1;pointer-events:auto}
 .sh-cab{flex:none;padding:12px 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
@@ -761,7 +742,7 @@ button:disabled{cursor:not-allowed}
 /* ══════════ TUTORIAL ══════════ */
 #tut{position:absolute;left:10px;right:10px;bottom:8px;z-index:14;
   border:1px solid var(--brass-dim);border-radius:14px;padding:12px 14px;display:none;
-  background:rgba(11,18,15,.95);backdrop-filter:blur(6px);box-shadow:0 8px 26px rgba(0,0,0,.6)}
+  background:var(--flut-fundo);backdrop-filter:blur(6px);box-shadow:0 8px 26px rgba(90,81,66,.28)}
 #tut.on{display:block;animation:tin .32s ease-out}
 #tut .pass{font-family:var(--carto);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--brass);margin-bottom:5px}

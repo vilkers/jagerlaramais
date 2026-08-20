@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v50 (o site inteiro segue o aparelho) · **Atualizado em:** 2026-08-20
+**Versão:** v51 (creme, e só creme) · **Atualizado em:** 2026-08-20
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -91,7 +91,7 @@ e o **valor** de cada dado escolhe **qual** das três habilidades daquele herói
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
 | Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
-| **Tema** (v50) | **O site inteiro segue o aparelho** — jogo, guia, cartas e home. Antes o jogo e as cartas eram sempre escuros e só a home e o guia trocavam: metade do site mudava de cara e metade não. **Só o chrome inverte**; o tabuleiro e a arte das cartas ficam de dia nos dois temas (direção de arte, itens 8, 9 e 33). A paleta clara é **a mesma nos três arquivos**, e há teste que quebra se um dígito divergir. Tokens que existem por causa disso: `--ink-brass` (a tinta que vai em cima do latão) e `--tela-fundo` (o fundo das telas de fluxo) |
+| **Paleta** (v51) | **Creme, e só creme** — não há tema alternativo e nada segue o aparelho. Os valores de chrome são **idênticos** em `jogo/estilo.css`, `guia/`, `cartas/` e na home, e há teste que quebra se um dígito divergir. **O tabuleiro não faz parte disso**: `--rota`, `--selva`, `--rio`, `--terra`, `--bloq`, `--traco`, `--ceu` e `--limao` são de dia desde a v39 e nunca dependeram de tema — mexer neles para "acompanhar o creme" apaga a direção de arte, e existe teste contra isso. Tokens que nasceram da virada: `--ink-brass` (tinta em cima do latão), `--tela-fundo` (telas de fluxo) e `--flut-fundo` (o que flutua sobre o tabuleiro). **Em aberto para playtest:** o chrome escuro comprava contraste para o tabuleiro; sobre creme quem separa é o traço do hexágono. Se parecer derretido na mesa, a alavanca é o `--traco` |
 | **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados de novo na v49 (a faixa de dado) e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
 | Patamar do Atirador | **20 de ouro na mão** por degrau (era 10), até 3 · consequência do preço novo, não ajuste de atirador |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
@@ -112,7 +112,7 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 290 testes de regressão — um por bug já relatado
+node sim/testes.js        # 292 testes de regressão — um por bug já relatado
 node sim/movimento.js 200 # quantas casas um herói atravessa mesmo, e o teto estrutural
 node sim/torres.js 120    # a torre é objetivo ou esponja? mergulho sem creep acontece?
 node sim/draft.js 200     # a IA repete o mesmo draft?
