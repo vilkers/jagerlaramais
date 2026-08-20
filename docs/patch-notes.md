@@ -111,6 +111,234 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v49 — o dado escolhe QUAL habilidade sai · 2026-08-20
+
+Quatro relatos do playtest do Vilker, e o quarto reescreveu o coração do turno.
+
+> *"O jogo acabou quando o Nexus tava com 1 vida."*
+> *"Cada personagem dá só 1 de dano né?"*
+> *"Acho que poderia mudar o flash e o retorno de lugar. Não ficar ali no menu de mover/atacar."*
+> *"O sistema de ataques ainda me confunde um pouco. (…) Um ataque que pode ser
+> ativado com dados 1-2, outro 3-4-5 e a ulti somente 6. E não poder aproveitar o
+> dado. Não é 1-2 ou mais. É só 1 ou 2 e acabou."*
+
+---
+
+### 1. A faixa de dado é exata — acabou o "ou mais"
+
+Até a v48 cada habilidade tinha uma **Força mínima**, e um dado grande pagava
+qualquer uma: um 6 servia à Ultimate, à do meio e à básica. Agora o valor do dado
+escolhe **qual** das três habilidades sai, e a faixa é fechada:
+
+| Dado | O que ele paga |
+|---|---|
+| **1** ou **2** | a habilidade **básica** |
+| **3**, **4** ou **5** | a habilidade **do meio** |
+| **6** | a **Ultimate** |
+
+**Nenhum dado morre.** Um 6 é Ultimate — de qualquer um dos cinco heróis —, e um
+1 é básica de qualquer um dos cinco. O que mudou não é a quantidade de opções, é
+**onde a decisão mora**: a pergunta do turno deixou de ser *"que habilidade eu
+destravo com este dado?"* e passou a ser **"quem recebe este dado?"**.
+
+A básica ficou mais fraca de propósito — nunca mais sai com 5 ou 6. Foi aprovado
+com essas palavras: *"a básica pode ser assim mesma pra ficar mais difícil"*.
+
+---
+
+### 2. A individualidade ficou na faixa, não na Força
+
+O outro pedido: *"a ult vc pode deixar esses heróis com suas individualidades
+desta forma sendo diferentes dos demais"*. A tabela acima é o **padrão**; quem
+foge dele está escrito na própria habilidade, e são **14 de 60**:
+
+| Faixa | Quantas | Quem, e por quê |
+|---|---|---|
+| **2–5** na do meio | 11 | Digerir, Talho de Facão, Eco, Drenar, Encher o Pulmão, Armadilha, Puff de Emergência, Recarregar, Empresta o Fone, Escudo de Pelo, Empréstimo — a segunda deles é **utilidade**, não pico: tem de sair quase sempre |
+| **4–5** na do meio | 1 | Interferência (Parabólica Diabólica) — **silenciar** é controle forte, e controle forte paga caro |
+| **5–6** na Ultimate | 2 | Ninguém Me Entende (Emerson Emo) e Vento Contrário (Vidra) — não matam ninguém: **reviver e escudar o time precisam chegar a tempo** |
+
+Quem não declara faixa herda a do slot, e a herança é **carimbada na carga** —
+não deduzida a cada chamada. Não é economia de código: enquanto a faixa dependia
+de achar o índice dentro do kit, `dadoPara(hb)` caía calado na faixa da básica
+nos pontos em que nenhum herói estava selecionado, e uma Ultimate paga por dado
+extra respondia *"nenhum dado serve"*.
+
+---
+
+### 3. Medido: A/B na mesma execução, mesmos times
+
+Uma regra que muda o coração do turno precisa de mais que "ficou mais legal". O
+script novo é `node sim/faixas.js` e ele roda **os dois builds na mesma
+execução, com os mesmos times sorteados**: a regra nova contra a v48
+reconstruída por troca de texto (`dadoServe` volta a ser *"vale o piso da faixa
+ou mais"*, que é exatamente o que os `f:` do catálogo faziam).
+
+Rodar duas vezes e comparar não serviria: já aconteceu neste projeto do mesmo
+build dar 44, 48 e 50 rodadas. Aqui mesmo, a duração leu 57,6 → 51,5 em n=120 e
+54,9 → 60,4 em n=40 — direções opostas, mesmo código. **n=400 de cada lado:**
+
+| | v48 (≥ piso) | v49 (faixa) |
+|---|---|---|
+| duração média (rodadas) | 52,5 | **53,3** |
+| **Ultimates por partida** | 25,4 | **35,5** |
+| habilidades do meio, por partida | 111,8 | 113,5 |
+| básicas por partida | 48,5 | **34,0** |
+| Ultimate como % dos golpes | 13,7% | **19,4%** |
+| **dado que ninguém podia usar** | 0,1% | **0,1%** |
+| dano por golpe — média / mediana | 9,0 / 7 | 9,0 / 7 |
+| partidas que terminaram | 99,8% | 100,0% |
+
+**O número que autoriza a regra é o do dado morto: 0,1%, igual à v48.** Era o
+risco central — dado que cai numa faixa que ninguém consegue usar vira turno
+perdido, e turno perdido é o pior tipo de azar porque o jogador não escolheu
+nada. Ele não acontece: cinco heróis × três faixas cobrem os seis valores, e o
+dado que sobra ainda vira movimento.
+
+**E saem MAIS Ultimates, não menos — 40% mais.** Era o medo oposto, e ele estava
+de cabeça para baixo: na v48 um 6 era com frequência gasto numa básica ou numa
+habilidade do meio, e o dado grande morria fazendo trabalho pequeno. Preso ao 6,
+a Ultimate passou de 13,7% para 19,4% dos golpes.
+
+**A partida não ficou mais longa** (52,5 → 53,3, dentro do ruído medido acima) e
+o dano por golpe não mudou (9,0 de média nos dois). A básica mais fraca foi
+compensada pela Ultimate mais frequente.
+
+---
+
+### 4. O Nexus não pula de 3 para 0 (BUG)
+
+Relato: *"o jogo acabou quando o Nexus tava com 1 vida"*.
+
+Ele estava certo. `fimDaRodada` cobrava o Nexus **rota por rota**: com as três
+rotas abertas, as três cobravam na **mesma virada** e o Nexus ia de 3 a 0 — ou a
+−2 — sem ninguém jogar no meio. A Última Muralha promete que **o último ponto é
+de herói**, e a promessa não estava sendo cumprida.
+
+O conserto guarda o valor no começo da virada e para na porta:
+
+```js
+const nexusNoInicio=[...J.nexus];
+…
+if(J.nexus[lado]<=0) return;
+if(nexusNoInicio[lado]>=2&&J.nexus[lado]<=1) return;
+```
+
+Uma virada nunca leva o Nexus **de 2 ou mais para 0**. Chegar a 1 pela onda é
+legítimo; fechar em 1 é trabalho de herói.
+
+---
+
+### 4b. *"Cada personagem dá só 1 de dano né?"* — não, e onde ele viu isso
+
+A pergunta tem resposta medida, e ela é **não**: golpe de herói em herói tira
+**9,0 de média e 7 de mediana** (tabela acima, n=400), pela fórmula
+`Força × escala + Poder − Armadura`. Um herói de vida cheia aguenta dois ou três.
+
+Onde o 1 aparece de verdade, e por quê:
+
+| Onde | Quanto | Por quê |
+|---|---|---|
+| golpe de herói no **Nexus** | **1 fixo** | é a Última Muralha: o Nexus tem 3 de vida e cada golpe vale 1, para que o fim da partida seja **três jogadas**, não uma |
+| **básica** contra torre | **1** (o piso) | a torre tem 5 de Armadura, e desde esta versão a básica sai com 1 ou 2 — torre não cai de cutucada |
+| **Dragão** | 1 pela básica, 2 pela Ultimate | ele **conta golpes**, de propósito: o dado não muda nada nele. O Barão é o oposto — nele o dado importa muito |
+
+Ou seja: o 1 que ele viu é real, mas é **de estrutura e de monstro**, não de
+herói. **O Nexus continua fora da escala calculada** — está em
+`docs/DECISOES-PENDENTES.md` como decisão em aberto, porque mexer nele muda a
+duração do fim de partida e isso é escopo, não conserto.
+
+---
+
+### 5. O feitiço saiu do menu de mover/atacar
+
+Relato: *"acho que poderia mudar o flash e o retorno de lugar, não ficar ali no
+menu de mover/atacar, tentar deixar em algum cantinho separado"*.
+
+Lampejo e Retorno eram dois botões no meio das habilidades — e **não são
+habilidades**: não gastam dado, não gastam movimento, e a carga é **do time**,
+não da peça. Misturados ali, o jogador procurava o Lampejo entre as habilidades e
+contava o feitiço como se fosse uma quarta ação daquele herói.
+
+Agora eles moram numa **faixa própria embaixo**, depois das três habilidades, com
+a carga escrita **uma vez só** — porque a carga é uma só.
+
+---
+
+### 6. A torre: o piso vem antes do multiplicador (BUG)
+
+Achado pela faixa exata, mas mais velho que ela. O golpe em estrutura era
+`max(piso, round(útil × multiplicador))`, e com a básica presa ao 1–2 o `útil`
+contra os 5 de Armadura da torre fica **negativo**: dobrar um número negativo
+continua negativo, o piso comia o resultado, e o **Aríete prometia o dobro e
+entregava o mesmo 1**. Agora é `max(piso, round(max(piso, útil) × multiplicador))`
+— o dobro de 1 é 2, que é o que a carta diz.
+
+**Contra estrutura, a faixa baixa bate no piso, e isso é de propósito.** Torre
+não cai de cutucada: quem derruba torre é quem compromete o dado bom. Medido em
+`node sim/torres.js 120 dificil` com a regra nova: primeira torre na **rodada 8**,
+**7,2 de 12** torres caídas, dano médio por golpe **7,8** — os mesmos números da
+v48, ou seja, a torre **não virou esponja**. A varredura de armadura (`arm=`)
+confirmou: com 4, 3 ou 2 a torre cai de 6 a 8 e a diferença some no ruído; **a
+armadura 5 continua sendo a certa**.
+
+---
+
+### 7. Os três lugares em que o jogo se explica
+
+Mudança de regra que não chega ao texto vira defeito de mesa.
+
+- **O manual do jogo** (o `?`): a tabela *"Habilidades básicas — Força 1+"* virou
+  a tabela das três faixas, com o parágrafo do "um 6 não desce" e o das exceções;
+- **`docs/REGRAS.md`**: seção reescrita, com a tabela das exceções por nome e a
+  regra do piso contra estrutura;
+- **O guia web**: o laboratório de dados parou de perguntar *"o maior dado
+  destrava até onde?"* e passou a contar **gavetas** — "esta mão abre 1 ultimate ·
+  2 do meio · 0 básicas". A tabela de classes deixou de ser "Força 1+ / 3+ / 5+",
+  que virou mentira, e passou a descrever **o que cada faixa compra** naquela
+  classe;
+- **As cartas**: o número à esquerda da habilidade era `F+`; agora é a faixa.
+
+E o rótulo da faixa **mora num lugar só**: `textoFaixaHab()` no catálogo. O jogo,
+o guia e as cartas leem daí — foi assim que a v48 acabou com as quatro tabelas de
+item divergentes, e não havia motivo para repetir o erro com o dado.
+
+---
+
+### 8. Os testes
+
+**280 → 286.** A faixa exata quebrou 47 testes de uma vez, e cada um foi migrado
+pela pergunta que ele fazia, não por conveniência:
+
+- `dados(6,6,6)` era o idioma de *"mão que paga tudo"*, e deixou de ser. Virou
+  **`maoCheia()`** — um dado de cada valor —, que paga tudo e ainda deixa cada
+  habilidade sair no **piso da própria faixa**, que é previsível para quem mede
+  dano;
+- os testes do **empréstimo do Emo** foram remontados: o dado doado nasce com o
+  valor do dado que o Emo gastou, e a faixa dele é 2–5 — o 6 do cenário antigo
+  não existe mais. O 2 doado serve à básica da aliada exatamente como os 1 dela,
+  que é a mesma armadilha do bug original;
+- **três invariantes de kit foram reescritos.** *"A do meio não dá menos que a
+  básica com o mesmo dado"* virou impossível de perguntar — o dado que paga uma
+  não paga a outra. A régua agora é o **pior dado da faixa de cima contra o
+  melhor dado da de baixo**, em dano **efetivo** contra a armadura mediana do
+  elenco (2), porque `perfura` ignora armadura e comparar bruto puniria a
+  Sentença do Cael e o Sinal Aberto da Parabólica por fazerem o que foram
+  desenhadas para fazer;
+- **um teste da IA foi aposentado**, e está escrito no lugar dele por quê:
+  *"a IA não queima a Ultimate num alvo que ela não mata"* guardava uma troca que
+  a v49 apagou — o 6 só paga Ultimate, então não há dado grande a desperdiçar.
+  No lugar entraram as duas perguntas que sobraram: **a quem** a IA dá o 6, e se
+  um 6 na mesa **nunca fica sem jogada**.
+
+Testes novos: a faixa paga o que está dentro e recusa o que está fora *inclusive
+quando é maior*; nenhum herói tem duas habilidades na mesma faixa; a régua padrão
+cobre 1..6 sem sobra nem buraco; toda habilidade sai da carga com a faixa
+carimbada; e a básica bate no piso contra a torre enquanto a do meio ainda
+derruba.
+
+---
+
 ## v48 — o jungle decide ficar, a torre vira objetivo, o ouro volta a doer · 2026-08-18
 
 Sete frentes, todas a partir de relato. Cada número aqui foi medido antes e

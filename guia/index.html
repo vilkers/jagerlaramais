@@ -349,7 +349,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
   <div class="brand">
     <span class="mark">Manual de Campo</span>
     <h1>Jager<br>laramais</h1>
-    <span class="ver">v48 · jogável</span>
+    <span class="ver">v49 · jogável</span>
   </div>
   <nav id="nav">
     <a href="#visao"><span class="n">01</span>O jogo</a>
@@ -412,7 +412,7 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 <section id="dados">
   <p class="eyebrow">04 — Laboratório</p>
   <h2>Um dado move o time.<br>Três dados agem.</h2>
-  <p class="lede">Você rola quatro dados por rodada, e eles fazem coisas diferentes. O <strong>Dado Mestre</strong> é o total de casas que os seus <em>cinco</em> heróis andam juntos. Os <strong>três Dados de Ação</strong> viram a Força da habilidade de quem receber cada um.</p>
+  <p class="lede">Você rola quatro dados por rodada, e eles fazem coisas diferentes. O <strong>Dado Mestre</strong> é o total de casas que os seus <em>cinco</em> heróis andam juntos. Os <strong>três Dados de Ação</strong> viram a Força da habilidade de quem receber cada um — e o <em>valor</em> do dado escolhe <em>qual</em> das três habilidades sai: <strong>1–2 a básica, 3–5 a do meio, 6 a Ultimate</strong>. Não existe “ou mais”.</p>
 
   <div class="nota">
     <b>Aproximar o assassino custa o recuo do atirador.</b> O movimento é um orçamento comum: nunca dá para colocar todo mundo onde você queria. E como só três dos cinco recebem ação, os outros dois <b>farmam 3 de ouro</b> — agir custa dinheiro.
@@ -429,8 +429,8 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
     <div class="aloc" id="aloc"></div>
   </div>
 
-  <h3 style="margin-top:44px">A Força mínima é a personalidade da classe</h3>
-  <p>O quanto uma habilidade exige de Força <em>é</em> o arquétipo. Não precisa de regra extra para isso.</p>
+  <h3 style="margin-top:44px">A faixa do dado é a personalidade da classe</h3>
+  <p>Todo herói tem as mesmas três gavetas — 1–2, 3–5 e 6. O que muda de classe para classe é <em>o que cada gaveta compra</em>, e quem foge do padrão: um assassino paga a fuga com quase qualquer dado, um mago paga o silêncio caro, um suporte precisa da Ultimate cedo. Não precisa de regra extra para isso.</p>
   <div class="tblwrap">
     <table>
       <thead><tr><th>Classe</th><th>Requisito</th><th>Como se sente na mão</th></tr></thead>
@@ -585,9 +585,9 @@ button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 </main>
 </div>
 
-<script src="../data/catalogo.js?v=48"></script>
-<script src="../data/mapa.js?v=48"></script>
-<script src="../arte/imagens.js?v=48"></script>
+<script src="../data/catalogo.js?v=49"></script>
+<script src="../data/mapa.js?v=49"></script>
+<script src="../arte/imagens.js?v=49"></script>
 <script>
 /* ==================== CONTEÚDO DO JOGO ==================== */
 const ROTAS = {
@@ -629,7 +629,7 @@ const FICHAS = Object.entries(HEROIS).map(([id,h])=>({
   id, n:h.n, e:h.ep, rota:ROTA_DE[h.pos], cls:h.cls, ref:h.ref,
   st:{vida:h.vida, poder:h.poder, arm:h.arm, alc:h.alc},
   agil:!!h.agil,
-  h:h.habs.map(hb=>[`Força ${hb.f}+`, hb.n, textoHab(hb), hb.f>=5]),
+  h:h.habs.map((hb,i)=>[`dado ${textoFaixaHab(hb,i)}`, hb.n, textoHab(hb), i===2]),
   /* v45 — passiva e ideia principal. O guia é o livro de regras: se o kit tem
      uma passiva, ela é regra, e regra que não está no guia não existe. */
   pv:h.pas || null,
@@ -705,11 +705,11 @@ const TURNO = [
 ];
 
 const GLOSS = [
-  ["Dado de ação","Um dado alocado num herói: o valor dele vira a Força da habilidade. Três por rodada, cinco heróis — e cada herói gasta no máximo um por turno. Quem fica de fora farma 3 de ouro."],
+  ["Dado de ação","Um dado alocado num herói: o valor dele vira a Força da habilidade E escolhe qual das três sai (1–2 básica, 3–5 do meio, 6 Ultimate). Três por rodada, cinco heróis — e cada herói gasta no máximo um por turno. Quem fica de fora farma 3 de ouro."],
   ["Placa","Ficha que o Topo ganha ao dominar a rota. 1 ajusta um dado em ±1; 2 re-rolam um dado."],
   ["Prioridade","Ficha que o Meio ganha ao dominar a rota. Gasta 1 para rolar um dado de ação a mais."],
   ["Dado Mestre","O dado de movimento. Seu valor é o total de casas que os cinco heróis andam juntos na rodada."],
-  ["Força","O valor do dado de ação alocado num herói. Toda habilidade exige uma Força mínima."],
+  ["Força","O valor do dado de ação alocado num herói: entra na conta do dano. Desde a v49 ele também escolhe QUAL habilidade sai — 1–2 a básica, 3–5 a do meio, 6 a Ultimate — e a faixa é exata: um 6 não paga uma básica."],
   ["Gank","O Caçador cair numa rota que não é a dele. Ele não avisa: a escolha da região é secreta, e o adversário só descobre se tiver visão daquele mato. Atacar sem ter sido visto vale +2 de Força — é a Emboscada."],
   ["Ward","Peça de visão. Acende 3 de raio por 3 rodadas e é a ÚNICA fonte que enxerga dentro do mato e sob Invisibilidade. Ward plantada na rota não vê mato nenhum: ela precisa estar lá dentro. Vem do Torvald, da Vidra e da Sentinela comprada na loja."],
   ["Patamar","Degrau de poder do Atirador: a cada 20 de ouro NA MÃO, +2 de Poder para sempre, até três vezes. Ele lê o ouro que você está segurando — guardar para um item forte também faz o patamar subir."],
@@ -1015,7 +1015,7 @@ const ROTA_LAB=[["topo","topo"],["selva","selva"],["meio","meio"],
                 ["atirador","adc"],["suporte","sup"]];
 const REGRAS=ROTA_LAB.map(([rotulo,pos])=>{
   const [,def]=Object.entries(HEROIS).find(([,d])=>d.pos===pos);
-  return {rota:rotulo, quem:def.n, ops:def.habs.map(h=>[h.n,h.f])};
+  return {rota:rotulo, quem:def.n, ops:def.habs.map((h,i)=>[h.n,faixaHab(h,i)])};
 });
 let dados=[];
 function rolar(){
@@ -1027,14 +1027,19 @@ function rolar(){
     e.classList.add("rola");
     setTimeout(()=>e.classList.remove("rola"),300);
   });
-  const seis=dados.filter(d=>d===6).length;
-  const alto=Math.max(...dados);
-  let msg=`Maior dado <b>${alto}</b>`;
+  /* v49: a leitura mudou de "o maior dado destrava até onde?" para "cada dado
+     abre UMA gaveta". Contar as gavetas é a informação útil: três 6 são três
+     Ultimates, e um 6 sozinho é uma. */
+  const conta=f=>dados.filter(d=>f(d)).length;
+  const nBas=conta(d=>d<=2), nMeio=conta(d=>d>=3&&d<=5), nUlt=conta(d=>d===6);
+  const partes=[];
+  if(nUlt) partes.push(`<b>${nUlt}</b> ultimate${nUlt>1?"s":""} (dado 6)`);
+  if(nMeio) partes.push(`<b>${nMeio}</b> do meio (3–5)`);
+  if(nBas) partes.push(`<b>${nBas}</b> básica${nBas>1?"s":""} (1–2)`);
   /* v45: o 6 natural NÃO crita. O crítico é condicional, e a condição é do herói
      — dizer "Crítico disponível" aqui ensinava uma regra que não existe. */
-  if(alto>=6) msg+=" · abre <b>qualquer</b> ultimate, inclusive as de Força 6";
-  else if(alto>=5) msg+=" · dá para uma <b>ultimate</b> de Força 5";
-  else msg+=" · nenhuma ultimate abre — <b>gaste uma placa</b> ou farme";
+  let msg=`Esta mão abre ${partes.join(" · ")}`;
+  if(!nUlt) msg+=" · nenhuma ultimate — <b>gaste uma placa</b> ou farme";
   msg+=".";
   q("#leitura").innerHTML=msg;
   pinta();
@@ -1042,11 +1047,12 @@ function rolar(){
 function pinta(){
   q("#aloc").innerHTML = REGRAS.map(r=>{
     const v=ROTAS[r.rota];
-    const ops=r.ops.map(([n,fmin])=>{
-      const quais = dados.filter(d=>d>=fmin);
+    const ops=r.ops.map(([n,faixa])=>{
+      const quais = dados.filter(d=>faixa.includes(d));
       const ok = quais.length>0;
+      const lo=Math.min(...faixa), hi=Math.max(...faixa);
       return `<div class="op${ok?" ok":""}"><span>${n}</span>
-        <span class="r">${ok?quais.join(" "):"Força "+fmin+(fmin===6?"":"+")}</span></div>`;
+        <span class="r">${ok?quais.join(" "):"dado "+(lo===hi?lo:lo+"–"+hi)}</span></div>`;
     }).join("");
     return `<div class="slot"><div class="quem" style="color:${v.cor}">${r.quem}</div><div class="rot">${v.nome}</div>${ops}</div>`;
   }).join("");

@@ -57,6 +57,18 @@ function cena(opcoes = {}) {
       return h;
     },
     dados(...valores) { g.J.dados = valores.map(v => ({ v, usado: 0 })); return api; },
+    /* v49: cada habilidade exige uma FAIXA exata de dado (1–2 básica, 3–5 do
+       meio, 6 Ultimate), então "mão que paga tudo" deixou de ser 6,6,6.
+       `maoCheia()` põe um dado de cada valor: toda habilidade sai, e sempre no
+       piso da sua faixa — previsível para os testes que medem dano. */
+    maoCheia() { return api.dados(1, 2, 3, 4, 5, 6); },
+    /* n dados do valor exato que paga a habilidade `i` de `h` — para os testes
+       que contam quantos dados foram gastos e não podem receber a mão inteira */
+    paga(h, i, n = 1, alto = false) {
+      const f = g.faixaDeHab(h.habs[i], h);
+      const v = alto ? Math.max(...f) : Math.min(...f);
+      return api.dados(...Array(n).fill(v));
+    },
     mov(n) { g.J.mov = { v: n, rest: n }; return api; },
     vez(t) { g.J.vez = t; return api; },
     /* usa a habilidade `i` de `h` — o mesmo caminho que o toque na tela segue */
@@ -94,7 +106,7 @@ console.log("\n  JAGERLARAMAIS · regressão do motor\n");
 /* ═══════════════ BUG 1 — torre trava o segundo golpe da rodada ═══════════════ */
 
 teste("torre aceita dois golpes de heróis diferentes na mesma rodada", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const a = c.heroi(0, "topo"), b = c.heroi(0, "meio");
   const tr = encostaNaTorre(c, a);
   const p = posTorre(c.g, tr);
@@ -112,7 +124,7 @@ teste("torre aceita dois golpes de heróis diferentes na mesma rodada", () => {
 });
 
 teste("torre aceita segundo golpe do mesmo herói reativado pelo Suporte", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const a = c.heroi(0, "topo");
   const tr = encostaNaTorre(c, a);
   const vida0 = tr.vida;
@@ -128,7 +140,7 @@ teste("torre aceita segundo golpe do mesmo herói reativado pelo Suporte", () =>
 });
 
 teste("torre aceita golpe de longe repetido", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const arq = c.heroi(0, "adc"), mid = c.heroi(0, "meio");
   const tr = c.g.J.torres.find(x => x.t === 1 && x.vida > 0 && c.g.torreExposta(x.rota, 1) === x);
   const p = posTorre(c.g, tr);
@@ -151,7 +163,7 @@ teste("torre aceita golpe de longe repetido", () => {
 /* ═══════════════ BUG 2 — escudo vira invulnerabilidade ═══════════════ */
 
 teste("escudo expira no início do próximo turno do DONO, não no fim da rodada", () => {
-  const c = cena().dados(6, 6, 6).mov(0);
+  const c = cena().maoCheia().mov(0);
   const g = c.g;
   g.J.vez = 0;
   const vharn = c.heroi(0, "topo");
@@ -172,7 +184,7 @@ teste("escudo não acumula entre rodadas até virar invulnerabilidade", () => {
   let pico = 0;
   for (let r = 0; r < 4; r++) {
     g.J.vez = 0; g.iniciaTurno();      // início do turno do dono: expira o anterior
-    c.dados(6, 6, 6); vharn.agiu = 0;
+    c.maoCheia(); vharn.agiu = 0;
     c.usa(vharn, 2);
     pico = Math.max(pico, vharn.esc);
   }
@@ -188,7 +200,7 @@ teste("escudo não acumula entre rodadas até virar invulnerabilidade", () => {
 teste("Cerco do Torvald atinge o Dragão no hexágono vizinho", () => {
   const c = cena({ times: [["vharn", "nyx", "solenne", "vesper", "torvald"],
                           ["kaross", "grumo", "zhet", "cael", "gorm"]] })
-              .dados(5, 5, 5).mov(0).vez(0);
+              .maoCheia().mov(0).vez(0);
   const torvald = c.heroi(0, "sup");
   const g = c.g;
   g.J.poco.vida = g.J.poco.vidaMax = 8;             // abre o poço
@@ -200,7 +212,7 @@ teste("Cerco do Torvald atinge o Dragão no hexágono vizinho", () => {
 });
 
 teste("habilidade de respingo em área atinge o Dragão", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   g.J.poco.vida = g.J.poco.vidaMax = 8;
   /* um herói inimigo colado no poço, e um herói meu ao alcance dos dois */
@@ -218,7 +230,7 @@ teste("habilidade de respingo em área atinge o Dragão", () => {
 /* ═══════════════ BUG 4 — herói em cima da torre não é alvo ═══════════════ */
 
 teste("herói inimigo parado no hexágono da torre continua alvejável", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0);
   const p = posTorre(g, tr);
@@ -233,7 +245,7 @@ teste("herói inimigo parado no hexágono da torre continua alvejável", () => {
 /* ═══════════════ BUG 6/7 — Nexus a zero não encerra a partida ═══════════════ */
 
 teste("Nexus a zero encerra a partida — vitória do AZUL (time 0)", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   g.J.torres.filter(x => x.t === 1).forEach(x => x.vida = 0);   // abre uma rota
   g.J.nexus[1] = 1;
@@ -251,7 +263,7 @@ teste("Nexus a zero encerra a partida — vitória do AZUL (time 0)", () => {
 });
 
 teste("Nexus a zero encerra a partida — vitória do CARMIM (time 1)", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const c = cena().maoCheia().mov(0).vez(1);
   const g = c.g;
   g.J.torres.filter(x => x.t === 0).forEach(x => x.vida = 0);
   g.J.nexus[0] = 1;
@@ -264,7 +276,7 @@ teste("Nexus a zero encerra a partida — vitória do CARMIM (time 1)", () => {
 });
 
 teste("golpe final no Nexus fica registrado para a tela de vitória", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   g.J.torres.filter(x => x.t === 1).forEach(x => x.vida = 0);
   g.J.nexus[1] = 1;
@@ -279,7 +291,7 @@ teste("golpe final no Nexus fica registrado para a tela de vitória", () => {
 /* ═══════════════ BUG 5 — Recuo ═══════════════ */
 
 teste("Recuo move um herói meu 1 casa, e não dá movimento ao adversário", () => {
-  const c = cena().dados(6, 6, 6).mov(3).vez(0);
+  const c = cena().maoCheia().mov(3).vez(0);
   const g = c.g;
   const meu = c.heroi(0, "topo");
   const antes = [...meu.pos], movAntes = g.J.mov.rest;
@@ -323,7 +335,7 @@ teste("Retomada entrega dados a mais e todos são gastáveis", () => {
 /* ═══════════════ BUG 10 — quarto slot de item ═══════════════ */
 
 teste("Relicário libera a compra do quarto item na loja", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const meu = c.heroi(0, "topo");
   meu.pos = [...g.BASE[0][0]];
@@ -340,7 +352,7 @@ teste("Relicário libera a compra do quarto item na loja", () => {
 /* ═══════════════ BUG 11 — Forja de Campo ═══════════════ */
 
 teste("Forja de Campo oferece 3 itens e equipa o escolhido", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const meu = c.heroi(0, "topo");
   meu.itens = [];
@@ -389,7 +401,7 @@ teste("escudo do segundo jogador sobrevive até o próximo turno dele", () => {
      do próprio turno, sem exposição nenhuma ao adversário. */
   const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
                            ["vharn", "grumo", "zhet", "cael", "torvald"]] })
-              .dados(6, 6, 6).mov(0);
+              .maoCheia().mov(0);
   const g = c.g;
   /* o time 1 tem que ser o SEGUNDO a jogar para o teste medir o que promete */
   g.J.primeiro = 0; g.J.vez = 1;
@@ -454,7 +466,7 @@ teste("a IA converte ação em movimento para alcançar e atacar", () => {
 });
 
 teste("a IA joga carta quando tem carta jogável", () => {
-  const c = cena().dados(6, 6, 6).mov(3).vez(1);
+  const c = cena().maoCheia().mov(3).vez(1);
   const g = c.g;
   g.maos[1] = ["furia"];
   g.selHeroi = c.heroi(1, "topo");
@@ -469,7 +481,11 @@ teste("a IA persegue o épico quando ele está aberto e perto", () => {
   const h = c.heroi(1, "selva");
   const viz = g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v));
   h.pos = [...viz];
-  g.J.dados = [{ v: 6, usado: 0 }];
+  /* v49: mão inteira, e não um 6 sozinho. O draft aqui é sorteado, e um 6 só
+     paga a Ultimate — se o Caçador da vez for um cuja Ultimate mira ELE MESMO
+     (o Grumo, por exemplo), o teste mediria "a IA não bateu" quando a verdade é
+     que ela não TINHA com que bater. A pergunta do teste é a caçada, não a mão. */
+  c.maoCheia();
   const vida0 = g.J.poco.vida;
   g.iaObjetivos(1);
   ok(g.J.poco.vida < vida0, "a IA estava colada no épico aberto e não bateu");
@@ -491,7 +507,7 @@ teste("o acampamento neutro fica à mesma distância dos dois lados", () => {
 /* ═══════════════ v17 — IA que avalia em vez de pegar a primeira ═══════════════ */
 
 teste("a IA prefere MATAR a bater mais forte em quem não morre", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const c = cena().maoCheia().mov(0).vez(1);
   const g = c.g;
   const atacante = c.heroi(1, "topo");
   const quaseMorto = c.heroi(0, "adc"), cheio = c.heroi(0, "topo");
@@ -508,21 +524,51 @@ teste("a IA prefere MATAR a bater mais forte em quem não morre", () => {
   eq(topo.v.id, quaseMorto.id, "a IA escolheu o alvo cheio de vida em vez do abatível");
 });
 
-teste("a IA não queima a Ultimate num alvo que ela não mata", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+/* A v49 APOSENTOU a pergunta que este lugar fazia. Até a v48 a Ultimate e a
+   básica disputavam o MESMO dado — um 6 pagava as duas —, então gastar a
+   Ultimate em quem não morre era desperdiçar o dado grande, e a IA precisava
+   saber disso. Com a faixa exata isso deixou de existir: o 6 só paga Ultimate e
+   a Ultimate só sai com 6. Não há troca a errar, e um teste que exigisse
+   "básica >= Ultimate" estaria pedindo à IA que jogasse pior.
+
+   A escolha que sobrou é outra, e é esta que o teste guarda agora: com um 6 na
+   mesa e mais de um herói podendo usá-lo, QUEM recebe? */
+teste("com um 6 na mesa, a IA dá a Ultimate a quem ela mata, não a quem ela arranha", () => {
+  const c = cena().maoCheia().mov(0).vez(1);
+  const g = c.g;
+  const abatível = c.heroi(0, "topo"), tanque = c.heroi(0, "meio");
+  abatível.arm = 0; abatível.esc = 0;
+  tanque.vida = tanque.vidaMax = 60; tanque.esc = 0;
+
+  /* os dois inimigos colados no mesmo herói da IA: a escolha é limpa */
+  const h = c.heroi(1, "topo");
+  const viz = g.vizinhos(...h.pos).filter(v => g.noTab(...v) && !g.em(...v));
+  ok(viz.length >= 2, "cenário inválido: sem duas casas livres coladas");
+  c.poe(abatível, viz[0]); c.poe(tanque, viz[1]);
+  abatível.vida = 1;
+
+  const ults = g.iaJogadas(1).filter(j => j.h.id === h.id && j.tipo === "heroi" && j.i === 2);
+  ok(ults.length >= 2, "a IA não avaliou a Ultimate contra os dois alvos");
+  const melhor = ults.reduce((a, b) => (b.nota > a.nota ? b : a));
+  eq(melhor.v.id, abatível.id,
+     "a IA preferiu gastar a Ultimate em quem ela não mata");
+});
+
+/* E o 6 não pode morrer na mão: se alguma Ultimate no time pode usá-lo, ele tem
+   de aparecer como jogada. Foi o risco novo da faixa exata — dado sem dono. */
+teste("um 6 na mesa nunca fica sem jogada quando existe Ultimate para gastá-lo", () => {
+  const c = cena().mov(0).vez(1);
   const g = c.g;
   const h = c.heroi(1, "topo"), alvo = c.heroi(0, "topo");
-  alvo.vida = alvo.vidaMax = 40;                 // ninguém mata isso num golpe
+  alvo.vida = alvo.vidaMax = 60;
   c.poe(alvo, g.vizinhos(...h.pos).find(v => g.noTab(...v) && !g.em(...v)));
-  const lista = g.iaJogadas(1).filter(j => j.h.id === h.id && j.tipo === "heroi");
-  ok(lista.length >= 2, "esperava mais de uma habilidade disponível");
-  const ult = lista.find(j => j.i === 2), basica = lista.find(j => j.i === 0);
-  if (ult && basica) ok(basica.nota >= ult.nota,
-    `a Ultimate (${ult.nota.toFixed(1)}) ficou acima da básica (${basica.nota.toFixed(1)}) sem matar`);
+  c.dados(6, 6, 6);
+  ok(g.iaJogadas(1).some(j => j.i === 2),
+     "com três 6 na mesa a IA não achou uma única Ultimate para jogar");
 });
 
 teste("a IA não arranha o épico quando o revide a mataria", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const c = cena().maoCheia().mov(0).vez(1);
   const g = c.g;
   g.J.poco.vida = g.J.poco.vidaMax = 14; g.J.poco.id = "barao";
   const h = c.heroi(1, "selva");
@@ -717,7 +763,7 @@ teste("ward é uma peça no mapa, com posição e prazo", () => {
 });
 
 teste("herói fora do campo de visão inimigo não pode ser alvo", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const presa = c.heroi(1, "selva"), atacante = c.heroi(0, "topo");
   /* leva o time 0 inteiro para a base, e a presa para uma casa escura */
@@ -768,7 +814,7 @@ teste("atacar sem ter sido visto vale +2 de Força", () => {
 });
 
 teste("a IA não enxerga nem mira quem está fora do campo de visão dela", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(1);
+  const c = cena().maoCheia().mov(0).vez(1);
   const g = c.g;
   const presa = c.heroi(0, "selva");
   presa.vida = 1;
@@ -852,7 +898,11 @@ teste("Égide dá escudo agora e repõe no início do próximo turno do dono", (
 });
 
 teste("Aríete dobra o golpe de herói em torre", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  /* time fixo: `cena()` sorteia o draft, e medir dobro de dano com um herói
+     diferente a cada execução é medir sorte */
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "torvald"]] })
+              .maoCheia().mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
   const tr = encostaNaTorre(c, a);
@@ -1091,7 +1141,7 @@ teste("Ágil dá uma casa grátis por turno, não por movimento", () => {
 teste("respingo de Ultimate tira 2 do poço, igual ao golpe mirado", () => {
   const c = cena({ times: [["vharn", "nyx", "solenne", "vesper", "torvald"],
                            ["kaross", "grumo", "zhet", "cael", "gorm"]] })
-              .dados(5, 5, 5).mov(0).vez(0);
+              .maoCheia().mov(0).vez(0);
   const g = c.g;
   const torvald = c.heroi(0, "sup");
   g.J.poco.vida = g.J.poco.vidaMax = 9;
@@ -1245,7 +1295,7 @@ teste("ward posta na rota não enxerga dentro do mato; posta no mato, enxerga", 
 });
 
 teste("quem ataca fica revelado até se mover", () => {
-  const c = cena().dados(4, 4, 4).mov(0).vez(1);
+  const c = cena().dados(2, 2, 2).mov(0).vez(1);
   const g = c.g;
   const cac = c.heroi(1, "selva"), alvo = c.heroi(0, "topo");
   alvo.vida = alvo.vidaMax = 90;
@@ -1305,7 +1355,7 @@ teste("a torre INIMIGA não dá armadura a quem está mergulhando nela", () => {
 });
 
 teste("a armadura da torre entra na conta do dano", () => {
-  const c = cena().dados(4, 4, 4).mov(0).vez(1);
+  const c = cena().dados(2, 2, 2).mov(0).vez(1);
   const g = c.g;
   const alvo = c.heroi(0, "topo"), bate = c.heroi(1, "topo");
   alvo.vida = alvo.vidaMax = 90; alvo.esc = 0;
@@ -1417,7 +1467,7 @@ teste("base vazia continua caindo sozinha — a regra não trava a partida", () 
 });
 
 teste("com o Nexus em 1, o herói fecha a partida", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   g.J.torres.filter(t => t.rota === "meio" && t.t === 1).forEach(t => t.vida = 0);
   g.J.nexus[1] = 1;
@@ -1446,52 +1496,117 @@ teste("o tempo de respawn cresce com a partida", () => {
   ok(morre(30) >= morre(12), "o tempo de respawn não é monotônico");
 });
 
-/* ═══════════════ v23 — a habilidade do meio paga o próprio dado ═══════════════ */
+/* ═══════════════ v49 — SUBIR DE FAIXA TEM QUE VALER A PENA ═══════════════
 
-/* dano bruto de uma habilidade com o dado F, sem alvo — a régua da comparação */
-function danoBruto(g, def, i, F) {
+   Até a v48 cada habilidade tinha uma Força MÍNIMA e um dado grande pagava
+   qualquer uma: dava para comparar as três "com o mesmo dado", e era isso que
+   estes testes faziam. Na v49 a faixa é EXATA — básica 1–2, meio 3–5, Ultimate
+   6 — e a pergunta mudou de lugar. O jogador não escolhe mais entre gastar um 6
+   na básica ou na Ultimate; ele guarda o dado que caiu para a habilidade que
+   aquele dado paga. A pergunta que sobra é: quando o dado sobe de faixa, o que
+   ele compra melhora?
+
+   Por isso a régua é o PIOR caso da faixa de cima contra o MELHOR caso da faixa
+   de baixo — meio no 3 contra básica no 2, Ultimate no 6 contra meio no 5. Se
+   esse confronto se inverte, existe um dado em que subir de faixa é prejuízo.
+
+   E a conta é de dano EFETIVO, não bruto: `perfura` ignora armadura, e a
+   Sentença do Cael e o Sinal Aberto da Parabólica são exatamente isso — trocam
+   número grande por passar direto. Comparar bruto puniria as duas por fazerem o
+   que foram desenhadas para fazer. A armadura de referência é 2, a mediana do
+   elenco (9 heróis com 1, 7 com 2, 3 com 3, 1 com 4). */
+
+/* dano efetivo de uma habilidade com o dado F contra armadura `arm` */
+function danoEfetivo(g, def, i, F, arm = 2) {
   const ef = def.habs[i].ef;
-  return Math.round(F * (ef.dano || 0) * g.escalaDe(i)) + def.poder + (ef.extra || 0);
+  const bruto = Math.round(F * (ef.dano || 0) * g.escalaDe(i)) + def.poder + (ef.extra || 0);
+  return Math.max(1, ef.perfura ? bruto : bruto - arm);
 }
+const pisoDaFaixa = (g, def, i) => Math.min(...g.faixaDeHab(def.habs[i], def));
+const tetoDaFaixa = (g, def, i) => Math.max(...g.faixaDeHab(def.habs[i], def));
 
-teste("habilidade do meio nunca dá MENOS dano que a básica com o mesmo dado", () => {
-  const c = cena();
-  const g = c.g;
-  Object.entries(g.CATALOGO).forEach(([id, def]) => {
-    const meio = def.habs[1];
-    if (!meio.ef.dano || !def.habs[0].ef.dano) return;   // só compara dano com dano
-    const F = meio.f;
-    const dMeio = danoBruto(g, def, 1, F), dBas = danoBruto(g, def, 0, F);
-    /* `>=` e não `>`: no dado 2 a escala de controle arredonda para baixo
-       (round(2×1,2)=2) e o empate é legítimo — quem exige dado 2 exige quase
-       nada, e essas trazem o efeito por cima. O que não pode é ficar ABAIXO. */
+teste("a habilidade do meio no pior dado dela bate a básica no melhor dado dela", () => {
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => {
+    if (!def.habs[1].ef.dano || !def.habs[0].ef.dano) return;   // só compara dano com dano
+    const dMeio = danoEfetivo(g, def, 1, pisoDaFaixa(g, def, 1));
+    const dBas  = danoEfetivo(g, def, 0, tetoDaFaixa(g, def, 0));
     ok(dMeio >= dBas,
-       `${def.n}: ${meio.n} (F${F}) dá ${dMeio} e a básica dá ${dBas} com o mesmo dado`);
+       `${def.n}: ${def.habs[1].n} no dado ${pisoDaFaixa(g, def, 1)} dá ${dMeio} e `
+       + `${def.habs[0].n} no dado ${tetoDaFaixa(g, def, 0)} dá ${dBas}`);
   });
 });
 
-teste("no dado 3 ou mais, a habilidade do meio paga o dado que ela exige", () => {
-  const c = cena();
-  const g = c.g;
-  Object.entries(g.CATALOGO).forEach(([id, def]) => {
-    const meio = def.habs[1];
-    if (!meio.ef.dano || !def.habs[0].ef.dano || meio.f < 3) return;
-    const dMeio = danoBruto(g, def, 1, meio.f), dBas = danoBruto(g, def, 0, meio.f);
-    ok(dMeio > dBas,
-       `${def.n}: ${meio.n} exige dado ${meio.f} e entrega o mesmo que a básica (${dMeio})`);
+teste("a Ultimate no pior dado dela bate a habilidade do meio no melhor dado dela", () => {
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => {
+    if (!def.habs[2].ef.dano || !def.habs[1].ef.dano) return;
+    const dUlt  = danoEfetivo(g, def, 2, pisoDaFaixa(g, def, 2));
+    const dMeio = danoEfetivo(g, def, 1, tetoDaFaixa(g, def, 1));
+    ok(dUlt >= dMeio,
+       `${def.n}: a Ultimate ${def.habs[2].n} no dado ${pisoDaFaixa(g, def, 2)} dá ${dUlt} e `
+       + `${def.habs[1].n} no dado ${tetoDaFaixa(g, def, 1)} dá ${dMeio}`);
   });
 });
 
 teste("nenhuma Ultimate entrega menos que a básica do próprio herói", () => {
-  const c = cena();
-  const g = c.g;
-  Object.entries(g.CATALOGO).forEach(([id, def]) => {
-    const ult = def.habs[2];
-    if (!ult.ef.dano || !def.habs[0].ef.dano) return;
-    const dUlt = danoBruto(g, def, 2, ult.f), dBas = danoBruto(g, def, 0, ult.f);
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => {
+    if (!def.habs[2].ef.dano || !def.habs[0].ef.dano) return;
+    const dUlt = danoEfetivo(g, def, 2, pisoDaFaixa(g, def, 2));
+    const dBas = danoEfetivo(g, def, 0, tetoDaFaixa(g, def, 0));
     ok(dUlt >= dBas,
-       `${def.n}: a Ultimate ${ult.n} dá ${dUlt} e a básica dá ${dBas} com o mesmo dado`);
+       `${def.n}: a Ultimate ${def.habs[2].n} dá ${dUlt} e a básica dá ${dBas}`);
   });
+});
+
+/* A faixa é lei nos dois sentidos: o dado que está DENTRO paga, o que está FORA
+   não paga — nem que seja maior. É o pedido do relato: *"não é 1-2 ou mais, é
+   só 1 ou 2 e acabou"*. */
+teste("dado fora da faixa não paga a habilidade, nem quando é maior", () => {
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => {
+    def.habs.forEach((hb, i) => {
+      const faixa = g.faixaDeHab(hb, def);
+      for (let v = 1; v <= 6; v++)
+        eq(g.dadoServe(hb, def, v), faixa.includes(v),
+           `${def.n}/${hb.n}: o dado ${v} deveria ${faixa.includes(v) ? "" : "NÃO "}pagar`);
+    });
+  });
+});
+
+teste("toda habilidade tem faixa, e as três faixas de um herói cobrem dados diferentes", () => {
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => {
+    const fs = def.habs.map((hb, i) => g.faixaDeHab(hb, def));
+    fs.forEach((f, i) => ok(Array.isArray(f) && f.length > 0,
+      `${def.n}/${def.habs[i].n} ficou sem faixa de dado`));
+    /* nenhum herói pode ter a mesma faixa em duas habilidades: seria o mesmo
+       dado comprando duas coisas e a escolha desapareceria */
+    const chave = f => f.join(",");
+    ok(new Set(fs.map(chave)).size === 3,
+       `${def.n}: duas habilidades dele pedem exatamente a mesma faixa de dado`);
+  });
+});
+
+teste("a faixa padrão cobre os seis dados sem sobra nem buraco", () => {
+  const g = cena().g;
+  const união = [].concat(...g.FAIXA_PADRAO).sort((a, b) => a - b);
+  eq(união.join(","), "1,2,3,4,5,6",
+     "a régua padrão 1–2 / 3–5 / 6 deixou de cobrir os seis dados exatamente uma vez");
+});
+
+/* A faixa é carimbada na habilidade na carga, e não deduzida do índice a cada
+   chamada — foi assim que `dadoPara` parou de responder "nenhum dado serve" para
+   uma Ultimate paga por dado extra quando ninguém estava selecionado. */
+teste("toda habilidade sai da carga com a própria faixa carimbada", () => {
+  const g = cena().g;
+  Object.values(g.CATALOGO).forEach(def => def.habs.forEach((hb, i) => {
+    ok(Array.isArray(hb.dados) && hb.dados.length,
+       `${def.n}/${hb.n} ficou sem \`dados\` depois da carga`);
+    eq(g.faixaDeHab(hb).join(","), hb.dados.join(","),
+       `${def.n}/${hb.n}: a faixa lida sem o herói não bate com a carimbada`);
+  }));
 });
 
 /* ═══════════════ v24 — o preço do Dragão ═══════════════ */
@@ -1520,7 +1635,7 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
      meio da medição e falsear o segundo golpe. */
   const peso = i => {
     g.J.poco.id = "dragao"; g.J.poco.vida = g.J.poco.vidaMax = 99;
-    h.agiu = 0; h.vida = g.CATALOGO[h.id].vida; c.dados(6, 6, 6);
+    h.agiu = 0; h.vida = g.CATALOGO[h.id].vida; c.maoCheia();
     const v0 = g.J.poco.vida;
     c.mira(h, i); g.atacaEpico(g.J.poco);
     return v0 - g.J.poco.vida;
@@ -1548,7 +1663,7 @@ teste("o Dragão cai em dois dados — Ultimate mais básica, e nunca numa só",
 teste("com o time inteiro morto a IA não joga carta — e não derruba a partida", () => {
   const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
                            ["vharn", "grumo", "zhet", "cael", "gorm"]] })
-              .dados(6, 6, 6).mov(0).vez(0);
+              .maoCheia().mov(0).vez(0);
   const g = c.g;
   g.J.times[0].herois.forEach(h => { h.morto = 2; h.vida = 0; });
   g.maos[0] = g.baralho.slice(0, 3);            // mão cheia, para ela querer jogar
@@ -1713,7 +1828,7 @@ teste("o reposicionamento não altera o mapa", () => {
 });
 
 teste("depois de reposicionado o Caçador age normalmente", () => {
-  const c = cenaSelva().dados(6, 6, 6).mov(3).vez(0);
+  const c = cenaSelva().maoCheia().mov(3).vez(0);
   const g = c.g;
   const h = g.cacadorDe(0);
   g.escolheRotacao(0, "topo");
@@ -2495,7 +2610,7 @@ teste("dano perfurante rende menos que Ultimate comum contra alvo sem armadura",
 teste("herói em cima do Nexus não esconde o Nexus — os dois viram opção de alvo", () => {
   const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
                            ["vharn", "grumo", "zhet", "cael", "gorm"]] })
-              .dados(6, 6, 6).mov(0).vez(0);
+              .maoCheia().mov(0).vez(0);
   const g = c.g;
   const lado = 1;
   /* rota aberta e Nexus no último ponto: o cenário exato do relato */
@@ -2523,7 +2638,7 @@ teste("herói em cima do Nexus não esconde o Nexus — os dois viram opção de
 teste("com um alvo só no hexágono, nada de janela — o toque resolve direto", () => {
   const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "torvald"],
                            ["vharn", "grumo", "zhet", "cael", "gorm"]] })
-              .dados(6, 6, 6).mov(0).vez(0);
+              .maoCheia().mov(0).vez(0);
   const g = c.g;
   const alvo = c.heroi(1, "topo"), atacante = c.heroi(0, "topo");
   c.poe(alvo, [5, 5]);
@@ -2550,9 +2665,13 @@ const cenaPoco = (id, vida) => {
   g.J.poco.vida = g.J.poco.vidaMax;
   return c;
 };
-/* bate no poço com o herói `h` usando o slot `i` e o dado `dado`; devolve quanto saiu */
+/* bate no poço com o herói `h` usando o slot `i` e o dado `dado`; devolve quanto saiu.
+   v49: o dado precisa estar DENTRO da faixa do slot — fora dela a habilidade nem
+   sai, e o teste mediria zero achando que mediu dano. */
 function golpeNoPoco(c, h, i, dado) {
   const g = c.g;
+  ok(g.dadoServe(h.habs[i], h, dado),
+     `cenário inválido: o dado ${dado} não paga ${h.habs[i].n} (faixa ${g.textoFaixa(h.habs[i], h)})`);
   h.agiu = 0; h.vida = g.CATALOGO[h.id].vida;
   c.dados(dado, dado, dado);
   const v0 = g.J.poco.vida;
@@ -2569,24 +2688,33 @@ teste("o Barão apanha pela regra dos heróis — Força + Poder − Armadura", 
 
   const arm = g.EPICO.barao.arm || 0;
   const P = g.poderTotal(h);
-  for (const dado of [2, 4, 6]) {
-    const esperado = Math.max(1, Math.round(dado * 1) + P - arm);
-    eq(golpeNoPoco(c, h, 0, dado), esperado,
-       `básica com dado ${dado} devia tirar ${esperado} do Barão (Força+Poder−Armadura)`);
-  }
+  /* v49: cada slot só aceita a própria faixa, então a régua percorre as três —
+     básica no 1 e no 2, meio no 3/4/5, Ultimate no 6. A conta é a mesma para as
+     três; o que muda é qual dado consegue pagar. */
+  h.habs.forEach((hb, i) => {
+    if (!hb.ef.dano) return;
+    for (const dado of g.faixaDeHab(hb, h)) {
+      const bruto = Math.round(dado * hb.ef.dano * g.escalaDe(i)) + P + (hb.ef.extra || 0);
+      const esperado = Math.max(1, hb.ef.perfura ? bruto : bruto - arm);
+      eq(golpeNoPoco(c, h, i, dado), esperado,
+         `${hb.n} com dado ${dado} devia tirar ${esperado} do Barão (Força+Poder−Armadura)`);
+    }
+  });
 });
 
 teste("no Barão o dado importa; no Dragão, não", () => {
   const cB = cenaPoco("barao", 99), gB = cB.g;
   const hB = cB.heroi(0, "topo");
   cB.poe(hB, gB.vizinhos(...gB.POCO).find(v => gB.noTab(...v) && !gB.em(...v)));
-  ok(golpeNoPoco(cB, hB, 0, 6) > golpeNoPoco(cB, hB, 0, 1),
-     "o Barão levou o mesmo de um dado 6 e de um dado 1 — ele voltou a contar golpes");
+  /* v49: a básica só aceita 1 e 2, então a comparação é dentro da faixa dela —
+     é o que o jogador vive: dois dados diferentes, dois resultados diferentes. */
+  ok(golpeNoPoco(cB, hB, 0, 2) > golpeNoPoco(cB, hB, 0, 1),
+     "o Barão levou o mesmo de um dado 2 e de um dado 1 — ele voltou a contar golpes");
 
   const cD = cenaPoco("dragao", 99), gD = cD.g;
   const hD = cD.heroi(0, "topo");
   cD.poe(hD, gD.vizinhos(...gD.POCO).find(v => gD.noTab(...v) && !gD.em(...v)));
-  eq(golpeNoPoco(cD, hD, 0, 6), golpeNoPoco(cD, hD, 0, 1),
+  eq(golpeNoPoco(cD, hD, 0, 2), golpeNoPoco(cD, hD, 0, 1),
      "o Dragão passou a variar com o dado — ele conta GOLPES, e é assim de propósito");
 });
 
@@ -2595,7 +2723,7 @@ teste("o Dragão continua em Ultimate 2 e básica 1", () => {
   const g = c.g;
   const h = c.heroi(0, "topo");
   c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
-  eq(golpeNoPoco(c, h, 0, 6), 1, "a básica deixou de tirar 1 do Dragão");
+  eq(golpeNoPoco(c, h, 0, 1), 1, "a básica deixou de tirar 1 do Dragão");
   eq(golpeNoPoco(c, h, 2, 6), 2, "a Ultimate deixou de tirar 2 do Dragão");
 });
 
@@ -2685,10 +2813,10 @@ teste("a IA avalia o poço na mesma unidade em que o motor cobra", () => {
   const g = c.g;
   const h = c.heroi(0, "topo");
   c.poe(h, g.vizinhos(...g.POCO).find(v => g.noTab(...v) && !g.em(...v)));
-  c.dados(5, 5, 5); h.agiu = 0;
+  c.dados(2, 2, 2); h.agiu = 0;
 
-  const previsto = g.golpeNoPoco(h, h.habs[0], 0, 5, g.J.poco);
-  const saiu = golpeNoPoco(c, h, 0, 5);
+  const previsto = g.golpeNoPoco(h, h.habs[0], 0, 2, g.J.poco);
+  const saiu = golpeNoPoco(c, h, 0, 2);
   eq(saiu, previsto,
      "o que a IA usa para decidir não é o que o motor cobra — ela vai largar o Barão");
 });
@@ -3424,7 +3552,7 @@ teste("Dona Chinela: a básica empilha Sangramento e a Ultimate cobra a conta", 
   const g = c.g;
   const k = c.heroi(0, "topo"), v = c.heroi(1, "topo");
   encosta(c, k, v);
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(k, 0, v);
   eq(g.stacksDe(v, "sangramento"), 1, "a passiva Chinelada não deixou Sangramento");
 
@@ -3433,7 +3561,7 @@ teste("Dona Chinela: a básica empilha Sangramento e a Ultimate cobra a conta", 
   g.aplicaCond(v, "sangramento", { st: 3, dono: k });
   const comPilha = semPilha + 3 * k.habs[2].ef.execPorStack.v;
   v.vida = comPilha;
-  k.agiu = 0; c.dados(6, 6, 6);
+  k.agiu = 0; c.maoCheia();
   c.usa(k, 2, v);
   ok(v.morto, `com ${g.stacksDe(v, "sangramento")} acúmulos o limiar deveria chegar a ${comPilha}`);
 });
@@ -3459,13 +3587,13 @@ teste("Valti: o Coco só atordoa quem está dentro da armadilha dele", () => {
   const g = c.g;
   const valti = c.heroi(0, "selva"), v = c.heroi(1, "topo");
   encosta(c, valti, v);
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(valti, 2, v);
   ok(!g.temCond(v, "atordoado"),
      "atordoou sem armadilha no chão — o controle mais forte do jogo perdeu o pré-requisito (§28)");
 
   g.poeZona(0, [...v.pos], { tipo: "cascas", cond: { t: "lentidao", tu: 1 }, raio: 1, dono: valti, n: "Talho" });
-  valti.agiu = 0; c.dados(6, 6, 6);
+  valti.agiu = 0; c.maoCheia();
   c.usa(valti, 2, v);
   ok(g.temCond(v, "atordoado") || g.temCond(v, "tenacidade") || v.morto,
      "com a armadilha embaixo, o Coco não atordoou");
@@ -3493,19 +3621,19 @@ teste("Arden: o Tribunal devolve a habilidade registrada, e Ultimate nunca entra
   encosta(c, juiz, bate);
 
   /* a Ultimate do agressor NÃO pode ser registrada */
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(bate, 2, juiz);
   ok(!juiz.autos, `o Tribunal registrou uma Ultimate inimiga (${juiz.autos && juiz.autos.n}) — §10 proíbe`);
 
   /* a básica pode */
-  juiz.vida = juiz.vidaMax; bate.agiu = 0; c.dados(6, 6, 6);
+  juiz.vida = juiz.vidaMax; bate.agiu = 0; c.maoCheia();
   c.usa(bate, 0, juiz);
   ok(juiz.autos, "o Tribunal não registrou a habilidade básica que o acertou");
   eq(juiz.autos.n, bate.habs[0].n, "registrou a habilidade errada");
 
   /* e devolve uma vez só */
   const v0 = bate.vida;
-  c.vez(1).mov(0).dados(6, 6, 6);
+  c.vez(1).mov(0).maoCheia();
   c.usa(juiz, 2, bate);
   ok(bate.vida < v0, "o Tribunal não devolveu dano nenhum");
   ok(!juiz.autos, "os autos não esvaziaram — dá para devolver a mesma sentença para sempre");
@@ -3518,7 +3646,7 @@ teste("Zhet: o Eco troca de lugar e o Trio de Sombras a tira do tabuleiro", () =
   const z = c.heroi(0, "meio"), v = c.heroi(1, "topo");
   encosta(c, z, v);
   const pz = [...z.pos], pv = [...v.pos];
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(z, 1, v);
   if (!v.morto) {
     /* o alvo vai para onde ela estava, e isso é firme. A posição FINAL dela não é
@@ -3532,7 +3660,7 @@ teste("Zhet: o Eco troca de lugar e o Trio de Sombras a tira do tabuleiro", () =
      antes da Ultimate — exatamente o que o jogador faria com o Dado Mestre */
   encosta(c, v, z);
   z.agiu = 0; z.vida = z.vidaMax; v.vida = v.vidaMax; v.morto = 0;
-  c.dados(6, 6, 6);
+  c.maoCheia();
   c.usa(z, 2, v);
   ok(g.temCond(z, "banido"), "o Trio de Sombras não baniu a própria Zhet");
   eq(g.em(...z.pos), undefined, "banida e ainda ocupando o hexágono");
@@ -3546,7 +3674,7 @@ teste("Xhera bebe vida quando causa dano, e mais quando está ferida", () => {
   encosta(c, x, v);
   x.vida = x.vidaMax - 6;
   const v0 = x.vida;
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(x, 0, v);
   ok(x.vida > v0, "a passiva Insaciável não curou nada ao causar dano");
   /* e o Poder dela sobe quando ela cai abaixo da metade */
@@ -3567,7 +3695,7 @@ teste("Emerson Emo converte a dor do time em cura — Tristeza sobe e é gasta",
   encosta(c, emo, amigo);
   amigo.vida = 5;
   const antes = amigo.vida;
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(emo, 0, amigo);
   eq(g.recursoDe(emo, "tristeza"), 0, "o Ombro Amigo não gastou a Tristeza");
   ok(amigo.vida - antes > emo.habs[0].ef.cura,
@@ -3622,7 +3750,7 @@ teste("Grumo digere as próprias condições ruins", () => {
   const g = c.g;
   const gr = c.heroi(0, "selva");
   ["veneno", "sangramento", "lentidao"].forEach(t => g.aplicaCond(gr, t, { st: 2, tu: 2 }));
-  c.vez(0).mov(0).dados(6, 6, 6);
+  c.vez(0).mov(0).maoCheia();
   c.usa(gr, 1, gr);
   eq(g.condsMalignas(gr).length, 0, "o Digerir não limpou as condições ruins dele");
 });
@@ -3718,7 +3846,7 @@ teste("a IA prefere a jogada que aplica controle à que só arranha", () => {
   encosta(c, taxista, v);
   v.vida = v.vidaMax;                                  // ninguém morre: a comparação é limpa
   g.aplicaCond(v, "revelado", { tu: 3 });
-  c.vez(1).mov(0).dados(4, 4, 4);
+  c.vez(1).mov(0).maoCheia();
   const lista = g.iaJogadas(1).filter(x => x.h === taxista && x.v === v);
   const buzina = lista.find(x => x.i === 1), martelo = lista.find(x => x.i === 0);
   ok(buzina && martelo, "a IA não enumerou as duas habilidades do Taxista contra o alvo");
@@ -3735,7 +3863,7 @@ teste("a IA cura e limpa aliado em vez de ficar parada com o suporte", () => {
   encosta(c, sup, amigo);
   amigo.vida = 4;
   g.aplicaCond(amigo, "veneno", { tu: 2 });
-  c.vez(1).mov(0).dados(6, 6, 6);
+  c.vez(1).mov(0).maoCheia();
   const lista = g.iaJogadas(1).filter(x => x.h === sup && x.v === amigo);
   ok(lista.length, "a IA não enumerou nenhuma jogada do suporte no aliado ferido e envenenado");
   ok(lista.some(x => x.nota > 15), "a IA achou que socorrer um aliado a 4 de vida não valia nada");
@@ -3755,15 +3883,15 @@ teste("a Marca sobrevive ao golpe que a aplica, e só é gasta no golpe SEGUINTE
   c.poe(v, g.vizinhos(...corvo.pos).find(p => g.noTab(...p) && !g.em(...p)) || v.pos);
   v.vida = v.vidaMax = 60;                              // ninguém morre no meio do teste
 
-  c.vez(0).mov(0).dados(3, 3, 3);
+  c.vez(0).mov(0).dados(2, 2, 2);
   c.usa(corvo, 0, v);
   eq(g.stacksDe(v, "marcado"), corvo.habs[0].ef.cond[0].st,
      "o Tiro Marcado comeu a própria marca — ela nunca chega ao golpe seguinte");
 
   /* e o golpe seguinte gasta a marca, somando o bônus */
   const antes = v.vida;
-  corvo.agiu = 0; c.dados(3, 3, 3);
-  const semMarca = g.iaDanoReal(corvo, corvo.habs[0], 0, 3, { ...v, conds: [] });
+  corvo.agiu = 0; c.dados(2, 2, 2);
+  const semMarca = g.iaDanoReal(corvo, corvo.habs[0], 0, 2, { ...v, conds: [] });
   c.usa(corvo, 0, v);
   const levou = antes - v.vida;
   ok(levou > semMarca, `com a marca levou ${levou} e sem ela levaria ${semMarca} — a marca não somou`);
@@ -3962,7 +4090,7 @@ teste("com a própria peça em cima da torre inimiga, o toque ainda oferece a to
   ok(tr, "não achei torre inimiga exposta");
   const p = g.ROTAS[tr.rota][tr.i];
   h.pos = [...p]; h.agiu = 0; h.alc = 4;
-  g.J.dados = [{ v: 6, usado: 0 }];
+  g.J.dados = [{ v: 1, usado: 0 }];       // v49: a básica é paga por 1–2
   c.mira(h, 0);
   const lista = g.alvosNoHex(...p);
   ok(lista.some(a => a.tipo === "torre"), "a torre nem aparecia na lista do hexágono");
@@ -4232,11 +4360,15 @@ function doaComOEmo(c, aliado, i) {
 }
 
 teste("o dado doado pelo Emo é o que se gasta — e não um dado de ação normal", () => {
-  const c = cenaEmo().dados(6, 1, 1);
+  /* v49: o dado doado nasce com o VALOR do dado que o Emo gastou, e a faixa do
+     Empresta o Fone é 2–5 — então o 6 do teste antigo não existe mais. O 2
+     serve à básica da aliada exatamente como os 1 dela: é a mesma armadilha do
+     bug original (o motor gastava um dado próprio e deixava o doado na mesa). */
+  const c = cenaEmo().dados(2, 1, 1);
   const g = c.g;
   const aliado = c.heroi(0, "topo");
-  const iDoado = doaComOEmo(c, aliado, 0);          // doa o 6
-  eq(g.J.dados[iDoado].v, 6, "não foi o 6 que ele doou");
+  const iDoado = doaComOEmo(c, aliado, 0);          // doa o 2
+  eq(g.J.dados[iDoado].v, 2, "não foi o 2 que ele doou");
 
   const inimigo = c.heroi(1, "topo");
   c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
@@ -4252,7 +4384,7 @@ teste("o dado doado pelo Emo é o que se gasta — e não um dado de ação norm
 });
 
 teste("o dado emprestado não vira ação de graça: o aliado age uma vez só", () => {
-  const c = cenaEmo().dados(6, 1, 1);
+  const c = cenaEmo().dados(2, 1, 1);
   const g = c.g;
   const aliado = c.heroi(0, "topo");
   doaComOEmo(c, aliado, 0);
@@ -4267,9 +4399,12 @@ teste("o dado emprestado não vira ação de graça: o aliado age uma vez só", 
 });
 
 teste("empréstimo do Emo: o aliado usa a HABILIDADE do meio com o dado doado", () => {
-  const c = cenaEmo().dados(6, 1, 1);
+  /* v49: a habilidade do meio só aceita 3–5. O Emo doa um 3; os dois dados
+     próprios da aliada (1 e 1) ficam de fora da faixa, então o doado é a ÚNICA
+     forma de a jogada sair. */
+  const c = cenaEmo().dados(3, 1, 1);
   const g = c.g;
-  const aliado = c.heroi(0, "topo");      // Dona Chinela — Puxão de Orelha pede Força 3
+  const aliado = c.heroi(0, "topo");      // Dona Chinela — Puxão de Orelha é do meio (3–5)
   const iDoado = doaComOEmo(c, aliado, 0);
   const inimigo = c.heroi(1, "topo");
   c.poe(inimigo, g.vizinhos(...aliado.pos).find(p => g.noTab(...p) && !g.em(...p)));
@@ -4280,7 +4415,7 @@ teste("empréstimo do Emo: o aliado usa a HABILIDADE do meio com o dado doado", 
 });
 
 teste("com dados próprios e um emprestado, o emprestado sai primeiro", () => {
-  const c = cenaEmo().dados(5, 5, 5);
+  const c = cenaEmo().dados(2, 2, 2);
   const g = c.g;
   const aliado = c.heroi(0, "topo");
   const iDoado = doaComOEmo(c, aliado, 0);
@@ -4294,7 +4429,7 @@ teste("com dados próprios e um emprestado, o emprestado sai primeiro", () => {
 });
 
 teste("dado emprestado é de quem recebeu: outro herói não pode gastá-lo", () => {
-  const c = cenaEmo().dados(6, 1, 1);
+  const c = cenaEmo().dados(2, 1, 1);
   const g = c.g;
   const aliado = c.heroi(0, "topo");
   const iDoado = doaComOEmo(c, aliado, 0);
@@ -4307,7 +4442,7 @@ teste("dado emprestado é de quem recebeu: outro herói não pode gastá-lo", ()
 });
 
 teste("o empréstimo do Emo morre com o turno — não atravessa para a rodada seguinte", () => {
-  const c = cenaEmo().dados(6, 1, 1);
+  const c = cenaEmo().dados(2, 1, 1);
   const g = c.g;
   const aliado = c.heroi(0, "topo");
   doaComOEmo(c, aliado, 0);
@@ -4487,40 +4622,76 @@ teste("a torre tem vida em escala de herói, e a onda mantém a cadência antiga
 });
 
 teste("golpes diferentes tiram quantidades diferentes da torre", () => {
-  const c = cena().mov(0).vez(0);
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "torvald"]] })
+              .mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
   colaNaTorre(c, a, tr);
 
-  const golpes = [1, 3, 6].map(v => {
+  /* v49: o mesmo dado não paga mais duas habilidades, então a variação que
+     interessa é ENTRE FAIXAS — a básica no 1, a do meio no 3, a Ultimate no 6.
+     É essa a escada que o jogador sobe quando guarda um dado bom para a torre. */
+  const golpe = (i, v) => {
     tr.vida = g.VIDA_TORRE; a.agiu = 0;
     c.dados(v, v, v);
-    c.mira(a, 0); g.atacaTorre(tr);
+    c.mira(a, i); g.atacaTorre(tr);
     return g.VIDA_TORRE - tr.vida;
-  });
-  ok(golpes[2] > golpes[0],
-     `dado 6 tirou ${golpes[2]} e dado 1 tirou ${golpes[0]} — o dano na torre continua fixo`);
-  ok(golpes.every(x => x >= 1), "algum golpe tirou zero da torre");
+  };
+  const bas = golpe(0, 1), meio = golpe(1, 3);
+  ok(meio > bas, `a do meio tirou ${meio} e a básica tirou ${bas} — o dano na torre continua fixo`);
+  ok(bas >= 1 && meio >= 1, "algum golpe tirou zero da torre");
 });
 
+/* v49: a medição sai da habilidade DO MEIO e não da básica. Contra a armadura 5
+   da torre, um dado 1–2 mais o Poder de fábrica não passa do piso de 1 dano —
+   comprar Poder não move um número que já está no chão. A básica deixou de ser
+   ferramenta de cerco nesta versão, e é de propósito: quem derruba torre é quem
+   compromete o dado bom. O que o teste tem de garantir é que, no golpe que
+   derruba torre de verdade, o ouro conta. */
 teste("Poder e item entram no golpe contra a torre", () => {
-  const c = cena().dados(4, 4, 4).mov(0).vez(0);
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "torvald"]] })
+              .dados(3, 3, 3).mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
   colaNaTorre(c, a, tr);
 
   tr.vida = g.VIDA_TORRE;
-  c.mira(a, 0); g.atacaTorre(tr);
+  c.mira(a, 1); g.atacaTorre(tr);
   const semItem = g.VIDA_TORRE - tr.vida;
+  ok(semItem > g.DANO_ESTRUTURA_MIN,
+     "cenário inválido: o golpe medido já está no piso, e o piso não sobe com Poder");
 
   const item = g.ITENS.find(i => i.ef.poder);
   a.itens.push(item.id);
   tr.vida = g.VIDA_TORRE; a.agiu = 0;
-  c.dados(4, 4, 4);
-  c.mira(a, 0); g.atacaTorre(tr);
+  c.dados(3, 3, 3);
+  c.mira(a, 1); g.atacaTorre(tr);
   ok(g.VIDA_TORRE - tr.vida > semItem, "comprar Poder não ajudou a derrubar torre");
+});
+
+/* O outro lado da mesma moeda, e o número que o playtest vai sentir: contra a
+   armadura de estrutura, o golpe de faixa baixa BATE NO PISO. Não é bug — é a
+   v49 dizendo que torre não cai de cutucada. O teste existe para que a mudança
+   seja deliberada: se alguém mexer na armadura ou na escala, isto acusa. */
+teste("contra a torre, a básica bate no piso — cerco é da faixa alta pra cima", () => {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "torvald"]] })
+              .mov(0).vez(0);
+  const g = c.g;
+  const a = c.heroi(0, "topo");
+  const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
+  colaNaTorre(c, a, tr);
+  const golpe = (i, v) => {
+    tr.vida = g.VIDA_TORRE; a.agiu = 0; c.dados(v, v, v);
+    c.mira(a, i); g.atacaTorre(tr);
+    return g.VIDA_TORRE - tr.vida;
+  };
+  ok(golpe(0, 2) <= 2, "a básica voltou a ser ferramenta de cerco");
+  ok(golpe(1, 5) >= 4, "a habilidade do meio deixou de derrubar torre — o cerco ficou só na Ultimate");
 });
 
 teste("a Ultimate perfurante ignora a armadura da torre", () => {
@@ -4606,7 +4777,7 @@ teste("torre destruída não atira em ninguém", () => {
 });
 
 teste("com dois heróis na zona, a torre escolhe UM — e prefere quem bateu nela", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo"), b = c.heroi(0, "meio");
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
@@ -4625,7 +4796,7 @@ teste("com dois heróis na zona, a torre escolhe UM — e prefere quem bateu nel
 });
 
 teste("o disparo da torre não gasta dado, ação nem carta de ninguém", () => {
-  const c = cena().dados(6, 6, 6).mov(4).vez(0);
+  const c = cena().maoCheia().mov(4).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);
@@ -4653,7 +4824,7 @@ teste("a torre não mata: deixa em 1", () => {
 });
 
 teste("o disparo entra no fim do turno de verdade, não só na função solta", () => {
-  const c = cena().dados(6, 6, 6).mov(0).vez(0);
+  const c = cena().maoCheia().mov(0).vez(0);
   const g = c.g;
   const a = c.heroi(0, "topo");
   const tr = g.J.torres.find(x => x.t === 1 && x.vida > 0 && g.torreExposta(x.rota, 1) === x);

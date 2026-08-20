@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v48 (o jungle fica, a torre vira objetivo, o ouro volta a doer) · **Atualizado em:** 2026-08-18
+**Versão:** v49 (o dado escolhe QUAL habilidade sai) · **Atualizado em:** 2026-08-20
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -16,7 +16,8 @@
 ## Em uma frase
 
 MOBA de tabuleiro 1v1 no mesmo aparelho, onde cada jogador é o técnico de cinco heróis;
-um Dado Mestre move o time inteiro e três dados de ação viram a Força das habilidades.
+um Dado Mestre move o time inteiro e três dados de ação viram a Força das habilidades —
+e o **valor** de cada dado escolhe **qual** das três habilidades daquele herói pode sair.
 
 ## Os números que valem hoje
 
@@ -28,12 +29,13 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Banimentos no draft | **1 por jogador**, e uma rota só pode perder um herói |
 | Turnos | **A → C → A → C**. Uma rodada = um turno de cada. A iniciativa **não** alterna mais entre rodadas |
 | Dados por rodada | 1 Mestre (movimento do time) + 3 de ação, **1 por herói** · +1 por grau de Retomada · todo dado pode virar movimento |
+| **Faixa de dado** (v49) | o valor do dado escolhe **qual** habilidade sai, e a faixa é **exata** — não existe "ou mais": **1–2 básica · 3–5 do meio · 6 Ultimate**. Um 6 é Ultimate de qualquer um dos cinco e **não desce** para pagar uma básica. **14 de 60 habilidades fogem do padrão** e é isso que dá individualidade: `barata` **2–5** na do meio (11, as de utilidade), `cara` **4–5** (só a Interferência, que silencia), `ult 5–6` (só as dos dois suportes de cura). A faixa mora no catálogo (`FAIXA_SLOT` e os `dados:`) e o rótulo sai de `textoFaixaHab()` — jogo, guia e cartas leem do mesmo lugar. **Medido** (`sim/faixas.js 400`, A/B com os mesmos times): Ultimates por partida **25,4 → 35,5**, dado que ninguém podia usar **0,1% → 0,1%**, duração **52,5 → 53,3** |
 | Duração de efeito | escudo, buff, intocável e prisão duram **até o início do próximo turno do dono** |
 | Ultimates perfurantes | Julgamento, Ato Final e Sentença **escalam** (`dano 0,8 × 1,25 + Poder`) e **ignoram Armadura**. Eram `danoFixo 8`, travadas desde a v19 |
 | Alvos no mesmo hexágono | o toque abre **janela de escolha** (herói, torre, poço, Nexus). Antes o alvo de toque do herói escondia o Nexus e travava o fim de partida |
-| Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25** |
+| Escala de dano | básica `round(Força × dano) + Poder` · **habilidade do meio ×1,2** · **Ultimate ×1,25**. Golpe de herói em herói: **média 9,0 · mediana 7** (n=400) |
 | **Vida de torre** | **20** (v48, era 3) · barra no mapa e no painel · **armadura 5** · a onda tira **7 por degrau** (a cadência de cerco não mudou: 3 rodadas para uma torre cheia) · o golpe de herói é **calculado** em `golpeEmEstrutura` — dado × escala do slot + Poder + Carregado − armadura, média 7,7 e nada de crítico, drena, execução ou condição. **Perfurante ignora a armadura da estrutura**. Revide 4 a cada golpe. O herói bate na **torre exposta** da rota |
-| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
+| Vida do Nexus | **3** — a onda tira 1 com a rota aberta; o herói tira 1 por golpe. **Uma virada de rodada nunca leva o Nexus de 2+ para 0** (v49): três rotas abertas cobravam as três na mesma virada e o Nexus caía sem ninguém jogar no meio. Chegar a 1 pela onda é legítimo; fechar em 1 é trabalho de herói. Está em `DECISOES-PENDENTES` (14) que ele é a única coisa ainda fora da escala calculada. **Última muralha: com o Nexus em 1 a onda só passa se NÃO houver herói inimigo a 1 do Nexus** — o último ponto é de herói |
 | Poço épico | casa **[8,8]** (derivada) · **Dragão** (3 de vida) até a rodada 12, **Barão a partir da 12 — toma o poço mesmo com o Dragão vivo** |
 | Dragão — como apanha | **conta GOLPES**: básica 1, Ultimate 2, respingo 1, o dado não entra. Cai em **Ultimate + básica**, nunca numa Ultimate só. Revide 2 |
 | Barão — como apanha | **conta DANO, pela regra dos heróis**: `Força + Poder − Armadura`, respingo pela metade, `danoFixo` ignora armadura. **16 de vida, 3 de armadura** — menos vida que qualquer herói; é a **armadura** que o faz exigir grupo (básica de dado 2 tira 2; Ultimate de dado 6 tira 8). Fechar num turno pede **4 dos 5**. Revide 4 |
@@ -89,7 +91,7 @@ um Dado Mestre move o time inteiro e três dados de ação viram a Força das ha
 | Ouro por rodada | agiu **1** · farmou **3** · morto **0** |
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
 | Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
-| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados na v48 e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
+| **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados de novo na v49 (a faixa de dado) e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
 | Patamar do Atirador | **20 de ouro na mão** por degrau (era 10), até 3 · consequência do preço novo, não ajuste de atirador |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
 | Peso da pasta `arte/` | ~9 MB |
@@ -109,10 +111,11 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 275 testes de regressão — um por bug já relatado
+node sim/testes.js        # 286 testes de regressão — um por bug já relatado
 node sim/movimento.js 200 # quantas casas um herói atravessa mesmo, e o teto estrutural
 node sim/torres.js 120    # a torre é objetivo ou esponja? mergulho sem creep acontece?
 node sim/draft.js 200     # a IA repete o mesmo draft?
+node sim/faixas.js 400    # a faixa exata do dado, A/B contra a v48 na MESMA execução
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói

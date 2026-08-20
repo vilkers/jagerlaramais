@@ -110,10 +110,34 @@ teto absoluto de **6**.
 > a base são **15 casas**. Sem teto, um herói atravessava o mapa inteiro numa
 > jogada — e posicionamento, rota, Caçador e emboscada deixavam de importar.
 
-### Dados de ação — a Força das habilidades
+### Dados de ação — a faixa escolhe QUAL habilidade sai
 
-Três d6 por turno. Cada habilidade exige uma **Força mínima**, e o valor do dado
-entra na conta do dano.
+Três d6 por turno. O valor do dado entra na conta do dano — e, desde a v49, ele
+também escolhe **qual** das três habilidades daquele herói pode ser jogada.
+
+| Dado | O que ele paga |
+|---|---|
+| **1** ou **2** | a habilidade **básica** |
+| **3**, **4** ou **5** | a habilidade **do meio** |
+| **6** | a **Ultimate** |
+
+**A faixa é exata: não existe "ou mais".** Um 6 é Ultimate — de qualquer um dos
+cinco heróis —, e ele **não desce** para pagar uma básica. A pergunta do turno
+deixou de ser *"que habilidade eu destravo com este dado?"* e passou a ser
+**"quem recebe este dado?"**.
+
+**Fugir da faixa padrão é o que dá personalidade ao herói.** A tabela acima é o
+padrão; quem foge dele está escrito na própria habilidade:
+
+| Faixa | Quem | Por quê |
+|---|---|---|
+| **2–5** na do meio | Digerir, Talho de Facão, Eco, Drenar, Encher o Pulmão, Armadilha, Puff de Emergência, Recarregar, Empresta o Fone, Escudo de Pelo, Empréstimo | a segunda deles é **utilidade**, não pico de dano — tem de sair quase sempre |
+| **4–5** na do meio | Interferência (Parabólica Diabólica) | silenciar é controle forte, e controle forte paga caro |
+| **5–6** na Ultimate | Ninguém Me Entende (Emerson Emo), Vento Contrário (Vidra) | não matam ninguém: reviver e escudar o time precisam **chegar a tempo** |
+
+**Contra estrutura, a faixa baixa bate no piso.** A torre tem 5 de Armadura, e um
+dado 1–2 mais o Poder de fábrica não passa do mínimo de 1 de dano. É de propósito:
+**torre não cai de cutucada** — quem derruba torre é quem compromete o dado bom.
 
 **Cada herói gasta no máximo um dado de ação por turno.** Três dados para cinco
 heróis: dois sempre ficam de fora — e quem fica de fora **farma 3 de ouro**.

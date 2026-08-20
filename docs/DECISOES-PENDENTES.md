@@ -438,3 +438,33 @@ Caminho A, em quatro passos, cada um entregável sozinho:
 
 **Nada disso começa sem o grupo escolher A, B ou C** — e sem decidir se o jogo
 aceita depender de alguma coisa ligada.
+
+---
+
+## 14. O Nexus está fora da escala calculada (levantado na v49)
+
+Relato do Vilker, na mesma leva da faixa de dado: *"cada personagem dá só 1 de
+dano né?"*. Golpe de herói em herói tira **9 de média** — mas golpe de herói **no
+Nexus tira 1 fixo**, e é a única coisa no jogo que ainda funciona assim depois
+que a torre ganhou vida e dano calculado na v48.
+
+**Por que está assim, e não é acidente.** O Nexus tem 3 de vida e cada golpe vale
+1 porque o fim da partida precisa ser **três jogadas, não uma**: com dano
+calculado, uma Ultimate de dado 6 no Nexus fecharia a partida sozinha, e a
+Última Muralha — *"o último ponto é de herói"* — perderia o sentido junto.
+
+**Por que ainda assim incomoda.** É a única régua diferente que sobrou, o jogador
+tropeça nela, e o Aríete já precisa de uma exceção escrita à mão (no Nexus ele
+causa 2, não o dobro).
+
+**As três saídas, e o que cada uma custa:**
+
+| | Como fica | O que muda na partida |
+|---|---|---|
+| **A — fica como está** | 3 de vida, 1 por golpe | nada. É a opção honesta se o fim de três jogadas for inegociável |
+| **B — vida grande, dano calculado** | ex.: 30 de vida e 8 de Armadura | o Nexus vira "torre final". Risco: **esponja** — foi o que a §36 do pedido da v48 proibiu para as torres, e aqui é pior porque é o último objetivo |
+| **C — dano calculado com TETO por golpe** | dano normal, mas no máximo 1 por golpe **por herói e por rodada** | mantém "o último ponto é de herói" e ainda deixa o Poder importar. É a mais complicada de explicar na tela |
+
+**Não dá para escolher isto por medição sozinha** — é escopo: decide quantas
+rodadas dura o fim de uma partida, e isso é sensação de mesa. Precisa de
+playtest com o grupo, e por isso está aqui e não numa versão.

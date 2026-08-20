@@ -1,5 +1,5 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 7289811 2026-08-19
+     commit cc26160 2026-08-19
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
@@ -1079,6 +1079,52 @@ const RECURSOS = {
    Moraram dentro de jogo/index.html até a v0.4. Vieram para cá porque o guia
    mantinha uma segunda lista, com números de outra versão — dois catálogos,
    uma verdade só. Agora jogo e guia leem daqui. */
+/* ═══════════ A FAIXA DE DADO DE CADA HABILIDADE (v49) ═══════════
+   Até a v48 o dado tinha uma FORÇA MÍNIMA: `f:3` queria dizer "3 ou mais", e um
+   6 servia para tudo. O relato do Vilker foi que o sistema confundia — e a
+   proposta dele é mais limpa do que parece:
+
+     **o dado não decide SE a habilidade sai. Decide QUAL habilidade sai.**
+
+     dado 1–2  →  a básica
+     dado 3–5  →  a segunda
+     dado 6    →  a Ultimate
+
+   Não existe "ou mais": é a faixa e acabou. Nenhum dado morre — um 6 é Ultimate
+   de qualquer um dos cinco heróis —, e a pergunta do turno deixa de ser "que
+   habilidade eu destravo com este dado?" para ser **"quem recebe este dado?"**.
+
+   A básica ficou mais fraca de propósito (sai sempre com 1 ou 2): era pedido
+   explícito — *"a básica pode ser assim mesmo pra ficar mais difícil"*.
+
+   ── E A INDIVIDUALIDADE ──
+   A faixa acima é o PADRÃO, e fugir dela é o que dá personalidade ao herói:
+
+     `barata` [2–5]  a segunda que sai com quase qualquer dado. É dos heróis
+                     cuja segunda é utilidade, não pico: Digerir, Eco, Puff,
+                     Recarregar, Empresta o Fone, Empréstimo, Escudo de Pelo;
+     `cara`   [4–5]  a segunda que exige dado grande. Só a Interferência da
+                     Parabólica, que silencia — controle forte pede preço;
+     `ult 5–6`       a Ultimate que sai mais vezes. Só as dos dois suportes de
+                     cura, o Emerson e a Vidra: elas não matam ninguém, e o que
+                     elas fazem (reviver, escudar o time) tem de chegar a tempo.
+
+   Quem não declara `dados` segue o padrão. */
+const FAIXA_SLOT = [[1,2],[3,4,5],[6]];
+const FAIXA_BARATA = [2,3,4,5];
+const FAIXA_CARA   = [4,5];
+const FAIXA_ULT_SUP= [5,6];
+
+/* A faixa de uma habilidade, e o rótulo dela — UM lugar só. O jogo, o guia e as
+   cartas mostram a mesma coisa porque leem daqui; foi assim que a v48 acabou com
+   as tabelas de item divergentes, e não há motivo para repetir o erro com o
+   dado. O índice é o slot no kit: quem não declara `dados` herda a faixa dele. */
+function faixaHab(hb,i){ return (hb&&hb.dados)||FAIXA_SLOT[i]||FAIXA_SLOT[0]; }
+function textoFaixaHab(hb,i){
+  const f=faixaHab(hb,i), lo=Math.min(...f), hi=Math.max(...f);
+  return lo===hi?String(lo):lo+"\u2013"+hi;
+}
+
 const HEROIS_BASE = {
 
 /* ─────────── TOPO ─────────── */
@@ -1088,18 +1134,18 @@ vharn:{n:"O Taxista",ep:"o Piloto da Quebrada",pos:"topo",cls:"Tanque",ref:"Ornn
   ideia:"O dono do espaço. Perto dele o tabuleiro fica lento, e ele é o único que ATORDOA.",
   pas:{id:"pontoDeOnibus",n:"Ponto de Ônibus",
        d:"No início do turno dele, todo inimigo colado fica Lento."},
-  habs:[{n:"Martelo Carburado",f:1,alvo:"in",ef:{dano:1,cond:[{t:"vulneravel",tu:1}]}},
-        {n:"Buzina Infernal",f:3,alvo:"in",alc:2,ef:{dano:1,puxar:1,cond:[{t:"atordoado",tu:1}]}},
-        {n:"Escudo de Porta",f:6,alvo:"eu",ef:{escudo:6,prendeVizinhos:1,condEu:[{t:"tenacidade",tu:2}]}}]},
+  habs:[{n:"Martelo Carburado",alvo:"in",ef:{dano:1,cond:[{t:"vulneravel",tu:1}]}},
+        {n:"Buzina Infernal",alvo:"in",alc:2,ef:{dano:1,puxar:1,cond:[{t:"atordoado",tu:1}]}},
+        {n:"Escudo de Porta",alvo:"eu",ef:{escudo:6,prendeVizinhos:1,condEu:[{t:"tenacidade",tu:2}]}}]},
 
 kaross:{n:"Dona Chinela",ep:"a Justiça de Borracha",pos:"topo",cls:"Lutador",ref:"Darius",
   vida:22,poder:3,arm:2,alc:1,movMax:4,
   ideia:"Empilha Sangramento e cobra a conta: quanto mais o alvo sangra, mais alto o chinelo executa.",
   pas:{id:"chinelada",n:"Chinelada",
        d:"Todo golpe dela deixa 1 acúmulo de Sangramento no alvo."},
-  habs:[{n:"Chinelada",f:1,alvo:"in",alc:1,ef:{dano:1,bonusFerido:3}},
-        {n:"Puxão de Orelha",f:3,alvo:"in",alc:1,ef:{dano:1,puxar:1,cond:[{t:"sangramento",st:2}]}},
-        {n:"Chinelo Voador",f:5,alvo:"in",alc:3,ef:{dano:1,executa:5,
+  habs:[{n:"Chinelada",alvo:"in",alc:1,ef:{dano:1,bonusFerido:3}},
+        {n:"Puxão de Orelha",alvo:"in",alc:1,ef:{dano:1,puxar:1,cond:[{t:"sangramento",st:2}]}},
+        {n:"Chinelo Voador",alvo:"in",alc:3,ef:{dano:1,executa:5,
            execPorStack:{t:"sangramento",v:3},consome:{t:"sangramento",danoPorStack:3}}}]},
 
 ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
@@ -1107,18 +1153,18 @@ ilva:{n:"Ilva",ep:"a Portadora",pos:"topo",cls:"Mago",ref:"Gwen / Mordekaiser",
   ideia:"Espalha Veneno e depois colhe: a Ceifa bate muito mais forte em quem já está envenenado.",
   pas:{id:"miasma",n:"Miasma",
        d:"No início do turno dela, todo inimigo colado é Envenenado por 1 turno."},
-  habs:[{n:"Chama Espectral",f:1,alvo:"in",alc:3,ef:{dano:1,espalha:{t:"veneno",tu:1}}},
-        {n:"Véu de Névoa",f:3,alvo:"eu",ef:{escudo:5,zona:{tipo:"veneno",dano:1,raio:1}}},
-        {n:"Ceifa",f:5,alvo:"in",alc:1,ef:{dano:1,area:1,bonusCond:{t:"veneno",dano:4}}}]},
+  habs:[{n:"Chama Espectral",alvo:"in",alc:3,ef:{dano:1,espalha:{t:"veneno",tu:1}}},
+        {n:"Véu de Névoa",alvo:"eu",ef:{escudo:5,zona:{tipo:"veneno",dano:1,raio:1}}},
+        {n:"Ceifa",alvo:"in",alc:1,ef:{dano:1,area:1,bonusCond:{t:"veneno",dano:4}}}]},
 
 xhera:{n:"Xhera",ep:"a Insaciável",pos:"topo",cls:"Lutador",ref:"Aatrox / Riven",
   vida:22,poder:4,arm:2,alc:1,movMax:4,
   ideia:"Paga com a própria vida e recompra bebendo a do outro. Quanto mais ferida, mais forte.",
   pas:{id:"insaciavel",n:"Insaciável",
        d:"Cura 2 sempre que causa dano. Abaixo de metade da vida, cura 4 e ganha +2 de Poder."},
-  habs:[{n:"Lâmina Sedenta",f:1,alvo:"in",alc:1,ef:{dano:1}},
-        {n:"Investir",f:3,alvo:"in",alc:2,ef:{dano:1,extra:3,puxar:1,cond:[{t:"vulneravel",tu:1}]}},
-        {n:"Sede Final",f:5,alvo:"in",alc:1,ef:{dano:1,extra:4,custoVida:3,bonusFerido:3,drena:1}}]},
+  habs:[{n:"Lâmina Sedenta",alvo:"in",alc:1,ef:{dano:1}},
+        {n:"Investir",alvo:"in",alc:2,ef:{dano:1,extra:3,puxar:1,cond:[{t:"vulneravel",tu:1}]}},
+        {n:"Sede Final",alvo:"in",alc:1,ef:{dano:1,extra:4,custoVida:3,bonusFerido:3,drena:1}}]},
 
 /* ─────────── SELVA ─────────── */
 
@@ -1127,28 +1173,28 @@ nyx:{n:"Pombo Ciborgue",ep:"o Correio da Sarjeta",pos:"selva",cls:"Assassino",re
   ideia:"Desaparece. Você não sabe onde ele está, e ele bate Crítico em quem andou sozinho.",
   pas:{id:"vooSilencioso",n:"Voo Silencioso",
        d:"No início do turno dele, se nenhum inimigo estiver colado, ele fica Invisível."},
-  habs:[{n:"Bicada",f:1,alvo:"in",ef:{dano:1,extra:2,critSe:"isolado"}},
-        {n:"Voo Rasante",f:3,alvo:"eu",ef:{condEu:[{t:"invisivel",tu:2}]}},
-        {n:"Rasante Final",f:5,alvo:"in",ef:{dano:1,extra:3,executa:6,critSe:"eraInvisivel"}}]},
+  habs:[{n:"Bicada",alvo:"in",ef:{dano:1,extra:2,critSe:"isolado"}},
+        {n:"Voo Rasante",alvo:"eu",ef:{condEu:[{t:"invisivel",tu:2}]}},
+        {n:"Rasante Final",alvo:"in",ef:{dano:1,extra:3,executa:6,critSe:"eraInvisivel"}}]},
 
 grumo:{n:"Grumo",ep:"o Devorador",pos:"selva",cls:"Tanque",ref:"Sejuani / Zac",
   vida:23,poder:3,arm:3,alc:1,movMax:3,
   ideia:"Digere tudo: veneno, sangramento e cadáver. O tanque que não fica com condição pendurada.",
   pas:{id:"digestao",n:"Digestão",
        d:"Cura 4 quando qualquer herói morre a até 2 casas dele."},
-  habs:[{n:"Investida",f:1,alvo:"in",alc:2,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Digerir",f:2,alvo:"eu",ef:{cura:7,ouro:8,limpaEu:9}},
-        {n:"Avalanche",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,condVizinhos:[{t:"lentidao",tu:1}]}}]},
+  habs:[{n:"Investida",alvo:"in",alc:2,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Digerir",dados:FAIXA_BARATA,alvo:"eu",ef:{cura:7,ouro:8,limpaEu:9}},
+        {n:"Avalanche",alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,condVizinhos:[{t:"lentidao",tu:1}]}}]},
 
 kurr:{n:"Valti",ep:"o Homem do Coco",pos:"selva",cls:"Assassino",ref:"Nidalee / Elise",
   vida:18,poder:3,arm:1,alc:2,agil:1,movMax:5,
   ideia:"Prepara terreno. O coco só atordoa quem pisou nas cascas — o Atordoamento tem endereço.",
   pas:{id:"olhoDeMateiro",n:"Olho de Mateiro",
        d:"Enxerga dentro do mato de qualquer lugar do tabuleiro."},
-  habs:[{n:"Facão",f:1,alvo:"in",alc:1,ef:{dano:1,cond:[{t:"sangramento",st:1}]}},
-        {n:"Talho de Facão",f:2,alvo:"in",alc:3,ef:{dano:1,
+  habs:[{n:"Facão",alvo:"in",alc:1,ef:{dano:1,cond:[{t:"sangramento",st:1}]}},
+        {n:"Talho de Facão",dados:FAIXA_BARATA,alvo:"in",alc:3,ef:{dano:1,
            zona:{tipo:"cascas",cond:{t:"lentidao",tu:1},raio:1}}},
-        {n:"Coco na Cabeça",f:5,alvo:"in",alc:3,ef:{dano:1,extra:2,
+        {n:"Coco na Cabeça",alvo:"in",alc:3,ef:{dano:1,extra:2,
            condSeNaZona:[{t:"atordoado",tu:1}]}}]},
 
 pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
@@ -1156,9 +1202,9 @@ pyk:{n:"Pyk",ep:"o Coveiro",pos:"selva",cls:"Assassino",ref:"Pyke",
   ideia:"Marca, arrasta e executa. Contra ele a pergunta é sempre a mesma: dá para morrer daqui?",
   pas:{id:"contabilidade",n:"Contabilidade do Coveiro",
        d:"Quando ele mata, leva +3 de ouro e o aliado mais próximo leva +2."},
-  habs:[{n:"Arpão",f:1,alvo:"in",alc:3,ef:{dano:1,cond:[{t:"marcado",st:3}]}},
-        {n:"Puxada Funda",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Cova",f:5,alvo:"in",alc:1,ef:{dano:1,executa:7,execSeCond:{t:"marcado",v:4},ouroSeMatar:3}}]},
+  habs:[{n:"Arpão",alvo:"in",alc:3,ef:{dano:1,cond:[{t:"marcado",st:3}]}},
+        {n:"Puxada Funda",alvo:"in",ef:{dano:1,puxar:3,alcExtra:2,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Cova",alvo:"in",alc:1,ef:{dano:1,executa:7,execSeCond:{t:"marcado",v:4},ouroSeMatar:3}}]},
 
 /* ─────────── MEIO ─────────── */
 
@@ -1167,27 +1213,27 @@ solenne:{n:"Parabólica Diabólica",ep:"que capta até o que não existe",pos:"m
   ideia:"Junta Carga para o Crítico e TRANCA habilidade: perto dela a sua Ultimate pode não sair.",
   pas:{id:"captacao",n:"Captação",
        d:"Ganha 1 Carga a cada golpe. Com 3 Cargas, o golpe seguinte é Crítico e gasta as Cargas."},
-  habs:[{n:"Raio Diabólico",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Interferência",f:4,alvo:"in",ef:{dano:1,area:1,cond:[{t:"silenciado",tu:1}]}},
-        {n:"Sinal Aberto",f:6,alvo:"in",ef:{dano:0.8,perfura:1,revelaRaio:4}}]},
+  habs:[{n:"Raio Diabólico",alvo:"in",ef:{dano:1}},
+        {n:"Interferência",dados:FAIXA_CARA,alvo:"in",ef:{dano:1,area:1,cond:[{t:"silenciado",tu:1}]}},
+        {n:"Sinal Aberto",alvo:"in",ef:{dano:0.8,perfura:1,revelaRaio:4}}]},
 
 zhet:{n:"Zhet",ep:"a Lâmina de Três Sombras",pos:"meio",cls:"Assassino",ref:"Zed / Talon",
   vida:18,poder:4,arm:1,alc:1,agil:1,movMax:5,
   ideia:"Troca de lugar com você e some do tabuleiro. Nunca está onde você bateu.",
   pas:{id:"passoDeSombra",n:"Passo de Sombra",
        d:"Depois de causar dano, ele recua 1 casa de graça."},
-  habs:[{n:"Estocada",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Eco",f:2,alvo:"in",alc:2,ef:{dano:1,cond:[{t:"marcado",st:4}],troca:1}},
-        {n:"Trio de Sombras",f:5,alvo:"in",ef:{dano:1,area:1,baneEu:1}}]},
+  habs:[{n:"Estocada",alvo:"in",ef:{dano:1}},
+        {n:"Eco",dados:FAIXA_BARATA,alvo:"in",alc:2,ef:{dano:1,cond:[{t:"marcado",st:4}],troca:1}},
+        {n:"Trio de Sombras",alvo:"in",ef:{dano:1,area:1,baneEu:1}}]},
 
 nira:{n:"Gari Mago",ep:"o Guardião da Limpeza",pos:"meio",cls:"Mago",ref:"Orianna / Anivia",
   vida:18,poder:3,arm:1,alc:3,movMax:4,
   ideia:"Limpa os aliados e acumula Sucata. A Ultimate dele vale o que ele varreu na partida.",
   pas:{id:"coleta",n:"Coleta",
        d:"Ganha 1 Sucata a cada golpe e a cada herói que morre a até 3 casas. Máximo 5."},
-  habs:[{n:"Varrida Purificadora",f:1,alvo:"in",alc:1,ef:{dano:1,limpaAliados:1}},
-        {n:"Redemoinho Sustentável",f:3,alvo:"in",ef:{dano:1,prende:1,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Coleta Seletiva Suprema",f:5,alvo:"in",ef:{dano:1,area:1,
+  habs:[{n:"Varrida Purificadora",alvo:"in",alc:1,ef:{dano:1,limpaAliados:1}},
+        {n:"Redemoinho Sustentável",alvo:"in",ef:{dano:1,prende:1,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Coleta Seletiva Suprema",alvo:"in",ef:{dano:1,area:1,
            zona:{tipo:"veneno",dano:2,raio:1},bonusPorRecurso:{t:"sucata",dano:2}}}]},
 
 arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
@@ -1195,9 +1241,9 @@ arden:{n:"Arden",ep:"o Juiz",pos:"meio",cls:"Mago",ref:"Swain / Cassiopeia",
   ideia:"COPIA. Ele guarda a última habilidade que te viu usar contra ele e devolve.",
   pas:{id:"jurisprudencia",n:"Jurisprudência",
        d:"Guarda a última habilidade inimiga que o acertou. Ultimate não entra nos autos."},
-  habs:[{n:"Sentença",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Drenar",f:2,alvo:"in",ef:{dano:1,cura:5,cond:[{t:"veneno",tu:2}]}},
-        {n:"Tribunal",f:5,alvo:"in",ef:{copia:1,danoRaio:3}}]},
+  habs:[{n:"Sentença",alvo:"in",ef:{dano:1}},
+        {n:"Drenar",dados:FAIXA_BARATA,alvo:"in",ef:{dano:1,cura:5,cond:[{t:"veneno",tu:2}]}},
+        {n:"Tribunal",alvo:"in",ef:{copia:1,danoRaio:3}}]},
 
 /* ─────────── ATIRADOR ─────────── */
 
@@ -1206,37 +1252,37 @@ vesper:{n:"Zé Griteco",ep:"o Regente das Gemas",pos:"adc",cls:"Atirador",ref:"J
   ideia:"Rampa. Se ele te escolher e você não sair, cada turno dele dói mais que o anterior.",
   pas:{id:"pulmaoDeAco",n:"Pulmão de Aço",
        d:"Cada golpe seguido no MESMO alvo dá +1 Fôlego (+2 de dano cada). Trocar de alvo zera."},
-  habs:[{n:"Ovada Surpresa",f:1,alvo:"in",ef:{dano:1,cond:[{t:"vulneravel",tu:1}]}},
-        {n:"Encher o Pulmão",f:2,alvo:"eu",ef:{recarga:6,alcanceTurno:1}},
-        {n:"Caminhão Fantasma",f:5,alvo:"eu",ef:{danoRaio:3,condRaio:[{t:"lentidao",tu:1}]}}]},
+  habs:[{n:"Ovada Surpresa",alvo:"in",ef:{dano:1,cond:[{t:"vulneravel",tu:1}]}},
+        {n:"Encher o Pulmão",dados:FAIXA_BARATA,alvo:"eu",ef:{recarga:6,alcanceTurno:1}},
+        {n:"Caminhão Fantasma",alvo:"eu",ef:{danoRaio:3,condRaio:[{t:"lentidao",tu:1}]}}]},
 
 cael:{n:"Cael",ep:"o Cobrador",pos:"adc",cls:"Atirador",ref:"Caitlyn / Draven",
   vida:18,poder:3,arm:1,alc:3,movMax:4,
   ideia:"Armadilha primeiro, Crítico depois. Ele não crita por sorte — crita em quem ele travou.",
   pas:{id:"juros",n:"Juros",
        d:"Crítico contra alvo Preso, Atordoado ou Lento."},
-  habs:[{n:"Cobrança",f:1,alvo:"in",ef:{dano:1,ouroSeMatar:2}},
-        {n:"Armadilha",f:2,alvo:"in",ef:{dano:1,extra:2,
+  habs:[{n:"Cobrança",alvo:"in",ef:{dano:1,ouroSeMatar:2}},
+        {n:"Armadilha",dados:FAIXA_BARATA,alvo:"in",ef:{dano:1,extra:2,
            zona:{tipo:"laco",cond:{t:"lentidao",tu:1},raio:1}}},
-        {n:"Sentença",f:5,alvo:"in",ef:{dano:0.8,perfura:1,alcExtra:2}}]},
+        {n:"Sentença",alvo:"in",ef:{dano:0.8,perfura:1,alcExtra:2}}]},
 
 nessa:{n:"Catarino",ep:"o Menino do Cilindro",pos:"adc",cls:"Atirador",ref:"Vayne / Kai'Sa",
   vida:18,poder:3,arm:1,alc:3,patamar:1,agil:1,movMax:5,
   ideia:"Três marcas e o cilindro estoura. Contra ele conta-se de três em três, não de vida em vida.",
   pas:{id:"marcaDoCatarino",n:"Marca do Catarino",
        d:"Todo golpe dele deixa 1 Marca. Na terceira, 5 de dano que ignora armadura e escudo."},
-  habs:[{n:"Jato de Oxigênio",f:1,alvo:"in",ef:{dano:1}},
-        {n:"Puff de Emergência",f:2,alvo:"eu",ef:{escudo:4,recuaLivre:2}},
-        {n:"Crise Alérgica",f:5,alvo:"in",ef:{dano:1,executa:5,execSeCond:{t:"catarino",v:4}}}]},
+  habs:[{n:"Jato de Oxigênio",alvo:"in",ef:{dano:1}},
+        {n:"Puff de Emergência",dados:FAIXA_BARATA,alvo:"eu",ef:{escudo:4,recuaLivre:2}},
+        {n:"Crise Alérgica",alvo:"in",ef:{dano:1,executa:5,execSeCond:{t:"catarino",v:4}}}]},
 
 corvo:{n:"Corvo",ep:"o Marcador",pos:"adc",cls:"Atirador",ref:"Jhin / Senna",
   vida:18,poder:3,arm:1,alc:3,patamar:1,movMax:4,
   ideia:"Quatro tiros. O quarto é Crítico, e ele escolhe QUANDO — o Recarregar adianta a conta.",
   pas:{id:"quatroTiros",n:"Quatro Tiros",
        d:"Conta os golpes: o quarto sai Crítico e zera a contagem."},
-  habs:[{n:"Tiro Marcado",f:1,alvo:"in",ef:{dano:1,cond:[{t:"marcado",st:3}]}},
-        {n:"Recarregar",f:2,alvo:"eu",ef:{recarga:6,recurso:{t:"cartucho",n:3}}},
-        {n:"Ato Final",f:5,alvo:"in",ef:{dano:0.8,perfura:1,critSempre:1,revelaRaio:4}}]},
+  habs:[{n:"Tiro Marcado",alvo:"in",ef:{dano:1,cond:[{t:"marcado",st:3}]}},
+        {n:"Recarregar",dados:FAIXA_BARATA,alvo:"eu",ef:{recarga:6,recurso:{t:"cartucho",n:3}}},
+        {n:"Ato Final",alvo:"in",ef:{dano:0.8,perfura:1,critSempre:1,revelaRaio:4}}]},
 
 /* ─────────── SUPORTE ─────────── */
 
@@ -1245,9 +1291,9 @@ mirrha:{n:"Emerson Emo",ep:"a Trilha Sonora",pos:"sup",cls:"Suporte",ref:"Lulu /
   ideia:"Transforma coisa ruim em vantagem: quanto mais o time dele apanha, mais forte ele cura.",
   pas:{id:"tristeza",n:"Tristeza",
        d:"Ganha 1 Tristeza quando um aliado sofre dano (máx 5). Cura e escudo dele levam +1 por Tristeza."},
-  habs:[{n:"Ombro Amigo",f:1,alvo:"al",ef:{escudo:4,cura:5,gastaTristeza:1}},
-        {n:"Empresta o Fone",f:1,alvo:"al",ef:{doar:1,limpa:1}},
-        {n:"Ninguém Me Entende",f:4,alvo:"al",ef:{revive:1,cura:7,escudo:5,
+  habs:[{n:"Ombro Amigo",alvo:"al",ef:{escudo:4,cura:5,gastaTristeza:1}},
+        {n:"Empresta o Fone",dados:FAIXA_BARATA,alvo:"al",ef:{doar:1,limpa:1}},
+        {n:"Ninguém Me Entende",dados:FAIXA_ULT_SUP,alvo:"al",ef:{revive:1,cura:7,escudo:5,
            condAliadosPerto:[{t:"tenacidade",tu:2}]}}]},
 
 torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nautilus",
@@ -1255,27 +1301,27 @@ torvald:{n:"Torvald",ep:"a Corrente",pos:"sup",cls:"Suporte",ref:"Thresh / Nauti
   ideia:"Colhe alma de quem morre por perto e endurece a partida inteira. Começa frágil, termina muro.",
   pas:{id:"almasNaLanterna",n:"Almas na Lanterna",
        d:"Cada herói que morre a até 3 casas dele dá +1 de Armadura permanente, até +5."},
-  habs:[{n:"Ward",f:1,alvo:"eu",ef:{ward:1}},
-        {n:"Gancho",f:3,alvo:"in",ef:{dano:1,puxar:3,alcExtra:2,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Cerco",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,escudoAliados:5}}]},
+  habs:[{n:"Ward",alvo:"eu",ef:{ward:1}},
+        {n:"Gancho",alvo:"in",ef:{dano:1,puxar:3,alcExtra:2,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Cerco",alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,escudoAliados:5}}]},
 
 gorm:{n:"Caramêlo 2.0",ep:"o Cachorro Pilotado",pos:"sup",cls:"Suporte",ref:"Braum / Alistar",
   vida:25,poder:3,arm:4,alc:1,movMax:3,
   ideia:"Corpo na frente. Aliado colado nele custa 2 de dano a menos para o adversário.",
   pas:{id:"guardaCorpo",n:"Guarda-Corpo",
        d:"Aliado colado nele sofre 2 de dano a menos."},
-  habs:[{n:"Latido",f:1,alvo:"in",alc:1,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
-        {n:"Escudo de Pelo",f:1,alvo:"al",alc:2,ef:{escudo:4,cond:[{t:"tenacidade",tu:2}]}},
-        {n:"Latido Caótico",f:5,alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,empurraVizinhos:1}}]},
+  habs:[{n:"Latido",alvo:"in",alc:1,ef:{dano:1,empurrar:1,cond:[{t:"lentidao",tu:1}]}},
+        {n:"Escudo de Pelo",dados:FAIXA_BARATA,alvo:"al",alc:2,ef:{escudo:4,cond:[{t:"tenacidade",tu:2}]}},
+        {n:"Latido Caótico",alvo:"eu",ef:{danoVizinhos:1,prendeVizinhos:1,empurraVizinhos:1}}]},
 
 vidra:{n:"Vidra",ep:"a Vidente",pos:"sup",cls:"Suporte",ref:"Karma / Janna",
   vida:18,poder:2,arm:2,alc:3,movMax:4,
   ideia:"A resposta ao invisível. Ela não bate forte: ela diz onde o outro está.",
   pas:{id:"videncia",n:"Vidência",
        d:"No início do turno dela, o inimigo escondido mais próximo (até 4 casas) fica Revelado."},
-  habs:[{n:"Presságio",f:1,alvo:"eu",ef:{ward:1,revelaRaio:3}},
-        {n:"Empréstimo",f:1,alvo:"al",ef:{doar:1}},
-        {n:"Vento Contrário",f:4,alvo:"al",ef:{escudo:5,empurraDoAlvo:1,cond:[{t:"tenacidade",tu:2}]}}]}
+  habs:[{n:"Presságio",alvo:"eu",ef:{ward:1,revelaRaio:3}},
+        {n:"Empréstimo",dados:FAIXA_BARATA,alvo:"al",ef:{doar:1}},
+        {n:"Vento Contrário",dados:FAIXA_ULT_SUP,alvo:"al",ef:{escudo:5,empurraDoAlvo:1,cond:[{t:"tenacidade",tu:2}]}}]}
 };
 
 /* O catálogo virou UM bloco na v45. Ele era partido em HEROIS_BASE (os 10 que
@@ -1401,13 +1447,17 @@ const POS_ROTA = {
 };
 
 /* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
+/* v49: a personalidade da classe deixou de ser "que Força ela exige" — todo
+   mundo exige a mesma coisa agora, 1–2 / 3–5 / 6. O que separa uma classe da
+   outra passou a ser O QUE CADA FAIXA COMPRA no kit dela, e onde ela foge do
+   padrão (a segunda `barata` 2–5, a `cara` 4–5, a Ultimate de suporte 5–6). */
 const CLASSES = [
-  ["Tanque",    "Força 1+ no essencial",        "Consistente. Qualquer dado faz o trabalho — só a ultimate pede 5 ou 6."],
-  ["Lutador",   "Força 3+ e 5+",                "Compromete-se. Precisa de dado médio para entrar e alto para fechar."],
-  ["Assassino", "Força 5+ no que mata",         "Alta variância. Com dado alto, mata alguém. Com dado baixo, se esconde."],
-  ["Mago",      "Força 1+ e 5+ ou 6",           "Tudo ou nada. O básico sai sempre; a ultimate só com dado alto."],
-  ["Atirador",  "Força 1+, escala com ouro",    "Dano sustentado. Não depende do dado — depende de ter farmado."],
-  ["Suporte",   "Força 1+, e doa o próprio dado","Faz o outro jogar melhor. Nunca fica sem nada para fazer."]
+  ["Tanque",    "faixa padrão, segunda de utilidade", "Consistente. Qualquer dado faz trabalho: no 1–2 ele bate, no 3–5 ele segura, no 6 ele vira o combate."],
+  ["Lutador",   "faixa padrão, tudo em dano",         "Compromete-se. O 3–5 é o que entra na briga; o 6 é o que fecha."],
+  ["Assassino", "segunda `barata` 2–5",               "Alta variância no lugar certo: a mobilidade sai com quase qualquer dado, e o que mata só com 6."],
+  ["Mago",      "segunda `cara` 4–5",                 "Tudo ou nada. O básico sai sempre; o controle forte pede dado grande e a Ultimate pede o 6."],
+  ["Atirador",  "faixa padrão, escala com ouro",      "Dano sustentado. Depende menos da faixa e mais de ter farmado."],
+  ["Suporte",   "Ultimate 5–6, e doa o próprio dado", "Faz o outro jogar melhor — e a Ultimate dele precisa chegar a tempo, por isso sai com 5 também."]
 ];
 
 /* ═══════════ ITENS — os 12 originais ═══════════
@@ -1532,8 +1582,8 @@ const ORDEM_DRAFT=[
 const BANS=1;   /* por jogador */
 
 if(typeof module!=="undefined")
-  module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,condTxt,TEXTO_PATAMAR,
-                CONDS,COND_NUM,RECURSOS,POS_ROTA,ITENS_BASE,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
+  module.exports={HEROIS,HEROIS_BASE,HEROIS_NOVOS,CLASSES,textoHab,faixaHab,textoFaixaHab,condTxt,TEXTO_PATAMAR,
+                CONDS,COND_NUM,RECURSOS,POS_ROTA,FAIXA_SLOT,ITENS_BASE,ITENS_NOVOS,DECK,montaDeck,ORDEM_DRAFT,BANS};
 
 </script>
 <script>
@@ -1613,6 +1663,46 @@ const ESCALA_ULT=1.25;
    continua sendo da Ultimate, que escala 1,25 e pede 5 ou 6. */
 const ESCALA_CTRL=1.2;
 const escalaDe=slot=>slot===2?ESCALA_ULT:slot===1?ESCALA_CTRL:1;
+
+/* ---------- A FAIXA DE DADO (v49) ----------
+   O dado deixou de dizer SE a habilidade sai e passou a dizer QUAL sai:
+   1–2 é a básica, 3–5 é a segunda, 6 é a Ultimate. Não existe "ou mais".
+
+   Nenhum dado morre — um 6 é Ultimate de qualquer um dos cinco —, e a decisão
+   do turno vira "quem recebe este dado?" em vez de "que habilidade este dado
+   destrava?". A faixa de cada uma mora no catálogo (FAIXA_SLOT e os `dados` de
+   quem foge do padrão); aqui só se lê.
+
+   A FAIXA MORA NA HABILIDADE, e não no lugar dela. Quem não declara `dados` no
+   catálogo recebe a faixa do próprio slot uma vez só, aqui embaixo, na carga —
+   e a partir daí `faixaDeHab(hb)` responde sem precisar saber de quem é o kit.
+
+   Isso não é economia de código, é conserto: `dadoPara(hb)` é chamado em pontos
+   onde o herói ainda não está selecionado, e enquanto a faixa dependia de achar
+   o índice dentro de `quem.habs` esses pontos caíam calados na faixa da básica —
+   a Ultimate paga por um dado extra 6 respondia "nenhum dado serve". Habilidade
+   sintética (a cópia do Arden) continua caindo no padrão da básica, que é onde
+   ela é resolvida. */
+const FAIXA_PADRAO = typeof FAIXA_SLOT!=="undefined" ? FAIXA_SLOT : [[1,2],[3,4,5],[6]];
+/* carimba a faixa do slot em quem não declarou a própria — uma vez, na carga */
+(function marcaFaixas(){
+  if(typeof CATALOGO==="undefined")return;
+  Object.values(CATALOGO).forEach(def=>{
+    (def.habs||[]).forEach((hb,i)=>{ if(!hb.dados) hb.dados=FAIXA_PADRAO[i]||FAIXA_PADRAO[0]; });
+  });
+})();
+function faixaDeHab(hb,quem){
+  if(hb&&hb.dados) return hb.dados;
+  const slot = quem&&quem.habs ? quem.habs.indexOf(hb) : -1;
+  return FAIXA_PADRAO[slot>=0?slot:0];
+}
+const dadoServe=(hb,quem,v)=>faixaDeHab(hb,quem).includes(v);
+/* "1–2", "3–5", "6" — o texto que a tela mostra no lugar da Força mínima */
+function textoFaixa(hb,quem){
+  const f=faixaDeHab(hb,quem);
+  const lo=Math.min(...f), hi=Math.max(...f);
+  return lo===hi?String(lo):`${lo}–${hi}`;
+}
 const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
@@ -3045,7 +3135,7 @@ const PASSIVAS={
   jurisprudencia:{ danoRecebido(h,quem,d,ctx){
     if(!ctx||ctx.slot===undefined||ctx.slot>=2)return;
     if(!quem||quem.t===h.t||ctx.copia)return;
-    h.autos={n:ctx.hb.n, de:quem.n, ef:ctx.hb.ef, f:ctx.hb.f, alvo:ctx.hb.alvo, slot:ctx.slot};
+    h.autos={n:ctx.hb.n, de:quem.n, ef:ctx.hb.ef, dados:ctx.hb.dados, alvo:ctx.hb.alvo, slot:ctx.slot};
     reg("b",`⚖ ${h.n} registra ${ctx.hb.n} nos autos`);
   }},
 
@@ -4390,7 +4480,7 @@ function atualizaAcampamentos(){
 
 function usaHab(alvo){
   const{h,forca}=ativo, hb=h.habs[habSel], F=forca, ef=hb.ef;
-  if(F<hb.f)return;
+  if(!dadoServe(hb,h,F))return;
   let txt=`${h.n} usa ${hb.n} (Força ${F})`;
 
   let bonusGank=0;
@@ -4504,7 +4594,7 @@ function usaHab(alvo){
       const autos=h.autos; h.autos=null;
       reg(J.vez?"c":"a",`⚖ TRIBUNAL — ${h.n} devolve ${autos.n}, de ${autos.de}`);
       toast(`TRIBUNAL: ${autos.n}`,"");
-      const copiada={n:autos.n+" (cópia)",f:hb.f,alvo:autos.alvo,ef:{...autos.ef}};
+      const copiada={n:autos.n+" (cópia)",dados:autos.dados,alvo:autos.alvo,ef:{...autos.ef}};
       /* a cópia não herda o que não é dano nem condição: sem ouro, sem cura de
          inimigo, sem ward, sem zona e sem doar — ela é a SENTENÇA, não o kit */
       ["ouro","ouroSeMatar","doar","ward","revive","recurso","copia","baneEu",
@@ -4884,7 +4974,7 @@ function converteDado(i){
 function dadoSemUso(i){
   const d=J.dados[i]; if(!d||d.usado)return false;
   return !J.times[J.vez].herois.some(h=>!h.morto&&!h.agiu
-    &&(!d.dono||d.dono===h.id)&&h.habs.some(hb=>d.v>=hb.f));
+    &&(!d.dono||d.dono===h.id)&&h.habs.some(hb=>dadoServe(hb,h,d.v)));
 }
 
 /* ---------- PLACAS ---------- */
@@ -4969,7 +5059,11 @@ function descreve(h,hb,F){
      mais precisa saber quanto ela daria para decidir se vale guardar o dado.
      Sem dado, mostra o INTERVALO do dado mínimo dela até o 6. */
   const golpe=d=>Math.round(d*e.dano*esc)+p+(e.extra||0);
-  const faixa=()=>{ const lo=golpe(hb.f), hi=golpe(6);
+  /* v49: o intervalo é o da FAIXA DE DADO da habilidade, e não mais "do mínimo
+     até 6" — uma básica que só sai com 1 ou 2 nunca chegou a dar o dano de um 6,
+     e a ficha prometia isso. */
+  const faixa=()=>{ const fx=faixaDeHab(hb,h);
+                    const lo=golpe(Math.min(...fx)), hi=golpe(Math.max(...fx));
                     return lo===hi?`${lo} de dano`:`${lo} a ${hi} de dano`; };
   if(e.danoFixo) t.push(`${e.danoFixo} de dano garantido · ignora armadura`);
   else if(e.dano){
@@ -4980,7 +5074,8 @@ function descreve(h,hb,F){
   if(e.danoVizinhos) t.push("dano em todos os vizinhos");
   if(e.danoRaio) t.push(`dano em todos até ${e.danoRaio} casas`);
   if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo
-     :(hb.f+e.escudo===6+e.escudo?String(6+e.escudo):`${hb.f+e.escudo} a ${6+e.escudo}`)}`);
+     :(()=>{const fx=faixaDeHab(hb,h), lo=Math.min(...fx)+e.escudo, hi=Math.max(...fx)+e.escudo;
+             return lo===hi?String(lo):`${lo} a ${hi}`;})()}`);
   if(e.cura) t.push(`cura ${e.cura}`);
   if(e.ouro) t.push(`+${e.ouro} de ouro`);
   if(e.recarga) t.push(`próximo golpe +${e.recarga}`);
@@ -5333,9 +5428,9 @@ function nexusAoAlcance(h,hb,alc){
    media a jogada com o dado errado. */
 function dadoPara(hb,quem){
   const dono=quem||selHeroi;
-  if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f
+  if(dadoSel!==null&&!J.dados[dadoSel].usado&&dadoServe(hb,dono,J.dados[dadoSel].v)
      &&(!J.dados[dadoSel].dono||J.dados[dadoSel].dono===dono?.id)) return dadoSel;
-  const serve=d=>!d.usado&&d.v>=hb.f&&(!d.dono||d.dono===dono?.id);
+  const serve=d=>!d.usado&&dadoServe(hb,dono,d.v)&&(!d.dono||d.dono===dono?.id);
   let melhor=null;
   J.dados.forEach((d,i)=>{
     if(!serve(d))return;
@@ -5396,7 +5491,7 @@ function iniciaHab(i){
   if(selHeroi.agiu) return toast("já agiu nesta rodada","morte");
   const hb=selHeroi.habs[i];
   const d=dadoPara(hb);
-  if(d===null) return toast("nenhum dado chega a Força "+hb.f,"morte");
+  if(d===null) return toast(`nenhum dado na faixa ${textoFaixa(hb,selHeroi)}`,"morte");
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
@@ -5544,7 +5639,14 @@ function golpeEmEstrutura(h,hb,slot,F){
   /* perfurante ignora a armadura da estrutura pelo mesmo motivo que ignora a de
      um herói e a do Barão — é a função dela */
   const util=ef.perfura?bruto:bruto-ARM_ESTRUTURA;
-  return Math.max(DANO_ESTRUTURA_MIN,Math.round(util*mult));
+  /* O PISO VEM ANTES DO MULTIPLICADOR, e a v49 é quem mostrou por quê. Com a
+     faixa exata, a básica bate na armadura da torre e sai no piso de 1; quando o
+     multiplicador entrava primeiro, `round(util*2)` de um `util` negativo
+     continuava negativo e o piso comia o Aríete inteiro — a dádiva prometia o
+     dobro e entregava o mesmo 1. Piso primeiro, dobro depois: o dobro de 1 é 2,
+     que é o que a carta diz. */
+  return Math.max(DANO_ESTRUTURA_MIN,
+                  Math.round(Math.max(DANO_ESTRUTURA_MIN,util)*mult));
 }
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
@@ -6284,7 +6386,7 @@ function abreCarta(h){
           <span class="f">passiva</span></div>`:""}
         ${h.habs.map(hb=>`<div class="hb2">${svgIco(iconeDe(hb))}
           <div><span class="n">${hb.n}</span><span class="d">${descreve(h,hb)}</span></div>
-          <span class="f">Força ${hb.f}${hb.f===6?"":"+"}</span></div>`).join("")}
+          <span class="f">dado ${textoFaixa(hb,h)}</span></div>`).join("")}
       </div>
       ${(()=>{const l=condsDaPeca(h);return l.length?`<div class="cond-lista">
         <div class="ct">Condições</div>${l.map(x=>
@@ -6634,10 +6736,12 @@ function abreManual(){
       <p>Um dado por rodada. O valor é o total de casas que os seus <b>cinco</b> heróis andam <b>juntos</b>.</p>
       <p>Tirou 4? São 4 casas no total: quatro com um herói, ou uma com quatro heróis. Aproximar o assassino custa o recuo do atirador.</p></section>
     <section><h4>2 · Três dados de ação, cinco heróis</h4>
-      <p>Cada dado alocado num herói vira a <b>Força</b> da habilidade. Toda habilidade tem uma Força mínima.</p>
-      <table><tr><td>Habilidades básicas</td><td>Força 1+</td></tr>
-      <tr><td>Habilidades de controle</td><td>Força 3+</td></tr>
-      <tr><td>Ultimates</td><td>Força 5+ ou 6</td></tr></table>
+      <p>Cada dado alocado num herói vira a <b>Força</b> da habilidade — e o <b>valor</b> do dado escolhe <b>qual</b> das três habilidades sai. A faixa é <b>exata</b>: não existe “ou mais”.</p>
+      <table><tr><td>dado <b>1</b> ou <b>2</b></td><td>a habilidade básica</td></tr>
+      <tr><td>dado <b>3</b>, <b>4</b> ou <b>5</b></td><td>a habilidade do meio</td></tr>
+      <tr><td>dado <b>6</b></td><td>a Ultimate</td></tr></table>
+      <p style="margin-top:7px">Um 6 é Ultimate — de qualquer um dos cinco. Ele <b>não desce</b> para pagar uma básica. Por isso a pergunta do turno não é <i>que habilidade este dado destrava?</i>, é <b>quem recebe este dado?</b>.</p>
+      <p style="margin-top:7px">Alguns heróis fogem do padrão, e é o que os separa: a do meio de quem vive de utilidade sai já no <b>2</b>, a que silencia só sai no <b>4–5</b>, e a Ultimate dos dois suportes de cura sai no <b>5</b> também — ela precisa chegar a tempo. A faixa de cada uma está escrita na própria habilidade.</p>
       <p style="margin-top:7px">Precisa de mais movimento? <b>Vire um dado de ação em movimento</b> pelo botão <b>→ mover</b>.</p></section>
     <section class="destaque"><h4>Feitiços de invocador</h4>
       <p>O time tem <b>uma carga</b>, não um feitiço por herói. Ela não gasta dado nem movimento, serve a <b>qualquer</b> um dos cinco, e volta <b>3 rodadas</b> depois de usada.</p>
@@ -6739,7 +6843,7 @@ function abreManual(){
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
-      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: Força mínima, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
+      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: faixa de dado, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
       <p>O dado é escolhido sozinho: o menor que dá conta — <b>com uma exceção</b>. Se o Suporte tiver <b>doado um dado</b> para este herói, é o doado que sai primeiro: ele só serve a essa peça e morre no fim do turno, então guardá-lo é jogá-lo fora. Quer gastar um específico? Toque nele antes.</p>
       <p>O <b>✕</b> cancela sempre. Toque num herói inimigo para ver a carta dele.</p></section>
   </div>`);
@@ -6950,7 +7054,7 @@ function feiticosBloco(h){
           <span class="ico">${svgIco(iconeDe(hb))}</span>
           <span class="txt"><span class="t1">${hb.n}${confirmar===i?" — confirmar":""}</span>
             <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
-          <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:"F"+hb.f}</span>
+          <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:textoFaixa(hb,h)}</span>
         </button>`;
       }).join("")}
       ${feiticosBloco(h)}`;
@@ -7783,17 +7887,17 @@ function fichaHab(h,i){
   const alc=alcDeHab(h,hb);
   const alcTxt=hb.alvo==="eu"?"—":hb.ef.semAlcance?"o mapa inteiro":`${alc} ${alc===1?"casa":"casas"}`;
   const dados=J.dados.map(d=>{
-    const gasto=d.usado, serve=!gasto&&d.v>=hb.f;
+    const gasto=d.usado, serve=!gasto&&dadoServe(hb,h,d.v);
     return `<div class="fdl${serve?" ok":""}">
       <span class="fdd">${d.v}</span>
       <span class="fdt">${gasto?"já gasto nesta rodada"
-        :serve?descreve(h,hb,d.v):`não chega à Força ${hb.f}`}</span></div>`;
+        :serve?descreve(h,hb,d.v):`fora da faixa ${textoFaixa(hb,h)}`}</span></div>`;
   }).join("");
   abreSheet(hb.n,`
     <div class="fh-top">
       <span class="fh-et">${h.n} · ${POS[CATALOGO[h.id].pos].n}</span>
       <div class="fh-grade">
-        <div><div class="k">Força mínima</div><div class="v">${hb.f}</div></div>
+        <div><div class="k">Dado</div><div class="v">${textoFaixa(hb,h)}</div></div>
         <div><div class="k">Alvo</div><div class="v">${ALVO[hb.alvo]||hb.alvo}</div></div>
         <div><div class="k">Alcance</div><div class="v">${alcTxt}</div></div>
       </div>

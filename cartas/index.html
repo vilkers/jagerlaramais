@@ -96,7 +96,7 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 </style>
 
 <div class="topo">
-  <span class="et">Jagerlaramais · baralho de heróis v48</span>
+  <span class="et">Jagerlaramais · baralho de heróis v49</span>
   <h1>As vinte cartas</h1>
   <p>Quatro por rota, quatro arquétipos diferentes — o suficiente para o draft ter escolha sem virar catálogo. A <b>Força</b> ao lado de cada habilidade é o valor mínimo do dado de ação para usá-la. Ultimates pedem 5 ou 6, e dado alto é raro: é isso que as torna decisivas.</p>
 </div>
@@ -105,11 +105,11 @@ body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui)}
 <div class="grade" id="grade"></div>
 
 <div class="nota">
-  <b>Como ler a carta.</b> Vida, Poder e Armadura resolvem o combate: <b>dano = Força + Poder − Armadura do alvo</b>, com mínimo de 1. Alcance é a distância em casas que a habilidade atinge — 1 é corpo a corpo. O movimento não sai daqui: ele vem do <b>Dado Mestre</b>, que é um só para os cinco heróis do time.
+  <b>Como ler a carta.</b> O número à esquerda de cada habilidade é a <b>faixa de dado</b> que a paga — <b>1–2</b> a básica, <b>3–5</b> a do meio, <b>6</b> a Ultimate — e é exata: um 6 não desce para a básica. Vida, Poder e Armadura resolvem o combate: <b>dano = Força + Poder − Armadura do alvo</b>, com mínimo de 1. Alcance é a distância em casas que a habilidade atinge — 1 é corpo a corpo. O movimento não sai daqui: ele vem do <b>Dado Mestre</b>, que é um só para os cinco heróis do time.
 </div>
 
-<script src="../data/catalogo.js?v=48"></script>
-<script src="../arte/imagens.js?v=48"></script>
+<script src="../data/catalogo.js?v=49"></script>
+<script src="../arte/imagens.js?v=49"></script>
 <script>
 /* nome e cor de cada rota vêm do catálogo (POS_ROTA) — esta página mantinha as
    próprias, e eram outras */
@@ -122,7 +122,7 @@ const POS = Object.fromEntries(Object.entries(
 const CARTAS = Object.entries(HEROIS).map(([id,h])=>({
   id, n:h.n, e:h.ep, pos:h.pos, cls:(h.cls||"").toLowerCase(), ref:h.ref,
   st:[h.vida,h.poder,h.arm,h.alc], agil:h.agil,
-  h:h.habs.map(hb=>[`${hb.f}+`, hb.n, textoHab(hb), hb.f>=5?1:0]),
+  h:h.habs.map((hb,i)=>[textoFaixaHab(hb,i), hb.n, textoHab(hb), i===2?1:0]),
   /* v45 — a passiva é parte do kit e precisa estar na carta impressa. Vem ANTES
      das três habilidades porque não gasta dado: não é a quarta opção, é a regra
      de fundo do personagem. */

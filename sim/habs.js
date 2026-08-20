@@ -117,8 +117,13 @@ Object.entries(C).forEach(([id, h]) => {
   const P = h.poder;
   h.habs.forEach((hb, i) => {
     if (i === 0) return;                            // a básica é a régua
-    const F = hb.f;                                 // no dado mínimo dela
-    const basica = valor(h.habs[0].ef, F, P, g.escalaDe(0));
+    /* v49: cada habilidade tem FAIXA, não Força mínima, e a comparação justa é
+       o pior dado dela contra o melhor dado da básica — é a escada que o jogador
+       sobe quando guarda um dado bom. Comparar as duas "no mesmo dado" virou
+       impossível: o dado que paga uma não paga a outra. */
+    const F = Math.min(...g.faixaDeHab(hb, h));     // no pior dado da faixa dela
+    const Fbas = Math.max(...g.faixaDeHab(h.habs[0], h));
+    const basica = valor(h.habs[0].ef, Fbas, P, g.escalaDe(0));
     const dela = valor(hb.ef, F, P, g.escalaDe(i));
     linhas.push({ n: h.n, slot: i, hab: hb.n, f: F,
                   basica: +basica.toFixed(1), dela: +dela.toFixed(1),
@@ -137,7 +142,7 @@ function tabela(titulo, slot) {
 }
 
 console.log(`\n  JAGERLARAMAIS · habilidade contra a própria básica` +
-            `\n  dado mínimo de cada uma · alvo com ${ARM} de armadura · área pegando ${ALVOS}` +
+            `\n  pior dado da faixa dela contra o melhor da básica · alvo com ${ARM} de armadura · área pegando ${ALVOS}` +
             `\n  escala: controle ×${g.ESCALA_CTRL} · Ultimate ×${g.ESCALA_ULT}`);
 tabela("CONTROLE (slot do meio)", 1);
 tabela("ULTIMATES", 2);

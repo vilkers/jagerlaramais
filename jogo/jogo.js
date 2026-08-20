@@ -74,6 +74,46 @@ const ESCALA_ULT=1.25;
    continua sendo da Ultimate, que escala 1,25 e pede 5 ou 6. */
 const ESCALA_CTRL=1.2;
 const escalaDe=slot=>slot===2?ESCALA_ULT:slot===1?ESCALA_CTRL:1;
+
+/* ---------- A FAIXA DE DADO (v49) ----------
+   O dado deixou de dizer SE a habilidade sai e passou a dizer QUAL sai:
+   1–2 é a básica, 3–5 é a segunda, 6 é a Ultimate. Não existe "ou mais".
+
+   Nenhum dado morre — um 6 é Ultimate de qualquer um dos cinco —, e a decisão
+   do turno vira "quem recebe este dado?" em vez de "que habilidade este dado
+   destrava?". A faixa de cada uma mora no catálogo (FAIXA_SLOT e os `dados` de
+   quem foge do padrão); aqui só se lê.
+
+   A FAIXA MORA NA HABILIDADE, e não no lugar dela. Quem não declara `dados` no
+   catálogo recebe a faixa do próprio slot uma vez só, aqui embaixo, na carga —
+   e a partir daí `faixaDeHab(hb)` responde sem precisar saber de quem é o kit.
+
+   Isso não é economia de código, é conserto: `dadoPara(hb)` é chamado em pontos
+   onde o herói ainda não está selecionado, e enquanto a faixa dependia de achar
+   o índice dentro de `quem.habs` esses pontos caíam calados na faixa da básica —
+   a Ultimate paga por um dado extra 6 respondia "nenhum dado serve". Habilidade
+   sintética (a cópia do Arden) continua caindo no padrão da básica, que é onde
+   ela é resolvida. */
+const FAIXA_PADRAO = typeof FAIXA_SLOT!=="undefined" ? FAIXA_SLOT : [[1,2],[3,4,5],[6]];
+/* carimba a faixa do slot em quem não declarou a própria — uma vez, na carga */
+(function marcaFaixas(){
+  if(typeof CATALOGO==="undefined")return;
+  Object.values(CATALOGO).forEach(def=>{
+    (def.habs||[]).forEach((hb,i)=>{ if(!hb.dados) hb.dados=FAIXA_PADRAO[i]||FAIXA_PADRAO[0]; });
+  });
+})();
+function faixaDeHab(hb,quem){
+  if(hb&&hb.dados) return hb.dados;
+  const slot = quem&&quem.habs ? quem.habs.indexOf(hb) : -1;
+  return FAIXA_PADRAO[slot>=0?slot:0];
+}
+const dadoServe=(hb,quem,v)=>faixaDeHab(hb,quem).includes(v);
+/* "1–2", "3–5", "6" — o texto que a tela mostra no lugar da Força mínima */
+function textoFaixa(hb,quem){
+  const f=faixaDeHab(hb,quem);
+  const lo=Math.min(...f), hi=Math.max(...f);
+  return lo===hi?String(lo):`${lo}–${hi}`;
+}
 const inventarioCheio=h=>h.itens.length>=capacidade(h);
 function bonus(h,campo){ return (h.itens||[]).reduce((a,id)=>a+(ITEM[id].ef[campo]||0),0); }
 function auraDe(h){
@@ -1506,7 +1546,7 @@ const PASSIVAS={
   jurisprudencia:{ danoRecebido(h,quem,d,ctx){
     if(!ctx||ctx.slot===undefined||ctx.slot>=2)return;
     if(!quem||quem.t===h.t||ctx.copia)return;
-    h.autos={n:ctx.hb.n, de:quem.n, ef:ctx.hb.ef, f:ctx.hb.f, alvo:ctx.hb.alvo, slot:ctx.slot};
+    h.autos={n:ctx.hb.n, de:quem.n, ef:ctx.hb.ef, dados:ctx.hb.dados, alvo:ctx.hb.alvo, slot:ctx.slot};
     reg("b",`⚖ ${h.n} registra ${ctx.hb.n} nos autos`);
   }},
 
@@ -2851,7 +2891,7 @@ function atualizaAcampamentos(){
 
 function usaHab(alvo){
   const{h,forca}=ativo, hb=h.habs[habSel], F=forca, ef=hb.ef;
-  if(F<hb.f)return;
+  if(!dadoServe(hb,h,F))return;
   let txt=`${h.n} usa ${hb.n} (Força ${F})`;
 
   let bonusGank=0;
@@ -2965,7 +3005,7 @@ function usaHab(alvo){
       const autos=h.autos; h.autos=null;
       reg(J.vez?"c":"a",`⚖ TRIBUNAL — ${h.n} devolve ${autos.n}, de ${autos.de}`);
       toast(`TRIBUNAL: ${autos.n}`,"");
-      const copiada={n:autos.n+" (cópia)",f:hb.f,alvo:autos.alvo,ef:{...autos.ef}};
+      const copiada={n:autos.n+" (cópia)",dados:autos.dados,alvo:autos.alvo,ef:{...autos.ef}};
       /* a cópia não herda o que não é dano nem condição: sem ouro, sem cura de
          inimigo, sem ward, sem zona e sem doar — ela é a SENTENÇA, não o kit */
       ["ouro","ouroSeMatar","doar","ward","revive","recurso","copia","baneEu",
@@ -3345,7 +3385,7 @@ function converteDado(i){
 function dadoSemUso(i){
   const d=J.dados[i]; if(!d||d.usado)return false;
   return !J.times[J.vez].herois.some(h=>!h.morto&&!h.agiu
-    &&(!d.dono||d.dono===h.id)&&h.habs.some(hb=>d.v>=hb.f));
+    &&(!d.dono||d.dono===h.id)&&h.habs.some(hb=>dadoServe(hb,h,d.v)));
 }
 
 /* ---------- PLACAS ---------- */
@@ -3430,7 +3470,11 @@ function descreve(h,hb,F){
      mais precisa saber quanto ela daria para decidir se vale guardar o dado.
      Sem dado, mostra o INTERVALO do dado mínimo dela até o 6. */
   const golpe=d=>Math.round(d*e.dano*esc)+p+(e.extra||0);
-  const faixa=()=>{ const lo=golpe(hb.f), hi=golpe(6);
+  /* v49: o intervalo é o da FAIXA DE DADO da habilidade, e não mais "do mínimo
+     até 6" — uma básica que só sai com 1 ou 2 nunca chegou a dar o dano de um 6,
+     e a ficha prometia isso. */
+  const faixa=()=>{ const fx=faixaDeHab(hb,h);
+                    const lo=golpe(Math.min(...fx)), hi=golpe(Math.max(...fx));
                     return lo===hi?`${lo} de dano`:`${lo} a ${hi} de dano`; };
   if(e.danoFixo) t.push(`${e.danoFixo} de dano garantido · ignora armadura`);
   else if(e.dano){
@@ -3441,7 +3485,8 @@ function descreve(h,hb,F){
   if(e.danoVizinhos) t.push("dano em todos os vizinhos");
   if(e.danoRaio) t.push(`dano em todos até ${e.danoRaio} casas`);
   if(e.escudo) t.push(`escudo ${F!=null?F+e.escudo
-     :(hb.f+e.escudo===6+e.escudo?String(6+e.escudo):`${hb.f+e.escudo} a ${6+e.escudo}`)}`);
+     :(()=>{const fx=faixaDeHab(hb,h), lo=Math.min(...fx)+e.escudo, hi=Math.max(...fx)+e.escudo;
+             return lo===hi?String(lo):`${lo} a ${hi}`;})()}`);
   if(e.cura) t.push(`cura ${e.cura}`);
   if(e.ouro) t.push(`+${e.ouro} de ouro`);
   if(e.recarga) t.push(`próximo golpe +${e.recarga}`);
@@ -3794,9 +3839,9 @@ function nexusAoAlcance(h,hb,alc){
    media a jogada com o dado errado. */
 function dadoPara(hb,quem){
   const dono=quem||selHeroi;
-  if(dadoSel!==null&&!J.dados[dadoSel].usado&&J.dados[dadoSel].v>=hb.f
+  if(dadoSel!==null&&!J.dados[dadoSel].usado&&dadoServe(hb,dono,J.dados[dadoSel].v)
      &&(!J.dados[dadoSel].dono||J.dados[dadoSel].dono===dono?.id)) return dadoSel;
-  const serve=d=>!d.usado&&d.v>=hb.f&&(!d.dono||d.dono===dono?.id);
+  const serve=d=>!d.usado&&dadoServe(hb,dono,d.v)&&(!d.dono||d.dono===dono?.id);
   let melhor=null;
   J.dados.forEach((d,i)=>{
     if(!serve(d))return;
@@ -3857,7 +3902,7 @@ function iniciaHab(i){
   if(selHeroi.agiu) return toast("já agiu nesta rodada","morte");
   const hb=selHeroi.habs[i];
   const d=dadoPara(hb);
-  if(d===null) return toast("nenhum dado chega a Força "+hb.f,"morte");
+  if(d===null) return toast(`nenhum dado na faixa ${textoFaixa(hb,selHeroi)}`,"morte");
   if(confirmar===i) return confirmaHab(hb.alvo==="eu"?selHeroi:null);
   modo="mirar"; habAtual=i; calcula();
   if(hb.alvo==="eu"){ confirmar=i; vibra(8); return pinta(); }
@@ -4005,7 +4050,14 @@ function golpeEmEstrutura(h,hb,slot,F){
   /* perfurante ignora a armadura da estrutura pelo mesmo motivo que ignora a de
      um herói e a do Barão — é a função dela */
   const util=ef.perfura?bruto:bruto-ARM_ESTRUTURA;
-  return Math.max(DANO_ESTRUTURA_MIN,Math.round(util*mult));
+  /* O PISO VEM ANTES DO MULTIPLICADOR, e a v49 é quem mostrou por quê. Com a
+     faixa exata, a básica bate na armadura da torre e sai no piso de 1; quando o
+     multiplicador entrava primeiro, `round(util*2)` de um `util` negativo
+     continuava negativo e o piso comia o Aríete inteiro — a dádiva prometia o
+     dobro e entregava o mesmo 1. Piso primeiro, dobro depois: o dobro de 1 é 2,
+     que é o que a carta diz. */
+  return Math.max(DANO_ESTRUTURA_MIN,
+                  Math.round(Math.max(DANO_ESTRUTURA_MIN,util)*mult));
 }
 function golpeiaEpico(h,ep,golpe,comoTxt){
   const d=EPICO[ep.id];
@@ -4745,7 +4797,7 @@ function abreCarta(h){
           <span class="f">passiva</span></div>`:""}
         ${h.habs.map(hb=>`<div class="hb2">${svgIco(iconeDe(hb))}
           <div><span class="n">${hb.n}</span><span class="d">${descreve(h,hb)}</span></div>
-          <span class="f">Força ${hb.f}${hb.f===6?"":"+"}</span></div>`).join("")}
+          <span class="f">dado ${textoFaixa(hb,h)}</span></div>`).join("")}
       </div>
       ${(()=>{const l=condsDaPeca(h);return l.length?`<div class="cond-lista">
         <div class="ct">Condições</div>${l.map(x=>
@@ -5095,10 +5147,12 @@ function abreManual(){
       <p>Um dado por rodada. O valor é o total de casas que os seus <b>cinco</b> heróis andam <b>juntos</b>.</p>
       <p>Tirou 4? São 4 casas no total: quatro com um herói, ou uma com quatro heróis. Aproximar o assassino custa o recuo do atirador.</p></section>
     <section><h4>2 · Três dados de ação, cinco heróis</h4>
-      <p>Cada dado alocado num herói vira a <b>Força</b> da habilidade. Toda habilidade tem uma Força mínima.</p>
-      <table><tr><td>Habilidades básicas</td><td>Força 1+</td></tr>
-      <tr><td>Habilidades de controle</td><td>Força 3+</td></tr>
-      <tr><td>Ultimates</td><td>Força 5+ ou 6</td></tr></table>
+      <p>Cada dado alocado num herói vira a <b>Força</b> da habilidade — e o <b>valor</b> do dado escolhe <b>qual</b> das três habilidades sai. A faixa é <b>exata</b>: não existe “ou mais”.</p>
+      <table><tr><td>dado <b>1</b> ou <b>2</b></td><td>a habilidade básica</td></tr>
+      <tr><td>dado <b>3</b>, <b>4</b> ou <b>5</b></td><td>a habilidade do meio</td></tr>
+      <tr><td>dado <b>6</b></td><td>a Ultimate</td></tr></table>
+      <p style="margin-top:7px">Um 6 é Ultimate — de qualquer um dos cinco. Ele <b>não desce</b> para pagar uma básica. Por isso a pergunta do turno não é <i>que habilidade este dado destrava?</i>, é <b>quem recebe este dado?</b>.</p>
+      <p style="margin-top:7px">Alguns heróis fogem do padrão, e é o que os separa: a do meio de quem vive de utilidade sai já no <b>2</b>, a que silencia só sai no <b>4–5</b>, e a Ultimate dos dois suportes de cura sai no <b>5</b> também — ela precisa chegar a tempo. A faixa de cada uma está escrita na própria habilidade.</p>
       <p style="margin-top:7px">Precisa de mais movimento? <b>Vire um dado de ação em movimento</b> pelo botão <b>→ mover</b>.</p></section>
     <section class="destaque"><h4>Feitiços de invocador</h4>
       <p>O time tem <b>uma carga</b>, não um feitiço por herói. Ela não gasta dado nem movimento, serve a <b>qualquer</b> um dos cinco, e volta <b>3 rodadas</b> depois de usada.</p>
@@ -5200,7 +5254,7 @@ function abreManual(){
     <section><h4>No aparelho</h4>
       <p><b>Arraste o herói para andar.</b> Encoste nele e puxe: as casas ao alcance acendem e a casa sob o dedo fica marcada. Soltou, andou. É o caminho mais rápido.</p>
       <p>Prefere tocar? Toque num herói seu → abre o <b>comando</b> dele, e de lá você escolhe <b>mover</b> ou uma <b>habilidade</b>. Os dois caminhos valem.</p>
-      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: Força mínima, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
+      <p><b>Segure uma habilidade por meio segundo</b> e ela se explica: faixa de dado, alvo, alcance, a regra por extenso e <b>o que sai com cada um dos dados que estão na mesa agora</b>. Funciona até nas habilidades apagadas — é quando mais se quer saber.</p>
       <p>O dado é escolhido sozinho: o menor que dá conta — <b>com uma exceção</b>. Se o Suporte tiver <b>doado um dado</b> para este herói, é o doado que sai primeiro: ele só serve a essa peça e morre no fim do turno, então guardá-lo é jogá-lo fora. Quer gastar um específico? Toque nele antes.</p>
       <p>O <b>✕</b> cancela sempre. Toque num herói inimigo para ver a carta dele.</p></section>
   </div>`);
@@ -5411,7 +5465,7 @@ function feiticosBloco(h){
           <span class="ico">${svgIco(iconeDe(hb))}</span>
           <span class="txt"><span class="t1">${hb.n}${confirmar===i?" — confirmar":""}</span>
             <span class="t2">${h.agiu?"já agiu nesta rodada":descreve(h,hb,di!==null?J.dados[di].v:null)}</span></span>
-          <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:"F"+hb.f}</span>
+          <span class="mark${pode?"":" trava"}">${di!==null?J.dados[di].v:textoFaixa(hb,h)}</span>
         </button>`;
       }).join("")}
       ${feiticosBloco(h)}`;
@@ -6244,17 +6298,17 @@ function fichaHab(h,i){
   const alc=alcDeHab(h,hb);
   const alcTxt=hb.alvo==="eu"?"—":hb.ef.semAlcance?"o mapa inteiro":`${alc} ${alc===1?"casa":"casas"}`;
   const dados=J.dados.map(d=>{
-    const gasto=d.usado, serve=!gasto&&d.v>=hb.f;
+    const gasto=d.usado, serve=!gasto&&dadoServe(hb,h,d.v);
     return `<div class="fdl${serve?" ok":""}">
       <span class="fdd">${d.v}</span>
       <span class="fdt">${gasto?"já gasto nesta rodada"
-        :serve?descreve(h,hb,d.v):`não chega à Força ${hb.f}`}</span></div>`;
+        :serve?descreve(h,hb,d.v):`fora da faixa ${textoFaixa(hb,h)}`}</span></div>`;
   }).join("");
   abreSheet(hb.n,`
     <div class="fh-top">
       <span class="fh-et">${h.n} · ${POS[CATALOGO[h.id].pos].n}</span>
       <div class="fh-grade">
-        <div><div class="k">Força mínima</div><div class="v">${hb.f}</div></div>
+        <div><div class="k">Dado</div><div class="v">${textoFaixa(hb,h)}</div></div>
         <div><div class="k">Alvo</div><div class="v">${ALVO[hb.alvo]||hb.alvo}</div></div>
         <div><div class="k">Alcance</div><div class="v">${alcTxt}</div></div>
       </div>
