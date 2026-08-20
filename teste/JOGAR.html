@@ -1,10 +1,11 @@
 <!-- JAGERLARAMAIS — arquivo único gerado por teste/empacota.js
-     commit 576a2af 2026-08-20
+     commit 0c76fc0 2026-08-20
      Gerado, não editado à mão. Para mudar o jogo, mexa na fonte e rode o script. -->
 <meta charset="utf-8">
 <title>JAGERLARAMAIS</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0B120F">
+<meta name="theme-color" content="#0B120F" media="(prefers-color-scheme:dark)">
+<meta name="theme-color" content="#EDEBE2" media="(prefers-color-scheme:light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230B120F'/><path d='M16 5l9.5 5.5v11L16 27l-9.5-5.5v-11z' fill='none' stroke='%23D4A24C' stroke-width='2.4'/><circle cx='16' cy='16' r='3.2' fill='%23D4A24C'/></svg>">
 <style>
@@ -17,6 +18,17 @@
   --line:#26362E; --line-soft:#1E2C25;
   --ink:#E8F0EA; --ink-2:#9DB1A6; --ink-3:#66796E;
   --brass:#D4A24C; --brass-dim:#8A6A2F; --brass-glow:rgba(212,162,76,.16);
+  /* o segundo tom do latão (fim do gradiente dos botões de ação) e a TINTA QUE
+     VAI EM CIMA DELE. Esta segunda era `#0B120F` escrito à mão em seis lugares,
+     e era uma bomba-relógio para o tema claro: no claro o latão escurece, e
+     texto quase-preto sobre ouro escuro fica ilegível. Sendo token, ele inverte
+     junto com o resto. */
+  --brass-2:#A87C33; --ink-brass:#0B120F;
+  /* o fundo das TELAS DE FLUXO (abertura, draft, cara-ou-coroa, vitória). Era
+     `rgba(6,10,8,.96)` fixo, e no tema claro isso era o pior defeito possível:
+     fundo preto com o título já em tinta ESCURA — a tela de abertura, a
+     primeira coisa que o jogador vê, ficava com "JAGERLARAMAIS" invisível. */
+  --tela-fundo:rgba(6,10,8,.96);
   --azul:#4C9BD6; --carmim:#D45B4E;
   --azul-2:#8CCBF2; --carmim-2:#F58F82;
   /* ── TABULEIRO: paleta de DIA, direção de arte itens 8, 9 e 33 ──
@@ -52,6 +64,38 @@
   --cmd-max:266px;
 }
 @media (max-height:760px){ :root{ --toque:40px; --cmd-max:150px; } }
+
+/* ── O TEMA CLARO (v50) ──
+   O jogo nasceu só escuro e o guia seguia o aparelho: metade do site trocava de
+   cara com o telefone e metade não, e quem entrava pelo guia claro caía num jogo
+   escuro. Pedido do Vilker: **o site inteiro segue o aparelho.**
+
+   Só o CHROME inverte. O tabuleiro (--rota, --selva, --rio, --terra, --bloq,
+   --traco, --ceu, --limao) fica de fora de propósito e continua de dia nos dois
+   temas — é a direção de arte, itens 8, 9 e 33: o tabuleiro é o objeto iluminado
+   em cima da mesa, não o fundo da página. A névoa (--cego) também fica: ela
+   precisa dizer "escondido" sobre um tabuleiro pálido, e isso não muda com o
+   tema do aparelho.
+
+   Os valores de fundo, linha e tinta são OS MESMOS de guia/index.html. Não é
+   coincidência e não deve virar: as duas telas são o mesmo produto, e paleta
+   duplicada com valores parecidos-mas-não-iguais é o defeito que a v48 passou
+   uma versão inteira limpando na loja e no mapa. */
+@media (prefers-color-scheme:light){
+  :root{
+    --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
+    --line:#BFBCAB; --line-soft:#CFCCBD;
+    --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
+    --brass:#8A6420; --brass-dim:#A98B4E; --brass-glow:rgba(138,100,32,.10);
+    --brass-2:#6E4E15; --ink-brass:#FFF6E4;
+    --azul:#3B6C90; --carmim:#8F3E36;
+    --azul-2:#2A5273; --carmim-2:#7A3129;
+    /* semânticas de combate: no escuro elas brilham, no claro precisam de
+       profundidade para não sumirem contra o papel */
+    --vivo:#2E8558; --dano:#B23A2B; --cura:#2E8558;
+    --tela-fundo:rgba(237,235,226,.97);
+  }
+}
 @media (max-height:640px){ :root{ --cmd-max:96px; } }
 @media (max-width:360px){ .dado{width:38px;height:38px;font-size:19px} }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -481,9 +525,9 @@ button:disabled{cursor:not-allowed}
   display:flex;align-items:center;justify-content:center;gap:5px;transition:transform .1s}
 .abt:active{transform:scale(.96)}
 .abt.destaque{border-color:var(--brass);background:var(--brass-glow);color:var(--brass)}
-.abt.fim{background:linear-gradient(160deg,var(--brass),#A87C33);color:#0B120F;border-color:transparent;font-size:15px}
+.abt.fim{background:linear-gradient(160deg,var(--brass),var(--brass-2));color:var(--ink-brass);border-color:transparent;font-size:15px}
 .abt:disabled{opacity:.32}
-.abt .bad{font-family:var(--mono);font-size:10px;background:var(--brass);color:#0B120F;
+.abt .bad{font-family:var(--mono);font-size:10px;background:var(--brass);color:var(--ink-brass);
   border-radius:20px;padding:1px 5px;font-weight:700}
 
 /* ══════════ BOTTOM SHEET ══════════ */
@@ -558,7 +602,7 @@ button:disabled{cursor:not-allowed}
   color:var(--ink-3);font-size:10px;text-align:center;padding:7px 0}
 
 /* ══════════ TELA CHEIA ══════════ */
-#tela{position:absolute;inset:0;z-index:40;background:rgba(6,10,8,.96);backdrop-filter:blur(7px);
+#tela{position:absolute;inset:0;z-index:40;background:var(--tela-fundo);backdrop-filter:blur(7px);
   display:none;align-items:center;justify-content:center;padding:22px}
 #tela.on{display:flex}
 #telacx{width:100%;max-width:420px;text-align:center;display:flex;flex-direction:column;gap:14px;
@@ -568,7 +612,7 @@ button:disabled{cursor:not-allowed}
 #telacx h2.t0{color:var(--azul-2)} #telacx h2.t1{color:var(--carmim-2)}
 #telacx p{margin:0;color:var(--ink-2);font-size:14.5px;line-height:1.55}
 #telacx p b{color:var(--ink)}
-.grande{background:linear-gradient(160deg,var(--brass),#A87C33);color:#0B120F;border-radius:13px;
+.grande{background:linear-gradient(160deg,var(--brass),var(--brass-2));color:var(--ink-brass);border-radius:13px;
   padding:16px;font-family:var(--display);font-size:18px;text-transform:uppercase;letter-spacing:.04em}
 .grande:active{transform:scale(.97)}
 .zonas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -613,7 +657,7 @@ button:disabled{cursor:not-allowed}
 .opc .mark{font-family:var(--mono);font-size:12px;color:var(--ink-3);flex:none;
   border:1px solid var(--line);border-radius:7px;padding:4px 7px;min-width:34px;text-align:center}
 .opc.pode .mark{color:var(--brass);border-color:var(--brass-dim)}
-.opc.on .mark{background:var(--brass);color:#0B120F;border-color:var(--brass)}
+.opc.on .mark{background:var(--brass);color:var(--ink-brass);border-color:var(--brass)}
 .opc .mark.trava{color:var(--ink-3);border-style:dashed}
 
 /* ── ficha da habilidade (toque longo) ── */
@@ -736,7 +780,7 @@ button:disabled{cursor:not-allowed}
 #tut .txt b{color:var(--brass)}
 #tut .bt{margin-top:10px;display:flex;gap:7px;justify-content:flex-end}
 #tut .bt button{font-size:12px;padding:8px 14px;border-radius:9px;border:1px solid var(--line);color:var(--ink-2)}
-#tut .bt button.ok{background:var(--brass);color:#0B120F;border-color:var(--brass);font-weight:600}
+#tut .bt button.ok{background:var(--brass);color:var(--ink-brass);border-color:var(--brass);font-weight:600}
 #tutwrap{position:relative}
 
 @keyframes aponta{0%,100%{box-shadow:0 0 0 0 rgba(212,162,76,.55)}50%{box-shadow:0 0 0 7px rgba(212,162,76,0)}}
@@ -1448,7 +1492,6 @@ const POS_ROTA = {
   sup:  {n:"Suporte",  cor:"#A87F92"}
 };
 
-/* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
 /* v49: a personalidade da classe deixou de ser "que Força ela exige" — todo
    mundo exige a mesma coisa agora, 1–2 / 3–5 / 6. O que separa uma classe da
    outra passou a ser O QUE CADA FAIXA COMPRA no kit dela, e onde ela foge do

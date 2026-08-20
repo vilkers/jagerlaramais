@@ -55,7 +55,7 @@ Nada na tela dizia o que uma habilidade fazia, quanto dano causava, ou qual dado
 
 ## Escolha automática de dado
 
-O passo "escolher qual dado usar" era puro atrito. Agora o jogo **pega sozinho o menor dado que atende** à Força mínima — guardando os altos para as ultimates, que é o que um jogador experiente faria.
+O passo "escolher qual dado usar" era puro atrito. Agora o jogo **pega sozinho o menor dado que serve** à habilidade — e desde a v49, em que cada habilidade tem uma **faixa exata** de dado (1–2 básica, 3–5 do meio, 6 Ultimate), "servir" quer dizer estar dentro da faixa. O 6 não é mais disputado entre as três: ele só paga a Ultimate.
 
 Quer gastar um dado específico? Toque nele antes. O automático só decide quando você não decidiu.
 

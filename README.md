@@ -29,7 +29,7 @@ Na abertura você escolhe:
 Você rola um **Dado Mestre** por rodada. O valor é o total de casas que os seus **cinco** heróis andam **juntos**. Aproximar o assassino custa o recuo do atirador.
 
 **2 · Três dados de ação, cinco heróis.**
-Cada dado alocado num herói vira a **Força** da habilidade dele. Toda habilidade tem uma Força mínima — ultimates pedem 5 ou 6.
+Cada dado alocado num herói vira a **Força** da habilidade dele — e o **valor** do dado escolhe **qual** das três habilidades sai. A faixa é **exata**, sem "ou mais": **1–2** a básica, **3–5** a do meio, **6** a Ultimate. Um 6 é Ultimate de qualquer um dos cinco, e não desce para pagar uma básica.
 
 **3 · Quem não age, enriquece.**
 Herói que recebe dado ganha 1 de ouro. Quem fica de fora **farma 3**. Como só três dos cinco agem, dois sempre estão enriquecendo. **Agir custa dinheiro.**

@@ -1496,6 +1496,93 @@ teste("o tempo de respawn cresce com a partida", () => {
   ok(morre(30) >= morre(12), "o tempo de respawn não é monotônico");
 });
 
+/* ═══════════════ v50 — O SITE INTEIRO SEGUE O APARELHO ═══════════════
+
+   Até a v49 o jogo e as cartas eram sempre escuros e só a home e o guia
+   trocavam com o telefone: metade do site mudava de cara e metade não, e quem
+   entrava pelo guia claro caía num jogo escuro. Agora os quatro seguem o
+   aparelho — e isso criou duas maneiras novas de quebrar tudo em silêncio, que
+   é o que estes testes guardam.
+
+   PRIMEIRA: token de chrome sem par no claro. O sintoma não é "fica feio", é
+   TEXTO INVISÍVEL — foi o que aconteceu com a tela de abertura, que tinha fundo
+   preto fixo e título em tinta que passou a ser escura. A primeira tela do jogo
+   com o nome do jogo apagado.
+
+   SEGUNDA: alguém "consertar" o tabuleiro. As cores de terreno NÃO invertem, de
+   propósito — direção de arte, itens 8, 9 e 33: o tabuleiro é o objeto iluminado
+   em cima da mesa, não o fundo da página. Um token de terreno aparecendo no
+   bloco claro é a correção bem-intencionada que apaga a decisão. */
+
+const CSS_JOGO = require("fs").readFileSync(
+  require("path").join(require("./motor.js").RAIZ, "jogo/estilo.css"), "utf8");
+
+/* o corpo do bloco @media (prefers-color-scheme:light) */
+function blocoClaro(css) {
+  const i = css.indexOf("@media (prefers-color-scheme:light)");
+  ok(i >= 0, "jogo/estilo.css perdeu o bloco do tema claro");
+  return css.slice(i, css.indexOf("\n}", css.indexOf(":root{", i)));
+}
+
+/* o que pinta o CHROME: tem de existir nos dois temas */
+const TOKENS_CHROME = ["--ground", "--ground-2", "--ground-3", "--line", "--line-soft",
+  "--ink", "--ink-2", "--ink-3", "--brass", "--brass-dim", "--brass-2", "--ink-brass",
+  "--azul", "--carmim", "--tela-fundo"];
+
+/* o que pinta o TABULEIRO: NÃO pode existir no bloco claro */
+const TOKENS_TABULEIRO = ["--rota", "--selva", "--rio", "--terra", "--bloq",
+  "--traco", "--ceu", "--limao", "--cego", "--estrada"];
+
+teste("todo token de chrome do jogo tem valor nos dois temas", () => {
+  const claro = blocoClaro(CSS_JOGO);
+  const faltando = TOKENS_CHROME.filter(t =>
+    !new RegExp(t.replace(/-/g, "\\-") + "\\s*:").test(claro));
+  eq(faltando.length, 0,
+     `sem valor no tema claro: ${faltando.join(", ")} — no claro estes viram texto invisível`);
+});
+
+teste("o tabuleiro NÃO inverte com o tema — ele é de dia nos dois", () => {
+  const claro = blocoClaro(CSS_JOGO);
+  const invadiram = TOKENS_TABULEIRO.filter(t =>
+    new RegExp(t.replace(/-/g, "\\-") + "\\s*:").test(claro));
+  eq(invadiram.length, 0,
+     `token de terreno redefinido no tema claro: ${invadiram.join(", ")} — `
+     + "o tabuleiro é o objeto iluminado em cima da mesa, e isso não muda com o aparelho");
+});
+
+teste("nenhuma tela de fluxo tem fundo escuro cravado no CSS", () => {
+  /* #tela cobre a janela inteira (abertura, draft, cara-ou-coroa, vitória). Se o
+     fundo dela for literal, ele não acompanha a tinta — e foi exatamente assim
+     que o título da tela de abertura sumiu. */
+  const m = /#tela\{[^}]*\}/.exec(CSS_JOGO);
+  ok(m, "não achei a regra de #tela");
+  ok(/background:var\(--/.test(m[0]),
+     "#tela voltou a ter fundo de cor literal — no tema claro isso apaga o texto por cima");
+});
+
+teste("jogo, guia e cartas usam a MESMA paleta clara", () => {
+  const fs = require("fs"), path = require("path");
+  const raiz = require("./motor.js").RAIZ;
+  const claroDe = arq => {
+    const css = fs.readFileSync(path.join(raiz, arq), "utf8");
+    const i = css.indexOf("prefers-color-scheme:light") >= 0
+      ? css.indexOf("prefers-color-scheme:light") : css.indexOf("prefers-color-scheme: light");
+    ok(i >= 0, `${arq} não tem tema claro`);
+    const corpo = css.slice(i, css.indexOf("\n}", css.indexOf(":root{", i)));
+    const val = {};
+    corpo.replace(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g, (_, k, v) => { val[k] = v.trim(); return ""; });
+    return val;
+  };
+  const jogo = claroDe("jogo/estilo.css"), guia = claroDe("guia/index.html"),
+        cartas = claroDe("cartas/index.html");
+  /* só os tokens que os três declaram — cada tela tem os seus a mais */
+  ["--ground", "--ground-2", "--line", "--ink", "--ink-2", "--brass"].forEach(t => {
+    eq(guia[t], jogo[t], `${t}: guia e jogo divergiram no tema claro`);
+    eq(cartas[t], jogo[t], `${t}: cartas e jogo divergiram no tema claro`);
+  });
+});
+
+
 /* ═══════════════ v49 — SUBIR DE FAIXA TEM QUE VALER A PENA ═══════════════
 
    Até a v48 cada habilidade tinha uma Força MÍNIMA e um dado grande pagava

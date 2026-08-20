@@ -111,6 +111,110 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v50 — o site inteiro segue o aparelho · 2026-08-20
+
+Relato, depois de três idas e vindas sobre "o site não está mudando":
+
+> *"As cores estão erradas no site"* · *"o site todo está como antes"* ·
+> *"n está mudando"*
+
+O site **estava** atualizado nas três vezes. O que estava errado era outra coisa,
+e levou três rodadas para aparecer: **metade do site trocava de cara com o
+telefone e metade não.** O jogo e as cartas eram sempre escuros; a home e o guia
+seguiam o aparelho. Quem entrava por uma metade e ia para a outra via dois
+produtos. E os screenshots que eu mandava saíam claros (o padrão desta máquina)
+enquanto o telefone dele estava no escuro — eu mostrava uma versão e entregava
+outra.
+
+Escolha do Vilker, entre uniformizar para escuro ou para o aparelho: **o
+aparelho.** O jogo e as cartas ganharam tema claro.
+
+---
+
+### 1. Só o CHROME inverte. O tabuleiro é de dia nos dois
+
+Isto não é detalhe de implementação, é a regra: `--rota`, `--selva`, `--rio`,
+`--terra`, `--bloq`, `--traco`, `--ceu`, `--limao` e a névoa `--cego` **ficam
+fora** do bloco claro. Direção de arte, itens 8, 9 e 33 — *o tabuleiro é o objeto
+iluminado em cima da mesa, não o fundo da página*.
+
+Foi o que tornou o trabalho pequeno: das 77 cores literais de `jogo/estilo.css`,
+**mais de 60 são do tabuleiro** e não mudam. O chrome inteiro roda em cima de ~15
+tokens, e o tema claro é um bloco `@media` redefinindo esses.
+
+---
+
+### 2. Dois defeitos que só existiam no claro (BUG)
+
+Nenhum dos dois dava erro. Os dois **apagavam texto**.
+
+**A tela de abertura ficava com o nome do jogo invisível.** `#tela` — a tela cheia
+de fluxo (abertura, draft, cara-ou-coroa, vitória) — tinha `background:
+rgba(6,10,8,.96)` cravado. No tema claro o fundo continuava preto e a tinta
+passava a ser escura: "JAGERLARAMAIS" e "PARTIDA RÁPIDA" sumiam contra o próprio
+fundo. **A primeira tela do jogo, com o nome do jogo apagado.** O fundo virou
+`--tela-fundo`, com valor nos dois temas.
+
+**Texto quase-preto sobre ouro escuro.** `#0B120F` estava escrito à mão em **seis
+lugares** como "a tinta que vai em cima do latão" (ENCERRAR, os botões grandes, a
+marca do dado selecionado, o botão do tutorial). No escuro é preto sobre ouro
+brilhante e funciona; no claro o latão escurece para `#8A6420` e a mesma tinta
+vira ilegível. Virou `--ink-brass`, que inverte junto.
+
+---
+
+### 3. A paleta clara é UMA, e o teste garante
+
+Os valores de fundo, linha e tinta do jogo são **idênticos** aos do guia e aos das
+cartas. Não por convenção — por teste. Trocar um dígito em qualquer um dos três
+quebra a suíte.
+
+Quatro testes novos, e cada um foi **quebrado de propósito antes de entrar**
+(regra do projeto desde a v16 — teste que não falha antes não está testando nada):
+
+| Teste | O que ele acusa |
+|---|---|
+| todo token de chrome tem valor nos dois temas | tirei `--ink-brass` do claro → acusou |
+| o tabuleiro NÃO inverte com o tema | fiz `--selva` inverter → acusou |
+| nenhuma tela de fluxo tem fundo cravado | devolvi o preto de `#tela` → acusou |
+| jogo, guia e cartas usam a MESMA paleta | mudei `#EDEBE2` para `#EDEBE3` no guia → acusou |
+
+O segundo é o mais importante dos quatro, e o menos óbvio: ele existe contra a
+**correção bem-intencionada**. Alguém vai olhar o tema claro, achar que o
+tabuleiro "esqueceu" de inverter, e consertar — apagando a decisão de arte.
+
+---
+
+### 4. A carta ainda ensinava a regra da v48
+
+Achado ao conferir o tema claro, e não tem nada a ver com tema: a página de
+cartas mostrava o rótulo novo (**1–2 · 3–5 · 6**) com o texto velho logo acima —
+*"a Força ao lado de cada habilidade é o valor mínimo do dado... Ultimates pedem
+5 ou 6"*. **Duas regras contraditórias na mesma tela**, e a errada era a que o
+jogador lê primeiro.
+
+Corrigido ali, e a varredura pegou mais três: o `README.md` (a porta de entrada do
+repositório), um comentário órfão em `data/catalogo.js` e a descrição da escolha
+automática de dado em `docs/03-jogabilidade.md`. `docs/02-regras.md` continua
+falando da v0.2 de propósito — está marcado como arquivado desde a v20.
+
+O rótulo da carta também deixou de dizer "Força" e passou a dizer **"dado"**: na
+v49 a Força continua sendo o que entra na conta do dano, mas quem escolhe a
+habilidade é a **faixa**. Chamar a faixa de Força era o resto da regra antiga
+grudado no lugar errado.
+
+---
+
+### 5. Verificado
+
+Tela de abertura, painel de comando, manual, loja e cartas — nos **dois temas**,
+em 393px, no Chromium de verdade. Sem erro de JS em nenhuma. Fumaça com a IA
+jogando a partida inteira: fecha, 8 torres caídas, nenhum erro.
+
+**Testes: 286 → 290.**
+
+---
+
 ## v49 — o dado escolhe QUAL habilidade sai · 2026-08-20
 
 Quatro relatos do playtest do Vilker, e o quarto reescreveu o coração do turno.

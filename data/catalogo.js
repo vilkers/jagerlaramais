@@ -489,7 +489,6 @@ const POS_ROTA = {
   sup:  {n:"Suporte",  cor:"#A87F92"}
 };
 
-/* a Força mínima é a personalidade da classe — o guia explica a partir daqui */
 /* v49: a personalidade da classe deixou de ser "que Força ela exige" — todo
    mundo exige a mesma coisa agora, 1–2 / 3–5 / 6. O que separa uma classe da
    outra passou a ser O QUE CADA FAIXA COMPRA no kit dela, e onde ela foge do
