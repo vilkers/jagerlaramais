@@ -47,6 +47,7 @@
 const http = require("http");
 const crypto = require("crypto");
 const path = require("path");
+const fs = require("fs");
 const { carrega } = require(path.join(__dirname, "..", "sim", "motor.js"));
 
 const PORTA = +process.env.PORT || 8787;
@@ -218,6 +219,38 @@ const manda = (res, cod, obj) => {
   res.end(JSON.stringify(obj));
 };
 
+/* estático, e SÓ o que o jogo precisa. A lista é fechada de propósito: um
+   servidor de sala que serve o disco inteiro é um servidor de arquivos com
+   sotaque, e este processo vai rodar na máquina de alguém. */
+const RAIZ_SITE = path.join(__dirname, "..");
+const PASTAS_OK = ["jogo", "data", "arte"];
+const TIPOS = { ".html":"text/html; charset=utf-8", ".js":"text/javascript; charset=utf-8",
+                ".css":"text/css; charset=utf-8", ".jpg":"image/jpeg", ".png":"image/png",
+                ".svg":"image/svg+xml", ".webp":"image/webp" };
+
+function serveArquivo(caminho, res) {
+  let rel = decodeURIComponent(caminho).replace(/^\/+/, "");
+  /* A RAIZ REDIRECIONA, não serve o arquivo direto. `jogo/index.html` pede
+     `jogo.js` e `estilo.css` por caminho RELATIVO; servido em `/`, o navegador
+     iria buscá-los em `/jogo.js` e a página subia sem motor. Em `/jogo/` os
+     mesmos caminhos caem no lugar certo. */
+  if (rel === "" || rel === "jogo") {
+    res.writeHead(302, { location: "/jogo/" });
+    return res.end();
+  }
+  if (rel === "jogo/") rel = "jogo/index.html";
+  const abs = path.resolve(RAIZ_SITE, rel);
+  /* nada de subir de pasta: `..` no caminho é a primeira coisa que se tenta */
+  const dentro = PASTAS_OK.some(p => abs.startsWith(path.join(RAIZ_SITE, p) + path.sep));
+  if (!dentro) return manda(res, 404, { erro: "não existe" });
+  fs.readFile(abs, (e, d) => {
+    if (e) return manda(res, 404, { erro: "não existe" });
+    res.writeHead(200, { "content-type": TIPOS[path.extname(abs)] || "application/octet-stream",
+                         "cache-control": "no-cache" });
+    res.end(d);
+  });
+}
+
 const servidor = http.createServer(async (req, res) => {
   /* o jogo é servido de outro lugar (GitHub Pages), então CORS é obrigatório */
   res.setHeader("access-control-allow-origin", "*");
@@ -282,6 +315,19 @@ const servidor = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === "/saude") return manda(res, 200, { ok: 1, salas: salas.size });
+
+    /* ── O SERVIDOR TAMBÉM SERVE O JOGO, e isto não é conveniência ──
+
+       O primeiro relato depois de a sala existir foi "tá dando erro pra criar
+       sala". Não era o servidor: a página vinha do GitHub Pages, em HTTPS, e
+       apontava para um servidor em HTTP num IP de rede. O navegador BLOQUEIA
+       isso (mixed content) antes de a chamada sair — e nenhum ajuste no
+       servidor resolveria, porque a requisição nunca chega nele.
+
+       Servindo o jogo daqui, a página e a sala passam a ter a MESMA origem: sem
+       mixed content, sem CORS, e o endereço do servidor deixa de precisar ser
+       digitado. Vira um comando e uma URL para os dois jogadores. */
+    if (req.method === "GET") return serveArquivo(url.pathname, res);
     manda(res, 404, { erro: "não existe" });
   } catch (e) {
     manda(res, e.doCliente ? 400 : 500, { erro: e.doCliente ? e.message : "erro no servidor" });
@@ -290,6 +336,18 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 if (require.main === module)
-  servidor.listen(PORTA, () => console.log(`  sala em http://localhost:${PORTA}`));
+  servidor.listen(PORTA, () => {
+    const ips = [];
+    try {
+      const nets = require("os").networkInterfaces();
+      for (const n of Object.values(nets)) for (const i of n||[])
+        if (i.family === "IPv4" && !i.internal) ips.push(i.address);
+    } catch (_) {}
+    console.log(`\n  JAGERLARAMAIS · sala aberta\n`);
+    console.log(`  neste aparelho:  http://localhost:${PORTA}`);
+    ips.forEach(ip => console.log(`  na sua rede:     http://${ip}:${PORTA}   <- abra este nos dois celulares`));
+    console.log(`\n  Abra esse endereço no navegador dos DOIS jogadores e toque em`);
+    console.log(`  "Jogar com um amigo · sala". O campo de endereço já vem preenchido.\n`);
+  });
 
 module.exports = { servidor, salas, novaSala };

@@ -3,12 +3,27 @@
 PvP em rede, com sala e senha. **O hotseat não depende disto** — continua abrindo
 com duplo clique, offline, como sempre.
 
-## Subir
+## Subir e jogar — o caminho curto
 
 ```
 node servidor/sala.js            # porta 8787
 PORT=3000 node servidor/sala.js  # outra porta
 ```
+
+Ele imprime o endereço da sua rede. **Abra ESSE endereço nos dois celulares** —
+o servidor serve o jogo também, e o campo de endereço já vem preenchido.
+
+### Por que abrir pelo servidor, e não pelo site
+
+Abrir pelo `vilkers.github.io` e apontar para o seu servidor **não funciona**, e
+não é defeito de nenhum dos dois: o site vem por **HTTPS** e o seu servidor é
+**HTTP** num IP de rede. O navegador bloqueia essa mistura (*mixed content*)
+antes de a chamada sair — a requisição nunca chega no servidor, então nada que se
+mexa nele resolve.
+
+Servido daqui, página e sala têm a **mesma origem**: sem mixed content, sem CORS,
+sem endereço para digitar. Se você tentar o caminho do site mesmo assim, a tela
+de sala explica isso em vez de dizer "o servidor está de pé?".
 
 Zero dependência: só `http` e `crypto` do Node. Roda em qualquer lugar que rode
 Node — Deno Deploy, Fly, Render, Railway, ou uma máquina na sua rede local.

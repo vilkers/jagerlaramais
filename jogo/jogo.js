@@ -7115,6 +7115,19 @@ const SALA_CHAVE="jager.sala.servidor";
 const servidorSalvo=()=>{ try{ return localStorage.getItem(SALA_CHAVE)||""; }catch(_){ return ""; } };
 const guardaServidor=v=>{ try{ localStorage.setItem(SALA_CHAVE,v); }catch(_){} };
 
+/* Se a página veio do próprio servidor de sala, o endereço é a origem dela — e
+   aí não há o que digitar, nem mixed content, nem CORS. É o caminho que o
+   `servidor/sala.js` passou a oferecer depois do relato do erro. */
+async function achaServidorAqui(){
+  if(!/^https?:$/.test(location.protocol)) return "";
+  try{
+    const r=await fetch(location.origin+"/saude",{cache:"no-store"});
+    if(!r.ok) return "";
+    const j=await r.json();
+    return j&&j.ok ? location.origin : "";
+  }catch(_){ return ""; }
+}
+
 function telaSala(){
   abre(`<span class="et">Jogar com um amigo</span><h2>Sala</h2>
     <p>Um cria a sala e passa o <b>código</b> e a <b>senha</b>. O outro entra.
@@ -7135,17 +7148,43 @@ function telaSala(){
   const msg=t=>{ const e=G("salaMsg"); if(e) e.innerHTML=t; };
   const base=()=>String(G("salaBase").value||"").trim().replace(/\/$/,"");
 
+  achaServidorAqui().then(aqui=>{
+    const cx=G("salaBase");
+    if(!aqui||!cx) return;
+    cx.value=aqui;
+    msg("servidor encontrado neste endereço — é só criar ou entrar.");
+  });
+
   async function fala(rota,corpo){
     const b=base();
     if(!b) { msg("Falta o endereço do servidor."); return null; }
     guardaServidor(b);
+    /* DIAGNÓSTICO ANTES DA TENTATIVA. O primeiro relato de "tá dando erro pra
+       criar sala" não era o servidor: a página vinha de HTTPS e o endereço era
+       HTTP num IP de rede, e o navegador BLOQUEIA isso (mixed content) antes de
+       a chamada sair. A mensagem antiga dizia "ele está de pé?" e mandava
+       procurar exatamente no lugar errado. */
+    const bloqueado = location.protocol==="https:" && /^http:\/\//i.test(b)
+      && !/^http:\/\/(localhost|127\.0\.0\.1)/i.test(b);
+    if(bloqueado){
+      msg(`Esta página veio por <b>https</b> e o servidor é <b>http</b> — o navegador
+           bloqueia essa mistura, e a chamada nem sai.<br><br>
+           <b>O jeito simples:</b> abra o jogo <b>pelo próprio servidor</b>
+           (<code>${b}</code>) nos dois aparelhos, em vez de abrir pelo site.`);
+      return null;
+    }
     try{
       const r=await fetch(b+rota,{method:"POST",
         headers:{"content-type":"application/json"},body:JSON.stringify(corpo)});
       const j=await r.json();
       if(!r.ok){ msg(j.erro||"não deu"); return null; }
       return j;
-    }catch(_){ msg("não consegui falar com o servidor. Ele está de pé?"); return null; }
+    }catch(_){
+      msg(`não cheguei em <code>${b}</code>. Confira se o servidor está rodando
+           (<code>node servidor/sala.js</code>), se o endereço está certo e se os
+           dois aparelhos estão na mesma rede.`);
+      return null;
+    }
   }
 
   G("btCriar").onclick=async()=>{

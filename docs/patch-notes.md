@@ -111,6 +111,82 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v54 — o servidor serve o jogo · 2026-08-20
+
+> *"tá dando erro pra criar sala"*
+
+Não era o servidor. E a mensagem que eu tinha escrito mandava procurar
+exatamente no lugar errado.
+
+---
+
+### 1. O que estava acontecendo
+
+A página vinha do **GitHub Pages, em HTTPS**. O servidor de sala roda em
+**HTTP**, num IP de rede. O navegador **bloqueia** essa mistura:
+
+```
+Mixed Content: The page at 'https://…' was loaded over HTTPS, but requested an
+insecure resource 'http://192.168.x.x/criar'. This request has been blocked.
+```
+
+A chamada **nunca chega no servidor**. Nada que se mexesse nele resolveria.
+
+Reproduzido antes de consertar: página servida por HTTPS local, sala num IP de
+rede, e o bloqueio apareceu igual. (Com `localhost` **não** aparece — o navegador
+trata localhost como origem segura, e foi por isso que passou nos meus testes.)
+
+---
+
+### 2. O bug que era meu: a mensagem
+
+A tela dizia *"não consegui falar com o servidor. Ele está de pé?"* — e o
+servidor estava de pé. Um `catch` que engolia tudo numa frase só, e a frase
+apontava para a causa errada.
+
+Agora o caso é detectado **antes da tentativa** e explicado: veio de https,
+aponta para http, e o navegador não deixa. Com o caminho que resolve, junto.
+
+O outro ramo também parou de ser genérico: diz o endereço que tentou e o que
+conferir.
+
+---
+
+### 3. O conserto de verdade: o servidor serve o jogo
+
+Explicar um erro é o mínimo. Melhor é ele não existir.
+
+`servidor/sala.js` passou a servir `jogo/`, `data/` e `arte/`. Abrindo o jogo
+**pelo próprio servidor**, página e sala ficam na **mesma origem**: sem mixed
+content, sem CORS, e o campo de endereço se preenche sozinho — a tela pergunta
+`/saude` na origem dela e, se responder, é ele.
+
+Vira um comando e uma URL para os dois jogadores. Ao subir, ele imprime o
+endereço da rede pronto para copiar.
+
+**A raiz redireciona para `/jogo/`, e não serve o arquivo ali.** Foi o erro
+seguinte, achado no teste: `jogo/index.html` pede `jogo.js` e `estilo.css` por
+caminho relativo; servido em `/`, o navegador os procurava em `/jogo.js` e a
+página subia sem motor.
+
+A lista de pastas servidas é **fechada** e `..` é barrado: este processo roda na
+máquina de alguém, e um servidor de sala que serve o disco inteiro é um servidor
+de arquivos com sotaque.
+
+---
+
+### 4. Conferido
+
+| Caminho | Antes | Agora |
+|---|---|---|
+| site https → servidor http num IP | *"ele está de pé?"* | explica o bloqueio e diz o que fazer |
+| jogo aberto **pelo** servidor | não existia | campo preenchido sozinho, sala criada |
+| dois navegadores, partida | ok | ok — névoa dinâmica, 0→1 inimigo ao entrar em visão |
+
+307 testes no motor · 19 no servidor · fumaça sem erro.
+
+---
+
 ## v53 — o PvP joga · 2026-08-20
 
 A v52 entregou o servidor e disse que o cliente ficava para depois. Depois é
