@@ -1,69 +1,249 @@
-<meta charset="utf-8">
-<title>JAGERLARAMAIS</title>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"><title>JAGERLARAMAIS</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-/* Os mesmos tokens de jogo/estilo.css: a porta de entrada e o jogo têm de
-   parecer o mesmo produto. Até a v48 o latão daqui era #C99A46 e o do jogo
-   #D4A24C — perto o bastante para ninguém notar, e diferente o bastante para
-   a tela piscar de cor na hora de entrar. */
+@font-face{font-family:Placa;   src:url(arte/fontes/AlfaSlabOne.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Estencil;src:url(arte/fontes/Staatliches.woff2) format('woff2');font-display:swap}
+@font-face{font-family:Corpo;   src:url(arte/fontes/Bitter.woff2)      format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:Corpo;   src:url(arte/fontes/BitterBold.woff2)  format('woff2');font-weight:700;font-display:swap}
+
 :root{
-  --ground:#EDEBE2; --ground-2:#E4E2D7; --line:#BFBCAB;
-  --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F; --brass:#8A6420;
-  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",Impact,sans-serif;
-  --carto:"Copperplate","Optima",Georgia,serif;
-  --body:"Iowan Old Style",Palatino,Georgia,serif;
+  /* ═══ O CREME VOLTOU ═══ os mesmos valores do site de hoje. O universo entra
+     por DESENHO, não por fundo sujo: papel de manual de campo, e as coisas do
+     mundo rabiscadas nele. */
+  --ground:#EDEBE2; --ground-2:#E4E2D7; --ground-3:#DAD8CB;
+  --line:#BFBCAB; --ink:#1B2320; --ink-2:#4E5B56; --ink-3:#7A857F;
+  --brass:#8A6420; --carmim:#8F3E36; --azul:#3B6C90; --limao:#C6F53F;
+  --tinta:#3A3226;              /* o traço dos desenhos */
 }
 *{box-sizing:border-box}
-body{margin:0;min-height:100dvh;background:var(--ground);color:var(--ink);
-  font-family:var(--body);display:flex;align-items:center;justify-content:center;padding:32px 20px}
-main{width:100%;max-width:520px}
-.et{font-family:var(--carto);font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--brass)}
-h1{font-family:var(--display);font-weight:700;text-transform:uppercase;
-  font-size:clamp(44px,13vw,76px);line-height:.9;margin:10px 0 14px;letter-spacing:-.01em}
-p{color:var(--ink-2);font-size:16px;line-height:1.6;margin:0 0 8px}
-.aviso{color:var(--ink-3);font-size:13.5px;line-height:1.55;margin:18px 0 30px;
-  border-left:2px solid var(--line);padding-left:14px}
-a.bt{display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);
-  background:var(--ground-2);border-radius:12px;padding:15px 18px;margin-bottom:10px}
-a.bt:hover{border-color:var(--brass)}
-a.bt .n{font-family:var(--display);font-size:19px;text-transform:uppercase;line-height:1}
-a.bt .d{font-size:13px;color:var(--ink-2);margin-top:4px;font-family:var(--body)}
-a.bt.forte{background:var(--brass);border-color:var(--brass);color:#12100A}
-a.bt.forte .d{color:#3A3113}
-a.bt.visual{position:relative;overflow:hidden;border-color:#8066ff;background:linear-gradient(125deg,#241d50,#151c1a 55%,#29330f);box-shadow:0 0 0 1px #b8ff4150,0 12px 35px #7357ff35;transform:translateZ(0);transition:transform .25s ease,box-shadow .25s ease}
-a.bt.visual:before{content:"";position:absolute;inset:-90% -35%;background:linear-gradient(110deg,transparent 42%,#ffffff42 49%,transparent 56%);transform:translateX(-60%) rotate(8deg);animation:lab-sheen 3.6s ease-in-out infinite}
-a.bt.visual:after{content:"NOVO · LAB ABERTO";position:absolute;right:13px;top:12px;background:#C8FF35;color:#111;font:700 8px/1 var(--carto);letter-spacing:.08em;padding:6px 8px;border-radius:999px;box-shadow:0 0 18px #c8ff3575;animation:lab-pulse 1.8s ease-in-out infinite}
-a.bt.visual .n,a.bt.visual .d{position:relative;z-index:1}.visual .n{color:#f5f2ff}.visual .n:before{content:"✦";color:#C8FF35;margin-right:9px}.visual .d{color:#c1bbd8!important;max-width:72%}
-a.bt.visual:hover{border-color:#C8FF35;transform:translateY(-3px);box-shadow:0 0 0 1px #c8ff3590,0 18px 45px #7357ff55}
-@keyframes lab-sheen{0%,55%{transform:translateX(-60%) rotate(8deg)}85%,100%{transform:translateX(70%) rotate(8deg)}}
-@keyframes lab-pulse{50%{box-shadow:0 0 5px #c8ff3530;transform:scale(.97)}}
-@media(prefers-reduced-motion:reduce){a.bt.visual:before,a.bt.visual:after{animation:none}}
-footer{margin-top:26px;font-family:var(--carto);font-size:11px;letter-spacing:.12em;color:var(--ink-3)}
-footer a{color:var(--ink-3)}
+html,body{margin:0;min-height:100%}
+body{font-family:Corpo,Georgia,serif;color:var(--ink);background:var(--ground);
+  position:relative;overflow-x:hidden}
+
+/* grão de papel, discreto — o creme não pode virar plástico */
+.grao{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.32;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23g)' opacity='.4'/></svg>")}
+
+/* ═══ OS DESENHOS DO UNIVERSO ═══
+   Traço de manual de campo: nanquim sobre papel. Casa de tijolo com laje e caixa
+   d'água, pilha de sucata, e as armas que JÁ existem no catálogo — o chinelo da
+   Dona Chinela, a buzina do Taxista, o cilindro do Catarino, a vassoura do Gari
+   Mago. Não são enfeite: são o elenco. */
+.vinheta{position:absolute;z-index:0;pointer-events:none}
+.vinheta svg{display:block;width:100%;height:auto}
+/* ancoradas em PORCENTAGEM da altura do conteúdo, não em pixel: no celular a
+   página é o dobro de alta, e posição fixa em pixel jogava o desenho para
+   depois do rodapé */
+.v-casa   {right:-30px;top:2%;  width:230px;opacity:.42}
+.v-sucata {left:-52px; top:34%; width:215px;opacity:.36}
+.v-armas  {right:-28px;top:58%; width:185px;opacity:.40}
+.v-cacamba{left:-30px; top:86%; width:205px;opacity:.32}
+@media(max-width:560px){
+  /* no celular não há margem: os desenhos viram marca-d'água ATRÁS do conteúdo */
+  .v-casa   {width:168px;right:-46px;top:1%;  opacity:.3}
+  .v-sucata {width:158px;left:-58px; top:37%; opacity:.26}
+  .v-armas  {width:140px;right:-40px;top:62%; opacity:.3}
+  .v-cacamba{width:160px;left:-46px; top:88%; opacity:.24}
+}
+
+main{position:relative;z-index:3;max-width:660px;padding:52px 22px 90px;margin:0 auto}
+
+/* ═══ A PLACA DE FERRO VELHO, MEIO CAÍDA ═══
+   Três chapas desencontradas, rebitadas, cada uma de um tom de metal. Presa por
+   UM parafuso só, no canto esquerdo: por isso ela pende. O arame no canto direito
+   é a gambiarra que impede de cair de vez — e é a piada da placa. */
+.suporte{position:relative;height:34px;z-index:4}
+.suporte:before{content:"";position:absolute;left:26px;top:0;width:3px;height:34px;
+  background:linear-gradient(#8d7f68,#5a5142)}
+.suporte:after{content:"";position:absolute;right:64px;top:0;width:2px;height:44px;
+  background:repeating-linear-gradient(#6b6152 0 4px,transparent 4px 7px);transform:rotate(7deg)}
+
+.placa{position:relative;display:block;margin:-6px 0 0;padding:22px 24px 26px;
+  transform:rotate(-5.2deg);transform-origin:34px 18px;
+  filter:drop-shadow(7px 13px 0 #1B232033)}
+/* as chapas: fundos sobrepostos, tons diferentes, bordas irregulares */
+.placa .chapa1,.placa .chapa2,.placa .chapa3{position:absolute;border:2px solid #3F3A2E}
+.placa .chapa1{inset:0;
+  background:linear-gradient(168deg,#E2D8BE,#C6B99A);
+  clip-path:polygon(0 3%,38% 0,72% 4%,100% 1%,99% 96%,64% 100%,26% 96%,0 99%)}
+.placa .chapa2{left:34%;top:-6px;right:-8px;bottom:22%;
+  background:linear-gradient(172deg,#DFE2DB,#BFC4BB);
+  clip-path:polygon(2% 6%,100% 0,98% 92%,0 100%);transform:rotate(1.4deg)}
+.placa .chapa3{left:-10px;bottom:-9px;width:46%;height:44%;
+  background:linear-gradient(8deg,#D2C5A6,#E8DEC5);
+  clip-path:polygon(0 12%,96% 0,100% 88%,4% 100%);transform:rotate(-1.8deg)}
+/* ferrugem escorrendo das juntas */
+.placa .ferrug{position:absolute;inset:0;pointer-events:none;opacity:.85;
+  background:
+    linear-gradient(180deg,#7A3A12dd 0 3px,#7A3A1266 3px 34%,transparent 34%) 17% 0/4px 100% no-repeat,
+    linear-gradient(180deg,#8C4718dd 0 3px,#8C471866 3px 56%,transparent 56%) 41% 0/3px 100% no-repeat,
+    linear-gradient(180deg,#6E3410dd 0 3px,#6E341066 3px 44%,transparent 44%) 62% 0/5px 100% no-repeat,
+    linear-gradient(180deg,#8C4718dd 0 3px,#8C471855 3px 28%,transparent 28%) 84% 0/3px 100% no-repeat,
+    radial-gradient(ellipse 34% 12% at 17% 2%,#6E3410aa,transparent 70%),
+    radial-gradient(ellipse 30% 10% at 62% 1%,#7A3A1299,transparent 70%),
+    radial-gradient(ellipse 22% 26% at 96% 74%,#6E341088,transparent 72%)}
+/* os rebites */
+.rebite{position:absolute;width:9px;height:9px;border-radius:50%;
+  background:radial-gradient(circle at 32% 30%,#CFC6AF,#5F5748 62%,#39332A);
+  box-shadow:0 1px 1px #00000055}
+.r1{left:9px;top:9px} .r2{right:11px;top:5px} .r3{left:12px;bottom:8px}
+.r4{right:9px;bottom:11px} .r5{left:47%;top:4px} .r6{left:36%;bottom:5px}
+
+.placa .txt{position:relative;z-index:2}
+.et{font-family:Estencil,Impact,sans-serif;font-size:13px;letter-spacing:.2em;
+  color:#2E2A20;display:block;margin-bottom:1px;opacity:.75}
+h1{font-family:Placa,Georgia,serif;font-weight:400;margin:0;line-height:.84;
+  font-size:clamp(46px,13.5vw,92px);letter-spacing:-.005em;
+  color:#26221A;
+  /* letra pintada à mão em chapa: leve desalinho e sombra de tinta */
+  text-shadow:1px 2px 0 #ffffff30, 2px 3px 0 #00000022}
+h1 i{font-style:normal;color:#8F3E36;display:inline-block;transform:rotate(.8deg)}
+
+.lede{font-size:17px;line-height:1.55;margin:38px 0 0;max-width:42ch}
+.fita{position:relative;margin:24px 0 32px;padding:15px 18px;max-width:44ch;
+  background:var(--ground-2);font-size:14.5px;line-height:1.5;color:#3A3226;
+  transform:rotate(.4deg);border-left:5px solid var(--brass);box-shadow:3px 5px 0 #1B232018}
+.fita:before{content:"";position:absolute;top:-10px;left:24px;width:72px;height:20px;
+  background:#DED5BEcc;transform:rotate(-4deg)}
+
+.trilho{display:grid;gap:14px}
+a.bt{position:relative;display:block;text-decoration:none;color:var(--ink);
+  background:var(--ground-2);border:2.5px solid #3A3226;padding:14px 17px 15px;
+  box-shadow:4px 6px 0 #1B232022;transition:transform .12s ease,box-shadow .12s ease}
+a.bt:nth-child(odd){transform:rotate(-.45deg)} a.bt:nth-child(even){transform:rotate(.4deg)}
+a.bt:hover{transform:translate(-2px,-2px);box-shadow:7px 10px 0 #1B23202e}
+a.bt .n{font-family:Placa,serif;font-size:24px;line-height:1}
+a.bt .d{font-size:13.5px;color:var(--ink-2);margin-top:5px;line-height:1.4}
+a.bt .num{position:absolute;right:12px;top:10px;font-family:Estencil,sans-serif;
+  font-size:12px;letter-spacing:.16em;color:var(--ink-3)}
+a.bt.forte{background:linear-gradient(177deg,#C79A2C,#A87C22);border-color:#2E2410}
+a.bt.forte .n{color:#241B08} a.bt.forte .d{color:#4A3712} a.bt.forte .num{color:#6B5316}
+a.bt.lab{background:linear-gradient(125deg,#1E1840,#141A18 60%,#232C0C);border-color:#0C0A18}
+a.bt.lab .n{color:#F2ECFF} a.bt.lab .d{color:#B9B1D6} a.bt.lab .num{color:var(--limao)}
+a.bt.lab:after{content:"NOVO";position:absolute;right:11px;bottom:11px;background:var(--limao);
+  color:#141414;font-family:Estencil,sans-serif;font-size:11px;letter-spacing:.13em;padding:3px 8px}
+
+footer{margin-top:32px;font-family:Estencil,sans-serif;font-size:12.5px;letter-spacing:.15em;
+  color:var(--ink-3)} footer a{color:var(--ink-3)} footer b{color:var(--carmim)}
 </style>
 
+<!-- ═══ AS VINHETAS ═══ nanquim sobre o papel do manual ═══ -->
+<div class="grao"></div>
+
 <main>
-  <span class="et">Um MOBA de mesa para dois</span>
-  <h1>Jager<br>laramais</h1>
-  <p>Cada um comanda <b>cinco heróis</b> — um por rota. Um dado move o time inteiro.
-  Três dados de ação para cinco heróis: quem fica sem ordem, farma.</p>
+<div class="vinheta v-casa"><svg viewBox="0 0 200 190" fill="none" stroke="#3A3226" stroke-width="2.4" stroke-linejoin="round">
+  <!-- laje e corpo da casa -->
+  <path d="M28 78 h116 v96 H28z"/><path d="M22 78 h128 l-8-11 H30z"/>
+  <!-- tijolo aparente -->
+  <g stroke-width="1.2" opacity=".55">
+    <path d="M28 92h116M28 106h116M28 120h116M28 134h116M28 148h116M28 162h116"/>
+    <path d="M56 78v14M84 78v14M112 78v14M42 92v14M70 92v14M98 92v14M126 92v14
+             M56 106v14M84 106v14M112 106v14M42 120v14M70 120v14M98 120v14M126 120v14"/>
+  </g>
+  <!-- janela e porta -->
+  <path d="M44 124h30v26H44z" stroke-width="2.2"/><path d="M59 124v26M44 137h30" stroke-width="1.2"/>
+  <path d="M104 132h26v42h-26z" stroke-width="2.2"/><circle cx="110" cy="153" r="2.2" fill="#3A3226"/>
+  <!-- caixa d'água na laje -->
+  <ellipse cx="118" cy="52" rx="21" ry="7"/><path d="M97 52v14c0 4 42 4 42 0V52"/>
+  <path d="M104 66v11M132 66v11"/>
+  <!-- antena de gambiarra -->
+  <path d="M52 67V30" stroke-width="2"/><path d="M40 38h24M44 46h16M46 30h12" stroke-width="1.6"/>
+  <!-- varal com roupa -->
+  <path d="M150 96c14 6 30 4 42-4" stroke-width="1.4"/>
+  <path d="M158 99v13h9V99M175 101v12h8v-12" stroke-width="1.4"/>
+  <!-- fiação atravessando -->
+  <path d="M0 24c40 14 76 6 108-6" stroke-width="1.3" opacity=".7"/>
+</svg></div>
 
-  <div class="aviso">Os dois jogam no <b>mesmo aparelho</b>, passando a vez —
-  como jogo de tabuleiro. Abrir em dois celulares dá duas partidas separadas.</div>
+<div class="vinheta v-sucata"><svg viewBox="0 0 190 200" fill="none" stroke="#3A3226" stroke-width="2.4" stroke-linejoin="round">
+  <!-- geladeira tombada -->
+  <path d="M18 108h74v58H18z"/><path d="M18 130h74" stroke-width="1.6"/>
+  <path d="M84 116v9M84 138v9" stroke-width="2"/>
+  <!-- pneus -->
+  <ellipse cx="128" cy="150" rx="30" ry="14"/><ellipse cx="128" cy="150" rx="13" ry="6"/>
+  <ellipse cx="132" cy="132" rx="28" ry="13"/><ellipse cx="132" cy="132" rx="12" ry="5.5"/>
+  <!-- roda de carro encostada -->
+  <circle cx="52" cy="66" r="27"/><circle cx="52" cy="66" r="10"/>
+  <g stroke-width="1.4"><path d="M52 39v16M52 77v16M25 66h16M63 66h16"/></g>
+  <!-- canos e barras -->
+  <path d="M96 92l58-26M104 100l54-22" stroke-width="2"/>
+  <path d="M150 60l12 4-3 9-12-4z"/>
+  <!-- placa torta enfiada na pilha -->
+  <path d="M112 40h50v22h-50z" transform="rotate(-9 137 51)"/>
+  <path d="M124 62v22" stroke-width="2" transform="rotate(-9 137 51)"/>
+  <g stroke-width="1.5" opacity=".6" transform="rotate(-9 137 51)"><path d="M120 47h34M120 54h22"/></g>
+  <!-- lixo miúdo -->
+  <path d="M10 176h170" stroke-width="1.6" opacity=".5"/>
+  <path d="M40 170l8-8 9 8zM70 172l7-7 8 7z" stroke-width="1.4" opacity=".7"/>
+</svg></div>
 
-  <a class="bt forte" href="jogo/"><div class="n">Jogar</div>
-    <div class="d">Comece pelo tutorial — 9 passos, ensina jogando</div></a>
-  <a class="bt" href="guia/"><div class="n">O manual</div>
-    <div class="d">Regras, rotas, heróis, itens, mapa e glossário</div></a>
-  <a class="bt" href="cartas/"><div class="n">As cartas</div>
-    <div class="d">Os 20 heróis, quatro por rota</div></a>
-  <a class="bt visual" href="visual-lab/"><div class="n">Visual Guide</div>
-    <div class="d">Novo universo, personagens, cartas e direção visual em construção</div></a>
+<div class="vinheta v-armas"><svg viewBox="0 0 170 210" fill="none" stroke="#3A3226" stroke-width="2.4" stroke-linejoin="round">
+  <!-- CHINELO VOADOR (Dona Chinela) -->
+  <g transform="rotate(-18 60 44)">
+    <path d="M30 22c22-7 44-7 56 3 10 9 6 26-6 31-16 6-40 5-52-3-9-6-8-26 2-31z"/>
+    <path d="M44 26c6 8 6 16 0 24M72 28c-5 7-5 15 0 22" stroke-width="1.8"/>
+    <path d="M58 24v34" stroke-width="1.6" opacity=".6"/>
+  </g>
+  <g stroke-width="1.6" opacity=".65"><path d="M8 30h18M4 42h22M12 54h16"/></g>
+  <!-- BUZINA INFERNAL (O Taxista) -->
+  <g transform="translate(6 84)">
+    <path d="M22 26l34-19v42z"/><path d="M56 15c14 0 24 5 24 12s-10 12-24 12"/>
+    <path d="M12 20h10v18H12z"/><path d="M80 20l16-6v26l-16-6"/>
+    <g stroke-width="1.5" opacity=".6"><path d="M104 16l12-5M106 27h13M104 38l12 5"/></g>
+  </g>
+  <!-- JATO DE OXIGÊNIO (Catarino) -->
+  <g transform="translate(24 150)">
+    <rect x="8" y="6" width="30" height="52" rx="14"/>
+    <path d="M18 6V0h10v6" /><path d="M14 18h18M14 30h18" stroke-width="1.4" opacity=".55"/>
+    <path d="M38 20c22 2 30 12 30 22" stroke-width="2"/>
+    <path d="M68 40l16-6 4 12-16 6z"/>
+    <g stroke-width="1.5" opacity=".6"><path d="M92 36l10-4M94 46l10 2"/></g>
+  </g>
+</svg></div>
 
-  <!-- O SELO DE VERSÃO existe por um motivo prático: sem ele, "o site está
-       atualizado?" é uma pergunta que ninguém consegue responder olhando. O
-       número sobe junto com a versão, e os `?v=` dos scripts também — é o que
-       faz o celular buscar o arquivo novo em vez de servir o do cache. -->
-  <footer>Vilker · Vinicius · Matheus · <b style="color:var(--brass)">v55</b> —
-    <a href="https://github.com/vilkers/jagerlaramais">código no GitHub</a></footer>
+<div class="vinheta v-cacamba"><svg viewBox="0 0 200 130" fill="none" stroke="#3A3226" stroke-width="2.4" stroke-linejoin="round">
+  <!-- caçamba de entulho -->
+  <path d="M16 52h150l-16 56H32z"/><path d="M16 52l12-12h126l12 12" />
+  <g stroke-width="1.4" opacity=".5"><path d="M46 52l-8 56M84 52l-4 56M122 52v56M158 52l4 56"/></g>
+  <!-- entulho saindo -->
+  <path d="M40 40l14-14 12 14M78 40l10-12 12 12M120 40l12-16 14 16" stroke-width="2"/>
+  <circle cx="66" cy="30" r="6"/><path d="M104 26h16v10h-16z" transform="rotate(-12 112 31)"/>
+  <!-- pneu no chão -->
+  <ellipse cx="182" cy="112" rx="16" ry="8"/><ellipse cx="182" cy="112" rx="7" ry="3.4"/>
+</svg></div>
+
+  <div class="suporte"></div>
+  <div class="placa">
+    <div class="chapa1"></div><div class="chapa2"></div><div class="chapa3"></div>
+    <div class="ferrug"></div>
+    <span class="rebite r1"></span><span class="rebite r2"></span><span class="rebite r3"></span>
+    <span class="rebite r4"></span><span class="rebite r5"></span><span class="rebite r6"></span>
+    <div class="txt">
+      <span class="et">UM MOBA DE MESA PARA DOIS</span>
+      <h1>JAGER<br><i>LARAMAIS</i></h1>
+    </div>
+  </div>
+
+  <p class="lede">Cada um comanda <b>cinco heróis</b> — um por rota. Um dado move o
+  time inteiro. Três dados de ação para cinco heróis: quem fica sem ordem, farma.</p>
+
+  <div class="fita">Os dois jogam no <b>mesmo aparelho</b>, passando a vez — como jogo
+  de tabuleiro. Abrir em dois celulares dá duas partidas separadas.</div>
+
+  <div class="trilho">
+    <a class="bt forte" href="jogo/"><span class="num">01</span><div class="n">Jogar</div>
+      <div class="d">Comece pelo tutorial — 9 passos, ensina jogando</div></a>
+    <a class="bt" href="guia/"><span class="num">02</span><div class="n">O manual</div>
+      <div class="d">Regras, rotas, heróis, itens, mapa e glossário</div></a>
+    <a class="bt" href="cartas/"><span class="num">03</span><div class="n">As cartas</div>
+      <div class="d">Os 20 heróis, quatro por rota</div></a>
+    <a class="bt lab" href="visual-lab/"><span class="num">04</span><div class="n">Visual Guide</div>
+      <div class="d">Novo universo, personagens, cartas e direção visual em construção</div></a>
+  </div>
+
+  <!-- O NÚMERO DA VERSÃO É A ÚNICA COISA QUE RESPONDE "o site atualizou?" sem
+     abrir o console. Ele sobe junto com a versão, e os `?v=` dos scripts das
+     outras páginas também — é o que faz o celular buscar o arquivo novo em vez
+     de servir o do cache. -->
+  <footer>VILKER · VINICIUS · MATHEUS · <b>v55</b> — <a href="https://github.com/vilkers/jagerlaramais">CÓDIGO NO GITHUB</a></footer>
 </main>
