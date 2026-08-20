@@ -142,8 +142,10 @@ const RECURSOS = {
    A faixa acima é o PADRÃO, e fugir dela é o que dá personalidade ao herói:
 
      `barata` [2–5]  a segunda que sai com quase qualquer dado. É dos heróis
-                     cuja segunda é utilidade, não pico: Digerir, Eco, Puff,
-                     Recarregar, Empresta o Fone, Empréstimo, Escudo de Pelo;
+                     cuja segunda é utilidade, não pico — onze delas: Digerir,
+                     Talho de Facão, Eco, Drenar, Encher o Pulmão, Armadilha,
+                     Puff de Emergência, Recarregar, Empresta o Fone, Escudo de
+                     Pelo e Empréstimo;
      `cara`   [4–5]  a segunda que exige dado grande. Só a Interferência da
                      Parabólica, que silencia — controle forte pede preço;
      `ult 5–6`       a Ultimate que sai mais vezes. Só as dos dois suportes de
