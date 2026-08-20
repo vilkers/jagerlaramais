@@ -1,0 +1,285 @@
+/* ══════════════════════════════════════════════════════════════════
+   JAGERLARAMAIS · SERVIDOR DE SALAS
+   ══════════════════════════════════════════════════════════════════
+
+   Pedido: *"crie um modo pvp com salas onde eu coloco a senha da sala e jogo
+   com o amigo que a criou"*.
+
+   ── POR QUE ELE EXISTE, e por que é AUTORITATIVO ──
+
+   Sala é servidor: não existe "criar sala" sem alguém no meio dizendo *esta sala
+   existe e você é o segundo a entrar nela*. Mas ser autoritativo é uma escolha
+   separada e mais cara, e ela se justifica por uma coisa só: A NÉVOA.
+
+   Se o servidor fosse um relay burro repassando o `J` inteiro, qualquer um dos
+   dois abriria o console e leria a posição do Caçador escondido. Rotação
+   secreta, emboscada e blefe de gank — que são o jogo — virariam questão de
+   honra. Aqui o `J` de verdade mora NESTE processo, e cada lado recebe só
+   `estadoPara(lado)`.
+
+   ── UM MOTOR SÓ ──
+
+   Este servidor não reimplementa regra nenhuma. Ele carrega `jogo/jogo.js` pelo
+   mesmo `sim/motor.js` que a suíte de testes usa: mesma geometria, mesmas
+   habilidades, mesmo `encerraTurno`. Regra que muda no jogo muda aqui junto, por
+   construção — e é a razão de o hotseat e o online nunca poderem divergir.
+
+   ── ZERO DEPENDÊNCIA, E POR QUÊ ──
+
+   `http` e `crypto` do próprio Node, nada de npm. Não é purismo: o projeto todo
+   é vanilla e a regra existe para o jogo abrir com duplo clique. O hotseat
+   continua abrindo — quem depende de coisa ligada é só o modo online.
+
+   Transporte: **SSE + POST**, não WebSocket. Um jogo de turnos manda um estado
+   de ~11 KB a cada jogada; SSE resolve isso com a EventSource do próprio
+   navegador e sem handshake, e POST leva a jogada. WebSocket sem biblioteca
+   custaria ~150 linhas de parsing de frame para ganhar latência que um jogo de
+   tabuleiro não usa.
+
+   ── COMO SUBIR ──
+
+     node servidor/sala.js                 → porta 8787
+     PORT=3000 node servidor/sala.js       → outra porta
+
+   Em qualquer lugar que rode Node: Deno Deploy, Fly, Render, Railway, uma
+   máquina na sua rede. Sem banco: sala é memória, e partida abandonada some.  */
+
+const http = require("http");
+const crypto = require("crypto");
+const path = require("path");
+const { carrega } = require(path.join(__dirname, "..", "sim", "motor.js"));
+
+const PORTA = +process.env.PORT || 8787;
+
+/* ---------- as salas ----------
+   Memória e só. Uma partida de 40 rodadas dura minutos, e persistir estado de
+   jogo em disco pediria migração a cada versão do motor — o custo não paga. */
+const salas = new Map();
+
+const CODIGO = () => {
+  /* seis caracteres sem 0/O/1/I/L: este código vai ser DITADO em voz alta ou
+     mandado por mensagem, e um zero lido como ó é a sala que não abre */
+  const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 6 }, () => abc[crypto.randomInt(abc.length)]).join("");
+};
+const segredo = () => crypto.randomBytes(24).toString("hex");
+
+/* senha nunca é guardada em claro: se este processo cair num log, ela não vai
+   junto. É sal por sala + sha256 — não é cofre de banco, é higiene mínima. */
+function selaSenha(senha, sal) {
+  return crypto.createHash("sha256").update(sal + "·" + String(senha)).digest("hex");
+}
+/* comparação em tempo constante: sem isso o tempo de resposta vira oráculo */
+function iguais(a, b) {
+  const A = Buffer.from(String(a)), B = Buffer.from(String(b));
+  return A.length === B.length && crypto.timingSafeEqual(A, B);
+}
+
+function novaSala(senha) {
+  const sal = crypto.randomBytes(8).toString("hex");
+  const g = carrega();
+  g.simMode = true;                     /* pula a tela de escolha do Caçador */
+  /* O SERVIDOR NÃO TEM TELA, e é isso que permite ele chamar as MESMAS funções
+     que os botões chamam em vez de reimplementar cada regra. `confirma` abre uma
+     caixa e só executa no "Confirmar"; aqui a intenção já veio do cliente, que
+     confirmou lá. Sem este stub, prioridade e re-rolagem ficariam de fora do
+     online — ou eu teria de copiar a regra delas, que é como se cria a segunda
+     implementação que diverge na versão seguinte. */
+  g.confirma = (_t, _x, aoSim) => aoSim();
+  g.novo();
+  const sala = {
+    codigo: CODIGO(), sal, selo: selaSenha(senha, sal),
+    g, criada: Date.now(), mexida: Date.now(),
+    lados: [null, null],                /* segredo de cada jogador */
+    ouvintes: [],                       /* {lado, res} */
+  };
+  salas.set(sala.codigo, sala);
+  return sala;
+}
+
+/* manda para CADA ouvinte o estado que aquele lado tem direito de ver.
+   É aqui que a névoa deixa de ser pintura e passa a ser regra. */
+function empurra(sala) {
+  sala.mexida = Date.now();
+  sala.ouvintes = sala.ouvintes.filter(o => !o.res.writableEnded);
+  for (const o of sala.ouvintes) {
+    const estado = sala.g.estadoPara(o.lado);
+    const pacote = JSON.stringify({ lado: o.lado, estado, cheia: sala.lados.every(Boolean) });
+    try { o.res.write(`data: ${pacote}\n\n`); } catch (_) { /* saiu no meio */ }
+  }
+}
+
+/* sala parada há 2h vai embora — sem isso a memória cresce para sempre */
+setInterval(() => {
+  const agora = Date.now();
+  for (const [cod, s] of salas)
+    if (agora - s.mexida > 2 * 60 * 60 * 1000) salas.delete(cod);
+}, 10 * 60 * 1000).unref();
+
+/* ---------- as jogadas que o cliente pode pedir ----------
+   LISTA FECHADA, de propósito. O cliente manda a INTENÇÃO ("usar a habilidade 2
+   no herói X"), nunca o estado. Se ele mandasse estado, o servidor autoritativo
+   não serviria para nada — bastaria mentir no envio. */
+const ACOES = {
+  mover(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    g.limpaModo(); g.selHeroi = h; g.modo = "mover"; g.calcula();
+    ok(g.mover.some(p => p[0] === d.para[0] && p[1] === d.para[1]), "casa fora do alcance");
+    g.moveAte(d.para[0], d.para[1]);
+  },
+
+  habilidade(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    g.limpaModo(); g.selHeroi = h; g.iniciaHab(d.slot);
+    if (d.alvo === "eu") { if (g.habAtual === null) g.habAtual = d.slot; g.confirmaHab(h); return; }
+    const alvo = g.todos().find(x => x.id === d.alvo);
+    ok(alvo, "alvo não existe");
+    /* a névoa também vale para MIRAR: não dá para acertar quem você não vê */
+    ok(alvo.t === lado || g.visivelPara(alvo, lado), "você não enxerga esse alvo");
+    g.confirmaHab(alvo);
+  },
+
+  /* torre, Nexus e poço não são heróis e têm caminho próprio no motor */
+  estrutura(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    g.limpaModo(); g.selHeroi = h; g.iniciaHab(d.slot);
+    if (d.tipo === "torre") {
+      const tr = g.J.torres.find(x => x.rota === d.rota && x.i === d.i && x.t === 1 - lado);
+      ok(tr && tr.vida > 0, "essa torre não existe ou já caiu");
+      g.atacaTorre(tr);
+    } else if (d.tipo === "nexus") {
+      ok(d.lado === 1 - lado, "o Nexus é o seu");
+      g.atacaNexus(d.lado);
+    } else if (d.tipo === "epico") {
+      g.atacaEpico(g.J.poco);
+    } else ok(false, "estrutura desconhecida");
+  },
+
+  converterDado(g, lado, d) {
+    ok(Number.isInteger(d.i), "índice de dado inválido");
+    g.dadoSel = d.i;
+    ok(g.converteDado(d.i) !== false, "esse dado não pode virar movimento");
+  },
+
+  rerolar(g, lado, d) { g.dadoSel = d.i; g.rerola(); },
+  ajustar(g, lado, d) { g.dadoSel = d.i; g.ajustaDado(d.delta > 0 ? 1 : -1); },
+  prioridade(g) { g.usaPrioridade(); },
+
+  /* os quatro sumidouros de ouro: placa, prioridade, reforço, sentinela */
+  gasto(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    ok(g.usaGasto(d.id, h, lado), "esse gasto não pôde ser feito agora");
+  },
+  /* item de loja — outra regra e outra função; confundir as duas foi o primeiro
+     erro que este servidor cometeu, e o teste é que apontou */
+  item(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    ok(g.compraItem(h, d.id, lado), "não dá para comprar esse item agora");
+  },
+  vender(g, lado, d) {
+    const h = achaHeroi(g, lado, d.heroi);
+    g.vendeItem(h, d.item, lado);
+  },
+  ward(g, lado, d) { g.plantaSentinela(achaHeroi(g, lado, d.heroi)); },
+  carta(g, lado, d) { g.selHeroi = d.heroi ? achaHeroi(g, lado, d.heroi) : null; g.jogaCarta(d.id); },
+
+  encerrar(g) { g.encerraTurno(); },
+  rotacao(g, lado, d) { g.escolheRotacao(lado, d.regiao); },
+};
+
+function achaHeroi(g, lado, id) {
+  const h = g.J.times[lado].herois.find(x => x.id === id);
+  ok(h, "esse herói não é seu");
+  return h;
+}
+function ok(c, m) { if (!c) { const e = new Error(m); e.doCliente = 1; throw e; } }
+
+/* ---------- HTTP ---------- */
+function corpo(req) {
+  return new Promise((res, rej) => {
+    let d = ""; let n = 0;
+    req.on("data", c => { n += c.length; if (n > 64 * 1024) { rej(new Error("corpo grande demais")); req.destroy(); } d += c; });
+    req.on("end", () => { try { res(d ? JSON.parse(d) : {}); } catch (e) { rej(e); } });
+    req.on("error", rej);
+  });
+}
+const manda = (res, cod, obj) => {
+  res.writeHead(cod, { "content-type": "application/json; charset=utf-8" });
+  res.end(JSON.stringify(obj));
+};
+
+const servidor = http.createServer(async (req, res) => {
+  /* o jogo é servido de outro lugar (GitHub Pages), então CORS é obrigatório */
+  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("access-control-allow-headers", "content-type");
+  if (req.method === "OPTIONS") return res.end();
+
+  const url = new URL(req.url, "http://x");
+  try {
+    if (req.method === "POST" && url.pathname === "/criar") {
+      const { senha } = await corpo(req);
+      ok(senha && String(senha).length >= 3, "a senha precisa de pelo menos 3 caracteres");
+      const sala = novaSala(senha);
+      sala.lados[0] = segredo();
+      return manda(res, 200, { sala: sala.codigo, lado: 0, segredo: sala.lados[0] });
+    }
+
+    if (req.method === "POST" && url.pathname === "/entrar") {
+      const { sala: cod, senha } = await corpo(req);
+      const sala = salas.get(String(cod || "").toUpperCase());
+      ok(sala, "sala não existe");
+      ok(iguais(selaSenha(senha, sala.sal), sala.selo), "senha errada");
+      ok(!sala.lados[1], "essa sala já tem dois jogadores");
+      sala.lados[1] = segredo();
+      const r = { sala: sala.codigo, lado: 1, segredo: sala.lados[1] };
+      manda(res, 200, r);
+      empurra(sala);                       /* avisa quem estava esperando */
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/eventos") {
+      const sala = salas.get(String(url.searchParams.get("sala") || "").toUpperCase());
+      ok(sala, "sala não existe");
+      const lado = +url.searchParams.get("lado");
+      ok(sala.lados[lado] && iguais(sala.lados[lado], url.searchParams.get("segredo") || ""),
+         "segredo inválido");
+      res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8",
+                           "cache-control": "no-cache", connection: "keep-alive" });
+      res.write(":\n\n");
+      sala.ouvintes.push({ lado, res });
+      req.on("close", () => { sala.ouvintes = sala.ouvintes.filter(o => o.res !== res); });
+      empurra(sala);
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/jogada") {
+      const { sala: cod, segredo: seg, acao, dados } = await corpo(req);
+      const sala = salas.get(String(cod || "").toUpperCase());
+      ok(sala, "sala não existe");
+      const lado = sala.lados.findIndex(s => s && iguais(s, seg || ""));
+      ok(lado >= 0, "segredo inválido");
+      ok(sala.lados.every(Boolean), "esperando o segundo jogador");
+      const g = sala.g;
+      ok(g.J.fim === null, "a partida acabou");
+      /* A TRAVA QUE FAZ O AUTORITATIVO VALER: fora do seu turno, nada. */
+      ok(acao === "rotacao" || g.J.vez === lado, "não é a sua vez");
+      const fn = ACOES[acao];
+      ok(fn, "ação desconhecida");
+      fn(g, lado, dados || {});
+      manda(res, 200, { ok: 1 });
+      empurra(sala);
+      return;
+    }
+
+    if (url.pathname === "/saude") return manda(res, 200, { ok: 1, salas: salas.size });
+    manda(res, 404, { erro: "não existe" });
+  } catch (e) {
+    manda(res, e.doCliente ? 400 : 500, { erro: e.doCliente ? e.message : "erro no servidor" });
+    if (!e.doCliente) console.error(e);
+  }
+});
+
+if (require.main === module)
+  servidor.listen(PORTA, () => console.log(`  sala em http://localhost:${PORTA}`));
+
+module.exports = { servidor, salas, novaSala };

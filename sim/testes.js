@@ -1496,6 +1496,162 @@ teste("o tempo de respawn cresce com a partida", () => {
   ok(morre(30) >= morre(12), "o tempo de respawn não é monotônico");
 });
 
+/* ═══════════════ v52 — O ESTADO QUE SAI PARA UM LADO ═══════════════
+
+   O PvP em rede começa aqui, e não no servidor. A pergunta que decide se o modo
+   online vale a pena é: *o que o adversário consegue ler?* Hoje o cliente tem o
+   `J` inteiro e a névoa é pintura — em rede isso faria a névoa virar decoração,
+   e rotação secreta, emboscada e blefe de gank são o jogo.
+
+   `estadoPara(t)` é a porta. Estes testes são o que garante que ela fecha.
+
+   O último deles é o que mais vale: em vez de conferir campo por campo — que só
+   pega o que eu lembrei de esconder —, ele SERIALIZA o estado filtrado inteiro e
+   procura a coordenada do herói escondido em qualquer lugar dela. É o teste que
+   pega o vazamento que eu não pensei. */
+
+/* uma cena com um herói inimigo escondido no mato, longe de qualquer visão */
+function cenaEspiao() {
+  const c = cena({ times: [["kaross", "nyx", "solenne", "vesper", "mirrha"],
+                           ["vharn", "grumo", "zhet", "cael", "torvald"]] }).mov(0).vez(0);
+  const g = c.g;
+  g.J.times[0].wards = [];
+  const espiao = c.heroi(1, "selva");
+  /* uma casa de mato bem longe dos meus heróis */
+  const meus = g.J.times[0].herois.map(h => h.pos);
+  let melhor = null, maisLonge = -1;
+  for (let r = 0; r < g.LINS; r++) for (let col = 0; col < g.COLS; col++) {
+    if (!g.noTab(col, r) || !g.ehMato(col, r) || g.em(col, r)) continue;
+    const d = Math.min(...meus.map(p => g.dist(col, r, ...p)));
+    if (d > maisLonge) { maisLonge = d; melhor = [col, r]; }
+  }
+  ok(melhor, "não achei mato livre para esconder o espião");
+  c.poe(espiao, melhor);
+  ok(!g.visivelPara(espiao, 0), "cenário inválido: o espião já estava à vista");
+  return { c, g, espiao };
+}
+
+teste("o estado que sai para um lado não traz a posição do inimigo escondido", () => {
+  const { g, espiao } = cenaEspiao();
+  const fora = g.estadoPara(0);
+  const i = g.J.times[1].herois.findIndex(h => h.id === espiao.id);
+  eq(fora.times[1].herois[i].pos, null, "a posição do herói escondido foi junto");
+  eq(fora.times[1].herois[i].oculto, 1, "o herói escondido não veio marcado como oculto");
+});
+
+teste("o inimigo que EU enxergo continua vindo inteiro — a névoa não é cortina", () => {
+  const { c, g } = cenaEspiao();
+  const visivel = c.heroi(1, "topo");
+  const meu = c.heroi(0, "topo");
+  c.poe(visivel, g.vizinhos(...meu.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  ok(g.visivelPara(visivel, 0), "cenário inválido: o inimigo colado não está visível");
+  const fora = g.estadoPara(0);
+  const i = g.J.times[1].herois.findIndex(h => h.id === visivel.id);
+  eq(fora.times[1].herois[i].pos.join(","), visivel.pos.join(","),
+     "escondeu um inimigo que está à vista — isso não é névoa, é cegueira");
+});
+
+teste("nada do MEU lado é escondido de mim", () => {
+  const { g } = cenaEspiao();
+  const fora = g.estadoPara(0);
+  g.J.times[0].herois.forEach((h, i) => {
+    eq(fora.times[0].herois[i].pos.join(","), h.pos.join(","),
+       `${h.n}: o filtro comeu a posição de um herói MEU`);
+    ok(!fora.times[0].herois[i].oculto, `${h.n}: um herói meu veio marcado como oculto`);
+  });
+});
+
+teste("a rotação secreta do adversário não sai no estado", () => {
+  const { g } = cenaEspiao();
+  g.J.rotacao = ["topo", "selva"];
+  const fora = g.estadoPara(0);
+  eq(fora.rotacao[0], "topo", "a MINHA escolha de rotação sumiu — eu preciso dela");
+  eq(fora.rotacao[1], null,
+     "a escolha do Caçador adversário saiu em claro — é ela que faz o gank ser gank");
+});
+
+teste("as wards do adversário não saem — olho plantado é decisão comprada", () => {
+  const { g } = cenaEspiao();
+  g.poeWard(1, [5, 5]);
+  ok(g.J.times[1].wards.length, "cenário inválido: a ward não foi plantada");
+  const fora = g.estadoPara(0);
+  eq(fora.times[1].wards.length, 0, "dá para ver onde o adversário plantou");
+  ok(fora.times[0].wards.length === g.J.times[0].wards.length, "as MINHAS wards sumiram");
+});
+
+teste("o log não nomeia o herói que eu não estou vendo", () => {
+  const { g, espiao } = cenaEspiao();
+  g.J.log = [];
+  g.aplicaCond(espiao, "sangramento", { st: 2 });     // gera reg("b", "<nome> está SANGRANDO")
+  ok(g.J.log.some(l => l.txt.includes(espiao.n)),
+     "cenário inválido: o motor não registrou nada com o nome dele");
+  const fora = g.estadoPara(0);
+  ok(!fora.log.some(l => l.txt.includes(espiao.n)),
+     `o log entregou o ${espiao.n} escondido — é o vazamento menos óbvio dos cinco`);
+});
+
+teste("varredura: a coordenada do escondido não aparece em NENHUM canto do estado", () => {
+  const { g, espiao } = cenaEspiao();
+  const [c0, r0] = espiao.pos;
+  const fora = JSON.stringify(g.estadoPara(0));
+
+  /* procura o par em qualquer forma que o motor use para posição */
+  const formas = [`[${c0},${r0}]`, `"${c0},${r0}"`, `${c0},${r0}]`];
+  const achou = formas.filter(f => fora.includes(f));
+
+  /* atenção: um par de números pode coincidir por acaso (vida 5, poder 5…), então
+     o teste só acusa se a coordenada aparecer em contexto de POSIÇÃO */
+  const suspeito = achou.filter(f => new RegExp('"pos":\\s*\\[' + c0 + ',' + r0 + '\\]').test(fora)
+                                  || fora.includes('"' + c0 + ',' + r0 + '"'));
+  eq(suspeito.length, 0,
+     `a casa [${c0},${r0}] do ${espiao.n} escondido vazou no estado filtrado — `
+     + "algum campo guarda posição e eu não limpei");
+});
+
+/* O `J` tem UMA referência circular — `cond.dono` guarda o objeto do herói que
+   aplicou a condição, e é assim que o motor credita o abate por sangramento. Eu
+   tinha escrito em DECISOES-PENDENTES que "J é serializável, dá para mandar em
+   JSON sem cerimônia". Estava errado, e só apareceu quando o filtro tentou
+   clonar. Este teste é para o próximo que guardar um objeto onde cabia um id. */
+teste("o estado que sai para a rede é serializável — nenhuma referência circular", () => {
+  const { g } = cenaEspiao();
+  [0, 1].forEach(t => {
+    let txt;
+    try { txt = JSON.stringify(g.estadoPara(t)); }
+    catch (e) {
+      throw new Error(`estadoPara(${t}) não serializa: ${e.message.split("\n")[0]} — `
+        + "alguém guardou um OBJETO onde cabia um id, e em rede isso trava o envio");
+    }
+    ok(txt.length > 500, `o estado do lado ${t} veio vazio demais (${txt.length} bytes)`);
+  });
+});
+
+teste("o dono da condição vira id na rede, e continua identificando quem foi", () => {
+  const { c, g } = cenaEspiao();
+  const meu = c.heroi(0, "topo"), alvo = c.heroi(1, "topo");
+  c.poe(alvo, g.vizinhos(...meu.pos).find(v => g.noTab(...v) && !g.em(...v)));
+  g.aplicaCond(alvo, "sangramento", { st: 1, dono: meu });
+  const cond = g.J.times[1].herois.find(h => h.id === alvo.id).conds.find(x => x.t === "sangramento");
+  ok(cond && typeof cond.dono === "object", "cenário inválido: o motor não guardou o objeto");
+
+  const fora = g.estadoPara(0);
+  const i = g.J.times[1].herois.findIndex(h => h.id === alvo.id);
+  const saiu = fora.times[1].herois[i].conds.find(x => x.t === "sangramento");
+  ok(saiu, "a condição do inimigo VISÍVEL sumiu");
+  eq(saiu.dono, meu.id, "o dono não virou id — ou virou objeto de novo, ou sumiu");
+});
+
+teste("o estado filtrado continua sendo um estado válido — nada essencial se perdeu", () => {
+  const { g } = cenaEspiao();
+  const fora = g.estadoPara(0);
+  ["rodada", "vez", "fase", "times", "torres", "nexus", "frentes", "poco"].forEach(k =>
+    ok(fora[k] !== undefined, `o filtro comeu J.${k}`));
+  eq(fora.times[1].herois.length, g.J.times[1].herois.length,
+     "o filtro apagou heróis inimigos em vez de escondê-los — o adversário precisa saber quem foi draftado");
+  eq(fora.nexus.join(","), g.J.nexus.join(","), "a vida dos Nexus não é segredo de ninguém");
+});
+
+
 /* ═══════════════ v51 — UMA PALETA SÓ, E ELA É CREME ═══════════════
 
    A v50 fez o site inteiro seguir o tema do aparelho. Durou uma versão: vendo o
@@ -2947,7 +3103,10 @@ teste("o seletor dos itens da loja não rouba o clique dos gastos de ouro", () =
 
   const corpo = /function abreLoja\(\)\{[\s\S]*?\n\}/.exec(fonte);
   ok(corpo, "não achei abreLoja no fonte");
-  const seletorItem = /querySelectorAll\("([^"]+)"\)\.forEach\(b=>b\.onclick=\(\)=>\{\s*const it=ITEM\[b\.dataset\.i\]/
+  /* v52: o corpo do handler virou uma chamada a `compraItem` — a regra saiu da
+     tela e foi para uma função, porque o servidor de salas também precisa dela.
+     O que este teste guarda continua sendo o SELETOR, não o corpo. */
+  const seletorItem = /querySelectorAll\("([^"]+)"\)\.forEach\(b=>b\.onclick=\(\)=>\{\s*if\(!compraItem\(/
                         .exec(corpo[0]);
   ok(seletorItem, "não achei o handler de compra de item dentro de abreLoja");
 

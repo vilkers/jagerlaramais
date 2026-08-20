@@ -4,7 +4,7 @@
 > Este arquivo é o retrato do presente. O histórico está em `docs/patch-notes.md`.
 > Mantenha curto: quando um item vira passado, ele sai daqui e vira patch note.
 
-**Versão:** v51 (creme, e só creme) · **Atualizado em:** 2026-08-20
+**Versão:** v52 (o servidor de salas) · **Atualizado em:** 2026-08-20
 
 > **As regras completas estão em `docs/REGRAS.md`** — extraídas do motor, não da
 > memória. `docs/02-regras.md` é da v0.2 e está arquivado.
@@ -92,6 +92,7 @@ e o **valor** de cada dado escolhe **qual** das três habilidades daquele herói
 | Respawn | **2** rodadas até a 8 · **3** até a 16 · **4** daí em diante. Não há cura de base: o que devolve vida cheia é o respawn |
 | Duração de uma partida | **~23 rodadas** (mediana medida: 23, n=6000) |
 | **Paleta** (v51) | **Creme, e só creme** — não há tema alternativo e nada segue o aparelho. Os valores de chrome são **idênticos** em `jogo/estilo.css`, `guia/`, `cartas/` e na home, e há teste que quebra se um dígito divergir. **O tabuleiro não faz parte disso**: `--rota`, `--selva`, `--rio`, `--terra`, `--bloq`, `--traco`, `--ceu` e `--limao` são de dia desde a v39 e nunca dependeram de tema — mexer neles para "acompanhar o creme" apaga a direção de arte, e existe teste contra isso. Tokens que nasceram da virada: `--ink-brass` (tinta em cima do latão), `--tela-fundo` (telas de fluxo) e `--flut-fundo` (o que flutua sobre o tabuleiro). **Em aberto para playtest:** o chrome escuro comprava contraste para o tabuleiro; sobre creme quem separa é o traço do hexágono. Se parecer derretido na mesa, a alavanca é o `--traco` |
+| **PvP em rede** (v52) | **Metade construída.** `servidor/sala.js` está pronto e testado (19 testes): salas com senha, SSE, e **autoritativo** — o estado de verdade mora nele e cada lado recebe só `estadoPara(lado)`, que esconde posição de inimigo fora de visão, condições dele, a rotação secreta do Caçador, as wards e as entradas de log que o nomeiam. Zero dependência, e usa **o mesmo motor** do jogo (via `sim/motor.js`), então online e hotseat não podem divergir. **Falta o cliente inteiro** — tela de sala, modo `rede` e rotear o gesto para POST. O trabalho difícil ali é o DESENHO com estado filtrado: herói escondido chega com `pos:null` e o renderizador assume posição. Ver `DECISOES-PENDENTES` item 13 e `servidor/LEIA.md`. **O hotseat não depende disto e continua offline** |
 | **Onde o jogo se explica** | o **manual** (`?` no topo do jogo, 22 seções), **`docs/REGRAS.md`** (regras completas) e o **guia web**. O **mapa do guia é gerado do motor** (`node sim/gera-mapa.js` → `data/mapa.js`), com dois testes travando a divergência, e o tabuleiro é **de dia nos dois temas**, com os tokens de `jogo/estilo.css`. Os três foram atualizados de novo na v49 (a faixa de dado) e conferidos no navegador — mudança de regra que não chega ao texto vira defeito de mesa |
 | Patamar do Atirador | **20 de ouro na mão** por degrau (era 10), até 3 · consequência do preço novo, não ajuste de atirador |
 | Alvo de toque | **44px** (40 em tela ≤760 de altura) · peça do mapa vale o hexágono inteiro |
@@ -112,11 +113,12 @@ e converte ação em movimento**.
 ## Como verificar que nada quebrou
 
 ```
-node sim/testes.js        # 292 testes de regressão — um por bug já relatado
+node sim/testes.js        # 302 testes de regressão — um por bug já relatado
 node sim/movimento.js 200 # quantas casas um herói atravessa mesmo, e o teto estrutural
 node sim/torres.js 120    # a torre é objetivo ou esponja? mergulho sem creep acontece?
 node sim/draft.js 200     # a IA repete o mesmo draft?
 node sim/faixas.js 400    # a faixa exata do dado, A/B contra a v48 na MESMA execução
+node sim/rede.js          # 19 testes do servidor de salas, contra o servidor de verdade
 node sim/bateria.js 2000  # medição estrutural (mapa, torre, onda, ordem)
 node sim/epicos.js 1500   # Dragão e Barão: quando aparece, atacado, morto, vitória
 node sim/habs.js          # cada habilidade contra a básica do próprio herói

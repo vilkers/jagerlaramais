@@ -1820,6 +1820,85 @@ const reveladoPorAtaque=h=>!!h.revelou&&h.revelou[0]===h.pos[0]&&h.revelou[1]===
      4. quem ATACOU entregou a posição, invisível ou não;
      5. INVISÍVEL não é visto nem em campo aberto;
      6. o resto é a névoa de sempre. */
+/* ══════════ O ESTADO QUE SAI PARA UM LADO (v52) ══════════
+
+   Até aqui a névoa era aplicada NA PINTURA: o cliente tem o `J` inteiro e
+   `ladoDaTela()` decide o que desenhar. Em hotseat isso é perfeito — existe uma
+   tela só, e quem espia o console está trapaceando contra si mesmo.
+
+   Em REDE deixa de ser perfeito e passa a ser mentira. Se os dois clientes
+   recebem o `J` inteiro, a névoa vira decoração: abre o console, lê a posição do
+   Caçador escondido, e a rotação secreta, a emboscada e o blefe do gank — que
+   são o jogo — acabam.
+
+   `estadoPara(t)` é a resposta, e é o motivo de o servidor ser AUTORITATIVO: o
+   `J` de verdade mora no servidor, e cada lado recebe só isto. O que sai daqui é
+   o que aquele jogador teria direito de saber olhando a mesa.
+
+   O QUE ELE ESCONDE, e por quê cada um:
+
+     · POSIÇÃO de herói inimigo que ele não enxerga. É o óbvio, e é o menor deles;
+     · CONDIÇÕES, RECURSOS, ITENS e ESCUDO desse herói — saber que "alguém está
+       sangrando" já diz que ele existe e como ele está;
+     · A ROTAÇÃO DO CAÇADOR do inimigo. `J.rotacao` é um par com a escolha dos
+       dois em claro, e ela é secreta POR REGRA: a v46 fez o turno inteiro
+       esperar as duas respostas justamente para ninguém ver a do outro antes;
+     · AS WARDS do inimigo. Olho plantado é informação comprada com ouro; ver
+       onde ele plantou é ver o que ele decidiu vigiar;
+     · O LOG. Este é o vazamento menos óbvio dos cinco, e o mais fácil de
+       esquecer: 75 entradas do motor são `reg("b", …)` e NOMEIAM o herói —
+       "Dona Chinela está SANGRANDO" entrega quem você não devia estar vendo.
+
+   Sobre o filtro do log: ele é por NOME, e isso é heurística, não estrutura. O
+   certo seria `reg` carregar o herói como dado em vez de texto — são 75 pontos
+   de chamada e fica para quando o online sair do papel. Enquanto isso, o nome de
+   herói deste jogo é distintivo o bastante ("Dona Chinela", "O Taxista") para o
+   `includes` não errar, e existe teste para cada caso.
+
+   ELE TAMBÉM SERVE AO HOTSEAT: o vazamento pelo console existe hoje, nesta
+   versão, para quem quiser espiar. Este é o conserto, e ele é testável sem
+   servidor nenhum. */
+/* `J` NÃO É SERIALIZÁVEL, ao contrário do que eu tinha escrito em
+   DECISOES-PENDENTES. Existe uma referência circular, e uma só: `cond.dono`
+   guarda o OBJETO do herói que aplicou a condição — é assim que o motor credita
+   o abate por sangramento a quem sangrou. `JSON.stringify` estoura nela.
+
+   Na rede o dono vira o `id`, que é tudo de que a outra ponta precisa. O
+   `replacer` está aqui, e não num `delete` depois, porque delete não resolveria:
+   o ciclo estoura DURANTE a serialização. */
+const paraRede=(_,v)=>(v&&typeof v==="object"&&v.habs&&v.pos!==undefined&&v.id)
+  ? v.id : v;
+function clonaEstado(o){ return JSON.parse(JSON.stringify(o,(k,v)=>k==="dono"?paraRede(k,v):v)); }
+
+function estadoPara(t){
+  const inim=1-t;
+  const fora=clonaEstado(J);
+  const ocultos=[];
+
+  J.times[inim].herois.forEach((real,i)=>{
+    if(visivelPara(real,t)) return;
+    ocultos.push(real.n);
+    const h=fora.times[inim].herois[i];
+    /* `oculto` no lugar dos dados: a peça continua existindo para o adversário
+       saber que o herói foi draftado — some é o ONDE e o COMO. */
+    h.oculto=1; h.pos=null;
+    h.conds=[]; h.rec={}; h.itens=[]; h.autos=null;
+    h.esc=0; h.andou=0; h.ultimoAlvo=null; h.mergulhou=0;
+    h.preso=0; h.intoc=0; h.marca=0; h.recarga=0; h.dots=[];
+  });
+
+  /* a escolha do outro só aparece depois de resolvida — `rotacao` guarda o par */
+  if(fora.rotacao) fora.rotacao[inim]=null;
+  fora.times[inim].wards=[];
+
+  /* zona plantada em casa que ele não enxerga é zona secreta */
+  if(Array.isArray(fora.zonas))
+    fora.zonas=fora.zonas.filter(z=>z.t===t||!z.pos||enxergaCasa(t,...z.pos));
+
+  fora.log=(fora.log||[]).filter(l=>!ocultos.some(n=>(l.txt||"").includes(n)));
+  return fora;
+}
+
 function visivelPara(h,t){
   if(h.t===t&&!temCond(h,"banido"))return true;
   if(h.morto)return true;
@@ -5052,6 +5131,26 @@ function abreEscolhaRota(t){
 const VENDE_FRACAO=0.6;
 const precoVenda=id=>Math.max(1,Math.floor((ITEM[id]?ITEM[id].o:0)*VENDE_FRACAO));
 
+/* COMPRAR ITEM, NUM LUGAR SÓ (v52).
+   A regra morava DUAS vezes escrita à mão: dentro do handler de clique da loja e
+   dentro de `iaCompra`. Já era divergência latente — mexer no preço, no desconto
+   ou no bônus de vida exigia lembrar dos dois — e virou impedimento quando o
+   servidor de salas precisou comprar sem passar por clique nenhum.
+
+   Devolve `true` se comprou. As três recusas (ouro curto, item repetido,
+   mochila cheia) ficam aqui, e não em quem chama: elas são a regra, não a tela. */
+function compraItem(h,id,t){
+  const it=ITEM[id];
+  if(!it) return false;
+  const preco=Math.max(0,it.o-descontos[t]);
+  if(h.ouro<preco||h.itens.includes(it.id)||inventarioCheio(h)) return false;
+  h.ouro-=preco; h.itens.push(it.id);
+  if(descontos[t]) descontos[t]=0;
+  if(it.ef.vida){ h.vidaMax+=it.ef.vida; h.vida+=it.ef.vida; }
+  reg(t?"c":"a",`${h.n} compra ${it.n} (−${preco} de ouro)`);
+  return true;
+}
+
 function vendeItem(h,id,t){
   if(!h||!ITEM[id])return false;
   if(!(h.morto||naBase(h)))return false;          // mesma janela da compra
@@ -5128,14 +5227,8 @@ function abreLoja(){
      TypeError: quatro botões mortos, sem nada no console para o jogador.
      A classe continua sendo de aparência; quem manda no clique é o dado. */
   G("shCorpo").querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{
-    const it=ITEM[b.dataset.i];
-    const preco=Math.max(0,it.o-descontos[t]);
-    if(quem.ouro<preco||quem.itens.includes(it.id)||inventarioCheio(quem))return;
-    quem.ouro-=preco; quem.itens.push(it.id);
-    if(descontos[t]){ descontos[t]=0; }
-    if(it.ef.vida){ quem.vidaMax+=it.ef.vida; quem.vida+=it.ef.vida; }
-    reg(t?"c":"a",`${quem.n} compra ${it.n} (−${preco} de ouro)`);
-    toast(it.n,""); vibra(12); abreLoja(); pinta(); });
+    if(!compraItem(quem,b.dataset.i,t)) return;
+    toast(ITEM[b.dataset.i].n,""); vibra(12); abreLoja(); pinta(); });
 }
 
 /* ══════════════════ MANUAL ══════════════════ */
@@ -5807,11 +5900,7 @@ function iaCompra(t){
         && h.ouro>=Math.max(0,i.o-descontos[t]));
       if(!opc.length)break;
       const it=opc.sort((a,b)=>b.o-a.o)[0];
-      const preco=Math.max(0,it.o-descontos[t]);
-      h.ouro-=preco; h.itens.push(it.id);
-      if(descontos[t]) descontos[t]=0;
-      if(it.ef.vida){ h.vidaMax+=it.ef.vida; h.vida+=it.ef.vida; }
-      reg(t?"c":"a",`${h.n} compra ${it.n} (−${preco} de ouro)`);
+      if(!compraItem(h,it.id,t)) break;
       comprou=true;
     }
     /* Inventário cheio: o ouro vai para os gastos tardios, senão a IA acumula

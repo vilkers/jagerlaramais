@@ -111,6 +111,129 @@ Se você mudou um número, a linha tem que dizer **de quanto para quanto**.
 
 ---
 
+## v52 — o servidor de salas, e a névoa que vira regra · 2026-08-20
+
+> *"crie um modo pvp com salas onde eu coloco a senha da sala e jogo com o amigo
+> que a criou"*
+
+**Metade construída, e a metade que importa.** O servidor está de pé e testado; o
+cliente ainda não chega nele. Está escrito abaixo exatamente onde parei e por quê
+— parar ali foi escolha, não falta de tempo.
+
+---
+
+### 1. A decisão: servidor AUTORITATIVO
+
+`DECISOES-PENDENTES` item 13 listava três caminhos e recomendava o A. Vai o A, e
+o motivo é um só: **a névoa é o jogo**.
+
+Se o servidor fosse um repassador burro mandando o estado inteiro para os dois,
+qualquer um abriria o console e leria a posição do Caçador escondido. Rotação
+secreta, emboscada e blefe de gank — que são a coisa em torno da qual a partida
+gira — virariam questão de honra.
+
+---
+
+### 2. `estadoPara(t)` — o que cada lado tem direito de saber
+
+Até aqui a névoa era aplicada **na pintura**: o cliente tem o `J` inteiro e
+`ladoDaTela()` decide o que desenhar. Em hotseat isso é perfeito — existe uma
+tela só. Em rede seria mentira.
+
+Esconde cinco coisas, e a quinta é a que quase passou:
+
+| | Por quê |
+|---|---|
+| posição do herói inimigo fora da visão | o óbvio, e o menor deles |
+| condições, itens, recursos e escudo dele | "alguém está sangrando" já entrega que ele existe e como está |
+| a rotação do Caçador adversário | secreta **por regra** desde a v46 |
+| as wards dele | olho plantado é informação comprada com ouro |
+| **entradas do log que nomeiam esse herói** | 75 mensagens do motor citam o herói pelo nome: *"Dona Chinela está SANGRANDO"* entrega quem você não devia ver |
+
+**Isto também conserta o hotseat.** O vazamento pelo console existe hoje, para
+quem quiser espiar numa partida no mesmo aparelho.
+
+---
+
+### 3. `J` não era serializável, ao contrário do que eu tinha escrito (CORREÇÃO)
+
+Estava registrado no `DECISOES-PENDENTES`: *"`J` é um objeto serializável — dá
+para mandar em JSON sem cerimônia"*. **Errado**, e só apareceu quando o filtro
+tentou clonar.
+
+Há **uma** referência circular: `cond.dono` guarda o OBJETO do herói que aplicou
+a condição — é assim que o motor credita a alguém o abate por sangramento.
+`JSON.stringify` estoura nela. Na rede o dono vira `id`, e entrou teste para o
+próximo que guardar objeto onde cabia identificador.
+
+(Os `habs[].dados` pareciam ciclo e não são: é a mesma `FAIXA_SLOT` compartilhada
+por todos os heróis desde a v49.)
+
+---
+
+### 4. O servidor
+
+`servidor/sala.js`, **zero dependência** — só `http` e `crypto` do Node.
+
+**Um motor só:** ele não reimplementa regra nenhuma. Carrega `jogo/jogo.js` pelo
+mesmo `sim/motor.js` da suíte de testes. Regra que muda no jogo muda lá junto,
+por construção — é o que impede hotseat e online de divergirem.
+
+**O cliente manda intenção, nunca estado**, e a lista de ações é fechada. Se ele
+pudesse mandar estado, o servidor autoritativo não serviria para nada: bastaria
+mentir no envio.
+
+**SSE + POST, não WebSocket.** Um jogo de turnos manda ~11 KB por jogada; a
+`EventSource` do navegador resolve sem handshake. WebSocket sem biblioteca
+custaria ~150 linhas de parsing de frame para ganhar latência que jogo de
+tabuleiro não usa.
+
+O que já está travado, cada um com teste: senha nunca guardada em claro (sal +
+sha256) e comparada em tempo constante; código de sala sem `0 O 1 I L` porque ele
+vai ser **ditado em voz alta**; terceiro jogador não entra; **não dá para jogar
+fora do seu turno**; **não dá para mexer no herói do adversário**; **não dá para
+mirar em quem você não enxerga** — a névoa vale para a jogada, não só para o
+desenho.
+
+`node sim/rede.js` — **19 testes** contra o servidor de verdade.
+
+---
+
+### 5. Achado no caminho: a compra de item estava escrita duas vezes
+
+A regra de comprar item **morava dentro do handler de clique** da loja — e uma
+segunda cópia dentro de `iaCompra`. Divergência latente que já existia: mexer no
+preço, no desconto ou no bônus de vida exigia lembrar das duas.
+
+Virou `compraItem(h,id,t)`, chamada pelos dois e agora pelo servidor. Foi o
+servidor que expôs o problema: ele não tem clique, então não tinha como comprar
+sem copiar a regra uma terceira vez.
+
+---
+
+### 6. Onde parei, e por quê
+
+Falta **o cliente inteiro**: tela de sala, modo `rede`, e rotear os 11 pontos de
+gesto para POST em vez de mudar o `J` local.
+
+O trabalho de verdade não é nenhum desses três — é o **desenho com estado
+filtrado**. O renderizador assume hoje que todo herói tem posição; com o filtro,
+herói escondido chega com `pos:null`, e `visivelPara`/`enxergaCasa` estouram em
+`...h.pos`. Isso precisa de navegador para validar, não de teste em Node.
+
+**Parei aqui de propósito.** Meio cliente entregue quebraria o hotseat, que é o
+que vocês jogam hoje e que continua com os 302 testes e a fumaça passando.
+
+---
+
+### 7. Verificado
+
+`sim/testes.js` **302** (eram 292; 10 novos, todos quebrados de propósito antes
+de entrar) · `sim/rede.js` **19** · fumaça no Chromium com a IA jogando a partida
+inteira, sem erro.
+
+---
+
 ## v51 — creme, e só creme · 2026-08-20
 
 A v50 fez o site seguir o tema do aparelho. Durou uma versão. Vendo o creme
