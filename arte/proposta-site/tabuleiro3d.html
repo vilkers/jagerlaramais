@@ -47,6 +47,85 @@ const escurece = (hex, f) => {
   const r = Math.round(((n>>16)&255)*f), g2 = Math.round(((n>>8)&255)*f), b = Math.round((n&255)*f);
   return `rgb(${r},${g2},${b})`;
 };
+
+/* ═══════════ O MUNDO EM CIMA DAS CASAS ═══════════
+   A versão anterior era hexágono de cor chapada com espessura — Catan com
+   paleta ocre. O que separa isso do universo é uma coisa só: NAS CASAS TEM
+   COISA. Barraco, carro tombado, pneu, caixa d'água, mato.
+
+   Tudo desenhado aqui, em caixa isométrica. Nada de imagem: escala em qualquer
+   tela, pesa zero, e muda de cor junto com a paleta.
+
+   A colocação é DETERMINÍSTICA — semeada por (c,r). O mesmo tabuleiro desenha
+   igual todas as vezes, senão a casa que o jogador decorou muda de cara a cada
+   pintura e o mapa deixa de ser um lugar. */
+
+/* ruído estável: mesma casa, mesmo número, sempre */
+function rnd(c,r,k){ let x = (c*374761393 + r*668265263 + k*1442695040) | 0;
+  x = (x ^ (x>>13)) * 1274126177 | 0; return ((x ^ (x>>16)) >>> 0) / 4294967296; }
+
+/* caixa isométrica: topo achatado + frente. É o vocabulário de tudo aqui —
+   barraco, geladeira, carroceria e caixa d'água são a mesma função. */
+function caixa(px,py,w,d,h,cor,inclina){
+  const t = escurece(cor,1.18), f = escurece(cor,.72), l = escurece(cor,.55);
+  const dy = d*inclina;
+  return `<polygon points="${px-w/2},${py-h} ${px+w/2},${py-h} ${px+w/2-d*.35},${py-h-dy} ${px-w/2-d*.35},${py-h-dy}"
+            fill="${t}" stroke="#2A2A28" stroke-width=".4"/>
+          <polygon points="${px-w/2},${py-h} ${px+w/2},${py-h} ${px+w/2},${py} ${px-w/2},${py}"
+            fill="${f}" stroke="#2A2A28" stroke-width=".4"/>
+          <polygon points="${px+w/2},${py-h} ${px+w/2-d*.35},${py-h-dy} ${px+w/2-d*.35},${py-dy} ${px+w/2},${py}"
+            fill="${l}" stroke="#2A2A28" stroke-width=".4"/>`;
+}
+
+/* BARRACO: laje, tijolo, caixa d'água em cima e antena de gambiarra */
+function barraco(px,py,esc,cor){
+  let o = caixa(px,py,11*esc,7*esc,9*esc,cor,INCLINA);
+  o += caixa(px+2.5*esc,py-9*esc,4.5*esc,3*esc,3.4*esc,"#9BA7AE",INCLINA);   // caixa d'água
+  o += `<path d="M${px-3.5*esc},${py-9*esc} v${-6*esc}" stroke="#4A4335" stroke-width="${.8*esc}"/>
+        <path d="M${px-5.5*esc},${py-12.5*esc} h${4*esc} M${px-4.8*esc},${py-14*esc} h${2.6*esc}"
+              stroke="#4A4335" stroke-width="${.6*esc}"/>`;                  // antena
+  o += `<rect x="${px-3.6*esc}" y="${py-6*esc}" width="${2.6*esc}" height="${2.4*esc}"
+              fill="#3A3226" opacity=".55"/>`;                               // janela
+  return o;
+}
+/* CARRO TOMBADO: carroceria + cabine + rodas */
+function carro(px,py,esc,cor){
+  let o = caixa(px,py,13*esc,6*esc,3.6*esc,cor,INCLINA);
+  o += caixa(px-1*esc,py-3.6*esc,7*esc,5*esc,3*esc,escurece(cor,.85),INCLINA);
+  o += `<ellipse cx="${px-4.5*esc}" cy="${py}" rx="${2*esc}" ry="${1*esc}" fill="#2A2620"/>
+        <ellipse cx="${px+4.5*esc}" cy="${py}" rx="${2*esc}" ry="${1*esc}" fill="#2A2620"/>`;
+  return o;
+}
+/* MOITA: três bolhas de vegetação */
+function moita(px,py,esc){
+  const v=["#6E9450","#7FA65C","#5E8443"];
+  let o="";
+  for(let i=0;i<3;i++){
+    const dx=(i-1)*3.2*esc, dy=(i===1?-1.6:0)*esc, rr=(i===1?3.6:2.9)*esc;
+    o += `<ellipse cx="${px+dx}" cy="${py-2*esc+dy}" rx="${rr}" ry="${rr*.78}"
+            fill="${v[i]}" stroke="#3F5A33" stroke-width=".35"/>`;
+  }
+  return o;
+}
+/* PILHA DE PNEU */
+function pneus(px,py,esc){
+  let o="";
+  for(let i=0;i<3;i++)
+    o += `<ellipse cx="${px}" cy="${py-i*1.7*esc}" rx="${3*esc}" ry="${1.5*esc}"
+            fill="#33302B" stroke="#1E1C19" stroke-width=".35"/>`;
+  o += `<ellipse cx="${px}" cy="${py-3.4*esc}" rx="${1.2*esc}" ry="${.6*esc}" fill="#55504A"/>`;
+  return o;
+}
+/* PLACA TORTA com dizer do mundo */
+function placa(px,py,esc,txt,cor){
+  return `<g transform="rotate(-7 ${px} ${py})">
+    <path d="M${px},${py} v${-7*esc}" stroke="#5A5142" stroke-width="${.9*esc}"/>
+    <rect x="${px-6.5*esc}" y="${py-13*esc}" width="${13*esc}" height="${6*esc}"
+          fill="${cor}" stroke="#2A2A28" stroke-width=".5"/>
+    <text x="${px}" y="${py-8.8*esc}" font-size="${2.6*esc}" text-anchor="middle"
+          font-family="Estencil,sans-serif" fill="#241F17">${txt}</text></g>`;
+}
+
 const pontos = s => s.trim().split(/\s+/).map(p => p.split(",").map(Number));
 const proj = (x,y,z) => [x, y*INCLINA - z*ALTURA];
 
@@ -65,7 +144,7 @@ const achaCel = (c,r) => D.cels.find(x=>x.c===c&&x.r===r);
 const centroDe = cel => { const ps = pontos(cel.pts);
   return [ps.reduce((s,p)=>s+p[0],0)/6, ps.reduce((s,p)=>s+p[1],0)/6]; };
 
-let out = "";
+let out = "", bordaTras = "", bordaFrente = "";
 for (const cel of cels) {
   const z = ELEV[cel.tipo] ?? 0;
   const base = COR[cel.tipo] || COR.campo;
@@ -87,6 +166,43 @@ for (const cel of cels) {
   out += `<polygon points="${topo.map(p=>p.join(",")).join(" ")}" fill="${base}"
            stroke="#5A5142" stroke-width=".55" stroke-linejoin="round"/>`;
 
+  /* ═══ O QUE MORA NESTA CASA ═══
+     Densidade e tipo vêm do terreno: mato é vegetação, casa bloqueada é o
+     ônibus/carro/caixa d'água que o jogo já diz que está ali, campo tem barraco
+     e sucata esparsos, rota tem carcaça na beira. */
+  {
+    const [ecx,ecy] = centroDe(cel); const [ex,ey] = proj(ecx,ecy,z);
+    const a = rnd(cel.c,cel.r,1), b2 = rnd(cel.c,cel.r,2), c3 = rnd(cel.c,cel.r,3);
+    const jog = (n)=>(rnd(cel.c,cel.r,n)-.5)*9;
+    if (cel.tipo==="mato"){
+      out += moita(ex+jog(4)*.6, ey+jog(5)*.3-1, 1.1+a*.45);
+      out += moita(ex+jog(6)*.7-7, ey+jog(7)*.3+3, .8+b2*.4);
+      if (c3>.55) out += `<path d="M${ex+8},${ey-1} v-11 M${ex+4.5},${ey-7} l3.5-2.5 M${ex+11.5},${ey-8} l-3.5-2"
+                           stroke="#4A5F38" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+      if (c3<.3) out += pneus(ex-8, ey+3, .7);
+    } else if (cel.tipo==="bloqueado"){
+      if (a<.38)      out += carro(ex+jog(4)*.3, ey+1, 1.15, a<.19?"#B4543F":"#4E7FA8");
+      else if (a<.72) out += barraco(ex+jog(4)*.25, ey, 1.15, "#A98F6B");
+      else          { out += caixa(ex-1,ey,15,9,11,"#8FA3AC",INCLINA);
+                      out += `<path d="M${ex-6},${ey} v-3 M${ex+5},${ey} v-3" stroke="#5A5142" stroke-width="1.4"/>`; }
+      if (b2>.6) out += pneus(ex+10, ey+3, .65);
+    } else if (cel.tipo==="rota"){
+      if (a>.72) out += carro(ex+10, ey+2.5, .7, "#8C7A5E");
+      if (b2>.74) out += pneus(ex-10, ey+2.5, .68);
+      if (c3>.86) out += `<path d="M${ex+12},${ey+1} v-13" stroke="#5A5142" stroke-width="1.3"/>
+                          <ellipse cx="${ex+12}" cy="${ey-14}" rx="2.6" ry="1.6" fill="#D9CDA8" stroke="#5A5142" stroke-width=".5"/>`;
+    } else if (cel.tipo==="campo"){
+      /* CAMPO É ONDE A CIDADE MORA. Antes ele ficava vazio em 4 de 5 casas e o
+         tabuleiro parecia deserto — o oposto do que a referência mostra. */
+      if (a>.60)      out += barraco(ex+jog(4)*.45, ey, .95+b2*.25, b2>.5?"#B39273":"#A0866A");
+      else if (a>.44) out += pneus(ex+jog(6)*.5, ey+1, .9);
+      else if (a>.28) out += moita(ex+jog(8)*.55, ey, .85);
+      else if (a>.14) out += carro(ex+jog(9)*.35, ey+1, .8, c3>.5?"#7E8A6F":"#9A6B52");
+      else            out += caixa(ex+jog(3)*.4, ey, 6.5, 4.5, 5, "#A9906F", INCLINA);
+      if (b2>.80) out += moita(ex-10, ey+3, .55);
+    }
+  }
+
   /* FAIXA DE ASFALTO. Sem ela a rota vira só uma casa de outra cor; com ela o
      olho segue o caminho de uma torre à outra, que é como se lê o tabuleiro. */
   if (cel.tipo==="rota"){
@@ -102,6 +218,43 @@ for (const cel of cels) {
     out += `<ellipse cx="${px}" cy="${py}" rx="9" ry="5" fill="#7FA65C" opacity=".55"/>`;
     out += `<ellipse cx="${px}" cy="${py}" rx="5" ry="2.8" fill="#C6F53F" opacity=".65"/>`;
   }
+}
+
+/* ═══ A BORDA DO FERRO-VELHO ═══
+   Nos mockups da referência o tabuleiro não termina no hexágono: em volta tem
+   barraco, cerca e placa. É o que transforma "grade de jogo" em LUGAR.
+
+   Ela é separada em TRÁS e FRENTE porque a ordem de pintura importa: o que
+   está atrás do tabuleiro tem de ser desenhado ANTES das casas, senão flutua
+   por cima delas — que foi exatamente o defeito da primeira tentativa. */
+{
+  const porX = {};
+  D.cels.forEach(c2 => { const [cx2,cy2] = centroDe(c2);
+    (porX[Math.round(cx2)] = porX[Math.round(cx2)] || []).push({c2,cy2}); });
+  const dizeres = ["FÉ EM SUCATA","NÃO ENTRE","DEUS É GAMBIARRA","SÓ PASSA QUEM PAGA"];
+  let n = 0;
+  Object.keys(porX).map(Number).sort((a,b)=>a-b).forEach((xk,i) => {
+    const col = porX[xk].sort((a,b)=>a.cy2-b.cy2);
+    const jj = (k)=>(rnd(i,k,7)-.5)*9;
+
+    /* ATRÁS — encostado na primeira fileira, não pairando sobre ela */
+    const topo = col[0], zt = ELEV[topo.c2.tipo] ?? 0;
+    const [tx,ty] = proj(...centroDe(topo.c2), zt);
+    if (i % 2 === 0) bordaTras += barraco(tx + jj(1), ty - 9, .85, i%3 ? "#A98F6B" : "#93795C");
+    else bordaTras += `<path d="M${tx-10},${ty-7} h20 M${tx-8},${ty-7} v-7 M${tx-1},${ty-7} v-8 M${tx+7},${ty-7} v-7"
+                        stroke="#6B6152" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+    if (i % 5 === 2) bordaTras += pneus(tx + jj(2), ty - 6, .7);
+    if (i === 3 || i === 8) { bordaTras += placa(tx + jj(3), ty - 11, .95, dizeres[n % dizeres.length], "#C4A24E"); n++; }
+
+    /* FRENTE — desenhada depois de tudo, porque está na frente mesmo */
+    const base = col[col.length-1], zb = ELEV[base.c2.tipo] ?? 0;
+    const [bx,by] = proj(...centroDe(base.c2), zb);
+    if (i % 3 === 0) bordaFrente += barraco(bx + jj(4), by + 12, .78, "#A0866A");
+    else if (i % 3 === 1) bordaFrente += pneus(bx + jj(5), by + 11, .85);
+    else bordaFrente += `<path d="M${bx-10},${by+12} h20 M${bx-8},${by+12} v-6 M${bx-1},${by+12} v-7 M${bx+7},${by+12} v-6"
+                          stroke="#6B6152" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+    if (i === 5) { bordaFrente += placa(bx, by + 15, .9, dizeres[n % dizeres.length], "#B4543F"); n++; }
+  });
 }
 
 /* ═══ O QUE FICA EM CIMA ═══ tudo com sombra no chão, senão flutua */
@@ -156,7 +309,7 @@ document.querySelector("#palco").innerHTML =
      </filter></defs>
      <ellipse cx="${vb[0]+vb[2]/2}" cy="${(vb[1]+vb[3])*INCLINA + 16}"
               rx="${vb[2]*.54}" ry="${vb[3]*INCLINA*.30}" fill="#3A3226" opacity=".16"/>
-     <g filter="url(#sombra)">${out}</g>
+     <g filter="url(#sombra)">${bordaTras}${out}${bordaFrente}</g>
    </svg>`;
 document.querySelector("#rod").textContent = D.rodada;
 </script>
