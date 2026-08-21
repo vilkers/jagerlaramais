@@ -3823,6 +3823,57 @@ teste("Ward revela o Invisível: é a resposta que o desenho nomeou", () => {
   ok(g.visivelPara(p, 1), "ward em cima do invisível e ele continua invisível — sem Ward não há resposta");
 });
 
+/* "o ward do pombo não tá funcionando" — playtest.
+   Não estava: a ward obedece à regra do mato, e o Pombo NASCE no mato e vive lá.
+   Plantar na rota ao lado do bolsão não revela nada, e é o que o jogador faz.
+   Os dois testes abaixo fixam a regra pelos dois lados, para que o dia em que o
+   grupo decidir que a ward fura o mato contra Invisibilidade seja uma decisão
+   registrada aqui e não um efeito colateral de outra mudança. */
+teste("ward na rota NÃO revela o Invisível dentro do mato — é a regra do mato", () => {
+  const c = cena().vez(0); const g = c.g;
+  const p = c.heroi(0, "selva");
+  const mato = [...g.MATO].map(s => s.split(",").map(Number)).find(q => !g.em(...q));
+  ok(mato, "não achei mato livre");
+  p.pos = [...mato];
+  g.aplicaCond(p, "invisivel", { tu: 2 });
+
+  const naRota = [];
+  for (let r = 0; r < g.LINS; r++) for (let c2 = 0; c2 < g.COLS; c2++)
+    if (g.noTab(c2, r) && !g.ehMato(c2, r) && !g.ehBloqueado(c2, r)
+        && g.dist(c2, r, ...p.pos) <= 3) naRota.push([c2, r]);
+  ok(naRota.length, "cenário inválido: nenhuma casa de rota a 3 do mato escolhido");
+
+  const revelou = naRota.some(q => { g.J.times[1].wards = []; g.poeWard(1, q); return g.visivelPara(p, 1); });
+  ok(!revelou, "ward de rota enxergou dentro do mato — a regra do mato vazou");
+
+  /* e o contrajogo que SOBRA precisa continuar existindo: entrar no bolsão */
+  g.J.times[1].wards = [];
+  g.poeWard(1, [...p.pos]);
+  ok(g.visivelPara(p, 1), "nem plantando dentro do mato revela — aí o Pombo não tem resposta nenhuma");
+});
+
+teste("a IA planta no mato mesmo com ward dela na rota a 3 casas", () => {
+  const c = cena().vez(1); const g = c.g;
+  const h = c.heroi(1, "selva");
+  const mato = [...g.MATO].map(s => s.split(",").map(Number)).find(q => !g.em(...q));
+  ok(mato, "não achei mato livre");
+  h.pos = [...mato];
+  h.sentinelas = 1;
+  g.J.times[1].wards = [];
+
+  let rota = null;
+  for (let r = 0; r < g.LINS && !rota; r++) for (let c2 = 0; c2 < g.COLS; c2++)
+    if (g.noTab(c2, r) && !g.ehMato(c2, r) && !g.ehBloqueado(c2, r)
+        && g.dist(c2, r, ...h.pos) <= 3) { rota = [c2, r]; break; }
+  ok(rota, "cenário inválido: nenhuma casa de rota a 3 do mato escolhido");
+  g.poeWard(1, rota);
+  ok(!g.enxergaPorWard(1, ...h.pos), "cenário inválido: a ward de rota já cobre o mato");
+
+  g.iaPlantaWards(1);
+  eq(h.sentinelas, 0, "a IA achou o mato coberto por uma ward de rota que não enxerga lá dentro");
+  ok(g.enxergaPorWard(1, ...h.pos), "plantou, mas a casa do herói continua sem cobertura de ward");
+});
+
 teste("Revelado vence a Invisibilidade e o mato", () => {
   const c = cena().vez(0); const g = c.g;
   const p = c.heroi(0, "selva");

@@ -14,7 +14,7 @@
 
      node sim/rede.js                                                          */
 
-const { servidor } = require("../servidor/sala.js");
+const { servidor, erros, ERROS_MAX } = require("../servidor/sala.js");
 
 let passou = 0, falhou = 0;
 const falhas = [];
@@ -108,6 +108,41 @@ function ouve(sala, lado, seg) {
   await new Promise(r => servidor.listen(0, r));
   BASE = `http://localhost:${servidor.address().port}`;
   console.log(`\n  JAGERLARAMAIS · o servidor de salas\n  ${BASE}\n`);
+
+  /* ─────────── o caminho SEM SENHA (v56) ───────────
+     O pedido foi *"apenas criando a sala e passando o código"*. Estes testes
+     são a garantia de que tirar a senha não abriu a porta: o código continua
+     sendo exigido inteiro, sala cheia continua fechada, e errar em série
+     custa. */
+
+  await teste("cria sala SEM senha e entra só com o código", async () => {
+    const a = (await post("/criar", {})).corpo;
+    eq(a.sala.length, 6, "o código não veio");
+    const { status, corpo } = await post("/entrar", { sala: a.sala });
+    eq(status, 200, "não entrou com o código sozinho — o caminho novo não funciona");
+    eq(corpo.lado, 1, "quem entra não é o lado 1");
+  });
+
+  await teste("sala sem senha ainda recusa código errado", async () => {
+    await post("/criar", {});
+    const { status } = await post("/entrar", { sala: "ZZZZZZ" });
+    eq(status, 400, "abriu uma sala que não existe");
+  });
+
+  await teste("sala sem senha não vira sala aberta: a terceira pessoa não entra", async () => {
+    const a = (await post("/criar", {})).corpo;
+    await post("/entrar", { sala: a.sala });
+    const { status } = await post("/entrar", { sala: a.sala });
+    eq(status, 400, "entrou um terceiro numa sala sem senha");
+  });
+
+  await teste("quem QUER senha continua podendo pôr uma", async () => {
+    const a = (await post("/criar", { senha: "abelha" })).corpo;
+    const semSenha = await post("/entrar", { sala: a.sala });
+    eq(semSenha.status, 400, "sala COM senha abriu sem senha");
+    const comSenha = await post("/entrar", { sala: a.sala, senha: "abelha" });
+    eq(comSenha.status, 200, "sala com senha não abriu com a senha certa");
+  });
 
   /* ─────────── senha e entrada ─────────── */
 
@@ -263,10 +298,14 @@ function ouve(sala, lado, seg) {
   });
 
   await teste("comprar na loja passa pelo servidor e o ouro sai", async () => {
-    const { a, b, ea, oa, ob } = await mesa();
+    const { a, b, ea, eb, oa, ob } = await mesa();
     const eu = ea.estado.vez === 0 ? a : b;
     const meuLado = ea.estado.vez;
-    const est = meuLado === 0 ? ea.estado : (await ob.proximo()).estado;
+    /* `mesa()` JÁ consumiu um evento de cada canal — `eb` é o estado do lado 1.
+       Pedir `ob.proximo()` aqui era esperar um empurrão que ninguém ia dar:
+       quando a moeda dava a vez ao lado 1, o teste travava até o prazo. Ele
+       falhava em ~4 de 6 execuções, e "travou" parecia lentidão do servidor. */
+    const est = meuLado === 0 ? ea.estado : eb.estado;
     const h = est.times[meuLado].herois[0];
     /* o servidor é a fonte: dou ouro nele, não no cliente */
     const { salas } = require("../servidor/sala.js");
@@ -314,6 +353,21 @@ function ouve(sala, lado, seg) {
       { sala: a.sala, segredo: eu.segredo, acao: "aplicaEstado", dados: { J: {} } });
     eq(status, 400, "o servidor aceitou uma ação que não está na lista");
     oa.fecha(); ob.fecha();
+  });
+
+  /* POR ÚLTIMO, e de propósito: o freio conta erro por IP, e todo este arquivo
+     fala do mesmo IP. Estourar a janela no meio derrubaria os testes seguintes
+     — inclusive os que entram em sala com o código certo. */
+  await teste("errar código em série trava o IP — o código é o único segredo agora", async () => {
+    erros.clear();
+    const a = (await post("/criar", {})).corpo;
+    for (let i = 0; i < ERROS_MAX; i++) await post("/entrar", { sala: "ZZZZZZ" });
+    const { status, corpo } = await post("/entrar", { sala: a.sala });
+    eq(status, 400, "o freio não pegou");
+    ok(/tentativa/.test(corpo.erro || ""), `travou por outro motivo: ${corpo.erro}`);
+    erros.clear();
+    const livre = await post("/entrar", { sala: a.sala });
+    eq(livre.status, 200, "a janela não solta — o freio virou banimento");
   });
 
   console.log(`\n  ${passou} passaram · ${falhou} falharam\n`);

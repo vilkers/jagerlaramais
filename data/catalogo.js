@@ -57,7 +57,7 @@ const CONDS = {
     d:"Fora do tabuleiro: não é alvo, não sofre dano, não ocupa hexágono e não acende visão. Volta no início do próprio turno, no mesmo lugar."},
 
   invisivel:{n:"Invisibilidade", ico:"👁️", selo:"INVISÍVEL", bom:1, max:3,
-    d:"O adversário não vê a peça, mesmo fora do mato. Atacar entrega a posição. Ward e Revelado cancelam."},
+    d:"O adversário não vê a peça, mesmo fora do mato. Atacar entrega a posição. Revelado cancela, e Ward cancela se ela enxergar a casa — dentro do mato, só ward plantada no mato."},
 
   marcado:{n:"Marcado", ico:"🎯", selo:"MARCADO", mal:1, pilha:1, max:9, limpavel:1,
     d:"O próximo dano recebido leva um bônus igual ao total marcado. Depois a marca sai."},

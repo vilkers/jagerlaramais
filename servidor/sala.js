@@ -76,6 +76,12 @@ function iguais(a, b) {
   return A.length === B.length && crypto.timingSafeEqual(A, B);
 }
 
+/* SENHA OPCIONAL (v56). O pedido foi direto: *"apenas criando a sala e passando
+   o código"*. A senha era uma segunda coisa para ditar, e ela não estava
+   comprando segurança nova — o CÓDIGO já é um segredo de 6 caracteres num
+   alfabeto de 31, ~887 milhões de combinações, numa sala que vive 2h, aceita
+   UM segundo jogador e depois fecha. Quem quiser senha ainda pode mandar uma;
+   sem ela, `selo` é nulo e a sala abre só com o código. */
 function novaSala(senha) {
   const sal = crypto.randomBytes(8).toString("hex");
   const g = carrega();
@@ -89,7 +95,7 @@ function novaSala(senha) {
   g.confirma = (_t, _x, aoSim) => aoSim();
   g.novo();
   const sala = {
-    codigo: CODIGO(), sal, selo: selaSenha(senha, sal),
+    codigo: CODIGO(), sal, selo: senha ? selaSenha(senha, sal) : null,
     g, criada: Date.now(), mexida: Date.now(),
     lados: [null, null],                /* segredo de cada jogador */
     ouvintes: [],                       /* {lado, res} */
@@ -110,11 +116,35 @@ function empurra(sala) {
   }
 }
 
+/* ---------- FREIO DE TENTATIVA ----------
+   Com a senha opcional, o código da sala passou a ser o único segredo, e um
+   segredo único merece um freio: sem ele alguém varre códigos até cair numa
+   sala aberta. Não é rate limit de produção — é o suficiente para que varrer
+   887 milhões de códigos deixe de ser um laço de `for`.
+
+   Conta ERRO, não requisição: quem acerta o código na primeira não vê nada
+   disto. A janela zera sozinha, então um dedo pesado no teclado não prende
+   ninguém para sempre. */
+const ERROS_MAX = 30, JANELA_ERRO = 10 * 60 * 1000;
+const erros = new Map();                 /* ip -> {n, ate} */
+function anotaErro(ip) {
+  const agora = Date.now();
+  const e = erros.get(ip);
+  if (!e || agora > e.ate) { erros.set(ip, { n: 1, ate: agora + JANELA_ERRO }); return; }
+  e.n++;
+}
+function travado(ip) {
+  const e = erros.get(ip);
+  return !!e && Date.now() <= e.ate && e.n >= ERROS_MAX;
+}
+const deQuem = req => String(req.socket.remoteAddress || "?");
+
 /* sala parada há 2h vai embora — sem isso a memória cresce para sempre */
 setInterval(() => {
   const agora = Date.now();
   for (const [cod, s] of salas)
     if (agora - s.mexida > 2 * 60 * 60 * 1000) salas.delete(cod);
+  for (const [ip, e] of erros) if (agora > e.ate) erros.delete(ip);
 }, 10 * 60 * 1000).unref();
 
 /* ---------- as jogadas que o cliente pode pedir ----------
@@ -261,17 +291,25 @@ const servidor = http.createServer(async (req, res) => {
   try {
     if (req.method === "POST" && url.pathname === "/criar") {
       const { senha } = await corpo(req);
-      ok(senha && String(senha).length >= 3, "a senha precisa de pelo menos 3 caracteres");
-      const sala = novaSala(senha);
+      /* senha VAZIA é o caminho normal agora. Se vier uma, ela ainda precisa
+         valer alguma coisa — senha de 2 letras é pior que nenhuma, porque
+         parece proteção. */
+      ok(!senha || String(senha).length >= 3, "a senha precisa de pelo menos 3 caracteres");
+      const sala = novaSala(senha || "");
       sala.lados[0] = segredo();
       return manda(res, 200, { sala: sala.codigo, lado: 0, segredo: sala.lados[0] });
     }
 
     if (req.method === "POST" && url.pathname === "/entrar") {
       const { sala: cod, senha } = await corpo(req);
+      const ip = deQuem(req);
+      ok(!travado(ip), "tentativa demais — espere alguns minutos");
       const sala = salas.get(String(cod || "").toUpperCase());
-      ok(sala, "sala não existe");
-      ok(iguais(selaSenha(senha, sala.sal), sala.selo), "senha errada");
+      if (!sala) { anotaErro(ip); ok(false, "sala não existe"); }
+      /* sala sem senha abre só com o código — é o caso comum desde a v56 */
+      if (sala.selo && !iguais(selaSenha(senha, sala.sal), sala.selo)) {
+        anotaErro(ip); ok(false, "senha errada");
+      }
       ok(!sala.lados[1], "essa sala já tem dois jogadores");
       sala.lados[1] = segredo();
       const r = { sala: sala.codigo, lado: 1, segredo: sala.lados[1] };
@@ -350,4 +388,7 @@ if (require.main === module)
     console.log(`  "Jogar com um amigo · sala". O campo de endereço já vem preenchido.\n`);
   });
 
-module.exports = { servidor, salas, novaSala };
+/* `erros` sai daqui só para o teste do freio poder zerar a janela depois de
+   estourá-la de propósito — sem isso ele derrubaria todos os testes seguintes,
+   que entram em sala do mesmo IP. */
+module.exports = { servidor, salas, novaSala, erros, ERROS_MAX };

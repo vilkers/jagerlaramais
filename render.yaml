@@ -1,0 +1,28 @@
+# Publicar o servidor de salas no Render (plano gratuito).
+#
+# Existe para resolver uma coisa só: enquanto o servidor morar na máquina de
+# alguém, o jogo precisa perguntar o endereço dele. Publicado num lugar fixo com
+# https, o endereço vira uma constante no código (`SALA_PADRAO` em jogo/jogo.js)
+# e ninguém digita endereço nunca mais.
+#
+# Como usar:
+#   1. render.com -> New -> Blueprint -> aponte para este repositório;
+#   2. o Render lê este arquivo e sobe o serviço;
+#   3. copie a URL que ele der (https://algo.onrender.com);
+#   4. cole em SALA_PADRAO, no topo do bloco "A SALA" de jogo/jogo.js;
+#   5. publique o site. Pronto: criar sala -> copiar convite -> mandar.
+#
+# O plano gratuito DORME depois de 15 min parado, e a primeira chamada demora
+# ~30s para acordar. A tela de sala já diz "o servidor pode estar dormindo" em
+# vez de "não deu" — mas se isso incomodar, qualquer plano pago derruba a espera.
+services:
+  - type: web
+    name: jagerlaramais-salas
+    runtime: node
+    plan: free
+    buildCommand: ""          # sem dependência: não há o que instalar
+    startCommand: node servidor/sala.js
+    healthCheckPath: /saude
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

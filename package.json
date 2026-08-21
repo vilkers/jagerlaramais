@@ -1,0 +1,12 @@
+{
+  "name": "jagerlaramais",
+  "version": "56.0.0",
+  "private": true,
+  "description": "MOBA de mesa para dois. Este package.json existe para PUBLICAR o servidor de salas — o jogo em si continua abrindo com duplo clique, sem npm e sem build.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node servidor/sala.js",
+    "test": "node sim/testes.js && node sim/rede.js"
+  },
+  "dependencies": {}
+}

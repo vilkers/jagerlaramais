@@ -11,6 +11,149 @@ Como escrever uma entrada:
 ### Por quê
 ---
 
+## v55.2 — a ward do Pombo · 2026-08-21
+
+### O que mudou
+
+**A IA passou a plantar ward no mato.** O critério de cobertura dela era
+`dist(...w.pos, ...h.pos) <= VISAO_WARD` — distância crua, ignorando a regra do
+mato. Agora é `enxergaPorWard(t, ...h.pos)`: a mesma função que a visão usa.
+
+**O texto da Invisibilidade ganhou a ressalva que faltava.** Era *"Ward e
+Revelado cancelam"*. Agora: *"Revelado cancela, e Ward cancela **se ela enxergar
+a casa** — dentro do mato, só ward plantada no mato"*. Igual em `docs/KITS.md`
+e `docs/ESTADO.md`.
+
+### Por quê
+
+O relato: *"acho que o ward do pombo não tá funcionando"*.
+
+A ward funciona — 307 testes passavam, incluindo *"Ward revela o Invisível"*. O
+que não funcionava era a **promessa**. Medido: o Pombo nasce em `[4,4]`, que é
+mato, e vive lá; das **20 casas de rota** dentro do raio 3 dele, **nenhuma**
+revela. A ward obedece à regra do mato desde a v22, e a carta não dizia isso.
+Então o jogador comprava a Sentinela, plantava na rota ao lado do bolsão, e não
+acontecia nada — sem erro, sem aviso, sem motivo aparente.
+
+O desenho em si está de pé: o mato tem dois bolsões (14 e 13 casas), uma ward
+cobre raio 3, e entrar no bolsão para plantar é uma jogada de verdade, com
+custo — você expõe um herói lá dentro. O que faltava era a carta dizer onde
+plantar.
+
+### O bug de verdade estava do lado da IA
+
+Regra de visão e regra de cobertura eram funções diferentes, e desencontravam
+exatamente onde importa: a IA parada **no mato**, com uma ward dela na **rota** a
+três casas, achava aquilo coberto. Não estava — aquela ward não enxerga nada lá
+dentro. Resultado: contra a IA, o Pombo Ciborgue não tinha contrajogo nenhum.
+
+O teste novo falha com o código velho (`esperado 0, veio 1` — a Sentinela ficou
+na mochila) e passa com o novo. Dois testes entraram: esse, e um que fixa a
+regra do mato pelos dois lados, para que o dia em que o grupo decidir que a ward
+fura o mato contra Invisibilidade seja uma decisão registrada e não efeito
+colateral de outra mudança.
+
+`node sim/testes.js` → **309 passaram · 0 falharam**.
+
+---
+
+## v56 — a sala virou um link · 2026-08-21
+
+### O que mudou
+
+**Sumiu o campo de endereço do servidor.** O jogo agora descobre para onde
+ligar sozinho, nesta ordem — o primeiro que responder `/saude` vence:
+
+| Ordem | De onde | Para quê |
+|---|---|---|
+| 1 | `?srv=` na URL | apontar para outro servidor sem mexer no código |
+| 2 | a própria origem | quando o jogo é servido pelo `sala.js`: mesma origem, sem CORS |
+| 3 | `SALA_PADRAO` | o servidor publicado — o caminho de todo mundo |
+| 4 | o que ficou salvo | quem já digitou um endereço continua com ele |
+
+**Sumiu a senha do caminho comum.** `POST /criar` aceita corpo vazio; sala sem
+senha abre só com o código. Quem quiser senha ainda pode mandar uma, e aí ela
+continua sendo exigida — sal por sala, sha256, comparação em tempo constante.
+
+**Apareceu o convite.** Criar a sala devolve um link
+(`.../jogo/?sala=ABC123`) e dois botões: *Copiar convite* e *Copiar só o
+código*. O código, que antes ficava escondido no título da tela, agora é o
+maior elemento dela. Quem toca no link cai direto na partida.
+
+**No lugar da senha, um freio.** `/entrar` conta erro por IP: **30 erros em 10
+minutos** e aquele IP para de entrar até a janela virar. Conta erro, não
+requisição — quem acerta o código na primeira nunca encosta nisso.
+
+Três números novos: `ERROS_MAX = 30`, `JANELA_ERRO = 10 min`, e o código
+continua em 6 caracteres de um alfabeto de 31.
+
+### Por quê
+
+O pedido: *"não gostei da forma de pvp, faça de uma forma que eu n precise
+botar o ip no site, apenas criando a sala e passando o código"*.
+
+Estava certo, e o defeito não era a tela — era o que a tela era obrigada a
+perguntar. Endereço de servidor é **infraestrutura**, e infraestrutura não cabe
+num campo de texto na frente de quem quer jogar. A v53 pedia o IP porque não
+existia servidor publicado em lugar nenhum; enquanto isso for verdade, alguém
+tem de digitar onde ele está. A resposta não é uma tela melhor — é publicar o
+servidor uma vez e gravar o endereço no código.
+
+E a senha era pior ainda, porque parecia proteção. Ela não estava comprando
+segurança nova: o código já é um segredo de 6 caracteres num alfabeto de 31
+(~887 milhões de combinações), numa sala que vive 2h, aceita **um** segundo
+jogador e depois fecha. O que a senha comprava de verdade era um segundo
+segredo para ditar por telefone. Trocada pelo freio de tentativa, a proteção
+ficou igual e o caminho ficou com metade dos passos.
+
+### O que ainda falta, e é um botão
+
+`SALA_PADRAO` nasce **vazia**. `render.yaml` e `package.json` descrevem o
+serviço inteiro, mas alguém precisa subir uma vez e colar a URL ali. Enquanto
+isso não acontece, a tela de sala detecta que não há servidor e volta a pedir
+endereço — explicando que está pedindo por isso, em vez de mostrar um campo
+vazio e deixar o jogador adivinhar.
+
+### Dois defeitos que apareceram ao testar no navegador de verdade
+
+**O campo do código cortava o código.** Ele tinha `maxlength="6"`, e 6 é o
+tamanho certo — mas ninguém manda o código pelado. Vem `AJB 6PS` colado da
+conversa, ou com traço, ou em minúscula. O navegador cortava no sexto caractere
+**antes** de a limpeza rodar, e o jogador colava o código certo e ouvia *"o
+código tem 6 caracteres"*. Agora o campo aceita o que vier e normaliza a cada
+tecla: o que aparece na tela já é o que vai ser enviado.
+
+**`jogo.js` derrubava o servidor ao criar sala.** A entrada automática pelo
+link roda na CARGA do arquivo, e `jogo.js` também é carregado sem navegador —
+pelo servidor de salas e pela suíte de testes, num DOM falso onde `location` e
+`URLSearchParams` não existem. Código que roda na carga precisa sobreviver a
+isso.
+
+### E um teste que mentia desde antes
+
+`comprar na loja passa pelo servidor e o ouro sai` falhava em ~4 de 6
+execuções, com *"travou — passou de 15000ms"*, e parecia lentidão. Não era: ele
+pedia `ob.proximo()` para ler o estado do lado 1, mas `mesa()` **já** tinha
+consumido um evento de cada canal. Quando a moeda dava a vez ao lado 1, o teste
+esperava um empurrão que ninguém ia dar. Agora usa o `eb` que já estava na mão.
+
+`node sim/rede.js` fecha em **24 passaram · 0 falharam**, cinco execuções
+seguidas. Os quatro testes novos cobrem o caminho sem senha: cria e entra só
+com o código, código errado recusado, terceiro jogador barrado, senha ainda
+funcionando para quem escolher uma — mais o freio, que roda por último de
+propósito, porque conta erro por IP e todo o arquivo fala do mesmo IP.
+
+### Conferido com dois navegadores de verdade
+
+Chromium, dois contextos separados, contra o servidor real: aparelho 1 abriu a
+sala **sem campo de endereço e sem campo de senha**, criou, e recebeu o código
+de 6. Aparelho 2 abriu **só o link de convite** e caiu dentro da partida — lado
+1, mesma sala, tela fechada, 5 peças desenhadas de cada lado (que é a névoa
+funcionando: cada um enxerga os próprios cinco). Zero erro de página. O caminho
+de digitar também: código colado em minúscula e com espaço no meio entrou.
+
+---
+
 ## v55.1 — o cenário recua para o fundo · 2026-08-20
 
 ### O que mudou

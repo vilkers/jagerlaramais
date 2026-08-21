@@ -6479,7 +6479,16 @@ let iaRodando=false, pularIA=false;
    versão nunca plantou nada — medido numa partida IA×IA inteira, 19 Sentinelas
    compradas e zero plantadas, com o ouro morrendo na mochila. O que a ward
    compra é visão que FICA depois que o herói sai. Logo o critério é cobertura:
-   planta se não houver ward dela por perto. */
+   planta se não houver ward dela cobrindo esta casa.
+
+   E cobertura é `enxergaPorWard`, NÃO `dist(...)<=VISAO_WARD`. A conta por
+   distância crua ignora a regra do mato, e é justamente no mato que a IA está
+   parada quando esta função roda: uma ward plantada na ROTA a três casas dali
+   contava como cobertura e não enxerga nada lá dentro. Resultado medido: a IA
+   com Sentinela na mochila nunca plantava no bolsão de mato ao lado de uma rota
+   já wardada — e o Pombo Ciborgue, que vive no mato e é Invisível, ficava sem
+   contrajogo nenhum do lado dela. Regra de visão e regra de cobertura têm de ser
+   a MESMA função, senão desencontram no primeiro ajuste de mapa. */
 /* §51 — A IA SABE RECUAR. Se ela vai terminar o turno debaixo de uma torre
    inimiga sem creep, e não derrubou a torre, isso é risco real: sai de lá com o
    movimento que sobrou. Roda depois do laço de jogadas, quando já se sabe o que
@@ -6507,8 +6516,7 @@ function iaPlantaWards(t){
   if(!IA().wards)return false;   // visão é a última coisa que o iniciante compra
   J.times[t].herois.forEach(h=>{
     if(h.morto||!(h.sentinelas>0)||!ehMato(...h.pos))return;
-    const jaCoberto=(J.times[t].wards||[]).some(w=>dist(...w.pos,...h.pos)<=VISAO_WARD);
-    if(jaCoberto)return;
+    if(enxergaPorWard(t,...h.pos))return;    // já tem olho dela cobrindo esta casa
     plantaSentinela(h);
   });
 }
@@ -7349,113 +7357,220 @@ function escolheNivelIA(depois){
     nivelIA=b.dataset.n; fecha(); depois();
   });
 }
-/* ══════════ A SALA (v53) ══════════
-   Um cria e dita o código; o outro entra com código e senha. É o pedido, e a
-   forma dele foi escolhida pelo uso: código de seis caracteres sem 0/O/1/I/L
-   porque ele vai ser lido em voz alta ou mandado por mensagem.
+/* ══════════ A SALA (v56) ══════════
 
-   O ENDEREÇO DO SERVIDOR fica guardado no aparelho. Ele não tem padrão embutido
-   de propósito: o jogo é servido de um lugar estático (Pages) e o servidor mora
-   em outro, então cravar um endereço aqui seria cravar a infraestrutura de
-   alguém dentro do jogo de todo mundo. */
+   Pedido: *"faça de uma forma que eu n precise botar o ip no site, apenas
+   criando a sala e passando o código"*.
+
+   O que impedia isso não era a tela — era não existir endereço para chamar. O
+   jogo vem de um lugar estático e o servidor de sala mora em outro, então a v53
+   pedia o endereço ao jogador. Duas coisas estavam erradas nisso: endereço de
+   servidor é INFRAESTRUTURA, não jogada; e a senha era um SEGUNDO segredo para
+   ditar quando o código já era um.
+
+   Agora:
+     · o endereço vem de `SALA_PADRAO`, gravado UMA vez por quem publica;
+     · a senha saiu do caminho comum — o código é o segredo (o servidor ganhou
+       um freio de tentativa no lugar dela);
+     · criar a sala devolve um LINK. Manda na mensagem, o amigo toca e cai
+       dentro — sem digitar código nenhum.
+
+   A ordem de descoberta vai do mais específico ao mais geral, e cada degrau tem
+   um motivo:
+     1. `?srv=` na URL    — apontar para outro servidor sem mexer no código;
+     2. a própria origem  — `servidor/sala.js` também serve o jogo; se `/saude`
+                            responde aqui, o endereço é aqui, e aí não existe
+                            mixed content nem CORS;
+     3. `SALA_PADRAO`     — o servidor publicado: o caminho de todo mundo;
+     4. o que ficou salvo — quem já digitou um endereço continua com ele.
+   Só se os quatro falharem a tela volta a pedir endereço — e aí ela explica por
+   que está pedindo, em vez de mostrar um campo vazio. */
+
+/* ↓↓↓ PREENCHA depois de publicar o servidor (passo a passo em servidor/LEIA.md).
+   Tem de ser https: esta página vem por https e o navegador recusa chamar http. */
+const SALA_PADRAO="";
+
 const SALA_CHAVE="jager.sala.servidor";
 const servidorSalvo=()=>{ try{ return localStorage.getItem(SALA_CHAVE)||""; }catch(_){ return ""; } };
 const guardaServidor=v=>{ try{ localStorage.setItem(SALA_CHAVE,v); }catch(_){} };
 
-/* Se a página veio do próprio servidor de sala, o endereço é a origem dela — e
-   aí não há o que digitar, nem mixed content, nem CORS. É o caminho que o
-   `servidor/sala.js` passou a oferecer depois do relato do erro. */
-async function achaServidorAqui(){
-  if(!/^https?:$/.test(location.protocol)) return "";
+const limpaBase=v=>String(v||"").trim().replace(/\/+$/,"");
+/* o código é ditado e colado: aceita minúscula, espaço e traço no meio */
+const codigoLimpo=v=>String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+
+/* `/saude` responde neste endereço? É a única prova de que há servidor ali —
+   e é barata o bastante para ser feita em cada candidato na abertura da tela. */
+async function temSala(base){
+  if(!base) return false;
   try{
-    const r=await fetch(location.origin+"/saude",{cache:"no-store"});
-    if(!r.ok) return "";
+    const r=await fetch(base+"/saude",{cache:"no-store"});
+    if(!r.ok) return false;
     const j=await r.json();
-    return j&&j.ok ? location.origin : "";
-  }catch(_){ return ""; }
+    return !!(j&&j.ok);
+  }catch(_){ return false; }
 }
 
-function telaSala(){
+let _servidor=null;                       /* memo: a varredura roda uma vez só */
+async function descobreServidor(){
+  if(_servidor!==null) return _servidor;
+  const daUrl=limpaBase(new URLSearchParams(location.search).get("srv"));
+  const mesmaOrigem=/^https?:$/.test(location.protocol)?location.origin:"";
+  for(const cand of [daUrl,mesmaOrigem,limpaBase(SALA_PADRAO),limpaBase(servidorSalvo())])
+    if(cand&&await temSala(cand)){ _servidor=cand; return _servidor; }
+  _servidor="";
+  return _servidor;
+}
+
+/* O CONVITE. `origin+pathname` e não `location.href`: o href pode já vir com
+   `?sala=` de um convite anterior, e o link de convite de uma sala carregaria o
+   código da outra. */
+const linkDeConvite=cod=>location.origin+location.pathname+"?sala="+encodeURIComponent(cod);
+
+/* Copiar sem depender da API nova: `navigator.clipboard` não existe em página
+   http nem em WebView velha, e é justamente aí que dois amigos vão estar. */
+async function copia(txt,btn){
+  let deu=false;
+  try{ await navigator.clipboard.writeText(txt); deu=true; }catch(_){}
+  if(!deu) try{
+    const a=document.createElement("textarea");
+    a.value=txt; a.style.position="fixed"; a.style.opacity="0";
+    document.body.appendChild(a); a.select();
+    deu=document.execCommand("copy"); a.remove();
+  }catch(_){}
+  if(btn){
+    const antes=btn.textContent;
+    btn.textContent=deu?"copiado!":txt;
+    setTimeout(()=>{ btn.textContent=antes; },deu?1400:6000);
+  }
+  return deu;
+}
+
+/* `codigoPronto` chega do link de convite: a tela já abre entrando. */
+function telaSala(codigoPronto){
+  const cod0=codigoLimpo(codigoPronto);
   abre(`<span class="et">Jogar com um amigo</span><h2>Sala</h2>
-    <p>Um cria a sala e passa o <b>código</b> e a <b>senha</b>. O outro entra.
-       Vocês jogam em aparelhos diferentes, e <b>cada um só enxerga o que os
-       próprios heróis enxergam</b>.</p>
-    <label class="cmp"><span>Endereço do servidor</span>
-      <input id="salaBase" placeholder="http://192.168.0.10:8787" value="${servidorSalvo()}"></label>
-    <label class="cmp"><span>Senha da sala</span>
-      <input id="salaSenha" placeholder="pelo menos 3 letras" autocomplete="off"></label>
-    <button class="grande" id="btCriar">Criar sala</button>
-    <label class="cmp"><span>Ou entre numa sala existente</span>
-      <input id="salaCod" placeholder="código de 6" autocomplete="off"
-             style="text-transform:uppercase"></label>
-    <button class="grande" id="btEntrar"
-      style="background:none;border:1px solid var(--line);color:var(--ink-2)">Entrar</button>
+    <p id="salaIntro">procurando o servidor…</p>
+    <div id="salaCorpo"></div>
     <div id="salaMsg" class="salamsg"></div>`);
 
-  const msg=t=>{ const e=G("salaMsg"); if(e) e.innerHTML=t; };
-  const base=()=>String(G("salaBase").value||"").trim().replace(/\/$/,"");
+  const msg=t=>{ const e=G("salaMsg"); if(e) e.innerHTML=t||""; };
+  const intro=t=>{ const e=G("salaIntro"); if(e) e.innerHTML=t; };
 
-  achaServidorAqui().then(aqui=>{
-    const cx=G("salaBase");
-    if(!aqui||!cx) return;
-    cx.value=aqui;
-    msg("servidor encontrado neste endereço — é só criar ou entrar.");
+  descobreServidor().then(base=>{
+    if(!base) return pedeEndereco();
+    intro(`Um cria a sala e manda o <b>convite</b>. O outro toca no link — ou
+           digita o código de 6. Cada um só enxerga o que os próprios heróis
+           enxergam.`);
+    G("salaCorpo").innerHTML=`
+      <button class="grande" id="btCriar">Criar sala</button>
+      <label class="cmp"><span>Ou entre com o código</span>
+        <input id="salaCod" placeholder="código de 6" autocomplete="off"
+               inputmode="text" maxlength="20"
+               style="text-transform:uppercase;letter-spacing:.18em" value="${cod0}"></label>
+      <button class="grande" id="btEntrar"
+        style="background:none;border:1px solid var(--line);color:var(--ink-2)">Entrar</button>`;
+
+    const fala=async(rota,corpo)=>{
+      try{
+        const r=await fetch(base+rota,{method:"POST",
+          headers:{"content-type":"application/json"},body:JSON.stringify(corpo)});
+        const j=await r.json();
+        if(!r.ok){ msg(j.erro||"não deu"); return null; }
+        return j;
+      }catch(_){
+        msg(`não cheguei em <code>${base}</code> — o servidor pode estar dormindo.
+             Espere alguns segundos e tente de novo.`);
+        return null;
+      }
+    };
+
+    G("btCriar").onclick=async()=>{
+      msg("criando…");
+      const r=await fala("/criar",{});
+      if(r) entraNaSala(base,r,true);
+    };
+    const entrar=async()=>{
+      const c=codigoLimpo(G("salaCod").value);
+      if(c.length!==6){ msg("o código tem 6 caracteres."); return; }
+      msg("entrando…");
+      const r=await fala("/entrar",{sala:c});
+      if(r) entraNaSala(base,r,false);
+    };
+    G("btEntrar").onclick=entrar;
+    /* NORMALIZA ENQUANTO DIGITA. O campo tinha `maxlength=6` e parecia certo —
+       o código TEM 6. Mas ninguém manda o código pelado: vem "AJB 6PS" da
+       mensagem, ou com traço, ou em minúscula. O navegador cortava no sexto
+       caractere ANTES de a limpeza rodar, e o jogador colava o código certo e
+       ouvia "o código tem 6 caracteres". Agora o campo aceita o que vier e
+       limpa a cada tecla — o que aparece na tela já é o que vai ser enviado. */
+    const campo=G("salaCod");
+    campo.oninput=()=>{ const v=codigoLimpo(campo.value); if(campo.value!==v) campo.value=v; };
+    campo.onkeydown=e=>{ if(e.key==="Enter") entrar(); };
+    /* veio de convite: não faz o amigo tocar em mais nada */
+    if(cod0.length===6) entrar();
   });
 
-  async function fala(rota,corpo){
-    const b=base();
-    if(!b) { msg("Falta o endereço do servidor."); return null; }
-    guardaServidor(b);
-    /* DIAGNÓSTICO ANTES DA TENTATIVA. O primeiro relato de "tá dando erro pra
-       criar sala" não era o servidor: a página vinha de HTTPS e o endereço era
-       HTTP num IP de rede, e o navegador BLOQUEIA isso (mixed content) antes de
-       a chamada sair. A mensagem antiga dizia "ele está de pé?" e mandava
-       procurar exatamente no lugar errado. */
-    const bloqueado = location.protocol==="https:" && /^http:\/\//i.test(b)
-      && !/^http:\/\/(localhost|127\.0\.0\.1)/i.test(b);
-    if(bloqueado){
-      msg(`Esta página veio por <b>https</b> e o servidor é <b>http</b> — o navegador
-           bloqueia essa mistura, e a chamada nem sai.<br><br>
-           <b>O jeito simples:</b> abra o jogo <b>pelo próprio servidor</b>
-           (<code>${b}</code>) nos dois aparelhos, em vez de abrir pelo site.`);
-      return null;
-    }
-    try{
-      const r=await fetch(b+rota,{method:"POST",
-        headers:{"content-type":"application/json"},body:JSON.stringify(corpo)});
-      const j=await r.json();
-      if(!r.ok){ msg(j.erro||"não deu"); return null; }
-      return j;
-    }catch(_){
-      msg(`não cheguei em <code>${b}</code>. Confira se o servidor está rodando
-           (<code>node servidor/sala.js</code>), se o endereço está certo e se os
-           dois aparelhos estão na mesma rede.`);
-      return null;
-    }
+  /* O CAMINHO DE EXCEÇÃO. Só aparece quando não há servidor publicado — e diz
+     o que fazer, em vez de mostrar um campo e esperar adivinhação. */
+  function pedeEndereco(){
+    intro(`Não achei um servidor de salas publicado. Enquanto ele não existe, dá
+           para jogar com alguém <b>na mesma rede</b>: alguém roda
+           <code>node servidor/sala.js</code> e os dois abrem o endereço que ele
+           imprime.`);
+    G("salaCorpo").innerHTML=`
+      <label class="cmp"><span>Endereço do servidor</span>
+        <input id="salaBase" placeholder="http://192.168.0.10:8787"
+               value="${servidorSalvo()}"></label>
+      <button class="grande" id="btUsar">Usar este endereço</button>`;
+    G("btUsar").onclick=async()=>{
+      const b=limpaBase(G("salaBase").value);
+      if(!b){ msg("Falta o endereço."); return; }
+      /* DIAGNÓSTICO ANTES DA TENTATIVA: página https chamando http é bloqueada
+         pelo navegador antes de a chamada sair, e "o servidor está de pé?"
+         mandava procurar no lugar errado. */
+      if(location.protocol==="https:" && /^http:\/\//i.test(b)
+         && !/^http:\/\/(localhost|127\.0\.0\.1)/i.test(b)){
+        msg(`Esta página veio por <b>https</b> e esse servidor é <b>http</b> — o
+             navegador bloqueia a mistura e a chamada nem sai.<br><br>
+             <b>O jeito simples:</b> abra o jogo <b>pelo próprio servidor</b>
+             (<code>${b}/jogo/</code>) nos dois aparelhos.`);
+        return;
+      }
+      msg("procurando…");
+      if(!await temSala(b)){ msg(`não achei servidor em <code>${b}</code>.`); return; }
+      guardaServidor(b); _servidor=b;
+      telaSala(cod0);
+    };
   }
-
-  G("btCriar").onclick=async()=>{
-    msg("criando…");
-    const r=await fala("/criar",{senha:G("salaSenha").value});
-    if(!r)return;
-    entraNaSala(base(),r,`Sala <b>${r.sala}</b> criada.<br>Passe o código e a senha para o seu amigo.`);
-  };
-  G("btEntrar").onclick=async()=>{
-    msg("entrando…");
-    const r=await fala("/entrar",
-      {sala:String(G("salaCod").value||"").toUpperCase(),senha:G("salaSenha").value});
-    if(!r)return;
-    entraNaSala(base(),r,"");
-  };
 }
 
 /* abre o canal e passa a viver do que o servidor manda */
-function entraNaSala(base,r,aviso){
+function entraNaSala(base,r,ehDono){
   modoRede={base,sala:r.sala,lado:r.lado,segredo:r.segredo,canal:null};
   aiMode=false; simMode=false;
+
+  /* A TELA DE ESPERA VIROU A TELA DO CONVITE. Antes ela dizia "passe o código e
+     a senha" e o jogador ia procurar onde estava o código — que ficava só no
+     título. Agora o código é o maior elemento da tela e há um botão que copia o
+     link pronto: o caminho mais curto entre criar a sala e o amigo estar dentro
+     é um toque em "copiar" e um "colar" na conversa. */
+  const link=linkDeConvite(r.sala);
+  const painel = ehDono
+    ? `<p>Sala criada. Mande o convite — quem tocar no link entra direto.</p>
+       <div class="salacod">${r.sala}</div>
+       <button class="grande" id="btCopiaLink">Copiar convite</button>
+       <button class="grande" id="btCopiaCod"
+         style="background:none;border:1px solid var(--line);color:var(--ink-2)">Copiar só o código</button>`
+    : `<p>Você é o <b>segundo</b> jogador.</p>`;
+
   abre(`<span class="et">Sala ${r.sala}</span><h2>${r.lado===0?"Esperando":"Entrou"}</h2>
-    <p>${aviso||"Você é o <b>segundo</b> jogador."}</p>
+    ${painel}
     <p id="salaEstado">ligando…</p>`);
+
+  if(ehDono){
+    const a=G("btCopiaLink"); if(a) a.onclick=()=>copia(link,a);
+    const b=G("btCopiaCod");  if(b) b.onclick=()=>copia(r.sala,b);
+  }
 
   const url=`${base}/eventos?sala=${encodeURIComponent(r.sala)}&lado=${r.lado}`
           +`&segredo=${encodeURIComponent(r.segredo)}`;
@@ -7486,7 +7601,7 @@ function telaAbertura(){
       style="background:none;border:1px solid var(--line);color:var(--ink-2)">Partida rápida</button>`,
     ()=>comeca(true,false));
   G("btDraft").onclick=()=>comeca(false,true);
-  G("btSala").onclick=telaSala;
+  G("btSala").onclick=()=>telaSala();
   G("btIA").onclick=()=>escolheNivelIA(()=>{
     aiMode=true; simMode=false;
     iniciaDraft(times=>{ TIMES=times; partida(false); });
@@ -7500,3 +7615,16 @@ globalThis.__JAGER_AI__={
   get state(){return J}
 };
 telaAbertura();
+/* CONVITE. `?sala=ABC123` na URL pula a abertura e vai direto para a sala — é o
+   que faz o link mandado na conversa valer mais que o código ditado. */
+/* guardado porque este arquivo TAMBÉM é carregado sem navegador: o servidor de
+   salas e a suíte de testes avaliam `jogo.js` num DOM falso, onde `location` e
+   `URLSearchParams` não existem. Código que roda na CARGA precisa sobreviver a
+   isso, senão criar uma sala derruba o servidor — foi o que aconteceu. */
+(()=>{
+  if(typeof URLSearchParams==="undefined"||typeof location==="undefined")return;
+  try{
+    const c=codigoLimpo(new URLSearchParams(location.search||"").get("sala"));
+    if(c.length===6) telaSala(c);
+  }catch(_){}
+})();

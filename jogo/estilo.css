@@ -941,6 +941,14 @@ button:disabled{cursor:not-allowed}
   border:1px solid var(--line);min-height:var(--toque)}
 .cmp input:focus{outline:none;border-color:var(--brass)}
 .salamsg{margin-top:12px;font-size:13.5px;color:var(--carmim);min-height:18px}
+/* O CÓDIGO DA SALA é a informação que a tela existe para entregar, então ele é
+   o maior elemento dela. Monoespaçado e com espaço entre letras porque ele vai
+   ser LIDO EM VOZ ALTA e copiado à mão — o alfabeto já tira 0/O/1/I/L, e o
+   espaçamento tira o resto da dúvida. */
+.salacod{font:700 34px/1.1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  letter-spacing:.22em;text-indent:.22em;text-align:center;color:var(--ink);
+  background:var(--fundo-2,rgba(0,0,0,.14));border:1px solid var(--line);
+  border-radius:10px;padding:14px 10px;margin:10px 0 12px;user-select:all}
 
 /* de quem é a vez, em rede. Ela ocupa o lugar do "vez da IA": mesma pergunta,
    mesma resposta, e o jogador não precisa deduzir da mesa travada. */
