@@ -235,6 +235,14 @@ const N=11;
 const COLS=N,LINS=N,R=19;
 const k=(c,r)=>c+","+r;
 const centro=(c,r)=>{const w=Math.sqrt(3)*R;return[26+w*(c+.5*(r&1))+w/2,26+R*1.5*r+R];};
+/* os seis cantos do hexágono, na ordem em que o polígono é desenhado. Existe
+   como função porque agora DUAS coisas dependem desta geometria — a casa e a
+   fronteira da visão — e duas cópias divergiriam no primeiro ajuste de `R`. */
+const cantos=(c,r)=>{
+  const[x,y]=centro(c,r), v=[];
+  for(let i=0;i<6;i++){ const a=Math.PI/180*(60*i-90); v.push([x+R*Math.cos(a),y+R*Math.sin(a)]); }
+  return v;
+};
 const dist=(c1,r1,c2,r2)=>{const ax=c1-(r1-(r1&1))/2,ay=-ax-r1,bx=c2-(r2-(r2&1))/2,by=-bx-r2;
   return Math.max(Math.abs(ax-bx),Math.abs(ay-by),Math.abs(r1-r2));};
 
@@ -1964,6 +1972,56 @@ function enxergaPorWard(t,c,r){
     const tab=(ehMato(...w.pos)?RAIO_ATE:RAIO_ATE_ABERTO).get(k(...w.pos));
     return !!tab&&tab[VISAO_WARD].indexOf(alvo)>=0;
   });
+}
+
+/* ---------- A FRONTEIRA DA VISÃO ----------
+   Pedido: *"faça com que fique explícito até onde vai a visualização do
+   jogador, e onde é névoa"*.
+
+   Até aqui a névoa era só uma casa mais escura. Isso diz que ALGO é diferente,
+   mas não diz ONDE ACABA o que você vê — e essa é a pergunta que o jogador faz
+   antes de cada passo: *"se eu andar para lá, ainda enxergo?"*. Com duas cores
+   próximas num tabuleiro de 116 casas a resposta virava contar hexágono, e num
+   celular ela simplesmente não existia.
+
+   Esta função devolve as ARESTAS do limite: cada uma fica exatamente entre uma
+   casa que o time `t` enxerga e uma que ele não enxerga. Não é um efeito por
+   cima do mapa — é o limite da regra, desenhado.
+
+   COMO A ARESTA É ACHADA. Para cada casa iluminada e cada vizinho apagado, os
+   dois cantos do hexágono mais próximos do CENTRO do vizinho são os cantos
+   daquela aresta. É geometria pura: não depende de o hexágono ser de topo
+   pontudo, nem da ordem em que os cantos são gerados, nem de uma tabela de
+   direção que teria de ser refeita junto com `centro`.
+
+   A BORDA DO TABULEIRO NÃO GANHA LINHA, e isso foi decidido olhando as duas
+   versões lado a lado. Fechar o contorno na borda emoldura o mapa inteiro e
+   fica bonito, mas mistura duas coisas diferentes: ali a visão não acaba por
+   névoa, acaba porque o mapa acaba — e isso o desenho do hexágono já diz. Sem a
+   moldura, a linha significa UMA coisa só: daqui para lá você não enxerga.
+   Foram 110 segmentos com moldura e 54 sem, no mesmo tabuleiro.
+
+   O POÇO segue a exceção que já tinha na pintura: é objetivo compartilhado e
+   nunca escurece. Sozinho no meio da névoa, ele ganha o próprio anel — e isso é
+   informação verdadeira, não enfeite.
+
+   Separada do desenho porque é REGRA, não pintura: assim a suíte pergunta a ela
+   se o limite bate com `enxergaCasa` sem precisar de um navegador. */
+const semNevoa=(t,c,r)=>noTab(c,r)&&(k(c,r)===POCO_K||enxergaCasa(t,c,r));
+function arestasDaNevoa(t){
+  const fora=[];
+  for(let r=0;r<LINS;r++)for(let c=0;c<COLS;c++){
+    if(!semNevoa(t,c,r))continue;
+    const v=cantos(c,r);
+    for(const n of vizinhos(c,r)){
+      if(semNevoa(t,...n))continue;
+      const [nx,ny]=centro(...n);
+      const [a,b]=v.map(q=>[q,(q[0]-nx)**2+(q[1]-ny)**2])
+                   .sort((x,y)=>x[1]-y[1]).slice(0,2).map(x=>x[0]);
+      fora.push({de:[c,r],para:[...n],a,b});
+    }
+  }
+  return fora;
 }
 
 /* ---------- REVELADO POR TER ATACADO ----------
@@ -4942,12 +5000,25 @@ function desenhaMapa(){
     if(zonaDele.has(k(c,r)))cls+=" zona-ini";
     else if(zonaMinha.has(k(c,r)))cls+=" zona-min";
     if(moverS.has(k(c,r)))cls+=" mover";
-    const p=[];for(let i=0;i<6;i++){const a=Math.PI/180*(60*i-90);const[x,y]=centro(c,r);
-      p.push((x+R*Math.cos(a)).toFixed(1)+","+(y+R*Math.sin(a)).toFixed(1));}
-    const hx=el("polygon",{points:p.join(" "),class:cls,"data-hex":k(c,r)});
+    const hx=el("polygon",{points:cantos(c,r).map(([x,y])=>x.toFixed(1)+","+y.toFixed(1)).join(" "),
+                           class:cls,"data-hex":k(c,r)});
     if(moverS.has(k(c,r))) hx.onclick=()=>{ if(mesaTravada())return; vibra(9); moveAte(c,r); };
     gH.appendChild(hx);
   }
+
+  /* ── A FRONTEIRA DA VISÃO ──
+     Calculada em `arestasDaNevoa`, junto das outras contas de visão, e desenhada
+     aqui. Dois traços no mesmo caminho: um escuro por baixo e o claro por cima.
+     A linha cruza areia clara, selva e névoa escura na mesma volta, e cor única
+     some contra pelo menos uma das três. */
+  const arestas=arestasDaNevoa(ladoDaTela());
+  if(arestas.length){
+    const d=arestas.map(x=>`M${x.a[0].toFixed(1)} ${x.a[1].toFixed(1)}`
+                          +`L${x.b[0].toFixed(1)} ${x.b[1].toFixed(1)}`).join("");
+    gE.appendChild(el("path",{d,class:"fronteira-base"}));
+    gE.appendChild(el("path",{d,class:"fronteira"}));
+  }
+
   /* OS OBSTÁCULOS — item 5 da direção de arte: o bloqueio é uma coisa daquele
      mundo, não uma pedra genérica. Silhueta simples de propósito: o jogador tem
      de reconhecer "não passo aqui" de relance, e detalhe demais numa casa de 19
@@ -5623,6 +5694,7 @@ function abreManual(){
       <p><b>Suporte</b> — escuda, doa o próprio dado, e planta a <b>Ward</b>: o olho que enxerga um pedaço de mapa onde o time não tem ninguém.</p></section>
     <section class="destaque"><h4>Visão · o mato esconde</h4>
       <p>Você só enxerga o que as <b>suas peças</b> enxergam: heróis, torres vivas, a sua onda, a base e as wards. O resto do tabuleiro fica <b>escuro</b> — e herói que está no escuro <b>não aparece</b>.</p>
+      <p>A <b>linha clara</b> no tabuleiro é o limite disso: de um lado você enxerga, do outro é <b>névoa</b>. Ela se move junto com as suas peças — antes de andar, dá para ver o que a sua visão vai ganhar e o que vai perder.</p>
       <p>E o <b>mato bloqueia</b>: dentro do mato só se enxerga <b>de dentro do mato</b>. Estar colado nele pela rota não adianta, e ward plantada na rota também não vê lá dentro. Quem quer saber o que tem no mato entra ou <b>planta a ward dentro</b>.</p>
       <p>Duas saídas para quem está no escuro: atacar de lá vale <b>+2 de Força</b> (emboscada) — mas <b>quem ataca fica visível</b> até sair da casa de onde bateu. Bater entrega a posição.</p>
       <p>Ouro sobrando com os três itens comprados? A <b>Sentinela</b>, na loja, é uma ward na mochila: compre na base, plante onde quiser, sem gastar dado.</p></section>
@@ -5772,8 +5844,12 @@ function pinta(){
   const vistas=visaoDe(meuLado).size, totalCasas=NO_TAB.size;
   const meusEscondidos=J.times[meuLado].herois.filter(h=>escondido(h)).length;
   const nWards=(J.times[meuLado].wards||[]).length;
+  /* a porcentagem sozinha era um número sem régua — "visão 62%" de quê? Agora
+     ela vem com a contagem das casas em névoa, que é a mesma coisa dita do lado
+     que interessa, e casa com a linha clara desenhada no tabuleiro. */
+  const cegas=totalCasas-vistas;
   const cacaTxt = meusEscondidos ? `${meusEscondidos} escondido${meusEscondidos>1?"s":""}`
-      : `visão ${Math.round(vistas/totalCasas*100)}%${nWards?` · ${nWards} ward`:""}`;
+      : `visão ${Math.round(vistas/totalCasas*100)}% · ${cegas} na névoa${nWards?` · ${nWards} ward`:""}`;
   G("pills").innerHTML=
     `<span>◈ <b>${ouro}</b></span>`+
     `<span class="${tm.placas?"on":""}">⬢ <b>${tm.placas}</b></span>`+

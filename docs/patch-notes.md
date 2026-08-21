@@ -57,6 +57,72 @@ colateral de outra mudança.
 
 ---
 
+## v56.1 — a névoa ganhou borda · 2026-08-21
+
+### O que mudou
+
+**A região que o jogador enxerga passou a ter contorno.** Uma linha clara corre
+na aresta entre cada casa vista e cada casa em névoa. Ela é recalculada a cada
+pintura, a partir de `enxergaCasa` — anda junto com as peças.
+
+O HUD passou a contar o outro lado junto: `visão 62% · 44 na névoa`. E o manual
+nomeia a linha: *"de um lado você enxerga, do outro é névoa"*.
+
+### Por quê
+
+O pedido: *"de alguma forma faça com que fique explícito até onde vá a
+visualização do jogador, e onde é névoa"*.
+
+A névoa existia desde a v22 e era **uma casa mais escura**. Isso diz que algo é
+diferente, mas não responde a pergunta que o jogador faz antes de cada passo:
+*"se eu andar para lá, ainda enxergo?"*. Com duas cores próximas em 116 casas a
+resposta virava contar hexágono na cabeça, e num celular ela não existia.
+
+Contorno é a resposta certa porque não é efeito em cima do mapa: a linha fica na
+**aresta**, que é onde a regra muda. O que se vê é o limite, não uma sugestão
+dele.
+
+### A decisão que só apareceu olhando as duas versões
+
+A primeira versão fechava o contorno também na **borda do tabuleiro** — 110
+segmentos contra 54. Emoldurava o mapa e ficava bonito, e estava errado: ali a
+visão não acaba por névoa, acaba porque o mapa acaba, e isso o desenho do
+hexágono já diz. Com a moldura a linha significava duas coisas; sem ela,
+significa uma: **daqui para lá você não enxerga**.
+
+### Como a aresta é achada
+
+Para cada casa iluminada e cada vizinho apagado, os **dois cantos mais próximos
+do centro do vizinho** são os cantos daquela aresta. É geometria pura — não
+depende de o hexágono ser de topo pontudo, nem da ordem em que os cantos são
+gerados, nem de uma tabela de direção que teria de ser refeita junto com
+`centro`. Os cantos do hexágono viraram `cantos(c,r)`, uma função só, porque
+agora **duas** coisas dependem daquela geometria e duas cópias divergiriam no
+primeiro ajuste de `R`.
+
+O cálculo mora em `arestasDaNevoa(t)`, junto das outras contas de visão e
+separado do desenho: assim a suíte pergunta a ele se o limite bate com
+`enxergaCasa`, sem navegador.
+
+### Três testes, e os dois que provam que eles pegam
+
+- **exatidão e completude**: todo par vizinho aceso/apagado tem exatamente uma
+  aresta — nem zero (buraco na linha), nem duas (traço dobrado);
+- **geometria**: os dois cantos de cada aresta estão a um lado de distância do
+  centro das **duas** casas, o que prova que o traço está na divisa e não numa
+  corda qualquer. O lado é deduzido da própria distância entre centros (√3·lado),
+  então o teste vale para qualquer tamanho de casa que o mapa venha a ter;
+- **a linha anda**: mover a peça muda a fronteira, e a nova continua exata. Este
+  projeto já pagou uma vez por visão vinda de cache velho (`seloVisao`, v21).
+
+Conferido por mutação: pôr a moldura de volta derruba **só** o teste de
+exatidão; pegar os dois cantos mais distantes em vez dos mais próximos derruba
+**só** o de geometria.
+
+`node sim/testes.js` → **312 passaram · 0 falharam**.
+
+---
+
 ## v56 — a sala virou um link · 2026-08-21
 
 ### O que mudou

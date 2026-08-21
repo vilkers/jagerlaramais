@@ -3874,6 +3874,86 @@ teste("a IA planta no mato mesmo com ward dela na rota a 3 casas", () => {
   ok(g.enxergaPorWard(1, ...h.pos), "plantou, mas a casa do herói continua sem cobertura de ward");
 });
 
+/* ---------- A FRONTEIRA DA VISÃO ----------
+   A linha clara que o tabuleiro desenha entre o que o jogador enxerga e a
+   névoa. Ela é lida como REGRA pelo jogador — "daqui para lá eu não vejo" — e
+   por isso precisa bater com `enxergaCasa` casa por casa, não "quase". */
+
+teste("a fronteira separa exatamente o que se enxerga do que é névoa", () => {
+  const c = cena().vez(0); const g = c.g;
+  const t = 0;
+  const arestas = g.arestasDaNevoa(t);
+  ok(arestas.length, "cenário inválido: nenhuma casa em névoa na abertura");
+
+  /* cada aresta sai de uma casa vista e chega numa casa DO TABULEIRO em névoa */
+  const vejo = (cc, rr) => g.noTab(cc, rr)
+    && (g.k(cc, rr) === g.POCO_K || g.enxergaCasa(t, cc, rr));
+  arestas.forEach(x => {
+    ok(vejo(...x.de), `aresta saindo de casa em névoa: ${x.de}`);
+    ok(g.noTab(...x.para), `aresta apontando para fora do tabuleiro: ${x.para}`);
+    ok(!vejo(...x.para), `aresta apontando para casa que o jogador enxerga: ${x.para}`);
+    eq(g.dist(...x.de, ...x.para), 1, "aresta entre casas que não são vizinhas");
+  });
+
+  /* COMPLETUDE: todo par vizinho aceso/apagado tem UMA aresta — nem zero (buraco
+     na linha), nem duas (traço dobrado, que engorda no meio e não nas pontas) */
+  let pares = 0;
+  for (let r = 0; r < g.LINS; r++) for (let cc = 0; cc < g.COLS; cc++) {
+    if (!g.noTab(cc, r) || !vejo(cc, r)) continue;
+    g.vizinhos(cc, r).forEach(n => { if (!vejo(...n)) pares++; });
+  }
+  eq(arestas.length, pares, "a linha não cobre exatamente a fronteira");
+});
+
+teste("cada aresta da fronteira fica em cima da divisa dos dois hexágonos", () => {
+  const c = cena().vez(0); const g = c.g;
+  const arestas = g.arestasDaNevoa(0);
+  ok(arestas.length, "cenário inválido: fronteira vazia");
+  arestas.forEach(x => {
+    const [dx, dy] = g.centro(...x.de), [px, py] = g.centro(...x.para);
+    /* o lado do hexágono sai da própria geometria: centros vizinhos ficam a
+       √3·lado um do outro. Deduzir aqui em vez de importar `R` é de propósito —
+       o teste passa a valer para qualquer tamanho de casa que o mapa venha a ter */
+    const lado = Math.hypot(px - dx, py - dy) / Math.sqrt(3);
+    [x.a, x.b].forEach(([qx, qy]) => {
+      ok(Math.abs(Math.hypot(qx - dx, qy - dy) - lado) < 0.01,
+         "canto não pertence ao hexágono de origem");
+      ok(Math.abs(Math.hypot(qx - px, qy - py) - lado) < 0.01,
+         "canto não é compartilhado com o vizinho — o traço não está na divisa");
+    });
+    ok(Math.abs(Math.hypot(x.a[0] - x.b[0], x.a[1] - x.b[1]) - lado) < 0.01,
+       "a aresta não mede um lado do hexágono");
+  });
+});
+
+/* Este projeto já pagou uma vez por visão vinda de cache velho (`seloVisao`, na
+   v21). A linha é desenhada A CADA pintura a partir de `enxergaCasa`, e o teste
+   existe para que continue sendo: andar tem de mexer nela. */
+teste("a fronteira anda junto com a peça", () => {
+  const c = cena().vez(0); const g = c.g;
+  const h = c.heroi(0, "meio");
+  const marca = a => a.map(x => x.de + ">" + x.para).sort().join("|");
+  const antes = marca(g.arestasDaNevoa(0));
+
+  /* leva o herói para uma casa em névoa, longe de onde ele estava */
+  let destino = null;
+  for (let r = 0; r < g.LINS && !destino; r++) for (let cc = 0; cc < g.COLS; cc++)
+    if (g.noTab(cc, r) && !g.em(cc, r) && !g.ehBloqueado(cc, r)
+        && !g.enxergaCasa(0, cc, r) && g.dist(cc, r, ...h.pos) > 3) { destino = [cc, r]; break; }
+  ok(destino, "cenário inválido: nenhuma casa em névoa longe do herói");
+  h.pos = [...destino];
+
+  const depois = g.arestasDaNevoa(0);
+  ok(marca(depois) !== antes, "o herói andou e a fronteira ficou onde estava");
+  ok(g.enxergaCasa(0, ...destino), "a casa de destino não acendeu");
+  /* e continua exata depois de andar — não basta mudar, tem de mudar certo */
+  const vejo = (cc, rr) => g.noTab(cc, rr)
+    && (g.k(cc, rr) === g.POCO_K || g.enxergaCasa(0, cc, rr));
+  depois.forEach(x => {
+    ok(vejo(...x.de) && !vejo(...x.para), "depois de andar a linha saiu do lugar certo");
+  });
+});
+
 teste("Revelado vence a Invisibilidade e o mato", () => {
   const c = cena().vez(0); const g = c.g;
   const p = c.heroi(0, "selva");
