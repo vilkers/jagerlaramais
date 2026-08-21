@@ -57,6 +57,76 @@ colateral de outra mudança.
 
 ---
 
+## v56.2 — o teste que falhava 1 em 400 · 2026-08-21
+
+### O que mudou
+
+`quem começa rola +1 de movimento na rodada 1, e só nela` passou de **n=400**
+para **n=800**, e as tolerâncias de `0.6–1.4` / `< 0.35` para `0.5–1.5` /
+`< 0.5`. A suíte ficou **1,0s mais lenta** (10,6s → 11,7s).
+
+### Por quê
+
+Uma execução da suíte fechou em **311 · 1** e eu não soube dizer qual teste
+caiu — tinha rodado `node sim/testes.js | grep passaram`, e o `grep` comeu
+justamente a lista de falhas que o runner já imprimia. A informação existia; eu
+que a escondi.
+
+Depois disso a suíte rodou **91 vezes seguidas em verde**, o que já dizia que
+não era o que eu tinha acabado de mexer — e também que procurar por repetição ia
+custar caro. Custou: a falha só reapareceu numa varredura de **250 execuções**,
+duas vezes (runs 140 e 148), sempre o mesmo teste e sempre sozinho.
+
+### A conta
+
+O teste compara a média do Dado Mestre entre quem começa e quem responde, 400
+partidas de cada lado. Medi o desvio-padrão dessa diferença em 40 amostras:
+**σ = 0,125** na rodada 1 e **0,107** na rodada 2.
+
+| | faixa antiga | quantos σ | falha por execução |
+|---|---|---|---|
+| rodada 1 | 0,6 a 1,4 (±0,4) | 3,2σ | ~0,14% |
+| rodada 2 | < 0,35 | 3,3σ | ~0,11% |
+
+~0,25% somados — e as duas falhas observadas em 250 execuções batem com isso.
+As duas mensagens também batem com as duas pontas: *"veio 1.42"* e *"diferença
+média 0.40"*.
+
+Dobrar `n` leva σ para **0,088**, e a faixa ±0,5 passa a cobrir **5,7σ** — uma
+falha espúria a cada ~100 milhões de execuções. A folga continua apertada onde
+importa: o que este teste separa é **0** (o bônus sumiu), **1** (certo) e **2**
+(bônus dobrado), e o 2 fica a **17σ** da borda.
+
+Conferido: 200 execuções só deste teste, todas verdes.
+
+### E as outras estatísticas da suíte
+
+Medi a margem das outras quatro que dependem de sorteio, para saber se alguma
+estava no mesmo estado:
+
+| estatística | limiar | medido |
+|---|---|---|
+| `comps.size` em 30 drafts | ≥ 20 | sempre 30 |
+| `vistos.size` (heróis) | ≥ 16 | sempre 20 |
+| `banidos.size` em 60 bans | ≥ 4 | 4 em 0,07% de 3000 amostras, nunca abaixo |
+| melhor da rota / 200 picks | < 200 | máximo 194 |
+
+Nenhuma precisa de conserto. `banidos.size` é a que encosta — ela toca o **4**
+exato do limiar — e fica registrado aqui para quando alguém mexer no ban da IA.
+
+### A regra que fica
+
+Teste estatístico que falha 1 em 400 é pior que teste ausente: ele ensina a
+suíte a mentir, e quem vê vermelho aleatório para de olhar para o vermelho.
+Tolerância de teste probabilístico sai de **σ medido**, não de chute — e a
+medição vai no comentário, para o próximo não ter de refazê-la.
+
+E: **não filtrar a saída da suíte antes de commitar.** O runner já imprime o
+nome de cada falha; passar por `grep passaram` troca dez minutos de leitura por
+uma hora de caça.
+
+---
+
 ## v56.1 — a névoa ganhou borda · 2026-08-21
 
 ### O que mudou

@@ -988,7 +988,20 @@ teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
 
   /* `primeiro` é sorteado a cada `novo()` desde a v21 — tem que ser lido DENTRO
      do laço, senão metade das iterações compara o lado errado */
-  let somaPrim = 0, somaSeg = 0, n = 400;
+  /* n E TOLERÂNCIA SAÍRAM DE MEDIÇÃO, não de chute — e a versão anterior deles
+     flakeava. Com n=400 e a faixa 0.6–1.4, o desvio-padrão da diferença média,
+     medido em 40 amostras, é 0.125: a faixa cobria 3,2σ e a rodada 2 cobria
+     3,3σ, o que dá ~0,25% de falha por execução. Não é hipótese: em 590
+     execuções da suíte este teste caiu duas vezes, uma por lado ("veio 1.42" e
+     "diferença média 0.40"), sempre sozinho e sem nada quebrado.
+
+     Teste estatístico que falha 1 em 400 é pior que teste ausente, porque ensina
+     a suíte a mentir — e quem vê vermelho aleatório para de olhar para o
+     vermelho. Dobrar n leva σ para 0.088, e a faixa ±0.5 passa a cobrir 5,7σ
+     (~1 em 100 milhões). A folga continua apertada onde importa: o que este
+     teste separa é 0 (bônus sumiu), 1 (certo) e 2 (bônus dobrado), e 2 fica a
+     17σ da borda. */
+  let somaPrim = 0, somaSeg = 0, n = 800;
   for (let i = 0; i < n; i++) {
     g.novo();
     const primeiro = g.J.primeiro;
@@ -998,7 +1011,7 @@ teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
     somaSeg += g.J.mov.v;
   }
   const dif = (somaPrim - somaSeg) / n;
-  ok(dif > 0.6 && dif < 1.4,
+  ok(dif > 0.5 && dif < 1.5,
      `a diferença média na rodada 1 deveria ser ~1, veio ${dif.toFixed(2)}`);
 
   /* na rodada 2 os dois rolam igual */
@@ -1011,7 +1024,7 @@ teste("quem começa rola +1 de movimento na rodada 1, e só nela", () => {
     g.J.vez = 1 - primeiro; g.iniciaTurno(); d2Seg += g.J.mov.v;
   }
   const dif2 = Math.abs(d2Prim - d2Seg) / n;
-  ok(dif2 < 0.35, `na rodada 2 não deveria haver bônus, diferença média ${dif2.toFixed(2)}`);
+  ok(dif2 < 0.5, `na rodada 2 não deveria haver bônus, diferença média ${dif2.toFixed(2)}`);
 });
 
 
