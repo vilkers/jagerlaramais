@@ -39,4 +39,8 @@ Nenhuma alteração em jogo/, data/, sim/, servidor/, guia/, cartas/ ou arte/. M
 
 ## Publicação
 
-A atualização deve entrar em main pelo conector GitHub e seguir pelo GitHub Pages existente. A checagem do site público e dos hashes dos assets será registrada após o deploy. A publicação antiga do ChatGPT não foi alterada nem excluída nesta rodada.
+Publicação concluída em main no commit b6b2e01e11fc4472f452dbc4ad09a3f6e4fb15df. GitHub Actions run 45112306242 terminou com success. Endereço: https://vilkers.github.io/jagerlaramais/visual-lab/.
+
+Checagem pública: 32 recursos (sete páginas, CSS, JavaScript e 23 imagens da fonte recuperada) responderam e tiveram SHA-256 idêntico aos arquivos locais publicados. A página pública foi aberta no navegador e mostrou o novo guia com o trio.
+
+O nº 15, Jagerlaramais — Visual Lab no ChatGPT, pode ser excluído manualmente pelo usuário: a fonte publicada está preservada no GitHub, os assets estão servidos pelo Pages e não há D1/R2 declarado nesse snapshot. A exclusão não foi executada por este assistente. O repositório e o Pages devem ser mantidos.
