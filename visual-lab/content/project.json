@@ -1,0 +1,125 @@
+{
+  "updatedAt": "23.11.2026",
+  "phase": "Fechar o craft do primeiro trio",
+  "summary": "Dona Chinela é a referência de acabamento. P.O.M.B.O. e Catarino já têm design, mas o volume, a luz e os materiais ainda precisam chegar à mesma régua.",
+  "stages": [
+    "Concept",
+    "Sheet",
+    "Versão 3D",
+    "Carta",
+    "Vídeo"
+  ],
+  "milestones": [
+    {
+      "name": "Referência-matriz",
+      "state": "Definida",
+      "note": "Identidade, sheet e carta da Dona Chinela aprovados. A miniatura ainda precisa ser refeita."
+    },
+    {
+      "name": "Primeiro trio",
+      "state": "Em produção",
+      "note": "Três personagens ativos. Fechar os masters de P.O.M.B.O. e Catarino antes de propagar o acabamento."
+    },
+    {
+      "name": "Dez heróis implementáveis",
+      "state": "Próximo marco",
+      "note": "Expandir só depois de validar o kit do trio e a integração de um personagem no jogo."
+    },
+    {
+      "name": "Elenco completo",
+      "state": "Futuro",
+      "note": "Vinte personagens é horizonte de expansão, não vinte fichas em produção."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "ART-01",
+      "title": "Fechar o master 3D do P.O.M.B.O.",
+      "hero": "pombo",
+      "state": "Agora",
+      "depends": [],
+      "acceptance": "Preservar peito estufado, moicano, crucifixo, olho óptico e roteador; elevar volume, luz e materiais à régua da Dona Chinela."
+    },
+    {
+      "id": "ART-02",
+      "title": "Fechar o master 3D do Catarino",
+      "hero": "catarino",
+      "state": "Agora",
+      "depends": [],
+      "acceptance": "Preservar rosto, catarro e mecanismo da mochila/flauta-canhão; resolver profundidade, pele, tecido e equipamento."
+    },
+    {
+      "id": "ART-03",
+      "title": "Refazer os sheets a partir dos masters",
+      "hero": null,
+      "state": "Depois",
+      "depends": [
+        "ART-01",
+        "ART-02"
+      ],
+      "acceptance": "Views e expressões coerentes com cada master aprovado. Não propagar o acabamento dos estudos anteriores."
+    },
+    {
+      "id": "ART-04",
+      "title": "Refazer as três pranchas de miniatura",
+      "hero": null,
+      "state": "Depois",
+      "depends": [
+        "ART-03"
+      ],
+      "acceptance": "Exatamente uma view colorida e duas clay, todas em base hexagonal. Consolidar tubos e apoios frágeis. São estudos, não STL final."
+    },
+    {
+      "id": "ART-05",
+      "title": "Criar as cartas de P.O.M.B.O. e Catarino",
+      "hero": null,
+      "state": "Depois",
+      "depends": [
+        "ART-03"
+      ],
+      "acceptance": "Key art contextualizada, território e acting próprios, com rosto, roupa e mecanismo consistentes com o master."
+    },
+    {
+      "id": "ART-06",
+      "title": "Retomar o vídeo da Dona Chinela",
+      "hero": "dona-chinela",
+      "state": "A validar",
+      "depends": [],
+      "acceptance": "Partir da carta aprovada. Preservar rosto, arma e corpo. O teste anterior foi rejeitado; a direção documentada são duas batidas leves de O Corretivo na palma, sem fala."
+    },
+    {
+      "id": "ART-07",
+      "title": "Validar o lote e a primeira integração",
+      "hero": null,
+      "state": "Depois",
+      "depends": [
+        "ART-04",
+        "ART-05",
+        "ART-06"
+      ],
+      "acceptance": "Revisar os cinco estágios por herói. Propor um mapeamento com o catálogo do jogo antes de alterar nomes, números ou habilidades."
+    }
+  ],
+  "gameBacklog": [
+    {
+      "title": "Playtest humano",
+      "note": "Validar ritmo, legibilidade no celular, épicos, Retomada e economia; registrar decisões antes de rebalancear."
+    },
+    {
+      "title": "Salas online",
+      "note": "O protótipo autoritativo existe. Faltam hospedagem, reconexão, abandono e draft em rede."
+    },
+    {
+      "title": "Tutorial",
+      "note": "Adicionar destaque visual à área explicada, preservando o tutorial atual."
+    },
+    {
+      "title": "Regras em decisão",
+      "note": "Anti-picks, zona de armadilhas e Arauto continuam no backlog documentado; não tratar como implementados."
+    },
+    {
+      "title": "Confiabilidade da rede",
+      "note": "Primeira execução: 18/19, timeout de 15 s na loja. Reexecução sem alterações: 19/19. Investigar a intermitência antes de considerar o online estável."
+    }
+  ]
+}

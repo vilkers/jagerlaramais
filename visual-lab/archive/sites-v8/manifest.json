@@ -1,0 +1,356 @@
+{
+  "projectId": "appgprj_6a780e3625508191b12540c7b816009e",
+  "version": 8,
+  "sourceCommit": "ca10548b4ae532d9158757f2b648865e19708271",
+  "capturedAt": "2026-11-23",
+  "files": [
+    {
+      "source": ".gitignore",
+      "path": ".gitignore",
+      "sha256": "35d940f5e608b2a4ef2a41ecf7263d2d4e3e18aa8aab9a98a57fa57e5607dfa5",
+      "bytes": 498
+    },
+    {
+      "source": ".npmrc",
+      "path": ".npmrc",
+      "sha256": "494e64a8818b6158e89321250500ad5ad018e33ad5cfea06a1cacd2cf4da75fa",
+      "bytes": 76
+    },
+    {
+      "source": ".openai/hosting.json",
+      "path": ".openai/hosting.json",
+      "sha256": "0884946b2321e174f7be9c2cae3a372e1627081e4ce33115fdb63a64cbb96f1f",
+      "bytes": 91
+    },
+    {
+      "source": "README.md",
+      "path": "archive/sites-v8/README.md",
+      "sha256": "70ef40d45f8c381c87651db8828a2b085bfe3522eebccef2e074fc93a68716d9",
+      "bytes": 5436
+    },
+    {
+      "source": "app/chatgpt-auth.ts",
+      "path": "app/chatgpt-auth.ts",
+      "sha256": "17a965f8948b21510cdf8ecbd70c5fdf58100e10970463f6a8fd2cc4795f8044",
+      "bytes": 2404
+    },
+    {
+      "source": "app/globals.css",
+      "path": "app/globals.css",
+      "sha256": "c94348cc70718db42c2d23281931b8ee22d2fde86c0a1c5dc8b1452bc33de496",
+      "bytes": 25739
+    },
+    {
+      "source": "app/heroes/HeroDetail.tsx",
+      "path": "app/heroes/HeroDetail.tsx",
+      "sha256": "5a5d7e1a8f6282705ae11938b5d98c634f868f1fd3be22c4097139b9cbb47255",
+      "bytes": 4672
+    },
+    {
+      "source": "app/heroes/[slug]/page.tsx",
+      "path": "app/heroes/[slug]/page.tsx",
+      "sha256": "75baf0ce470feb258bb4e5f1842f354a9a559b3381afdccdca5294062468704e",
+      "bytes": 793
+    },
+    {
+      "source": "app/heroes/data.ts",
+      "path": "app/heroes/data.ts",
+      "sha256": "9c5d3a2bbedb10ac316cfe7e246422d4e925bf34dbace97988af775b0bef3c85",
+      "bytes": 6700
+    },
+    {
+      "source": "app/layout.tsx",
+      "path": "app/layout.tsx",
+      "sha256": "8e0e2a63e56ec36e4a696fe1b8fc50d68fa4dc2cb3c057b9f128d185235a6e5a",
+      "bytes": 673
+    },
+    {
+      "source": "app/page.tsx",
+      "path": "app/page.tsx",
+      "sha256": "7c02efda0d8fab59aebfb94ea87ed3ac1e32ed141fd3abe070af4056b24fee6e",
+      "bytes": 12360
+    },
+    {
+      "source": "build/sites-vite-plugin.ts",
+      "path": "build/sites-vite-plugin.ts",
+      "sha256": "81b7cbfaeb970611572256aba0e313425beb3809f6426f63750696c15d9c756b",
+      "bytes": 1254
+    },
+    {
+      "source": "db/index.ts",
+      "path": "db/index.ts",
+      "sha256": "dc7610b00b918e0ffff1360a63626f16655ced3064b2eaf96095a4101fb14bcd",
+      "bytes": 423
+    },
+    {
+      "source": "db/schema.ts",
+      "path": "db/schema.ts",
+      "sha256": "13ddacbf0be50e054d450a6c642b7fdc1aa943fd6b99084711e07e58b600390d",
+      "bytes": 169
+    },
+    {
+      "source": "drizzle.config.ts",
+      "path": "drizzle.config.ts",
+      "sha256": "af081f7384aaeb0082cf422e29f139d137ca2f6a57c69b2c37b9fb1f8479867b",
+      "bytes": 148
+    },
+    {
+      "source": "drizzle/meta/_journal.json",
+      "path": "drizzle/meta/_journal.json",
+      "sha256": "90cb374e093894d0efce6f1830d873a42aadd8ba49d2f024495e5cb2e1c8c303",
+      "bytes": 61
+    },
+    {
+      "source": "eslint.config.mjs",
+      "path": "eslint.config.mjs",
+      "sha256": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
+      "bytes": 465
+    },
+    {
+      "source": "examples/d1/app/api/notes/route.ts",
+      "path": "examples/d1/app/api/notes/route.ts",
+      "sha256": "a3d4a74fd53b7bf53e2df41f169d9d9d44a8b22aeb6d92f4e754956079af8909",
+      "bytes": 1700
+    },
+    {
+      "source": "examples/d1/db/schema.ts",
+      "path": "examples/d1/db/schema.ts",
+      "sha256": "d89eabd95716ce404f5f7ca2a254220435be8ddce7c899d7ef461ff22ec80454",
+      "bytes": 370
+    },
+    {
+      "source": "next.config.ts",
+      "path": "next.config.ts",
+      "sha256": "614bce25b089c3f19b1e17a6346c74b858034040154c6621e7d35303004767cc",
+      "bytes": 133
+    },
+    {
+      "source": "package-lock.json",
+      "path": "package-lock.json",
+      "sha256": "633e4634609dd317fd9b1b04a173131b2c4a896d294f428d60bbca59cc28b540",
+      "bytes": 382607
+    },
+    {
+      "source": "package.json",
+      "path": "package.json",
+      "sha256": "afd32a662aa76e699e6dc86095f9ee95d75ad8e5180012af5cd758c3f3d97ce1",
+      "bytes": 1872
+    },
+    {
+      "source": "postcss.config.mjs",
+      "path": "postcss.config.mjs",
+      "sha256": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde",
+      "bytes": 94
+    },
+    {
+      "source": "public/favicon.svg",
+      "path": "public/favicon.svg",
+      "sha256": "e6d2e59b7b5bbb0342e0fb496dfc262decbfe4426bbb7b047aec8d467d1dc6f7",
+      "bytes": 712
+    },
+    {
+      "source": "public/file.svg",
+      "path": "public/file.svg",
+      "sha256": "1e0ae4d1a1ddfa36752988647b731e4abf150c414d069ec83c96fb0aaeff0307",
+      "bytes": 392
+    },
+    {
+      "source": "public/globe.svg",
+      "path": "public/globe.svg",
+      "sha256": "d051a8c47936990a9085693d307bb7cea1bc1b6d7ed956bcbaacf674f4ec96b9",
+      "bytes": 1036
+    },
+    {
+      "source": "public/images/dona-chinela-character-sheet-1600.jpg",
+      "path": "public/images/dona-chinela-character-sheet-1600.jpg",
+      "sha256": "0b76055b94bd8da2cd6e7435538a3dbfd285158e1bec4bc8fc69dbbfaecd0fad",
+      "bytes": 275559
+    },
+    {
+      "source": "public/images/dona-chinela-character-sheet-900.jpg",
+      "path": "public/images/dona-chinela-character-sheet-900.jpg",
+      "sha256": "f4e12935d423211cce1fd6fd61578460b9397232444d87a6522196a337305847",
+      "bytes": 103893
+    },
+    {
+      "source": "public/images/dona-chinela-character-sheet-rendered.jpg",
+      "path": "public/images/dona-chinela-character-sheet-rendered.jpg",
+      "sha256": "a430bd5448a1a6a51be6f1c517a4d6091870e2eb4c7a7135f7ec237836f47a99",
+      "bytes": 1069826
+    },
+    {
+      "source": "public/images/dona-chinela-v1.jpeg",
+      "path": "public/images/dona-chinela-v1.jpeg",
+      "sha256": "da4905bbe225ca241f4d7e8778b2dfd63a6d94aa5f2355d4a6e8fa8f6e17cf25",
+      "bytes": 116781
+    },
+    {
+      "source": "public/images/heroes/catarino/01-concept.webp",
+      "path": "public/images/heroes/catarino/01-concept.webp",
+      "sha256": "21c27c390e4f124eddd3f60c4887f95ac0fe798470df55367696660d48fdb19f",
+      "bytes": 55246
+    },
+    {
+      "source": "public/images/heroes/catarino/02-render.webp",
+      "path": "public/images/heroes/catarino/02-render.webp",
+      "sha256": "5c584f86a6f07ba277a3edb1f56f6f5212e035ce827706d184eaa56e9337e77c",
+      "bytes": 56098
+    },
+    {
+      "source": "public/images/heroes/catarino/03-sheet.webp",
+      "path": "public/images/heroes/catarino/03-sheet.webp",
+      "sha256": "c274f135d4b67ca96942d86738e8e343194aa636b5c24a9cbfbc9cda982dcc5d",
+      "bytes": 96064
+    },
+    {
+      "source": "public/images/heroes/catarino/04-miniature.webp",
+      "path": "public/images/heroes/catarino/04-miniature.webp",
+      "sha256": "052b459e647162ad38a67f1b7c428074c5c1d22d4bfcf6c010f9e773526d0a8d",
+      "bytes": 79758
+    },
+    {
+      "source": "public/images/heroes/dona-chinela/02-render.webp",
+      "path": "public/images/heroes/dona-chinela/02-render.webp",
+      "sha256": "2da9945ad5803b7099d402220e4946a528cbc864ee977238dae60b7657f13df5",
+      "bytes": 126558
+    },
+    {
+      "source": "public/images/heroes/dona-chinela/03-sheet.webp",
+      "path": "public/images/heroes/dona-chinela/03-sheet.webp",
+      "sha256": "298ce95506b17d1aa8ce0e370da8503506c56b8c5b24edddcdfe560aeaa00827",
+      "bytes": 148706
+    },
+    {
+      "source": "public/images/heroes/dona-chinela/04-miniature.webp",
+      "path": "public/images/heroes/dona-chinela/04-miniature.webp",
+      "sha256": "16a27e654d16759503dc24de89562c9c472da4673d1cd5baa9bd7a1fbae34b38",
+      "bytes": 117224
+    },
+    {
+      "source": "public/images/heroes/dona-chinela/05-key-art.webp",
+      "path": "public/images/heroes/dona-chinela/05-key-art.webp",
+      "sha256": "1813c7546e0edc118eb64457e797a809bcaa7e5bc064b9f14696e76275ec576c",
+      "bytes": 139342
+    },
+    {
+      "source": "public/images/heroes/pombo/01-concept.webp",
+      "path": "public/images/heroes/pombo/01-concept.webp",
+      "sha256": "fd637eb86719f2e9a09e273e692368932d68ac3472a3b4a6ac84ed7ed3a7de67",
+      "bytes": 73752
+    },
+    {
+      "source": "public/images/heroes/pombo/02-render.webp",
+      "path": "public/images/heroes/pombo/02-render.webp",
+      "sha256": "b7bf8efbddb5b1e18b6b196be3a4f31879cc3a882ecee58d4096ed9bd6efc6f3",
+      "bytes": 68384
+    },
+    {
+      "source": "public/images/heroes/pombo/03-sheet.webp",
+      "path": "public/images/heroes/pombo/03-sheet.webp",
+      "sha256": "7ff1ac4264adef1b2725efe695b270a9be9bd5a860cb30f9c89aa353c29b9724",
+      "bytes": 116732
+    },
+    {
+      "source": "public/images/heroes/pombo/04-miniature.webp",
+      "path": "public/images/heroes/pombo/04-miniature.webp",
+      "sha256": "db56e9c4a5176a221481a6746ee9f797e73c252db9dedd0f74f96f0bfdc55449",
+      "bytes": 91590
+    },
+    {
+      "source": "public/images/mapa-atual-1200.jpg",
+      "path": "public/images/mapa-atual-1200.jpg",
+      "sha256": "017228dd9daaa913db1500a0bcf57aca5d50641bde6b784a74e349fbfa9b94e9",
+      "bytes": 346025
+    },
+    {
+      "source": "public/images/mapa-atual-700.jpg",
+      "path": "public/images/mapa-atual-700.jpg",
+      "sha256": "ea676b0687694536acd70c207e5ffe7eb85f5c0b57e5446e19f8f0c8469e796e",
+      "bytes": 125626
+    },
+    {
+      "source": "public/images/mapa-atual.jpg",
+      "path": "public/images/mapa-atual.jpg",
+      "sha256": "8f3de077300ec946228316b82dd6565e577965d62f52cd5a08a28eb2b70d8d64",
+      "bytes": 850659
+    },
+    {
+      "source": "public/images/vharn-codice.jpg",
+      "path": "public/images/vharn-codice.jpg",
+      "sha256": "dc4cd44b173a4e504b62875e5fa24db3d40a89fb49821466c28f108ce89173db",
+      "bytes": 569855
+    },
+    {
+      "source": "public/images/vharn-collision.jpg",
+      "path": "public/images/vharn-collision.jpg",
+      "sha256": "7831f3a4d5d85d036683c300a7d37338299c38e4defaf5aa02511c103e556687",
+      "bytes": 750805
+    },
+    {
+      "source": "public/images/vharn-liga.jpg",
+      "path": "public/images/vharn-liga.jpg",
+      "sha256": "7840f0e27c9c5a58893c2fa00b2dcdcc87c1d7844237ddf8caf7d5464108b5ae",
+      "bytes": 436748
+    },
+    {
+      "source": "public/images/vharn-relicario.jpg",
+      "path": "public/images/vharn-relicario.jpg",
+      "sha256": "8be2e7eadb1ad1ced9af220ce16b064d19e06043a01a44494c9cd0aa9131ffde",
+      "bytes": 560878
+    },
+    {
+      "source": "public/window.svg",
+      "path": "public/window.svg",
+      "sha256": "decf1cf7bb22b5c99c4857cfcd5718ce5465c4454166317589c83fc73df74b66",
+      "bytes": 386
+    },
+    {
+      "source": "scripts/build-verified.sh",
+      "path": "scripts/build-verified.sh",
+      "sha256": "f7d8b0b181010ed37633337442115ca282cfdc8f9b0b58db347d7f4e83251b35",
+      "bytes": 699
+    },
+    {
+      "source": "scripts/install-ci.sh",
+      "path": "scripts/install-ci.sh",
+      "sha256": "f63e840679ca885f206d17b7f8285199bb6bcd47ebc360008d04d16b8e54f63c",
+      "bytes": 6326
+    },
+    {
+      "source": "scripts/sites-env.sh",
+      "path": "scripts/sites-env.sh",
+      "sha256": "df86ebfc27d2f00860036658e933ac0ddd7b5f6879aa5d51218f0863c7e1fb60",
+      "bytes": 1530
+    },
+    {
+      "source": "scripts/validate-artifact.sh",
+      "path": "scripts/validate-artifact.sh",
+      "sha256": "826354a781d909a664342b6a6f1a3155529e21f757dc163befa937420c713c2b",
+      "bytes": 1220
+    },
+    {
+      "source": "tests/rendered-html.test.mjs",
+      "path": "tests/rendered-html.test.mjs",
+      "sha256": "eae1d187870ad9a4b3f0c37b40589b25c1a2090dcbee19964555cf70c136b118",
+      "bytes": 967
+    },
+    {
+      "source": "tsconfig.json",
+      "path": "tsconfig.json",
+      "sha256": "be18523b23b78b6e1a876ddd107d330f0168bddf09d751b57e0b5edce69c66f3",
+      "bytes": 666
+    },
+    {
+      "source": "vite.config.ts",
+      "path": "vite.config.ts",
+      "sha256": "43e5f02f727ca043f08ebf34789f330580a7a0cb90f426c92f4a454d066988fc",
+      "bytes": 1807
+    },
+    {
+      "source": "worker/index.ts",
+      "path": "worker/index.ts",
+      "sha256": "2ed36d7fa996e946d9d7695c5925e7760246f6bf8fa35c06f1bc515c087dc450",
+      "bytes": 1731
+    }
+  ]
+}

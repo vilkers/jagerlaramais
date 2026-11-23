@@ -1,3 +1,5 @@
+> Registro anterior à revisão de 23/11/2026. Estado e pipeline vigentes: docs/ESTADO.md e docs/PIPELINE.md na raiz do repositório. Preserve este conteúdo como histórico; não reintroduza estados ou propostas superados.
+
 # HANDOFF — sessão de 17–18/08/2026 (v45 → v47)
 
 > **Para continuar em outra janela do Claude:** cole este arquivo, ou peça para ele

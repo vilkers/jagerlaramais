@@ -1,108 +1,41 @@
-# vinext-starter
+# Visual Guide — Jagerlaramais
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Guia oficial: https://vilkers.github.io/jagerlaramais/visual-lab/.
 
-## Prerequisites
+Reorganização de 23/11/2026. Fonte da publicação ChatGPT Sites v8 recuperada, com novas fichas e imagens. Não confundir versão do jogo (v55.1) com a publicação no ChatGPT (8).
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+## Editar e publicar
 
-## Sites Lifecycle
+HTML estático gerado, com CSS e JavaScript em módulos separados. Sem instalação de dependências.
 
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
+| Fonte | Responsabilidade |
+| --- | --- |
+| content/heroes.json | Fonte atual de fichas, etapas, aprovações e caminhos de arte |
+| content/project.json | Fase, tarefas com dependências e marcos |
+| content/world.json | Lore, territórios e bestiário |
+| ui/guide.css | Layout, tipografia, responsividade e movimento |
+| ui/guide.js | Filtros, ampliação e navegação de etapas |
+| ../tools/build-visual-guide.mjs | Templates e geração das sete páginas |
+| public/images/ | Assets recuperados da publicação |
 
-This starter does not use `wrangler.jsonc`.
+Na raiz, executar `node tools/build-visual-guide.mjs` e `node tools/check-visual-guide.mjs`. Incluir páginas geradas no mesmo commit e publicar em main. O Pages existente continua sendo a hospedagem. Não usar o build do starter antigo para atualizar o Pages.
 
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
+## Organização
 
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
+- Entrada: estado atual, primeiro trio e próximas ações.
+- personagens/: roster e matriz de estados.
+- heroes/<slug>/: ficha, cinco etapas, galeria e downloads.
+- universo/: lore, direção de arte, mapa, bestiário e itens.
+- producao/: tarefas, dependências, marcos e backlog técnico em paralelo.
 
-## Included Shape
+## Fonte preservada
 
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+app/, build/, worker/ e a configuração do starter são uma cópia histórica da fonte do Sites. Não são a interface publicada pelo Pages. A fonte editável de produção é content/ + ui/ + gerador.
 
-## Workspace Auth Headers
+archive/sites-v8/manifest.json registra SHA-256, tamanho e destino de cada arquivo da publicação no commit ca10548b4ae532d9158757f2b648865e19708271. O README genérico do starter está em archive/sites-v8/README.md. O handoff criativo anterior preserva IDs Magnific e decisões, mas seu pipeline de seis etapas foi substituído pelas cinco etapas da publicação v8.
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+O snapshot não declara D1 nem R2. Fichas e imagens são arquivos do projeto; não foi encontrada persistência de usuário a migrar no código dessa publicação. Isso não é auditoria de outros serviços externos.
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+## Apagar a publicação antiga
 
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Diagnostic Commands
-
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
-
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Conferir ../docs/REVISAO-VISUAL-GUIDE.md: hashes preservados, páginas e imagens no Pages e commit remoto confirmado. Só então apagar o nº 15 no ChatGPT, preservando este repositório.

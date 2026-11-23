@@ -20,8 +20,8 @@ arte/       assets gerados
 - **`poderTotal`/`armTotal`/`ehAgil` são `const`** — reatribuir mata o script inteiro sem erro no console. Use `aplicaBuff`/`limpaBuffs`.
 - **Guia web é vanilla** — sem framework, sem npm, sem CDN. Abre com duplo clique.
   **Exceção declarada:** `visual-lab/` é a área de criação (universo, personagens, visual, lore),
-  tocada pelo Vilker com o ChatGPT, e tem stack própria (Next/React/Vite). Não é o guia, não segue
-  esta regra e **não deve ser apagada** por causa dela. O que nasce lá só entra no jogo depois de
+  tocada pelo Vilker com o ChatGPT, e preserva o snapshot anterior (Next/React/Vite), mas o guia publicado agora é estático.
+  **Não deve ser apagada** por causa de diferenças de stack. O que nasce lá só entra no jogo depois de
   o guide estar fechado, e entra em cima da base mecânica — nunca por cima dela.
 - **Nomes e lore são autorais.** Referência mecânica ao LoL é interna e explícita nos docs; nunca no produto.
 - **Glossário é lei.** Termo definido não muda de nome. Ver `docs/glossario.md`.
@@ -54,9 +54,8 @@ Agentes globais úteis: `@designer` (layout/tipografia), `@criativo` (QA de iden
 
 ## Estado atual
 
-v0.4 jogável: draft, deck de 46 cartas, **20 heróis (4 por rota, todos com arte)**, 22 itens, tutorial.
+Base mecânica v55.1; estado e plano vigentes em docs/ESTADO.md e docs/PIPELINE.md. Não repetir o resumo antigo v0.4: Dragão, Barão, Retomada e protótipo de salas já existem.
 
-**Leia `docs/ESTADO.md` primeiro** — é o retrato do presente e foi feito para gastar pouco contexto.
-Histórico em `docs/patch-notes.md`. Desenvolvimento em grupo em `docs/ECOSSISTEMA.md`.
+A criação publicada vem de visual-lab/content/, ui/ e tools/build-visual-guide.mjs. O app/ React recuperado do ChatGPT é snapshot histórico. O pipeline vigente tem cinco etapas e três personagens ativos. Manifest de preservação em visual-lab/archive/sites-v8/manifest.json.
 
-Falta: objetivos épicos no tabuleiro, comeback, highlight do tutorial.
+Após editar a criação, rodar node tools/build-visual-guide.mjs e node tools/check-visual-guide.mjs. Não mudar números do jogo por inferência de lore ou desenho. A interface atual do Visual Guide é estática e mantém a trilha criativa separada do catálogo mecânico.

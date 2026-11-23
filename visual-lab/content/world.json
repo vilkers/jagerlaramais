@@ -1,0 +1,63 @@
+{
+  "territories": [
+    [
+      "01",
+      "CONJUNTO FORTALEZA",
+      "TOPO",
+      "Prédios empilhados, caixas-d’água e fortalezas de condomínio."
+    ],
+    [
+      "02",
+      "FERRO-VELHO VIVO",
+      "SELVA",
+      "Sucata biotecnológica que cresce, caça e recicla invasores."
+    ],
+    [
+      "03",
+      "PRAÇA DA TRANSMISSÃO",
+      "MEIO",
+      "O centro nervoso onde antenas disputam a última frequência da Várzea."
+    ],
+    [
+      "04",
+      "TERRITÓRIO EM REVISÃO",
+      "BOT",
+      "Espaço reservado para a identidade narrativa da rota, sem herdar o conceito descartado de Frete."
+    ],
+    [
+      "05",
+      "VAZANTE LUMINOSA",
+      "RIO",
+      "Um vazamento impossível divide o mapa e alimenta suas criaturas."
+    ]
+  ],
+  "monsters": [
+    [
+      "ARUTO",
+      "GALO DE CONCRETO",
+      "Objetivo inicial",
+      "Uma ave de obra que acorda a arena no grito e quebra cobertura no peito."
+    ],
+    [
+      "DRAGÃO",
+      "REI-RATO DA FIAÇÃO",
+      "Objetivo elemental",
+      "Devora cabos, cospe curto-circuitos e muda o comportamento da Vazante."
+    ],
+    [
+      "BARÃO",
+      "BOI DE OUTDOOR",
+      "Objetivo maior",
+      "Uma massa de lona, ferragem e propaganda esquecida que avança sem freio."
+    ]
+  ],
+  "lore": {
+    "name": "A Várzea do Fim",
+    "premise": "Quando realidades incompatíveis se chocaram, seus restos se acumularam numa periferia impossível: a Várzea do Fim.",
+    "body": "Bairros, criaturas, memórias e objetos descartados foram costurados pela mesma energia que alimenta o Nexus. Os heróis são gente comum que aprendeu a transformar escassez em linguagem, gambiarra em poder e defeito em assinatura.",
+    "conflict": "Facções disputam o Nexus porque ele pode estabilizar a Várzea — ou reescrever quem pertence a ela.",
+    "tone": "Comédia irreverente na superfície; afeto, perda e pertencimento sustentam cada absurdo.",
+    "rule": "Todo poder nasce de uma solução cotidiana levada a uma escala ridiculamente épica.",
+    "quote": "Se o universo jogou fora, a Várzea dá um jeito."
+  }
+}

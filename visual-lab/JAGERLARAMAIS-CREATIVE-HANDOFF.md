@@ -1,3 +1,5 @@
+> Registro anterior à revisão de 23/11/2026. Estado e pipeline vigentes: docs/ESTADO.md e docs/PIPELINE.md na raiz do repositório. Preserve este conteúdo como histórico; não reintroduza estados ou propostas superados.
+
 # Jagerlaramais — Creative Handoff
 
 ## Objetivo
